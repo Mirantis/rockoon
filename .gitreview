@@ -1,0 +1,5 @@
+[gerrit]
+host=gerrit-us.mcp.mirantis.net
+port=29418
+project=mcp/rockoon.git
+defaultbranch=master
