@@ -1,0 +1,154 @@
+{%- from 'macros/connections.j2' import to_child_object %}
+{%- set neutron_server_deployment_type = "Deployment"%}
+{%- if spec.get("features", {}).get("neutron", {}).get("backend") == "ml2/ovn" %}
+{%- set neutron_server_deployment_type = "DaemonSet"%}
+{%- endif %}
+ceilometer:
+  DaemonSet:
+    ceilometer-compute:
+      connections:
+        egress:
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("compute", "nova", "Deployment", "nova-api-osapi", ["n-api"]) | indent(12)}}
+          - {{ to_child_object("networking", "neutron", neutron_server_deployment_type, "neutron-server", ["q-api"]) | indent(12)}}
+          - {{ to_child_object("image", "glance", "Deployment", "glance-api", ["g-api"]) | indent(12)}}
+          - {{ to_child_object("block-storage", "cinder", "Deployment", "cinder-api", ["c-api"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ceilometer_compute
+      manifest: daemonset_compute
+      pod_labels:
+        application: ceilometer
+        component: compute
+      type: dynamic
+    ceilometer-ipmi:
+      connections:
+        egress:
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("compute", "nova", "Deployment", "nova-api-osapi", ["n-api"]) | indent(12)}}
+          - {{ to_child_object("networking", "neutron", neutron_server_deployment_type, "neutron-server", ["q-api"]) | indent(12)}}
+          - {{ to_child_object("image", "glance", "Deployment", "glance-api", ["g-api"]) | indent(12)}}
+          - {{ to_child_object("block-storage", "cinder", "Deployment", "cinder-api", ["c-api"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ceilometer_ipmi
+      manifest: daemonset_ipmi
+      pod_labels:
+        application: ceilometer
+        component: ipmi
+      type: dynamic
+  Deployment:
+    ceilometer-central:
+      connections:
+        egress:
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("compute", "nova", "Deployment", "nova-api-osapi", ["n-api"]) | indent(12)}}
+          - {{ to_child_object("networking", "neutron", neutron_server_deployment_type, "neutron-server", ["q-api"]) | indent(12)}}
+          - {{ to_child_object("image", "glance", "Deployment", "glance-api", ["g-api"]) | indent(12)}}
+          - {{ to_child_object("block-storage", "cinder", "Deployment", "cinder-api", ["c-api"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ceilometer_central
+      manifest: deployment_central
+      pod_labels:
+        application: ceilometer
+        component: central
+    ceilometer-notification:
+      connections:
+        egress:
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("compute", "nova", "Deployment", "nova-api-osapi", ["n-api"]) | indent(12)}}
+          - {{ to_child_object("networking", "neutron", neutron_server_deployment_type, "neutron-server", ["q-api"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+          - {{ to_child_object("metric", "gnocchi", "Deployment", "gnocchi-api", ["gn-api"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ceilometer_notification
+      manifest: deployment_notification
+      pod_labels:
+        application: ceilometer
+        component: notification
+  Job:
+    ceilometer-bootstrap:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields:
+      - network.proxy.*
+      - bootstrap.*
+      images:
+      - bootstrap
+      manifest: job_bootstrap
+      pod_labels:
+        application: ceilometer
+        component: bootstrap
+    ceilometer-db-init:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - db_init
+      manifest: job_db_init
+      pod_labels:
+        application: ceilometer
+        component: db-init
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    ceilometer-db-sync:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - ceilometer_db_sync
+      manifest: job_db_sync
+      pod_labels:
+        application: ceilometer
+        component: db-sync
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          # ceilometer-upgrade command running in db sync job creates gnocchi resource types
+          - {{ to_child_object("metric", "gnocchi", "Deployment", "gnocchi-api", ["gn-api"]) | indent(12)}}
+    ceilometer-ks-endpoints:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_endpoints
+      manifest: job_ks_endpoints
+      pod_labels:
+        application: ceilometer
+        component: ks-endpoints
+    ceilometer-ks-service:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_service
+      manifest: job_ks_service
+      pod_labels:
+        application: ceilometer
+        component: ks-service
+    ceilometer-ks-user:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields:
+      - endpoints.*
+      images:
+      - ks_user
+      manifest: job_ks_user
+      pod_labels:
+        application: ceilometer
+        component: ks-user

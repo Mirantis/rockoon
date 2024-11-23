@@ -1,0 +1,83 @@
+heat_template_version: queens
+parameters:
+  additional_public_key:
+    type: string
+    description: Secondary SSH public key to add to the instance
+    default: ""
+  key_name:
+    type: string
+    description: Name of keypair to assign to servers
+  image:
+    type: string
+    description: Name of image to use for servers
+  flavor:
+    type: string
+    description: Flavor to use for servers
+  lcm_network:
+    type: string
+  lcm_subnet_id:
+    type: string
+  boot_timeout:
+    type: number
+    description: Boot timeout for instance
+    default: 3600
+  public_net_id:
+    type: string
+resources:
+  software_config:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      group: ungrouped
+      config:
+        str_replace:
+          template: { get_file: ../scripts/instance_boot.sh }
+          params:
+            $wait_condition_notify: { get_attr: [ wait_handle, curl_cli ] }
+  install_config_agent:
+    type: "OS::Heat::MultipartMime"
+    properties:
+      parts:
+      - config:
+          str_replace:
+            template: |
+              #!/bin/bash
+              if [[ -n "$ADDITIONAL_PUBLIC_KEY" ]]; then
+                echo "$ADDITIONAL_PUBLIC_KEY" >> /home/ubuntu/.ssh/authorized_keys
+              fi
+            params:
+              $ADDITIONAL_PUBLIC_KEY: { get_param: additional_public_key }
+      - config: {get_resource: software_config}
+  server:
+    type: OS::Nova::Server
+    properties:
+      config_drive: true
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+      key_name: { get_param: key_name }
+      networks:
+        - port: { get_resource: lcm_server_port }
+      user_data_format: SOFTWARE_CONFIG
+      user_data: { get_resource:  install_config_agent}
+  lcm_server_port:
+    type: OS::Neutron::Port
+    properties:
+      network_id: { get_param: lcm_network }
+      port_security_enabled: false
+      fixed_ips:
+        - subnet: { get_param: lcm_subnet_id }
+  server_floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network_id: { get_param: public_net_id }
+      port_id: { get_resource: lcm_server_port }
+  wait_handle:
+    type: OS::Heat::WaitConditionHandle
+  wait_condition:
+    type: OS::Heat::WaitCondition
+    properties:
+      handle: { get_resource: wait_handle }
+      timeout: { get_param: boot_timeout }
+outputs:
+  server_public_ip:
+    description: Floating IP address of server in public network
+    value: { get_attr: [ server_floating_ip, floating_ip_address ] }

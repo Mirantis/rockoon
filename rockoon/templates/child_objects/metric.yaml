@@ -1,0 +1,157 @@
+{%- from 'macros/connections.j2' import to_child_object %}
+gnocchi:
+  CronJob:
+    gnocchi-resources-cleaner:
+      connections:
+        egress:
+          - {{ to_child_object("metric", "gnocchi", "Deployment", "gnocchi-api", ["gn-api"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - gnocchi_resources_cleaner
+      manifest: cron_job_resources_cleaner
+      pod_labels:
+        application: gnocchi
+        component: resources-cleaner
+  DaemonSet:
+    gnocchi-metricd:
+      connections:
+        egress:
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - gnocchi_api
+      - gnocchi_metricd
+      manifest: daemonset_metricd
+      pod_labels:
+        application: gnocchi
+        component: metricd
+    gnocchi-statsd:
+      connections:
+        egress:
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - gnocchi_api
+      - gnocchi_statsd
+      manifest: daemonset_statsd
+      pod_labels:
+        application: gnocchi
+        component: metricd
+  Deployment:
+    gnocchi-api:
+      connections:
+        egress:
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - gnocchi_api
+      manifest: deployment_api
+      pod_labels:
+        application: gnocchi
+        component: api
+      ports:
+      - port: 8041
+        name: gn-api
+        protocol: TCP
+  Job:
+    gnocchi-bootstrap:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields:
+      - network.proxy.*
+      - bootstrap.*
+      images:
+      - bootstrap
+      manifest: job_bootstrap
+      pod_labels:
+        application: gnocchi
+        component: bootstrap
+    gnocchi-clean:
+      hash_fields: []
+      images:
+      - gnocchi_storage_init
+      manifest: job_clean
+      pod_labels:
+        application: gnocchi
+        component: clean
+    gnocchi-db-init:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - db_init
+      manifest: job_db_init
+      pod_labels:
+        application: gnocchi
+        component: db-init
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    gnocchi-db-sync:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - gnocchi_api
+      - gnocchi_db_sync
+      manifest: job_db_sync
+      pod_labels:
+        application: gnocchi
+        component: db-sync
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    gnocchi-ks-endpoints:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_endpoints
+      manifest: job_ks_endpoints
+      pod_labels:
+        application: gnocchi
+        component: ks-endpoints
+    gnocchi-ks-service:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_service
+      manifest: job_ks_service
+      pod_labels:
+        application: gnocchi
+        component: ks-service
+    gnocchi-ks-user:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields:
+      - endpoints.*
+      images:
+      - ks_user
+      manifest: job_ks_user
+      pod_labels:
+        application: gnocchi
+        component: ks-user
+    gnocchi-storage-init:
+      hash_fields: []
+      images:
+      - gnocchi_api
+      - gnocchi_storage_init
+      manifest: job_storage_init
+      pod_labels:
+        application: gnocchi
+        component: storage-init

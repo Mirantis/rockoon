@@ -1,0 +1,71 @@
+spec:
+  releases:
+  - chart: ingress
+    name: ingress-openstack
+    values:
+      deployment:
+        type: DaemonSet
+      conf:
+        ingress:
+          nginx-status-ipv4-whitelist: 0.0.0.0/0
+          client-header-buffer-size: 10k
+          bind-address: 0.0.0.0
+          large-client-header-buffers: 4 16k
+          ssl-redirect: "false"
+          use-proxy-protocol: "true"
+        services:
+          tcp:
+            "53": openstack/designate-powerdns:53
+          udp:
+            "53": openstack/designate-powerdns:53
+      endpoints:
+        cluster_domain_suffix: cluster.local
+        ingress:
+          port:
+            https:
+              default: 5443
+        tls_proxy:
+          host_fqdn_override:
+            public:
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          port:
+            proxy:
+              default: 443
+      images:
+        tags:
+          dep_check: dep-check:latest
+          entrypoint: entrypoint:latest
+          error_pages: error-pages:latest
+          image_repo_sync: image-repo-sync:latest
+          ingress: ingress:latest
+          ingress_module_init: ingress-module-init:latest
+          ingress_routed_vip: ingress-routed-vip:latest
+      labels:
+        server:
+          node_selector_key: kubernetes.io/os
+          node_selector_value: linux
+      manifests:
+        network_policy: false
+        tls_proxy: true
+      network:
+        service:
+          externalTrafficPolicy: Local
+          type: LoadBalancer
+      pod:
+        probes:
+          server:
+            ingress:
+              liveness:
+                enabled: true
+                params:
+                  initialDelaySeconds: 10
+                  timeoutSeconds: 5
+              readiness:
+                enabled: true
+                params: {}

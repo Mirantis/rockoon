@@ -1,0 +1,14 @@
+diff --git a/kopf/_cogs/clients/api.py b/kopf/_cogs/clients/api.py
+index 351f121..2c5442c 100644
+--- a/kopf/_cogs/clients/api.py
++++ b/kopf/_cogs/clients/api.py
+@@ -84,7 +84,8 @@ async def request(
+             )
+             await errors.check_response(response)  # but do not parse it!
+ 
+-        except (aiohttp.ClientConnectionError, errors.APIServerError, asyncio.TimeoutError) as e:
++        # NOTE(vsaienko): during k8s upgrade API might throw 403 forbiden. Use retries for this exception as well.
++        except (aiohttp.ClientConnectionError, errors.APIServerError, errors.APIForbiddenError, asyncio.TimeoutError) as e:
+             if backoff is None:  # i.e. the last or the only attempt.
+                 logger.error(f"Request attempt {idx} failed; escalating: {what} -> {e!r}")
+                 raise

@@ -1,0 +1,59 @@
+- name: Create a directory if it does not exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0750'
+  loop:
+    - "{{ rvl_dns_coredns }}"
+
+- name: Get an existing ingress object
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    name: ingress
+    namespace: openstack
+  register: ingress_service
+  until: ingress_service.get('resources') and ingress_service.resources[0].spec.clusterIP
+  retries: 60
+  delay: 10
+  ignore_errors: yes
+  tags:
+    - dns
+  when: rvl_dns_discover_ingress_ip
+
+- name: Template file Corefile
+  ansible.builtin.template:
+    src: coredns_corefile.j2
+    dest: "{{ rvl_dns_coredns }}/Corefile"
+    owner: bin
+    group: root
+    mode: '0644'
+  vars:
+    listen_ip: "{{ rvl_resolved_ip_address }}"
+    listen_port: 53
+  tags:
+    - dns
+
+- name: Template coredns zone
+  ansible.builtin.template:
+    src: coredns_zone.j2
+    dest: "{{ rvl_dns_coredns }}/it.just.works.db"
+    owner: bin
+    group: root
+    mode: '0644'
+  vars:
+    ingress_service_ip: "{{ ingress_service.resources[0].spec.clusterIP }}"
+  tags:
+    - dns
+  when: rvl_dns_discover_ingress_ip
+
+- name: Template coredns zone no ingress
+  ansible.builtin.template:
+    src: coredns_zone.j2
+    dest: "{{ rvl_dns_coredns }}/it.just.works.db"
+    owner: bin
+    group: root
+    mode: '0644'
+  tags:
+    - dns
+  when: not rvl_dns_discover_ingress_ip

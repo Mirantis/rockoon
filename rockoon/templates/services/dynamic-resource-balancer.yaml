@@ -1,0 +1,41 @@
+#apiVersion: lcm.mirantis.com/v1alpha1
+#kind: HelmBundle
+
+{%- set service = 'drb-controller' %}
+{%- set keystone_users =  spec.features.get('keystone', {}).get('users', {}) %}
+spec:
+  releases:
+  - name: openstack-drb-controller
+    chart: drb-controller
+    values:
+      images:
+        tags:
+{%- for image in [
+    "drb_controller",
+    "dep_check",
+    "ks_user",
+    ] %}
+        {%- if image in images %}
+          {{ image }}: {{ images[image] }}
+        {%- endif %}
+{%- endfor %}
+      endpoints:
+        cluster_domain_suffix: {{ spec.internal_domain_name }}
+{% include 'base/_admin_identity.yaml' %}
+          hosts:
+            admin:
+              host: keystone-api
+            default: keystone
+            internal: keystone-api
+          port:
+            api:
+              admin: 5000
+              default: 80
+              internal: 5000
+              public: 443
+          scheme:
+            default: http
+            public: https
+      manifests:
+        job_ensure_resources: false
+        configmap_deploy_resources: false

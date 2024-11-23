@@ -1,0 +1,8 @@
+parameters:
+  haproxy:
+    proxy:
+      listen:
+        ironic:
+          redirects:
+           - code: 301
+             location: https://ironic.${_param:mcp2_public_domain_name}%[path]

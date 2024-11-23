@@ -1,0 +1,171 @@
+{{/*
+Copyright 2017 The Openstack-Helm Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.job_create_resources }}
+{{- $envAll := . }}
+
+{{- $serviceName := "octavia" -}}
+{{- $nodeSelector := index . "nodeSelector" | default ( dict $envAll.Values.labels.job.node_selector_key $envAll.Values.labels.job.node_selector_value ) -}}
+{{- $configMapBin := index . "configMapBin" | default (printf "%s-%s" $serviceName "bin" ) -}}
+{{- $serviceUser := index . "serviceUser" | default $serviceName -}}
+{{- $serviceUserPretty := $serviceUser | replace "_" "-" -}}
+
+{{- $serviceAccountName := printf "%s-%s" $serviceUserPretty "create-resources" }}
+{{ tuple $envAll "create_resources" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: create-configmap-octavia-create-resources
+  namespace: {{ $envAll.Release.Namespace | quote }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: create-configmap-octavia-create-resources-role
+subjects:
+  - kind: ServiceAccount
+    name: octavia-create-resources
+    namespace: {{ $envAll.Release.Namespace | quote }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: create-configmap-octavia-create-resources-role
+  namespace: {{ $envAll.Release.Namespace | quote }}
+rules:
+  - apiGroups: [""]
+    verbs:
+      - create
+      - get
+      - patch
+      - update
+    resources:
+      - configmaps
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: create-octavia-create-resources-list-nodes-role
+  namespace: {{ $envAll.Release.Namespace | quote }}
+rules:
+  - apiGroups: [""]
+    verbs:
+      - list
+    resources:
+      - nodes
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: list-nodes-octavia-create-resources
+  namespace: {{ $envAll.Release.Namespace | quote }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: create-octavia-create-resources-list-nodes-role
+subjects:
+  - kind: ServiceAccount
+    name: octavia-create-resources
+    namespace: {{ $envAll.Release.Namespace | quote }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ printf "%s-%s" $serviceUserPretty "create-resources" | quote }}
+spec:
+  backoffLimit: {{ $envAll.Values.jobs.create_resources.backoffLimit }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll $serviceName "create_resources" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName | quote }}
+{{ dict "envAll" $envAll "application" "create_resources" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      restartPolicy: {{ $envAll.Values.jobs.create_resources.restartPolicy }}
+      nodeSelector:
+{{ toYaml $nodeSelector | indent 8 }}
+      initContainers:
+{{ tuple $envAll "create_resources" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+      containers:
+        - name: octavia-create-resource
+          image: {{ $envAll.Values.images.tags.create_resources }}
+          imagePullPolicy: {{ $envAll.Values.images.pull_policy }}
+{{ dict "envAll" $envAll "application" "create_resources" "container" "create_resources" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/create-octavia-openstack-resources.py
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.octavia_create_resources | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: ks-octavia-create-resources
+              mountPath: /tmp/create-octavia-openstack-resources.py
+              subPath: create-octavia-openstack-resources.py
+              readOnly: true
+            - name: amphora-secret
+              mountPath: /tmp/.ssh/
+            - name: os-clouds
+              mountPath: /etc/openstack/clouds.yaml
+              subPath: clouds.yaml
+              readOnly: true
+          env:
+            - name: NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+{{- if not (empty $envAll.Values.octavia.settings.lbmgmt_cidr) }}
+{{- with $envAll.Values.octavia.settings }}
+{{- $_ := set $envAll.Values.octavia.settings "lbmgmt_subnets" (list (dict "range" .lbmgmt_cidr "pool_start" .lbmgmt_subnet_start "pool_end" .lbmgmt_subnet_end)) }}
+{{- end }}
+{{- end }}
+{{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" "octavia" "osCloudNameSystem" "admin-system") | indent 12 }}
+            - name: OCTAVIA_MANAGEMENT_NETWORK_NAME
+              value: {{ $envAll.Values.octavia.settings.lbmgmt_network_name | default "lb-mgmt-net" }}
+            - name: OCTAVIA_OSH_LB_SUBNETS
+              value: {{ toJson $envAll.Values.octavia.settings.lbmgmt_subnets | quote }}
+            - name: OCTAVIA_OSH_LB_HM_REMOTE_PORT
+              value: {{ $envAll.Values.octavia.settings.hm_remote_port | quote }}
+            - name: OCTAVIA_OSH_LB_HM_HOST_PORT
+              value: {{ $envAll.Values.conf.octavia.health_manager.bind_port | quote }}
+            - name: OCTAVIA_NODE_SELECTOR
+              value: {{ $envAll.Values.labels.worker.node_selector_key }}={{ $envAll.Values.labels.worker.node_selector_value }}
+            - name: OCTAVIA_NAMESPACE
+              value: {{ $envAll.Release.Namespace | quote }}
+            - name: OCTAVIA_WAIT_NEUTRON_RESOURCES
+              value: {{ and ( not ( has "ovn" .Values.network.backend )) ( not ( eq .Values.network.core_plugin "tungstenfabric" )) | quote }}
+            - name: OCTAVIA_MGMT_CREATE_PORTS
+              value: {{ not ( eq .Values.network.core_plugin "tungstenfabric" ) | quote }}
+{{ dict "envAll" $envAll | include "helm-toolkit.snippets.kubernetes_proxy_env_vars" | indent 12 }}
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: os-clouds
+          secret:
+            secretName: "octavia-os-clouds"
+            defaultMode: 416
+        - name: ks-octavia-create-resources
+          configMap:
+            name: "octavia-bin"
+            defaultMode: 504
+        - name: amphora-secret
+          secret:
+            secretName: amphora-ssh-key
+            items:
+            - key: octavia_ssh_key_pub
+              path: octavia_ssh_key.pub
+
+{{- end -}}
+

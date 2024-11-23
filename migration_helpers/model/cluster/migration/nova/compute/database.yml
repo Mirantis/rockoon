@@ -1,0 +1,7 @@
+parameters:
+  nova:
+    compute:
+      database:
+        host: ${_param:mcp2_database_nova_address}
+        password: ${_param:mcp2_database_nova_password}
+        user: ${_param:mcp2_database_nova_username}

@@ -1,0 +1,64 @@
+- name: Deploy metallb crds
+  kubernetes.core.helm:
+    kubeconfig: "{{ kubeconfig }}"
+    name: metallb-crds
+    chart_ref: "{{ rvl_binary_base_url }}/core/helm/metallb-crds-1.37.20.tgz"
+    release_namespace: metallb-crds
+    create_namespace: true
+    values:
+      global:
+        dockerBaseUrl: "{{ rvl_images_base_url }}"
+        helmBaseUrl: "{{ rvl_binary_base_url }}"
+
+- name: Deploy metallb
+  kubernetes.core.helm:
+    kubeconfig: "{{ kubeconfig }}"
+    name: metallb
+    chart_ref: "{{ rvl_binary_base_url }}/core/helm/metallb-1.37.20.tgz"
+    release_namespace: metallb
+    create_namespace: true
+    values:
+      global:
+        dockerBaseUrl: "{{ rvl_images_base_url }}"
+        helmBaseUrl: "{{ rvl_binary_base_url }}"
+    # NOTE(vsaienko): ensure admission is up before we post resources
+    wait: true
+    timeout: "300s"
+
+- name: Template a file metallb address pools /src/k8s/metallb-address-pool.yaml
+  ansible.builtin.template:
+    src: metallb/address-pool.j2
+    dest: "{{rvl_k8s_objects_path }}/metallb-address-pool.yaml"
+    owner: bin
+    group: root
+    mode: '0644'
+  vars:
+  register: metallb_address_pool
+
+- name: Template a file metallb address pools /src/k8s/metallb-metallb_l2advertisiment.yaml
+  ansible.builtin.template:
+    src: metallb/l2advertisiment.j2
+    dest: "{{rvl_k8s_objects_path }}/metallb-l2advertisiment.yaml"
+    owner: bin
+    group: root
+    mode: '0644'
+  vars:
+  register: metallb_l2advertisiment
+
+- name: Create Metallb Address Pools
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    state: present
+    src: "{{rvl_k8s_objects_path }}/metallb-address-pool.yaml"
+  when: metallb_address_pool is changed
+  retries: 5
+  delay: 10
+
+- name: Create Metallb Addvertisiment
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    state: present
+    src: "{{rvl_k8s_objects_path }}/metallb-l2advertisiment.yaml"
+  when: metallb_l2advertisiment is changed
+  retries: 5
+  delay: 10

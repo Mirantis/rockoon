@@ -1,0 +1,225 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.job_run_tests }}
+
+{{- $envAll := . }}
+
+{{- $serviceAccountName := "tempest-run-tests" }}
+{{ tuple $envAll "run_tests" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-run-tests
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+spec:
+  backoffLimit: {{ .Values.jobs.run_tests.backoffLimit }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "tempest" "run-tests" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+      restartPolicy: {{ .Values.jobs.run_tests.restartPolicy }}
+      # NOTE(vsaienko): hostnetwork is needed for tests that compare source IP like
+      # octavia_tempest_plugin.tests.scenario.v2.test_traffic_ops.TrafficOperationsScenarioTest.test_insert_headers
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        {{ .Values.labels.job.node_selector_key }}: {{ .Values.labels.job.node_selector_value }}
+      initContainers:
+{{ tuple $envAll "run_tests" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+        - name: tempest-run-tests-init
+{{ tuple $envAll "tempest_run_tests" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.run_tests | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          securityContext:
+            runAsUser: 0
+          command:
+            - chown
+            - -R
+            - "root:"
+            - {{ .Values.conf.tempest.DEFAULT.state_path }}/data
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: tempest-reports
+              mountPath: {{ .Values.conf.tempest.DEFAULT.state_path }}/data
+        - name: tempest-uuids-init
+{{ tuple $envAll "tempest-uuids-init" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.run_tests | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          securityContext:
+            runAsUser: 0
+          command:
+            - /tmp/tempest-uuids.sh
+          env:
+            - name: OS_CACERT
+              value: "/etc/ssl/certs/openstack-ca-bundle.pem"
+{{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" "admin-public" "osCloudNameSystem" "admin-system-public" ) | indent 12 }}
+          volumeMounts:
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "tempest" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: tempest-bin
+              mountPath: /tmp/tempest-uuids.sh
+              subPath: tempest-uuids.sh
+              readOnly: true
+            - name: tempest-bin
+              mountPath: /tmp/functions.sh
+              subPath: functions.sh
+              readOnly: true
+            - name: etctempest
+              mountPath: /etc/tempest
+            - name: tempest-etc
+              mountPath: /etc/tempest/tempest-orig.conf
+              subPath: tempest.conf
+            - name: tempest-reports
+              mountPath: {{ .Values.conf.tempest.DEFAULT.state_path }}/data
+            - name: os-clouds
+              mountPath: /etc/openstack/clouds.yaml
+              subPath: clouds.yaml
+              readOnly: true
+        - name: tempest-dynamic-config
+{{ tuple $envAll "tempest_run_tests" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.run_tests | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          securityContext:
+            runAsUser: 0
+          command:
+            - /tmp/tempest-dynamic-config.sh
+          env:
+            - name: NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+{{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" "admin-public" "osCloudNameSystem" "admin-system-public" ) | indent 12 }}
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: tempest-bin
+              mountPath: /tmp/tempest-dynamic-config.sh
+              subPath: tempest-dynamic-config.sh
+              readOnly: true
+            - name: tempest-bin
+              mountPath: /tmp/functions.sh
+              subPath: functions.sh
+              readOnly: true
+            - name: etctempest
+              mountPath: /etc/tempest
+            - name: tempest-etc
+              mountPath: /etc/tempest/tempest-orig.conf
+              subPath: tempest.conf
+            - name: tempest-reports
+              mountPath: {{ .Values.conf.tempest.DEFAULT.state_path }}/data
+            - name: os-clouds
+              mountPath: /etc/openstack/clouds.yaml
+              subPath: clouds.yaml
+              readOnly: true
+      containers:
+        - name: tempest-run-tests
+{{ tuple $envAll "tempest_run_tests" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.run_tests | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          command:
+            - /tmp/run-tests.sh
+          env:
+{{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" "admin-public" "osCloudNameSystem" "admin-system-public" ) | indent 12 }}
+          volumeMounts:
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "tempest" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: tempest-etc
+              mountPath: /tmp/stestr-orig.conf
+              subPath: stestr.conf
+            - name: tempest-bin
+              mountPath: /tmp/functions.sh
+              subPath: functions.sh
+              readOnly: true
+            - name: tempest-bin
+              mountPath: /tmp/run-tests.sh
+              subPath: run-tests.sh
+              readOnly: true
+            - name: etctempest
+              mountPath: /etc/tempest
+            - name: tempest-etc
+              mountPath: /etc/tempest/logging.conf
+              subPath: logging.conf
+              readOnly: true
+            - name: os-clouds
+              mountPath: /etc/openstack/clouds.yaml
+              subPath: clouds.yaml
+              readOnly: true
+{{ if not (empty .Values.conf.blacklist) }}
+            - name: tempest-etc
+              mountPath: /etc/tempest/test-blacklist
+              subPath: test-blacklist
+              readOnly: true
+{{- end }}
+{{ if not (empty .Values.conf.whitelist) }}
+            - name: tempest-etc
+              mountPath: /etc/tempest/test-whitelist
+              subPath: test-whitelist
+              readOnly: true
+{{- end }}
+            - name: tempest-policies
+              mountPath: /etc/tempest/policies
+              readOnly: true
+            - name: tempest-reports
+              mountPath: {{ .Values.conf.tempest.DEFAULT.state_path }}/data
+{{- if .Values.manifests.job_static_accounts }}
+            - name: tempest-bin
+              mountPath: /tmp/static-accounts.yaml
+              subPath: static-accounts.yaml
+              readOnly: true
+{{- end }}
+            # Mounts required for neutron dynamic routing
+            - name: docker-socket
+              mountPath: /var/run/docker.sock
+            - name: statepath
+              mountPath: {{ .Values.conf.tempest.DEFAULT.state_path }}
+      volumes:
+{{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "tempest" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
+        - name: pod-tmp
+          emptyDir: {}
+        - name: etctempest
+          emptyDir: {}
+        - name: tempest-etc
+          secret:
+            secretName: tempest-etc
+            defaultMode: 416
+        - name: tempest-policies
+          secret:
+            secretName: tempest-policies
+            defaultMode: 416
+        - name: tempest-bin
+          configMap:
+            name: tempest-bin
+            defaultMode: 504
+        - name: os-clouds
+          secret:
+            secretName: "tempest-os-clouds"
+            defaultMode: 416
+        - name: docker-socket
+          hostPath:
+            path: /var/run/docker.sock
+        - name: statepath
+          hostPath:
+            path: {{ .Values.conf.tempest.DEFAULT.state_path }}
+        - name: tempest-reports
+        {{- if not .Values.pvc.enabled }}
+          emptyDir: {}
+        {{- else }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.pvc.name }}
+        {{- end }}
+{{- end }}

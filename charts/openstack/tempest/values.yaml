@@ -1,0 +1,805 @@
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Default values for tempest.
+# This is a YAML-formatted file.
+# Declare name/value pairs to be passed into your templates.
+# name: value
+
+---
+labels:
+  job:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+
+images:
+  tags:
+    dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
+    tempest_run_tests: docker.io/openstackhelm/tempest:latest-ubuntu_xenial
+    tempest_static_accounts: docker.io/openstackhelm/tempest:latest-ubuntu_xenial
+    ks_user: docker.io/openstackhelm/heat:ocata-ubuntu_xenial
+    image_repo_sync: docker.io/docker:17.07.0
+    tempest-uuids-init: docker.io/openstackhelm/heat:ocata-ubuntu_xenial
+    bootstrap: docker.io/openstackhelm/heat:ocata-ubuntu_xenial
+  pull_policy: "IfNotPresent"
+  local_registry:
+    active: false
+    exclude:
+      - dep_check
+      - image_repo_sync
+
+network: {}
+
+bootstrap:
+  enabled: true
+  ks_user: admin-internal
+  ks_user_system: admin-system-internal
+
+ks_user:
+  ks_user: admin-internal
+  ks_user_system: admin-system-internal
+
+jobs:
+  run_tests:
+    backoffLimit: 6
+    restartPolicy: OnFailure
+  static_accounts:
+    backoffLimit: 6
+    restartPolicy: OnFailure
+
+pod:
+  user:
+    tempest:
+      uid: 1000
+  security_context:
+    ks_user:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        fsGroup: 42424
+      container:
+        ks_user:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    bootstrap:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        fsGroup: 42424
+      container:
+        bootstrap:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+  resources:
+    enabled: false
+    jobs:
+      ks_user:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      bootstrap:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      run_tests:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      static_accounts:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      image_repo_sync:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+
+dependencies:
+  dynamic:
+    common:
+      local_image_registry:
+        jobs:
+          - tempest-image-repo-sync
+        services:
+          - endpoint: node
+            service: local_image_registry
+    job_bootstrap:
+      run_tests:
+        jobs:
+          - tempest-bootstrap
+      static_accounts:
+        jobs:
+          - tempest-bootstrap
+    job_static_accounts:
+      run_tests:
+        jobs:
+          - tempest-static-accounts
+  static:
+    ks_user:
+      services:
+      - service: identity
+        endpoint: internal
+    bootstrap:
+      jobs:
+      - tempest-ks-user
+      services:
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: network
+    run_tests:
+      jobs:
+      - tempest-ks-user
+      services:
+      - service: identity
+        endpoint: internal
+    static_accounts:
+      jobs:
+        - tempest-ks-user
+      services:
+        - service: identity
+          endpoint: internal
+    image_repo_sync:
+      services:
+        - endpoint: internal
+          service: local_image_registry
+
+conf:
+  barbican_cert:
+    secret_name: glance-barbican-cert
+  static_accounts:
+    project_count_with_network: 10
+    project_count_without_network: 0
+    create_reader_user: false
+    user_count: 10
+    domain_name: tempest
+    regular_roles:
+      - member
+      - creator
+    admin_roles:
+      - admin
+    quotas:
+      cores: -1
+      instances: -1
+      key_pairs: -1
+      metadata_items: -1
+      ram: -1
+      server_group_members: -1
+      server_groups: -1
+  convert_to_uuid:
+    network:
+      public_network_id: public
+    compute:
+      image_ref: Cirros-4.0
+      image_ref_alt: Cirros-4.0
+      flavor_ref:  m1.extra_tiny_test
+      flavor_ref_alt: m1.tiny_test
+      image_full_ref: Ubuntu-18.04
+      image_full_flavor_ref: m1.tiny_test
+    identity:
+      default_domain_id: Default
+    share:
+      client_vm_flavor_ref: m1.tiny_test
+  script: |
+    tempest run --config-file /etc/tempest/tempest.conf -w 4 --smoke
+  # The following sections can be used to blacklist and whitelist specific tests.
+  # If either section is not empty, it will be used to create an entry in the
+  # tempest-etc configmap and will be mounted into the tempest-run-tests pod
+  # blacklist:
+  #   - (?:tempest\.api\.identity\.admin\.v3\.test_groups\.GroupsV3TestJSON\.test_list_groups)
+  #   - (?:tempest\.api\.image\.v2\.test_images\.ListSharedImagesTest\.test_list_images_param_member_status)
+  #   - (?:tempest\.scenario\.test_encrypted_cinder_volumes\.TestEncryptedCinderVolumes\.test_encrypted_cinder_volumes_cryptsetup)
+  #   - (?:tempest\.scenario\.test_encrypted_cinder_volumes\.TestEncryptedCinderVolumes\.test_encrypted_cinder_volumes_luks)
+  #   - (?:tempest\.api\.network\.test_networks\.NetworksIpV6Test\.test_external_network_visibility)
+  #   - (?:tempest\.api\.network\.test_networks\.NetworksTest\.test_external_network_visibility)
+  #   - (?:tempest\.scenario\.test_network_v6\.TestGettingAddress\.test_dualnet_multi_prefix_slaac)
+  #   - (?:tempest\.scenario\.test_network_v6\.TestGettingAddress\.test_dualnet_multi_prefix_dhcpv6_stateless)
+  #   - (?:tempest\.scenario\.test_network_basic_ops\.TestNetworkBasicOps\.test_update_router_admin_state)
+  #   - (?:tempest\.scenario\.test_network_basic_ops\.TestNetworkBasicOps\.test_router_rescheduling)
+  #   - (?:tempest\.scenario\.test_network_basic_ops\.TestNetworkBasicOps\.test_update_instance_port_admin_state)
+  # whitelist:
+  #   - (?:tempest\.api\.identity\.admin\.v3\.test_groups\.GroupsV3TestJSON\.test_list_groups)
+  #   - (?:tempest\.api\.image\.v2\.test_images\.ListSharedImagesTest\.test_list_images_param_member_status)
+  #   - (?:tempest\.scenario\.test_encrypted_cinder_volumes\.TestEncryptedCinderVolumes\.test_encrypted_cinder_volumes_cryptsetup)
+  #   - (?:tempest\.scenario\.test_encrypted_cinder_volumes\.TestEncryptedCinderVolumes\.test_encrypted_cinder_volumes_luks)
+  #   - (?:tempest\.api\.network\.test_networks\.NetworksIpV6Test\.test_external_network_visibility)
+  #   - (?:tempest\.api\.network\.test_networks\.NetworksTest\.test_external_network_visibility)
+  #   - (?:tempest\.scenario\.test_network_v6\.TestGettingAddress\.test_dualnet_multi_prefix_slaac)
+  #   - (?:tempest\.scenario\.test_network_v6\.TestGettingAddress\.test_dualnet_multi_prefix_dhcpv6_stateless)
+  #   - (?:tempest\.scenario\.test_network_basic_ops\.TestNetworkBasicOps\.test_update_router_admin_state)
+  #   - (?:tempest\.scenario\.test_network_basic_ops\.TestNetworkBasicOps\.test_router_rescheduling)
+  #   - (?:tempest\.scenario\.test_network_basic_ops\.TestNetworkBasicOps\.test_update_instance_port_admin_state)
+  stestr:
+    DEFAULT:
+      # NOTE(vsaienko): Gabbi tests have to be groupped together to avoid races
+      # An example of test_ids that should match regexp <test_id> ---> expected match.
+      # heat_tempest_plugin.tests.api.test_heat_api.stacks_show_empty_stack_smoke.test_request[id-89b233fe-0d55-4959-9289-0b5dabe4e4c9] --> heat_tempest_plugin.tests.api.test_heat_api.stacks
+      # neutron_tempest_plugin.bgpvpn.api.test_bgpvpn.BgpvpnTest.test_create_bgpvpn_as_non_admin_fail[id-0a911d61-d908-4c21-a11e-e403ac0d8e38,negative] --> neutron_tempest_plugin.bgpvpn.api.test_bgpvpn.BgpvpnTest.
+      group_regex: 'heat_tempest_plugin\.tests\.api\.test_heat_api[._]([^_]+)|([^\.]*\.)*'
+  tempest:
+    DEFAULT:
+      state_path: '/var/lib/tempest'
+    auth:
+      # admin_username value set by configmap-etc
+      admin_username: null
+      # admin_password value set by configmap-etc
+      admin_password: null
+      # admin_project_name value set by configmap-etc
+      admin_project_name: null
+      # admin_domain_name value set by configmap-etc
+      admin_domain_name: null
+      use_dynamic_credentials: true
+    dashboard: {}
+    dns: {}
+    heat_plugin: {}
+    identity:
+      admin_domain_scope: false
+      auth_version: v3
+      # region value set by configmap-etc
+      region: null
+      # uri_v3 value set by configmap-etc
+      uri_v3: null
+    identity-feature-enabled:
+      api_v3: true
+      # this value should be the same as the keystone chart conf.keystone.identity.domain_specific_drivers_enabled
+      domain_specific_drivers: true
+    image:
+      http_image: "http://download.cirros-cloud.net/0.3.5/cirros-0.3.5-x86_64-disk.img"
+      container_formats: bare
+      disk_formats: raw
+    network:
+      project_networks_reachable: false
+      shared_physical_network: true
+    load_balancer: {}
+    compute-feature-enabled: {}
+    network-feature-enabled:
+      floating_ips: true
+      api_extensions:
+        - default-subnetpools
+        - network-ip-availability
+        - network_availability_zone
+        - auto-allocated-topology
+        - ext-gw-mode
+        - binding
+        - agent
+        - subnet_allocation
+        - l3_agent_scheduler
+        - tag
+        - external-net
+        - flavors
+        - net-mtu
+        - availability_zone
+        - quotas
+        - l3-ha
+        - provider
+        - multi-provider
+        - address-scope
+        - extraroute
+        - subnet-service-types
+        - standard-attr-timestamp
+        - service-type
+        - l3-flavors
+        - port-security
+        - extra_dhcp_opt
+        - standard-attr-revisions
+        - pagination
+        - sorting
+        - security-group
+        - dhcp_agent_scheduler
+        - router_availability_zone
+        - rbac-policies
+        - standard-attr-description
+        - router
+        - allowed-address-pairs
+        - project-id
+        - dvr
+    service_available:
+      cinder: true
+      glance: true
+      # The following services are marked as unavailable by default. The default
+      # tempest image used includes a bug resulting in failed network tests that
+      # wasn't fixed in newton. Swift is disabled by default as the swift chart
+      # isn't complete
+      neutron: false
+      nova: false
+      swift: false
+    validation:
+      connect_method: floating
+    volume:
+      disk_formats: raw
+      backend_names: rbd1
+      storage_protocol: rbd
+      catalog_type: volumev3
+    neutron_plugin_options:
+      advanced_image_ssh_user: ubuntu
+  cleanup:
+    force: false
+    enabled: true
+  tempest_logging:
+    loggers:
+      keys: root, tempest
+    handlers:
+      keys: stdout
+    formatters:
+      keys: tests
+    logger_root:
+      level: DEBUG
+      handlers: stdout
+    logger_tempest:
+      level: WARN
+      propagate: 0
+      handlers: stdout
+      qualname: tempest
+    handler_stdout:
+      class: StreamHandler
+      level: WARN
+      args: (sys.stdout,)
+      formatter: tests
+    formatter_tests:
+      class: oslo_log.formatters.ContextFormatter
+  policy:
+    tungsten:
+      list_api_access_lists: role:admin
+      create_api_access_lists: role:admin
+      show_api_access_list: role:admin
+      update_api_access_list: role:admin
+      delete_api_access_list: role:admin
+      list_access_control_lists: role:admin
+      create_access_control_lists: role:admin
+      show_access_control_list: role:admin
+      update_access_control_list: role:admin
+      delete_access_control_list: role:admin
+      list_alarms: role:admin
+      create_alarms: role:admin
+      show_alarm: role:admin
+      update_alarm: role:admin
+      delete_alarm: role:admin
+      list_alias_ips: role:admin
+      create_alias_ips: role:admin
+      show_alias_ip: role:admin
+      update_alias_ip: role:admin
+      delete_alias_ip: role:admin
+      list_alias_ip_pools: role:admin
+      create_alias_ip_pools: role:admin
+      show_alias_ip_pool: role:admin
+      update_alias_ip_pool: role:admin
+      delete_alias_ip_pool: role:admin
+      list_analytics_nodes: role:admin
+      show_analytics_node: role:admin
+      create_analytics_nodes: role:admin
+      update_analytics_node: role:admin
+      delete_analytics_node: role:admin
+      list_provider_attachments: role:admin
+      create_provider_attachments: role:admin
+      show_provider_attachment: role:admin
+      update_provider_attachment: role:admin
+      delete_provider_attachment: role:admin
+      list_customer_attachments: role:admin
+      create_customer_attachments: role:admin
+      show_customer_attachment: role:admin
+      update_customer_attachment: role:admin
+      delete_customer_attachment: role:admin
+      list_bgp_as_a_services: role:admin
+      create_bgp_as_a_services: role:admin
+      show_bgp_as_a_service: role:admin
+      delete_bgp_as_a_service: role:admin
+      update_bgp_as_a_service: role:admin
+      create_bgpvpns: role:admin
+      delete_bgpvpn: role:admin
+      list_bgpvpns: role:admin
+      show_bgpvpn: role:admin
+      update_bgpvpn: role:admin
+      list_config_nodes: role:admin
+      create_config_nodes: role:admin
+      delete_config_node: role:admin
+      show_config_node: role:admin
+      update_config_node: role:admin
+      create_config_roots: role:admin
+      delete_config_root: role:admin
+      show_config_root: role:admin
+      update_config_root: role:admin
+      list_config_roots: role:admin
+      list_global_system_configs: role:admin
+      create_global_system_configs: role:admin
+      show_global_system_config: role:admin
+      update_global_system_config: role:admin
+      delete_global_system_config: role:admin
+      list_database_nodes: role:admin
+      show_database_node: role:admin
+      create_database_nodes: role:admin
+      update_database_node: role:admin
+      delete_database_node: role:admin
+      list_discovery_service_assignments: role:admin
+      create_discovery_service_assignments: role:admin
+      show_discovery_service_assignment: role:admin
+      update_discovery_service_assignment: role:admin
+      delete_discovery_service_assignment: role:admin
+      list_domains: role:admin
+      create_domains: role:admin
+      show_domain: role:admin
+      update_domain: role:admin
+      delete_domain: role:admin
+      list_dsa_rules: role:admin
+      show_dsa_rule: role:admin
+      create_dsa_rules: role:admin
+      update_dsa_rule: role:admin
+      delete_dsa_rule: role:admin
+      list_fabrics: role:admin
+      create_fabric: role:admin
+      show_fabric: role:admin
+      delete_fabric: role:admin
+      update_fabric: role:admin
+      list_fabric_namespaces: role:admin
+      create_fabric_namespace: role:admin
+      show_fabric_namespace: role:admin
+      delete_fabric_namespace: role:admin
+      update_fabric_namespace: role:admin
+      create_floating_ip_pools: role:admin
+      list_floating_ip_pools: role:admin
+      show_floating_ip_pool: role:admin
+      update_floating_ip_pool: role:admin
+      delete_floating_ip_pool: role:admin
+      create_floating_ips: role:admin
+      list_floating_ips: role:admin
+      show_floating_ip: role:admin
+      update_floating_ip: role:admin
+      delete_floating_ip: role:admin
+      list_forwarding_classs: role:admin
+      show_forwarding_class: role:admin
+      create_forwarding_classs: role:admin
+      update_forwarding_class: role:admin
+      delete_forwarding_class: role:admin
+      fqname_to_id: role:admin
+      id_to_fqname: role:admin
+      list_instance_ips: role:admin
+      create_instance_ips: role:admin
+      show_instance_ip: role:admin
+      update_instance_ip: role:admin
+      delete_instance_ip: role:admin
+      list_physical_interfaces: role:admin
+      create_physical_interfaces: role:admin
+      update_physical_interface: role:admin
+      delete_physical_interface: role:admin
+      show_physical_interface: role:admin
+      list_logical_interfaces: role:admin
+      create_logical_interfaces: role:admin
+      update_logical_interface: role:admin
+      delete_logical_interface: role:admin
+      show_logical_interface: role:admin
+      list_load_balancers: role:admin
+      create_load_balancers: role:admin
+      show_load_balancer: role:admin
+      update_load_balancer: role:admin
+      delete_load_balancer: role:admin
+      list_load_balancer_health_monitors: role:admin
+      create_load_balancer_health_monitors: role:admin
+      show_load_balancer_health_monitor: role:admin
+      update_load_balancer_health_monitor: role:admin
+      delete_load_balancer_health_monitor: role:admin
+      list_load_balancer_listeners: role:admin
+      create_load_balancer_listeners: role:admin
+      show_load_balancer_listener: role:admin
+      update_load_balancer_listener: role:admin
+      delete_load_balancer_listener: role:admin
+      list_load_balancer_pools: role:admin
+      create_load_balancer_pools: role:admin
+      show_load_balancer_pool: role:admin
+      update_load_balancer_pool: role:admin
+      delete_load_balancer_pool: role:admin
+      list_load_balancer_members: role:admin
+      create_load_balancer_members: role:admin
+      show_load_balancer_member: role:admin
+      update_load_balancer_member: role:admin
+      delete_load_balancer_member: role:admin
+      list_namespaces: role:admin
+      create_namespaces: role:admin
+      show_namespace: role:admin
+      update_namespace: role:admin
+      delete_namespace: role:admin
+      list_network_ipams: role:admin
+      create_network_ipams: role:admin
+      show_network_ipam: role:admin
+      delete_network_ipam: role:admin
+      update_network_ipam: role:admin
+      list_network_policys: role:admin
+      create_network_policys: role:admin
+      show_network_policy: role:admin
+      update_network_policy: role:admin
+      delete_network_policy: role:admin
+      create_policy_management: role:admin
+      delete_policy_management: role:admin
+      list_policy_management: role:admin
+      show_policy_management: role:admin
+      update_policy_management: role:admin
+      list_port_tuples: role:admin
+      show_port_tuple: role:admin
+      create_port_tuples: role:admin
+      update_port_tuple: role:admin
+      delete_port_tuple: role:admin
+      list_projects: role:admin
+      create_projects: role:admin
+      show_project: role:admin
+      update_project: role:admin
+      delete_project: role:admin
+      list_qos_configs: role:admin
+      create_qos_configs: role:admin
+      show_qos_config: role:admin
+      delete_qos_config: role:admin
+      update_qos_config: role:admin
+      list_global_qos_configs: role:admin
+      create_global_qos_configs: role:admin
+      show_global_qos_config: role:admin
+      update_global_qos_config: role:admin
+      delete_global_qos_config: role:admin
+      list_qos_queues: role:admin
+      create_qos_queues: role:admin
+      show_qos_queue: role:admin
+      delete_qos_queue: role:admin
+      update_qos_queue: role:admin
+      list_route_tables: role:admin
+      show_route_table: role:admin
+      create_route_tables: role:admin
+      update_route_table: role:admin
+      delete_route_table: role:admin
+      list_interface_route_tables: role:admin
+      show_interface_route_table: role:admin
+      create_interface_route_tables: role:admin
+      update_interface_route_table: role:admin
+      delete_interface_route_table: role:admin
+      list_route_targets: role:admin
+      show_route_target: role:admin
+      create_route_targets: role:admin
+      update_route_target: role:admin
+      delete_route_target: role:admin
+      list_route_aggregates: role:admin
+      show_route_aggregate: role:admin
+      create_route_aggregates: role:admin
+      update_route_aggregate: role:admin
+      delete_route_aggregate: role:admin
+      list_physical_routers: role:admin
+      create_physical_routers: role:admin
+      show_physical_router: role:admin
+      update_physical_router: role:admin
+      delete_physical_router: role:admin
+      list_bgp_routers: role:admin
+      create_bgp_routers: role:admin
+      show_bgp_router: role:admin
+      update_bgp_router: role:admin
+      delete_bgp_router: role:admin
+      list_global_vrouter_configs: role:admin
+      create_global_vrouter_configs: role:admin
+      show_global_vrouter_config: role:admin
+      update_global_vrouter_config: role:admin
+      delete_global_vrouter_config: role:admin
+      list_logical_routers: role:admin
+      create_logical_routers: role:admin
+      show_logical_router: role:admin
+      update_logical_router: role:admin
+      delete_logical_router: role:admin
+      list_virtual_routers: role:admin
+      create_virtual_routers: role:admin
+      show_virtual_router: role:admin
+      update_virtual_router: role:admin
+      delete_virtual_router: role:admin
+      list_routing_policys: role:admin
+      create_routing_policys: role:admin
+      show_routing_policy: role:admin
+      update_routing_policy: role:admin
+      delete_routing_policy: role:admin
+      list_routing_instances: role:admin
+      create_routing_instances: role:admin
+      show_routing_instance: role:admin
+      delete_routing_instance: role:admin
+      update_routing_instance: role:admin
+      list_security_groups: role:admin
+      show_security_group: role:admin
+      delete_security_group: role:admin
+      create_security_groups: role:admin
+      update_security_group: role:admin
+      list_service_appliances: role:admin
+      create_service_appliances: role:admin
+      show_service_appliance: role:admin
+      update_service_appliance: role:admin
+      delete_service_appliance: role:admin
+      list_service_appliance_sets: role:admin
+      create_service_appliance_sets: role:admin
+      show_service_appliance_set: role:admin
+      update_service_appliance_set: role:admin
+      delete_service_appliance_set: role:admin
+      list_service_templates: role:admin
+      create_service_templates: role:admin
+      show_service_template: role:admin
+      update_service_template: role:admin
+      delete_service_template: role:admin
+      list_service_objects: role:admin
+      create_service_object: role:admin
+      show_service_object: role:admin
+      delete_service_object: role:admin
+      update_service_object: role:admin
+      list_service_health_checks: role:admin
+      create_service_health_checks: role:admin
+      show_service_health_check: role:admin
+      update_service_health_check: role:admin
+      delete_service_health_check: role:admin
+      create_service_instances: role:admin
+      show_service_instance: role:admin
+      delete_service_instance: role:admin
+      list_service_instances: role:admin
+      update_service_instance: role:admin
+      list_subnets: role:admin
+      create_subnets: role:admin
+      show_subnet: role:admin
+      update_subnet: role:admin
+      delete_subnet: role:admin
+      list_tag_types: role:admin
+      show_tag_type: role:admin
+      create_tag_types: role:admin
+      update_tag_type: role:admin
+      delete_tag_type: role:admin
+      list_virtual_DNSs: role:admin
+      create_virtual_DNSs: role:admin
+      show_virtual_DNS: role:admin
+      delete_virtual_DNS: role:admin
+      update_virtual_DNS: role:admin
+      list_virtual_DNS_records: role:admin
+      create_virtual_DNS_records: role:admin
+      show_virtual_DNS_record: role:admin
+      delete_virtual_DNS_record: role:admin
+      update_virtual_DNS_record: role:admin
+      list_virtual_ips: role:admin
+      create_virtual_ips: role:admin
+      show_virtual_ip: role:admin
+      update_virtual_ip: role:admin
+      delete_virtual_ip: role:admin
+      list_virtual_machine_interfaces: role:admin
+      create_virtual_machine_interfaces: role:admin
+      show_virtual_machine_interface: role:admin
+      delete_virtual_machine_interface: role:admin
+      update_virtual_machine_interface: role:admin
+      list_virtual_networks: role:admin
+      create_virtual_networks: role:admin
+      update_virtual_network: role:admin
+      delete_virtual_network: role:admin
+      show_virtual_network: role:admin
+
+pvc:
+  enabled: true
+  name: pvc-tempest
+  requests:
+    storage: 2Gi
+  storage_class: general
+
+secrets:
+  identity:
+    admin: tempest-keystone-admin
+    tempest: tempest-keystone-user
+
+endpoints:
+  cluster_domain_suffix: cluster.local
+  local_image_registry:
+    name: docker-registry
+    namespace: docker-registry
+    hosts:
+      default: localhost
+      internal: docker-registry
+      node: localhost
+    host_fqdn_override:
+      default: null
+    port:
+      registry:
+        node: 5000
+  identity:
+    name: keystone
+    auth:
+      admin:
+        region_name: RegionOne
+        username: admin
+        password: password
+        project_name: admin
+        user_domain_name: default
+        project_domain_name: default
+      tempest:
+        role: admin,key-manager:service-admin,creator
+        region_name: RegionOne
+        username: tempest
+        password: password
+        project_name: service
+        user_domain_name: service
+        project_domain_name: service
+    hosts:
+      default: keystone
+      internal: keystone-api
+    host_fqdn_override:
+      default: null
+    path:
+      default: /v3
+    scheme:
+      default: http
+    port:
+      api:
+        default: 80
+        internal: 5000
+  dashboard:
+    name: horizon
+    hosts:
+      default: horizon-int
+      public: horizon
+    host_fqdn_override:
+      default: null
+      # NOTE(portdirect): this chart supports TLS for fqdn over-ridden public
+      # endpoints using the following format:
+      # public:
+      #   host: null
+      #   tls:
+      #     crt: null
+      #     key: null
+    path:
+      default: null
+    scheme:
+      default: http
+    port:
+      web:
+        default: 80
+  network:
+    name: neutron
+    hosts:
+      default: neutron-server
+      public: neutron
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    scheme:
+      default: 'http'
+    port:
+      api:
+        default: 9696
+        public: 80
+  powerdns:
+    name: powerdns
+    hosts:
+      internal: designate-powerdns
+    host_fqdn_override:
+      default: null
+
+manifests:
+  secret_ca_bundle: false
+  configmap_bin: true
+  configmap_etc: true
+  job_bootstrap: false
+  job_image_repo_sync: true
+  job_ks_user: true
+  job_run_tests: true
+  job_static_accounts: false
+  secret_keystone: true
+...

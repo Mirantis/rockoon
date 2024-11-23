@@ -1,0 +1,507 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "novaComputeProbeTemplate" }}
+{{- $envAll := index . 0 }}
+{{- $probeType := index . 1 }}
+exec:
+  command:
+    - python
+    - /tmp/health-probe.py
+    - --config-file
+    - /etc/nova/nova.conf
+    - --rabbitmq-queue-name
+    - compute
+    - --process-name
+    - nova-compute
+    - --probe-type
+    - {{ $probeType }}
+    - --rabbitmq-rpc-timeout
+    - {{ $envAll.Values.pod.probes.rpc_timeout | quote}}
+    {{- if $envAll.Values.pod.use_fqdn.compute }}
+    - --use-fqdn
+    {{- end }}
+{{- end }}
+
+{{- define "novaComputeSshProbeTemplate" }}
+tcpSocket:
+  port: {{ .Values.network.ssh.port }}
+{{- end }}
+
+{{- define "novaComputeInhibitProbeTemplate" }}
+exec:
+  command:
+    - "true"
+{{- end }}
+
+{{- define "nova.compute.daemonset" }}
+{{- $daemonset := index . 0 }}
+{{- $configMapName := index . 1 }}
+{{- $serviceAccountName := index . 2 }}
+{{- $envAll := index . 3 }}
+{{- with $envAll }}
+
+{{- $mounts_nova_compute := .Values.pod.mounts.nova_compute.nova_compute }}
+{{- $mounts_nova_compute_init := .Values.pod.mounts.nova_compute.init_container }}
+
+{{- $live_migration_tls_enabled := index $envAll.Values.conf.nova.libvirt "live_migration_with_native_tls" | default false }}
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nova-compute
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll .Chart.Name $daemonset | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+{{ tuple $envAll .Chart.Name $daemonset | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll $daemonset | include "helm-toolkit.snippets.kubernetes_upgrades_daemonset" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll .Chart.Name $daemonset | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        endpoints-hash: {{ .Values.endpoints | include "helm-toolkit.utils.get_hash" }}
+{{ dict "envAll" $envAll "podName" "nova-compute-default" "containerNames" (list "nova-compute" "init" "nova-compute-init" "nova-compute-vnc-init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "nova" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      nodeSelector:
+        {{ .Values.labels.agent.compute.node_selector_key }}: {{ .Values.labels.agent.compute.node_selector_value }}
+      hostNetwork: true
+      hostPID: false
+      # To let udev work
+      hostIPC: true
+      dnsPolicy: ClusterFirstWithHostNet
+      initContainers:
+{{ tuple $envAll "pod_dependency" $mounts_nova_compute_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+        - name: nova-compute-init
+{{ tuple $envAll "nova_compute" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "nova" "container" "nova_compute_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+            - name: NOVA_USER_UID
+              value: "{{ .Values.pod.security_context.nova.pod.runAsUser }}"
+          command:
+            - /tmp/nova-compute-init.sh
+          terminationMessagePath: /var/log/termination-log
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: nova-bin
+              mountPath: /tmp/nova-compute-init.sh
+              subPath: nova-compute-init.sh
+              readOnly: true
+            - name: varlibnova
+              mountPath: /var/lib/nova
+            - name: nova-confd
+              mountPath: /etc/nova/nova.conf.d
+            - name: nova-ssh
+              mountPath: /root/.ssh/id_rsa
+              subPath: ssh-key-private
+            - name: nova-etc
+              mountPath: /root/.ssh/config
+              subPath: ssh-config
+              readOnly: true
+            - name: nova-ssh
+              mountPath: /root/.ssh/authorized_keys
+              subPath: ssh-key-public
+        - name: lock-perms
+{{ tuple $envAll "nova_compute" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "nova" "container" "lock_perms" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - chown
+            - -R
+            - "nova:"
+            - {{ .Values.conf.nova.oslo_concurrency.lock_path }}
+          terminationMessagePath: /var/log/termination-log
+          volumeMounts:
+            - name: lockpath
+              mountPath: {{ .Values.conf.nova.oslo_concurrency.lock_path }}
+        {{- if .Values.console.novnc.enabled }}
+        - name: nova-compute-vnc-init
+{{ tuple $envAll "nova_compute" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.compute | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "nova" "container" "nova_compute_vnc_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/nova-console-compute-init.sh
+            - novnc
+          terminationMessagePath: /var/log/termination-log
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: nova-bin
+              mountPath: /tmp/nova-console-compute-init.sh
+              subPath: nova-console-compute-init.sh
+              readOnly: true
+            - name: nova-confd
+              mountPath: /etc/nova/nova.conf.d
+        {{ end }}
+        {{- if .Values.console.spice.enabled }}
+        - name: nova-compute-spice-init
+{{ tuple $envAll "nova_compute" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.compute | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "nova" "container" "nova_compute_spice_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/nova-console-compute-init.sh
+            - spice
+          terminationMessagePath: /var/log/termination-log
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: nova-bin
+              mountPath: /tmp/nova-console-compute-init.sh
+              subPath: nova-console-compute-init.sh
+              readOnly: true
+            - name: nova-confd
+              mountPath: /etc/nova/nova.conf.d
+        {{ end }}
+        {{- if ( has "tungstenfabric" .Values.network.backend ) }}
+        - name: tungstenfabric-compute-init
+          image: {{ .Values.images.tags.tf_compute_init }}
+          imagePullPolicy: {{ .Values.images.pull_policy }}
+{{ tuple $envAll $envAll.Values.pod.resources.compute | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "nova" "container" "tungstenfabric_compute_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          volumeMounts:
+            - name: tf-plugin-shared
+              mountPath: /opt/plugin
+            - name: tf-plugin-bin
+              mountPath: /opt/plugin/bin
+        {{- end }}
+      containers:
+        - name: nova-compute
+{{ tuple $envAll "nova_compute" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.compute | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "nova" "container" "nova_compute" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{- if .Values.manifests.certificates }}
+          env:
+            - name: REQUESTS_CA_BUNDLE
+              value: "/etc/nova/certs/ca.crt"
+{{- end }}
+{{ dict "envAll" $envAll "component" "compute" "container" "compute" "type" "liveness" "probeTemplate" (list $envAll "liveness" | include "novaComputeProbeTemplate" | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "compute" "container" "compute" "type" "readiness" "probeTemplate" (list $envAll "readiness" | include "novaComputeProbeTemplate" | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          command:
+            - /tmp/nova-compute.sh
+          terminationMessagePath: /var/log/termination-log
+          volumeMounts:
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "nova" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: nova-bin
+              mountPath: /tmp/nova-compute.sh
+              subPath: nova-compute.sh
+              readOnly: true
+            - name: nova-bin
+              mountPath: /tmp/health-probe.py
+              subPath: health-probe.py
+              readOnly: true
+            - name: nova-etc
+              mountPath: /etc/nova/nova.conf
+              subPath: nova-compute.conf
+              readOnly: true
+            {{- if .Values.conf.nova.DEFAULT.log_config_append }}
+            - name: nova-etc
+              mountPath: {{ .Values.conf.nova.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.nova.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+            - name: nova-etc
+              mountPath: /etc/nova/api-paste.ini
+              subPath: api-paste.ini
+              readOnly: true
+            - name: nova-etc
+              # NOTE (Portdirect): We mount here to override Kollas
+              # custom sudoers file when using Kolla images, this
+              # location will also work fine for other images.
+              mountPath: /etc/sudoers.d/kolla_nova_sudoers
+              subPath: nova_sudoers
+              readOnly: true
+            - name: nova-etc
+              mountPath: /etc/nova/rootwrap.conf
+              subPath: rootwrap.conf
+              readOnly: true
+            {{- range $key, $value := $envAll.Values.conf.rootwrap_filters }}
+            {{- if ( has "compute" $value.pods ) }}
+            {{- $filePrefix := replace "_" "-"  $key }}
+            {{- $rootwrapFile := printf "/etc/nova/rootwrap.d/%s.filters" $filePrefix }}
+            - name: nova-etc
+              mountPath: {{ $rootwrapFile }}
+              subPath: {{ base $rootwrapFile }}
+              readOnly: true
+            {{- end }}
+            {{- end }}
+            {{- if .Values.conf.ceph.enabled }}
+            - name: ceph-etc
+              mountPath: /etc/ceph/ceph.conf
+              subPath: ceph.conf
+              readOnly: true
+            {{ dict "envAll" $envAll "objectType" "mountpoint" "application" "nova" | include "helm-toolkit.snippets.kubernetes_ceph_keyring_objects" | indent 12 }}
+            {{ end }}
+            - mountPath: /lib/modules
+              name: libmodules
+              readOnly: true
+            - name: varlibnova
+              mountPath: /var/lib/nova
+              {{- if or ( gt .Capabilities.KubeVersion.Major "1" ) ( ge .Capabilities.KubeVersion.Minor "10" ) }}
+              mountPropagation: Bidirectional
+              {{- end }}
+            - name: varliblibvirt
+              mountPath: /var/lib/libvirt
+              {{- if or ( gt .Capabilities.KubeVersion.Major "1" ) ( ge .Capabilities.KubeVersion.Minor "10" ) }}
+              mountPropagation: Bidirectional
+              {{- end }}
+            - name: run
+              mountPath: /run
+            - name: cgroup
+              mountPath: /sys/fs/cgroup
+              readOnly: true
+            - name: nova-confd
+              mountPath: /etc/nova/nova.conf.d
+            - name: machine-id
+              mountPath: /etc/machine-id
+              readOnly: true
+            {{- if eq .Values.network.core_plugin "tungstenfabric" }}
+            - name: lib-tungstenfabric
+              mountPath: /var/lib/contrail
+            {{- end }}
+            {{- if .Values.conf.enable_iscsi }}
+            - name: host-rootfs
+              mountPath: /mnt/host-rootfs
+              mountPropagation: HostToContainer
+            - name: usrlocalsbin
+              mountPath: /usr/local/sbin
+            - name: etciscsi
+              mountPath: /etc/iscsi
+              mountPropagation: Bidirectional
+            - name: dev
+              mountPath: /dev
+              mountPropagation: HostToContainer
+            - name: nova-bin
+              mountPath: /usr/local/sbin/iscsiadm
+              subPath: iscsiadm
+            {{- end }}
+            {{- if $live_migration_tls_enabled }}
+            - name: pki-libvirt
+              mountPath: /etc/pki/libvirt
+              mountPropagation: HostToContainer
+            - name: pki-ca
+              mountPath: /etc/pki/CA
+              mountPropagation: HostToContainer
+            {{ end }}
+            - name: nova-etc
+              mountPath: /etc/nova/vendordata.json
+              subPath: vendordata.json
+              readOnly: true
+            - name: lockpath
+              mountPath: {{ .Values.conf.nova.oslo_concurrency.lock_path }}
+              mountPropagation: Bidirectional
+            {{- if eq .Values.conf.nova.libvirt.images_type "lvm" }}
+            - name: etclvm
+              mountPath: /etc/lvm
+              mountPropagation: Bidirectional
+            {{- end }}
+{{ if $mounts_nova_compute.volumeMounts }}{{ toYaml $mounts_nova_compute.volumeMounts | indent 12 }}{{ end }}
+        {{- if .Values.network.sshd.enabled }}
+        - name: nova-compute-ssh
+{{ tuple $envAll "nova_compute_ssh" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.ssh | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "nova" "container" "nova_compute_ssh" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ dict "envAll" $envAll "component" "compute" "container" "compute_ssh" "type" "liveness" "probeTemplate" (include "novaComputeSshProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "compute" "container" "compute_ssh" "type" "readiness" "probeTemplate" (include "novaComputeSshProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          env:
+            - name: KEY_TYPES
+              value: {{ include "helm-toolkit.utils.joinListWithComma" .Values.ssh.key_types | quote }}
+            - name: SSH_PORT
+              value: {{ .Values.network.ssh.port | quote }}
+{{- if .Values.manifests.certificates }}
+            - name: REQUESTS_CA_BUNDLE
+              value: "/etc/nova/certs/ca.crt"
+{{- end }}
+          ports:
+            - containerPort: {{ .Values.network.ssh.port }}
+          command:
+            - /tmp/ssh-start.sh
+          terminationMessagePath: /var/log/termination-log
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: varlibnova
+              mountPath: /var/lib/nova
+            {{- if or ( gt .Capabilities.KubeVersion.Major "1" ) ( ge .Capabilities.KubeVersion.Minor "10" ) }}
+              mountPropagation: Bidirectional
+            {{- end }}
+            - name: run
+              mountPath: /run
+            - name: nova-etc
+              mountPath: /etc/ssh/sshd_config
+              subPath: sshd-config
+              readOnly: true
+            - name: nova-bin
+              mountPath: /tmp/ssh-start.sh
+              subPath: ssh-start.sh
+              readOnly: true
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.compute.osapi.internal "path" "/etc/nova/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+        {{ end }}
+        {{- if .Values.conf.inhibit_lock.enabled }}
+        - name: nova-compute-inhibit-lock
+{{ tuple $envAll "nova_compute" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.compute | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "nova" "container" "nova_compute_inhibit_lock" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ dict "envAll" $envAll "component" "compute" "container" "compute_inhibit" "type" "liveness" "probeTemplate" (include "novaComputeInhibitProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "compute" "container" "compute_inhibit" "type" "readiness" "probeTemplate" (include "novaComputeInhibitProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          env:
+{{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" .Values.conf.inhibit_lock.ks_user "osCloudNameSystem" (printf "%s-system" .Values.conf.inhibit_lock.ks_user)) | indent 12 }}
+{{- if .Values.manifests.certificates }}
+            - name: REQUESTS_CA_BUNDLE
+              value: "/etc/nova/certs/ca.crt"
+{{- end }}
+            - name: SHUTDOWN_TIMEOUT
+              value: {{ .Values.conf.inhibit_lock.shutdown_timeout | quote }}
+          command:
+            - /tmp/nova-compute-inhibit-lock.py
+          terminationMessagePath: /var/log/termination-log
+          volumeMounts:
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "nova" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: nova-bin
+              mountPath: /tmp/nova-compute-inhibit-lock.py
+              subPath: nova-compute-inhibit-lock.py
+              readOnly: true
+            - name: varlibnova
+              mountPath: /var/lib/nova
+            {{- if or ( gt .Capabilities.KubeVersion.Major "1" ) ( ge .Capabilities.KubeVersion.Minor "10" ) }}
+              mountPropagation: Bidirectional
+            {{- end }}
+            - name: run
+              mountPath: /run
+            - name: os-clouds
+              mountPath: /etc/openstack/clouds.yaml
+              subPath: clouds.yaml
+              readOnly: true
+        {{- end }}
+      volumes:
+{{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "nova" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
+        - name: pod-tmp
+          emptyDir: {}
+        - name: nova-bin
+          configMap:
+            name: nova-bin
+            defaultMode: 504
+        - name: nova-etc
+          secret:
+            secretName: {{ $configMapName }}
+            defaultMode: 416
+        - name: nova-ssh
+          secret:
+            secretName: nova-ssh
+            defaultMode: 0400
+        {{- if .Values.conf.ceph.enabled }}
+        - name: ceph-etc
+        {{- if .Values.manifests.ceph_conf }}
+          secret:
+            secretName: {{ $configMapName }}
+        {{- else }}
+          configMap:
+            name: {{ .Values.ceph_client.configmap }}
+        {{- end }}
+            defaultMode: 416
+        {{ end }}
+        - name: libmodules
+          hostPath:
+            path: /lib/modules
+        - name: varlibnova
+          hostPath:
+            path: /var/lib/nova
+        - name: varliblibvirt
+          hostPath:
+            path: /var/lib/libvirt
+        - name: run
+          hostPath:
+            path: /run
+        - name: cgroup
+          hostPath:
+            path: /sys/fs/cgroup
+        - name: nova-confd
+          emptyDir: {}
+        - name: machine-id
+          hostPath:
+            path: /etc/machine-id
+        {{- if eq .Values.network.core_plugin "tungstenfabric" }}
+        - name: lib-tungstenfabric
+          emptyDir: {}
+        {{- end }}
+        {{- if .Values.conf.enable_iscsi }}
+        - name: host-rootfs
+          hostPath:
+            path: /
+        - name: etciscsi
+          hostPath:
+            path: /etc/iscsi
+        - name: dev
+          hostPath:
+            path: /dev
+        - name: usrlocalsbin
+          emptyDir: {}
+        {{- end }}
+        {{- if $live_migration_tls_enabled }}
+        - name: pki-ca
+          hostPath:
+            path: /etc/pki/CA
+        - name: pki-libvirt
+          hostPath:
+            path: /etc/pki/libvirt
+        {{ end }}
+        {{- if eq .Values.conf.nova.libvirt.images_type "lvm" }}
+        - name:  etclvm
+          hostPath:
+            path: /etc/lvm
+        {{ end }}
+        - name: lockpath
+          hostPath:
+            path: {{ .Values.conf.nova.oslo_concurrency.lock_path }}
+        - name: os-clouds
+          secret:
+            secretName: {{ .Chart.Name }}-os-clouds
+            defaultMode: 416
+{{ if $mounts_nova_compute.volumes }}{{ toYaml $mounts_nova_compute.volumes | indent 8 }}{{ end }}
+{{- end }}
+{{- end }}
+
+{{- if .Values.manifests.daemonset_compute }}
+{{- $envAll := . }}
+{{- $daemonset := "compute" }}
+{{- $configMapName := "nova-etc" }}
+{{- $serviceAccountName := "nova-compute" }}
+
+{{- $dependencyOpts := dict "envAll" $envAll "dependencyMixinParam" $envAll.Values.network.backend "dependencyKey" "compute" -}}
+{{- $_ := include "helm-toolkit.utils.dependency_resolver" $dependencyOpts | toString | fromYaml }}
+
+{{ tuple $envAll "pod_dependency" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+{{- $daemonset_yaml := list $daemonset $configMapName $serviceAccountName . | include "nova.compute.daemonset" | toString | fromYaml }}
+{{- $configmap_yaml := "nova.configmap.etc" }}
+
+{{/* Preffer using .Values.overrides rather than .Values.conf.overrides */}}
+{{- if index (index .Values "overrides" |default dict ) "nova_compute" }}
+{{- list $daemonset "nova.compute.daemonset" $serviceAccountName $configmap_yaml $configMapName "nova.configmap.bin" "nova-bin" . | include "helm-toolkit.utils.daemonset_overrides_root" }}
+{{- else }}
+{{- $daemonset_yaml := list $daemonset $configMapName $serviceAccountName . | include "nova.compute.daemonset" | toString | fromYaml }}
+{{- list $daemonset $daemonset_yaml $configmap_yaml $configMapName . | include "helm-toolkit.utils.daemonset_overrides" }}
+{{- end }}
+{{- end }}

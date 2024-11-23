@@ -1,0 +1,6 @@
+parameters:
+  octavia:
+    manager:
+      cache:
+        ~members:
+        - host: ${_param:mcp2_memcached_octavia_members}

@@ -1,0 +1,12 @@
+parameters:
+  haproxy:
+    proxy:
+      listen:
+        heat_api:
+          redirects:
+           - code: 301
+             location: https://heat.${_param:mcp2_public_domain_name}%[path]
+        heat_cfn_api:
+          redirects:
+           - code: 301
+             location: https://cloudformation.${_param:mcp2_public_domain_name}%[path]

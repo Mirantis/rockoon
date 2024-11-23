@@ -1,0 +1,139 @@
+spec:
+  releases:
+  - chart: placement
+    name: openstack-placement
+    values:
+      conf:
+        policy.d:
+          01-controller-default.yaml: {'placement_rule1': 'placement_value1'}
+          02-custom.yaml: {}
+        logging:
+          logger_placement:
+            level: INFO
+        placement:
+          audit_middleware_notifications:
+            driver: messagingv2
+          audit:
+            enabled: true
+          oslo_messaging_notifications:
+            topics: notifications,stacklight_notifications
+          oslo_policy:
+            enforce_new_defaults: false
+            enforce_scope: false
+          keystone_authtoken:
+            memcache_secret_key: 0NZmrV1NcBFwzDmv
+            memcache_security_strategy: ENCRYPT
+            service_type: placement
+      dependencies:
+        static:
+          db_init:
+            jobs:
+            - openstack-mariadb-cluster-wait
+      endpoints:
+        cluster_domain_suffix: cluster.local
+        identity:
+          auth:
+            admin:
+              default_domain_id: default
+              password: ZUqTyP2XwsgEGKZ7qNhhecYyq9NLkGE6
+              project_domain_name: default
+              project_name: admin
+              region_name: RegionOne
+              user_domain_name: default
+              username: admin
+            placement:
+              password: AEYVXR3LFUbLcePQlkxSFvbQ1WyWtaiY
+              username: placementR3AqaC4te
+              region_name: 'RegionOne'
+            test:
+              password: b1szm2wvF9n2tdCvDQQZEZM5GzpVtQkP
+              username: testXByW
+              region_name: 'RegionOne'
+        oslo_cache:
+          statefulset:
+            name: openstack-memcached-memcached
+            replicas: 3
+        oslo_db:
+          auth:
+            admin:
+              password: QACDSM6FBTH2LuXjTuRQ6DXhD8bSgPbn
+              username: root
+            placement:
+              password: FdmszFTEuCvADMYGShqdBqLzuczyZf4c
+              username: placementEqEMt8aUc
+        oslo_messaging_notifications:
+          auth:
+            placement:
+              password: UBrmnWdChvZA5gEFum07AM7Ba6nExCc2
+              username: placement9lrJ9dNfe
+          host_fqdn_override: { }
+          hosts:
+            default: rabbitmq
+          path: /openstack
+          port:
+            amqp:
+              default: 5672
+            http:
+              default: 15672
+          scheme: rabbit
+          statefulset:
+            name: openstack-rabbitmq-rabbitmq
+            replicas: 1
+        placement:
+          host_fqdn_override:
+            public:
+              host: placement.it.just.works
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          hosts:
+            admin:
+              host: placement-api
+            default: placement
+            internal: placement-api
+            public:
+              host: placement
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          port:
+            api:
+              admin: 8778
+              default: 80
+              internal: 8778
+              public: 443
+          scheme:
+            default: http
+            public: https
+      images:
+        tags:
+          db_drop: db-drop:latest
+          db_init: db-init:latest
+          dep_check: dep-check:latest
+          image_repo_sync: image-repo-sync:latest
+          ks_endpoints: ks-endpoints:latest
+          ks_service: ks-service:latest
+          ks_user: ks-user:latest
+          placement: placement:latest
+          placement_db_sync: placement-db-sync:latest
+      jobs:
+        ks_endpoints:
+          restartPolicy: Never
+        ks_service:
+          restartPolicy: Never
+        ks_user:
+          restartPolicy: Never
+      manifests:
+        network_policy: false
+        secret_ca_bundle: true
+      pod:
+        replicas:
+          api: 1

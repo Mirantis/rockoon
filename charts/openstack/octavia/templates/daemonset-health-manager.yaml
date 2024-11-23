@@ -1,0 +1,277 @@
+{{/*
+Copyright 2019 Samsung Electronics Co., Ltd.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "octaviaHealthManagerReadynessProbeTemplate" }}
+exec:
+  command:
+    - python
+    - /tmp/health-probe.py
+    - --config-file
+    - /etc/octavia/octavia.conf
+    - --probe-type
+    - readiness
+    - --process-name
+    - octavia-health-manager
+    - --check
+    - database_sockets
+{{- end }}
+
+{{- define "octaviaHealthManagerLivenessProbeTemplate" }}
+exec:
+  command:
+    - python
+    - /tmp/health-probe.py
+    - --config-file
+    - /etc/octavia/octavia.conf
+    - --probe-type
+    - liveness
+    - --process-name
+    - octavia-health-manager
+    - --check
+    - database_sockets
+{{- end }}
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: get-configmap-octavia-wait-port
+  namespace: openstack
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: get-configmap-octavia-wait-port-role
+subjects:
+  - kind: ServiceAccount
+    name: octavia-health-manager
+    namespace: openstack
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: get-configmap-octavia-wait-port-role
+  namespace: openstack
+rules:
+  - apiGroups: [""]
+    verbs:
+      - get
+    resources:
+      - configmaps
+
+{{- define "octavia.health_manager.daemonset" }}
+{{- $daemonset := index . 0 }}
+{{- $configMapName := index . 1 }}
+{{- $serviceAccountName := index . 2 }}
+{{- $envAll := index . 3 }}
+{{- with $envAll }}
+
+{{- $mounts_octavia_health_manager := .Values.pod.mounts.octavia_health_manager.octavia_health_manager }}
+{{- $mounts_octavia_health_manager_init := .Values.pod.mounts.octavia_health_manager.init_container }}
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: octavia-health-manager
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "octavia" "health_manager" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+{{ tuple $envAll "octavia" "health_manager" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll "health_manager" | include "helm-toolkit.snippets.kubernetes_upgrades_daemonset" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "octavia" "health_manager" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+        endpoints-hash: {{ .Values.endpoints | include "helm-toolkit.utils.get_hash" }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "octavia_api" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: true
+      hostPID: false
+      {{ if .Values.labels.health_manager.node_affinity }}
+      affinity:
+        nodeAffinity:
+          {{- toYaml .Values.labels.health_manager.node_affinity | nindent 10 }}
+      {{- else }}
+      nodeSelector:
+        {{ .Values.labels.health_manager.node_selector_key }}: {{ .Values.labels.health_manager.node_selector_value }}
+      {{- end }}
+      initContainers:
+{{ tuple $envAll "health_manager" $mounts_octavia_health_manager_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+        - name: octavia-health-manager-nic-init
+{{ tuple $envAll "openvswitch_vswitchd" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.health_manager | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "octavia_health_manager" "container" "nic_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/octavia-health-manager-nic-init.sh
+          volumeMounts:
+            - name: octavia-settings
+              mountPath: /etc/octavia/updated_conf
+            - name: octavia-bin
+              mountPath: /tmp/octavia-health-manager-nic-init.sh
+              subPath: octavia-health-manager-nic-init.sh
+              readOnly: true
+            - name: run
+              mountPath: /run
+          env:
+            - name: NODE_HOST_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+        - name: octavia-health-manager-wait-port-init
+{{ tuple $envAll $envAll.Values.pod.resources.health_manager | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "octavia_health_manager" "container" "wait_port_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          image: {{ $envAll.Values.images.tags.create_resources }}
+          imagePullPolicy: {{ $envAll.Values.images.pull_policy }}
+          command:
+            - /tmp/octavia-health-manager-wait-port-init.py
+          volumeMounts:
+            - name: octavia-settings
+              mountPath: /etc/octavia/updated_conf
+            - name: octavia-bin
+              mountPath: /tmp/octavia-health-manager-wait-port-init.py
+              subPath: octavia-health-manager-wait-port-init.py
+              readOnly: true
+            - name: os-clouds
+              mountPath: /etc/openstack/clouds.yaml
+              subPath: clouds.yaml
+              readOnly: true
+          env:
+            - name: NODE_HOST_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: OCTAVIA_NAMESPACE
+              value: {{ $envAll.Release.Namespace | quote }}
+            - name: OCTAVIA_WAIT_PORT_ACTIVE
+              value: {{ not ( eq .Values.network.core_plugin "tungstenfabric" ) | quote }}
+{{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" "octavia" ) | indent 12 }}
+{{ dict "envAll" $envAll | include "helm-toolkit.snippets.kubernetes_proxy_env_vars" | indent 12 }}
+      containers:
+        - name: octavia-health-manager
+{{ tuple $envAll "octavia_health_manager" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.health_manager | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "octavia_health_manager" "container" "octavia_health_manager" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/octavia-health-manager.sh
+            - start
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /tmp/octavia-health-manager.sh
+                  - stop
+{{ dict "envAll" $envAll "component" "octavia_health_manager" "container" "octavia_health_manager" "type" "liveness" "probeTemplate" (include "octaviaHealthManagerLivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "octavia_health_manager" "container" "octavia_health_manager" "type" "readiness" "probeTemplate" (include "octaviaHealthManagerReadynessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          volumeMounts:
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "octavia" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: pod-etc-octavia
+              mountPath: /etc/octavia
+            - name: octavia-bin
+              mountPath: /tmp/octavia-health-manager.sh
+              subPath: octavia-health-manager.sh
+              readOnly: true
+            - name: octavia-bin
+              mountPath: /tmp/health-probe.py
+              subPath: health-probe.py
+              readOnly: true
+            - name: octavia-etc
+              mountPath: /etc/octavia/octavia.conf
+              subPath: octavia.conf
+              readOnly: true
+            - name: octavia-etc
+              mountPath: {{ .Values.conf.octavia.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.octavia.DEFAULT.log_config_append }}
+              readOnly: true
+            - name: octavia-settings
+              mountPath: /etc/octavia/updated_conf
+            - name: os-clouds
+              mountPath: /etc/openstack/clouds.yaml
+              subPath: clouds.yaml
+              readOnly: true
+            - name: octavia-certs
+              mountPath: /etc/octavia/certs/private/cakey.pem
+              subPath: key
+            - name: octavia-certs
+              mountPath: /etc/octavia/certs/ca_01.pem
+              subPath: cert
+            - name: octavia-certs
+              mountPath: /etc/octavia/certs/client.pem
+              subPath: cert_all
+{{ if $mounts_octavia_health_manager.volumeMounts }}{{ toYaml $mounts_octavia_health_manager.volumeMounts | indent 12 }}{{ end }}
+      volumes:
+{{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "octavia" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
+        - name: pod-tmp
+          emptyDir: {}
+        - name: pod-etc-octavia
+          emptyDir: {}
+        - name: octavia-bin
+          configMap:
+            name: octavia-bin
+            defaultMode: 504
+        - name: octavia-etc
+          secret:
+            secretName: {{ $configMapName }}
+            defaultMode: 416
+        - name: run
+          hostPath:
+            path: /run
+        - name: octavia-settings
+          configMap:
+            name: octavia-settings
+            defaultMode: 416
+        - name: os-clouds
+          secret:
+            secretName: "octavia-os-clouds"
+            defaultMode: 416
+        - name: octavia-certs
+          secret:
+            secretName: octavia-certs
+            defaultMode: 416
+{{ if $mounts_octavia_health_manager.volumes }}{{ toYaml $mounts_octavia_health_manager.volumes | indent 8 }}{{ end }}
+{{- end }}
+{{- end }}
+
+{{- if .Values.manifests.daemonset_health_manager }}
+{{- $envAll := . }}
+{{- $daemonset := "health_manager" }}
+{{- $configMapName := "octavia-etc" }}
+{{- $serviceAccountName := "octavia-health-manager" }}
+
+{{- $dependencyOpts := dict "envAll" $envAll "dependencyMixinParam" $envAll.Values.network.backend "dependencyKey" "health_manager" -}}
+{{- $_ := include "helm-toolkit.utils.dependency_resolver" $dependencyOpts | toString | fromYaml }}
+
+{{ tuple $envAll "pod_dependency" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+{{- $configmap_yaml := "octavia.configmap.etc" }}
+
+{{/* Preffer using .Values.overrides rather than .Values.conf.overrides */}}
+{{- if index (index .Values "overrides" |default dict ) "octavia_health_manager" }}
+{{- list $daemonset "octavia.health_manager.daemonset" $serviceAccountName $configmap_yaml $configMapName "octavia.configmap.bin" "octavia-bin" . | include "helm-toolkit.utils.daemonset_overrides_root" }}
+{{- else }}
+{{- $daemonset_yaml := list $daemonset $configMapName $serviceAccountName . | include "octavia.health_manager.daemonset" | toString | fromYaml }}
+{{- list $daemonset $daemonset_yaml $configmap_yaml $configMapName . | include "helm-toolkit.utils.daemonset_overrides" }}
+{{- end }}
+{{- end }}

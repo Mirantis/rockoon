@@ -1,0 +1,93 @@
+openstack_version: ussuri
+features:
+  barbican:
+    backends:
+      vault:
+        approle_role_id: e5e97952-cf82-e7fd-da71-c568f18cea5e
+        approle_secret_id: e33841c6-f175-1ea1-87ba-2dd49df6f776
+        enabled: true
+        use_ssl: false
+        vault_url: http://vault.openstack-vault.svc:8200
+  database:
+    local_volumes:
+      enabled: true
+  messaging:
+    components_with_dedicated_messaging:
+    - networking
+    - block-storage
+    - compute
+    - dns
+    - image
+    - networking
+    - orchestration
+    - load-balancer
+    - key-manager
+  network_policies:
+    enabled: false
+  neutron:
+    backend: ml2
+    dns_servers:
+    - 10.172.1.100
+    external_networks:
+    - bridge: br-ex
+      interface: veth-phy
+      mtu: null
+      network_types:
+      - flat
+      physnet: physnet1
+      vlan_ranges: null
+    floating_network:
+      enabled: true
+      physnet: physnet1
+      subnet:
+        gateway: 10.11.12.39
+        pool_end: 10.11.12.200
+        pool_start: 10.11.12.100
+        range: 10.11.12.0/24
+    tunnel_interface: ens3
+  nova:
+    images:
+      backend: ceph
+    live_migration_interface: ens3
+  services:
+  - block-storage
+  - compute
+  - dns
+  - identity
+  - dashboard
+  - image
+  - ingress
+  - database
+  - memcached
+  - networking
+  - orchestration
+  - messaging
+  - load-balancer
+  - placement
+  - coordination
+  - key-manager
+  - redis
+  ssl:
+    public_endpoints:
+      api_cert: "TEST CRT"
+      api_key: "TEST KEY"
+      ca_cert: "TEST CA"
+      enabled: true
+  stacklight:
+    enabled: true
+    user:
+      password: stacklight
+      username: stacklight
+artifacts:
+  binary_base_url: https://artifactory.mcp.mirantis.net/binary-dev-kaas-local
+  images_base_url: docker-dev-kaas-local.docker.mirantis.net
+common:
+  charts: {}
+  infra:
+    repo: osh-infra
+  openstack:
+    repo: osh
+persistent_volume_storage_class: mirablock-k8s-block-hdd
+public_domain_name: it.just.works
+internal_domain_name: cluster.local
+local_volume_storage_class: lvp-fake-root

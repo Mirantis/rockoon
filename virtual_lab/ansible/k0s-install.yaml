@@ -1,0 +1,21 @@
+---
+- name: Install k0s controllers
+  hosts: k8s_controllers:k8s_workers
+  gather_facts: true
+  become: true
+  remote_user: ubuntu
+  pre_tasks:
+    - name: Set facts
+      set_fact:
+        k0s_cluster_nodes:
+          initial_controller: "{{ groups.k8s_controllers[0] }}"
+          controllers: "{{ groups.k8s_controllers[1:] }}"
+          workers: "{{ groups.k8s_workers }}"
+  tasks:
+    - name: Setup osdpl certs
+      include_role:
+        name: rvl
+        tasks_from: certs
+    - name: Install k0s
+      include_role:
+        name: bodsch.k0s

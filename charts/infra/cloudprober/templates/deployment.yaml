@@ -1,0 +1,187 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+{{- define "cloudproberProbeTemplate" }}
+httpGet:
+  scheme: HTTP
+  path: /status
+  port: {{ tuple "cloudprober" "internal" "prober" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- end }}
+
+{{- define "discoveryProbeTemplate" }}
+exec:
+  command:
+    - python
+    - /tmp/health-probe.py
+{{- end }}
+{{- if .Values.manifests.deployment }}
+{{- $envAll := . }}
+{{- $mounts_cloudprober := .Values.pod.mounts.cloudprober.prober }}
+{{- $serviceAccountName := printf .Release.Name }}
+{{- $cloudprober_config_dir := "/etc/cloudprober" }}
+{{- $proberContainerName := "cloudprober" }}
+
+{{ tuple $envAll "cloudprober" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "cloudprober" "prober" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  replicas: {{ .Values.pod.replicas.cloudprober }}
+  selector:
+    matchLabels:
+{{ tuple $envAll "cloudprober" "prober" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll | include "helm-toolkit.snippets.kubernetes_upgrades_deployment" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "cloudprober" "prober" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+        endpoints-hash: {{ .Values.endpoints | include "helm-toolkit.utils.get_hash" }}
+        kubectl.kubernetes.io/default-container: {{ $proberContainerName }}
+{{ dict "envAll" $envAll "podName" "cloudprober" "containerNames" (list "prober") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "cloudprober" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      affinity:
+{{ tuple $envAll "cloudprober" "prober" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      nodeSelector:
+        {{ .Values.labels.prober.node_selector_key }}: {{ .Values.labels.prober.node_selector_value }}
+      terminationGracePeriodSeconds: {{ .Values.pod.lifecycle.termination_grace_period.cloudprober.timeout | default "30" }}
+      initContainers:
+{{ tuple $envAll "cloudprober" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+        - name: openstack-discovery-init
+{{ tuple $envAll "cloudprober_openstack_discovery" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.openstack_discovery | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "cloudprober" "container" "openstack_discovery_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/openstack_discovery.py
+          volumeMounts:
+            - mountPath: {{ $cloudprober_config_dir }}/targets.d
+              name: cloudprober-etc-targetsd
+            - mountPath: /tmp
+              name: pod-tmp
+            - mountPath: /tmp/openstack_discovery.py
+              readOnly: true
+              subPath: openstack_discovery.py
+              name: cloudprober-bin
+            - mountPath: /etc/openstack/clouds.yaml
+              readOnly: true
+              subPath: clouds.yaml
+              name: cloudprober-clouds
+            - mountPath: {{ $cloudprober_config_dir }}/openstack-discovery.yaml
+              readOnly: true
+              subPath: openstack-discovery.yaml
+              name: cloudprober-etc
+      containers:
+        - name: openstack-discovery
+{{ tuple $envAll "cloudprober_openstack_discovery" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.openstack_discovery | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "cloudprober" "container" "openstack_discovery" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/openstack_discovery.py
+            - --daemon
+{{ dict "envAll" $envAll "component" "cloudprober" "container" "openstack_discovery" "type" "liveness" "probeTemplate" (include "discoveryProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "cloudprober" "container" "openstack_discovery" "type" "readiness" "probeTemplate" (include "discoveryProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          volumeMounts:
+            - mountPath: /tmp
+              name: pod-tmp
+            - mountPath: /tmp/openstack_discovery.py
+              readOnly: true
+              subPath: openstack_discovery.py
+              name: cloudprober-bin
+            - mountPath: /tmp/health-probe.py
+              readOnly: true
+              subPath: health-probe.py
+              name: cloudprober-bin
+            - mountPath: /etc/openstack/clouds.yaml
+              readOnly: true
+              subPath: clouds.yaml
+              name: cloudprober-clouds
+            - mountPath: {{ $cloudprober_config_dir }}/openstack-discovery.yaml
+              readOnly: true
+              subPath: openstack-discovery.yaml
+              name: cloudprober-etc
+            - mountPath: {{ $cloudprober_config_dir }}/targets.d
+              name: cloudprober-etc-targetsd
+        - name: {{ $proberContainerName }}
+{{ tuple $envAll "cloudprober" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.cloudprober | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "cloudprober" "container" "prober" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/prober.sh
+            - start
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /tmp/prober.sh
+                  - stop
+          ports:
+            - name: cloudprober
+              containerPort: {{ tuple "cloudprober" "internal" "prober" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{ dict "envAll" $envAll "component" "cloudprober" "container" "prober" "type" "liveness" "probeTemplate" (include "cloudproberProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "cloudprober" "container" "prober" "type" "readiness" "probeTemplate" (include "cloudproberProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ if $mounts_cloudprober.volumeMounts }}{{ toYaml $mounts_cloudprober.volumeMounts | indent 12 }}{{ end }}
+          volumeMounts:
+            - mountPath: /tmp
+              name: pod-tmp
+            - mountPath: {{ $cloudprober_config_dir }}/openstack-discovery.yaml
+              readOnly: true
+              subPath: openstack-discovery.yaml
+              name: cloudprober-etc
+            - mountPath: {{ $cloudprober_config_dir }}/cloudprober.cfg
+              readOnly: true
+              subPath: cloudprober.cfg
+              name: cloudprober-etc
+            - mountPath: {{ $cloudprober_config_dir }}/targets.d
+              name: cloudprober-etc-targetsd
+            {{- if .Values.conf.static_targets }}
+            - mountPath: {{ $cloudprober_config_dir }}/targets.d/static
+              name: cloudprober-static-targets
+            {{- end }}
+            - mountPath: /tmp/prober.sh
+              readOnly: true
+              subPath: prober.sh
+              name: cloudprober-bin
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: cloudprober-bin
+          configMap:
+            name: {{ .Release.Name }}-bin
+            defaultMode: 365
+        - name: cloudprober-etc
+          secret:
+            secretName: {{ .Release.Name }}-etc
+            defaultMode: 292
+        - name: cloudprober-etc-targetsd
+          emptyDir: {}
+        - name: cloudprober-clouds
+          secret:
+            secretName: {{ .Release.Name }}-os-clouds
+        {{- if .Values.conf.static_targets }}
+        - name: cloudprober-static-targets
+          configMap:
+            name: {{ .Release.Name }}-targets
+        {{- end }}
+{{ if $mounts_cloudprober.volumes }}{{ toYaml $mounts_cloudprober.volumes | indent 8 }}{{ end }}
+{{- end }}

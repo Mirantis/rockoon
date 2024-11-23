@@ -1,0 +1,245 @@
+#apiVersion: lcm.mirantis.com/v1alpha1
+#kind: HelmBundle
+
+{%- from 'macros/messaging_service_creds.j2' import messaging_service_creds %}
+{%- set service = 'ironic' %}
+{%- set stacklight_enabled = spec.get('features', {}).get('stacklight', {}).get('enabled', False) %}
+{%- set notification_topics = ['notifications'] %}
+{%- do notification_topics.append('stacklight_notifications') if stacklight_enabled %}
+{%- set external_notifications_enabled = spec.get('features', {}).get('messaging', {}).get('notifications', {}).get('external', {}).get('enabled', False) %}
+{%- if external_notifications_enabled %}
+  {%- for topic in spec.get('features', {}).get('messaging', {}).get('notifications', {}).get('external', {}).get('topics', []) %}
+    {%- do notification_topics.append(topic) %}
+  {%- endfor %}
+{%- endif  %}
+{%- set enabled_boot_interfaces = ['pxe', 'fake'] %}
+{%- set default_binary_base_url = spec.artifacts.binary_base_url | substitute_local_proxy_hostname("${NODE_IP}") %}
+
+{%- if OSVer[spec.openstack_version] >= OSVer.stein %}
+# NOTE(vsaienko): we prefer to use chainloading to ipxe as it is much faster
+# and stable for file downloads that UDP based pxe, and most of the hardware
+# types give it higher priority than pxe already through the
+# supported_boot_interfaces property. Thus we only need to enable it, and
+# the proper value for node's boot interface will be selected automatically,
+# if not set, without the need to explicitly set the default_boot_interface
+# config option.
+{%- do enabled_boot_interfaces.insert(0, 'ipxe') %}
+{%- endif %}
+{%- set network = spec.features.ironic.networks.baremetal %}
+{%- set enabled_management_interfaces = ['fake', 'ipmitool'] %}
+{%- if OSVer[spec.openstack_version] >= OSVer.rocky %}
+{%- do enabled_management_interfaces.append('noop') %}
+{%- endif %}
+{%- set cadf_audit = spec.get('features', {}).get('logging', {}).get('cadf', {'enabled': false}) %}
+{%- set cadf_audit_driver = spec.get('features', {}).get('logging', {}).get('cadf', {}).get('driver', 'messagingv2') %}
+
+spec:
+  releases:
+{%- if spec.get('migration', {}).get('ironic', {}).get('deploy_main_service', True) %}
+  - name: openstack-ironic
+    chart: ironic
+    values:
+      images:
+        tags:
+{%- for image in [
+    "ironic_manage_networks",
+    "ironic_update_nodes_metadata",
+    "ironic_retrieve_networks",
+    "ironic_retrieve_swift_config",
+    "bootstrap",
+    "db_drop",
+    "db_init",
+    "ironic_db_sync",
+    "ks_user",
+    "ks_service",
+    "ks_endpoints",
+    "rabbit_init",
+    "ironic_api",
+    "ironic_conductor",
+    "ironic_pxe",
+    "ironic_pxe_init",
+    "ironic_pxe_http",
+    "dep_check",
+    "image_repo_sync",] %}
+        {%- if image in images %}
+          {{ image }}: {{ images[image] }}
+        {%- endif %}
+{%- endfor %}
+      dependencies:
+        static:
+          db_init:
+            jobs:
+              - openstack-mariadb-cluster-wait
+{%- if spec.features.network_policies.enabled %}
+      network_policy:
+{% include 'base/network_policies/baremetal.yaml' %}
+{%- endif %}
+      manifests:
+        network_policy: {{ spec.features.network_policies.enabled }}
+        job_rabbit_init: false
+        secret_ca_bundle: true
+        job_update_nodes_metadata: true
+      bootstrap:
+        object_store:
+          enabled: false
+        image:
+          # NOTE(vsaienko): image creation is moved to glance to support singed image upload.
+          enabled: false
+      network:
+        proxy:
+{% include 'base/_proxy_vars.yaml' %}
+        cleaning: &bm_network
+          name: {{ network.get('name', 'baremetal') }}
+          physnet: {{ network.get('physnet', 'ironic') }}
+          network_type: {{ network.get('network_type', 'vlan') }}
+          external: {{ network.get('external', true) }}
+          shared: {{ network.get('shared', true) }}
+          {%- if network.mtu is defined %}
+          mtu: {{ network.mtu }}
+          {%- endif %}
+          {%- if network.segmentation_id is defined %}
+          segmentation_id: {{ network.segmentation_id }}
+          {%- endif %}
+          subnets:
+          {%- for bm_subnet in network.subnets %}
+            {{ bm_subnet.name }}:
+              name: "{{ bm_subnet.name }}"
+              ip_version: 4
+              range: {{ bm_subnet.range }}
+              pool_start: {{ bm_subnet.pool_start }}
+              pool_end: {{ bm_subnet.pool_end }}
+              gateway: {{ bm_subnet.gateway }}
+              {%- if spec.get('features', {}).get('neutron', {}).get('dns_servers', []) %}
+              nameservers: {{ spec.features.neutron.dns_servers }}
+              {%- endif %}
+          {%- endfor %}
+        provisioning: *bm_network
+        pxe:
+          device: {{ spec.get('features', {}).get('ironic', {}).get('provisioning_interface', 'ironic-pxe') }}
+          convert_cleaning_network_name_to_uuid: false
+          # TODO(vsaienko): drop when switch to images with jammy
+          {%- if OSVer.yoga <= OSVer[spec.openstack_version] < OSVer.master %}
+          loader_file_paths: snponly.efi:/usr/lib/ipxe/ipxe.efi
+          {%- endif %}
+      conf:
+        policy.d:
+          01-controller-default.yaml: {{ service_policy }}
+          02-custom.yaml: {{ spec.get("features", {}).get("policies", {}).get("ironic", {}) }}
+        ironic:
+          DEFAULT:
+            enabled_hardware_types: ipmi,fake-hardware
+            enabled_boot_interfaces: {{ enabled_boot_interfaces|join(',') }}
+            enabled_management_interfaces: {{ enabled_management_interfaces|join(',') }}
+            enabled_power_interfaces: fake,ipmitool
+            enabled_network_interfaces: flat,neutron,noop
+            enabled_deploy_interfaces: fake,direct
+            # NOTE(vsaienko): the cinder + ceph can't advertise ISCSI targets,
+            # while ironic BFV supports only ISCSI or FiberChannel
+            enabled_storage_interfaces: fake,cinder,noop
+            enabled_bios_interfaces: fake,no-bios
+            enabled_console_interfaces: fake,no-console
+            enabled_inspect_interfaces: fake,no-inspect
+            enabled_raid_interfaces: fake,agent,no-raid
+            enabled_rescue_interfaces: fake,no-rescue
+            enabled_vendor_interfaces: fake,ipmitool,no-vendor
+          audit:
+            enabled: true
+            # TODO: remove GET when issue with probes PRODX-25190 is fixed
+            ignore_req_list: GET, HEAD
+{%- if cadf_audit.enabled %}
+          audit_middleware_notifications:
+            driver: {{ cadf_audit_driver }}
+{%- else %}
+          audit_middleware_notifications:
+            driver: noop
+{%- endif %}
+          oslo_messaging_notifications:
+            topics: {{ notification_topics|join(',') }}
+{% include 'base/_oslo_policy_enforce_defaults.yaml' %}
+          conductor:
+            automated_clean: true
+          pxe:
+            pxe_append_params: nofb nomodeset vga=normal ipa-insecure=1 ipa-debug=1
+            ipxe_timeout: 120
+          agent:
+            image_download_source: http
+          deploy:
+            erase_devices_priority: 0
+            erase_devices_metadata_priority: 1
+            shred_final_overwrite_with_zeros: false
+            default_boot_option: local
+            fast_track: false
+          keystone_authtoken:
+            memcache_security_strategy: ENCRYPT
+            memcache_secret_key: {{ credentials[0].memcached }}
+            {%- if OSVer[spec.openstack_version] >= OSVer.train %}
+            service_type: baremetal
+            {%- endif %}
+          neutron:
+            port_setup_delay: 30
+            cleaning_network: {{ network.get('name', 'baremetal') }}
+            provisioning_network: {{ network.get('name', 'baremetal') }}
+          service_catalog:
+            valid_interfaces: public,internal
+        logging:
+          logger_ironic:
+            level: {{ spec.get('features', {}).get('logging', {}).get('ironic', {}).get('level', 'INFO') }}
+        nodes:
+          deploy_kernel_image: {{ images["ironic_agent_kernel"].split('/')[-1] }}
+          deploy_ramdisk_image: {{ images["ironic_agent_initramfs"].split('/')[-1] }}
+      endpoints:
+        cluster_domain_suffix: {{ spec.internal_domain_name }}
+{% include 'base/_admin_identity.yaml' %}
+{% include 'base/_cache.yaml' %}
+        oslo_db:
+          auth:
+            admin:
+              username: {{ admin_creds.database.username }}
+              password: {{ admin_creds.database.password }}
+            ironic:
+              username: {{ credentials[0].database.user.username }}
+              password: {{ credentials[0].database.user.password }}
+{% include 'base/_messaging_shared.yaml' %}
+{% include 'base/_notifications.yaml' %}
+        baremetal:
+          host_fqdn_override:
+            public:
+              host: ironic.{{ spec.public_domain_name }}
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent(width=18, first=True) }}
+{%- if proxy_settings is defined %}
+{%- if proxy_settings.get("proxy_ca_certificate") %}
+{{ proxy_settings["proxy_ca_certificate"] | indent( width=18, first=True) }}
+{%- endif %}
+{%- endif %}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent(width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent(width=18, first=True) }}
+          hosts:
+            admin:
+              host: ironic-api
+            default: ironic
+            internal: ironic-api
+            public:
+              host: ironic
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent(width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent(width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent(width=18, first=True) }}
+          port:
+            api:
+              admin: 6385
+              default: 80
+              internal: 6385
+              public: 443
+          scheme:
+            default: http
+            public: https
+      jobs:
+{% include 'base/_ks_jobs.yaml' %}
+{%- endif %}

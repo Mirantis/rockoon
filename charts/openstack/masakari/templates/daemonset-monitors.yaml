@@ -1,0 +1,364 @@
+{{/*
+
+Copyright 2021 Mirantis Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "masakariInstanceMonitorLivenessProbeTemplate" }}
+exec:
+  command:
+    - python
+    - /tmp/health-probe.py
+    - --config-file
+    - /etc/masakarimonitors/masakarimonitors.conf
+    - --config-dir
+    - /etc/masakarimonitors/masakarimonitors.conf.d
+    - --process-name
+    - monitor
+    - --probe-type
+    - liveness
+    - --check
+    - libvirt_connection
+{{- end }}
+
+{{- define "masakariInstanceMonitorReadinessProbeTemplate" }}
+exec:
+  command:
+    - python
+    - /tmp/health-probe.py
+    - --config-file
+    - /etc/masakarimonitors/masakarimonitors.conf
+    - --config-dir
+    - /etc/masakarimonitors/masakarimonitors.conf.d
+    - --process-name
+    - monitor
+    - --probe-type
+    - readiness
+    - --check
+    - libvirt_connection
+{{- end }}
+
+{{- define "masakari.monitors.daemonset" }}
+{{- $daemonset := index . 0 }}
+{{- $configMapName := index . 1 }}
+{{- $serviceAccountName := index . 2 }}
+{{- $envAll := index . 3 }}
+{{- with $envAll }}
+
+{{- $mounts_masakari_monitors := .Values.pod.mounts.masakari_monitors.masakari_monitors }}
+{{- $mounts_masakari_monitors_init := .Values.pod.mounts.masakari_monitors.init_container }}
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: masakari-monitors
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll .Chart.Name $daemonset | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+{{ tuple $envAll .Chart.Name $daemonset | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll $daemonset | include "helm-toolkit.snippets.kubernetes_upgrades_daemonset" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll .Chart.Name $daemonset | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        endpoints-hash: {{ .Values.endpoints | include "helm-toolkit.utils.get_hash" }}
+{{ dict "envAll" $envAll "podName" "masakari-monitors-default" "containerNames" (list "masakari-monitors" "init" "masakari-monitors-init" "masakari-monitors-vnc-init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "masakari_monitors" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      nodeSelector:
+        {{ .Values.labels.monitors.node_selector_key }}: {{ .Values.labels.monitors.node_selector_value }}
+      hostPID: false
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      initContainers:
+{{ tuple $envAll "monitors" $mounts_masakari_monitors_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+{{- if (or .Values.conf.monitors.instance.enabled .Values.conf.monitors.introspective.enabled) }}
+        - name: instance-monitors-init
+{{ tuple $envAll "masakari_monitors" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.monitors | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "masakari_monitors" "container" "instance_monitors_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/masakari-instancemonitors-init.sh
+          terminationMessagePath: /var/log/termination-log
+          volumeMounts:
+            - name: masakari-bin
+              mountPath: /tmp/masakari-instancemonitors-init.sh
+              subPath: masakari-instancemonitors-init.sh
+              readOnly: true
+            - name: masakarimonitors-confd
+              mountPath: /etc/masakarimonitors/masakarimonitors.conf.d
+{{- end }}
+      containers:
+{{- if .Values.conf.monitors.process.enabled }}
+        - name: masakari-processmonitor
+{{ tuple $envAll "masakari_monitors" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.monitors | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "masakari_monitors" "container" "processmonitor" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+            - name: RPC_PROBE_TIMEOUT
+              value: "{{ .Values.pod.probes.rpc_timeout }}"
+            - name: RPC_PROBE_RETRIES
+              value: "{{ .Values.pod.probes.rpc_retries }}"
+          command:
+            - /tmp/masakari-processmonitor.sh
+          terminationMessagePath: /var/log/termination-log
+          volumeMounts:
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "masakari" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: masakari-bin
+              mountPath: /tmp/masakari-processmonitor.sh
+              subPath: masakari-processmonitor.sh
+              readOnly: true
+            - name: masakari-bin
+              mountPath: /tmp/health-probe.py
+              subPath: health-probe.py
+              readOnly: true
+            - name: masakari-etc
+              mountPath: /etc/masakarimonitors/masakarimonitors.conf
+              subPath: masakarimonitors.conf
+              readOnly: true
+            {{- if .Values.conf.masakari.DEFAULT.log_config_append }}
+            - name: masakari-etc
+              mountPath: {{ .Values.conf.masakarimonitors.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.masakarimonitors.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+            - name: masakari-etc
+              mountPath: /etc/masakarimonitors/process_list.yaml
+              subPath: process_list.yaml
+              readOnly: true
+            - name: run
+              mountPath: /run
+            - name: masakari-etc
+              mountPath: /etc/sudoers.d/kolla_masakari_sudoers
+              subPath: monitors_sudoers
+              readOnly: true
+{{ if $mounts_masakari_monitors.volumeMounts }}{{ toYaml $mounts_masakari_monitors.volumeMounts | indent 12 }}{{ end }}
+{{- end }}
+{{- if .Values.conf.monitors.host.enabled }}
+        - name: masakari-hostmonitor
+{{ tuple $envAll "masakari_monitors" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.ssh | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "masakari_monitors" "container" "hostmonitor" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+            - name: RPC_PROBE_TIMEOUT
+              value: "{{ .Values.pod.probes.rpc_timeout }}"
+            - name: RPC_PROBE_RETRIES
+              value: "{{ .Values.pod.probes.rpc_retries }}"
+          command:
+            - /tmp/masakari-hostmonitor.sh
+          terminationMessagePath: /var/log/termination-log
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: masakari-bin
+              mountPath: /tmp/masakari-hostmonitor.sh
+              subPath: masakari-hostmonitor.sh
+              readOnly: true
+            - name: masakari-bin
+              mountPath: /tmp/health-probe.py
+              subPath: health-probe.py
+              readOnly: true
+            - name: masakari-etc
+              mountPath: /etc/masakarimonitors/masakarimonitors.conf
+              subPath: masakarimonitors.conf
+              readOnly: true
+            {{- if .Values.conf.masakari.DEFAULT.log_config_append }}
+            - name: masakari-etc
+              mountPath: {{ .Values.conf.masakarimonitors.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.masakarimonitors.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+            - name: masakari-etc
+              mountPath: /etc/masakarimonitors/process_list.yaml
+              subPath: process_list.yaml
+              readOnly: true
+            - name: run
+              mountPath: /run
+            - name: masakari-etc
+              mountPath: /etc/sudoers.d/kolla_masakari_sudoers
+              subPath: monitors_sudoers
+              readOnly: true
+{{ if $mounts_masakari_monitors.volumeMounts }}{{ toYaml $mounts_masakari_monitors.volumeMounts | indent 12 }}{{ end }}
+{{- end }}
+{{- if .Values.conf.monitors.instance.enabled }}
+        - name: masakari-instancemonitor
+{{ tuple $envAll "masakari_monitors" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.ssh | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "masakari_monitors" "container" "instancemonitor" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+            - name: RPC_PROBE_TIMEOUT
+              value: "{{ .Values.pod.probes.rpc_timeout }}"
+            - name: RPC_PROBE_RETRIES
+              value: "{{ .Values.pod.probes.rpc_retries }}"
+          command:
+            - /tmp/masakari-instancemonitor.sh
+          terminationMessagePath: /var/log/termination-log
+{{ dict "envAll" $envAll "component" "monitors" "container" "instancemonitor" "type" "liveness" "probeTemplate" (include "masakariInstanceMonitorLivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "monitors" "container" "instancemonitor" "type" "readiness" "probeTemplate" (include "masakariInstanceMonitorReadinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: masakari-bin
+              mountPath: /tmp/masakari-instancemonitor.sh
+              subPath: masakari-instancemonitor.sh
+              readOnly: true
+            - name: masakari-bin
+              mountPath: /tmp/health-probe.py
+              subPath: health-probe.py
+              readOnly: true
+            - name: masakari-etc
+              mountPath: /etc/masakarimonitors/masakarimonitors.conf
+              subPath: masakarimonitors.conf
+              readOnly: true
+            {{- if .Values.conf.masakari.DEFAULT.log_config_append }}
+            - name: masakari-etc
+              mountPath: {{ .Values.conf.masakarimonitors.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.masakarimonitors.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+            {{- if .Values.conf.libvirt.tls }}
+            - name: pki-libvirt
+              mountPath: /etc/pki/libvirt
+              mountPropagation: HostToContainer
+            - name: pki-ca
+              mountPath: /etc/pki/CA
+              mountPropagation: HostToContainer
+            {{ end }}
+            - name: masakari-etc
+              mountPath: /etc/masakarimonitors/process_list.yaml
+              subPath: process_list.yaml
+              readOnly: true
+            - name: run
+              mountPath: /run
+            - name: masakari-etc
+              mountPath: /etc/sudoers.d/kolla_masakari_sudoers
+              subPath: monitors_sudoers
+              readOnly: true
+            - name: masakarimonitors-confd
+              mountPath: /etc/masakarimonitors/masakarimonitors.conf.d
+{{ if $mounts_masakari_monitors.volumeMounts }}{{ toYaml $mounts_masakari_monitors.volumeMounts | indent 12 }}{{ end }}
+{{- end }}
+{{- if .Values.conf.monitors.introspective.enabled }}
+        - name: masakari-introspectiveinstancemonitor
+{{ tuple $envAll "masakari_monitors" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.ssh | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "masakari_monitors" "container" "introspectiveinstancemonitor" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /var/lib/openstack/bin/masakari-introspectiveinstancemonitor
+          terminationMessagePath: /var/log/termination-log
+{{ dict "envAll" $envAll "component" "monitors" "container" "introspectiveinstancemonitor" "type" "liveness" "probeTemplate" (include "masakariInstanceMonitorLivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "monitors" "container" "introspectiveinstancemonitor" "type" "readiness" "probeTemplate" (include "masakariInstanceMonitorReadinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: masakari-bin
+              mountPath: /tmp/health-probe.py
+              subPath: health-probe.py
+              readOnly: true
+            - name: masakari-etc
+              mountPath: /etc/masakarimonitors/masakarimonitors.conf
+              subPath: masakarimonitors.conf
+              readOnly: true
+            {{- if .Values.conf.masakari.DEFAULT.log_config_append }}
+            - name: masakari-etc
+              mountPath: {{ .Values.conf.masakarimonitors.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.masakarimonitors.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+            {{- if .Values.conf.libvirt.tls }}
+            - name: pki-libvirt
+              mountPath: /etc/pki/libvirt
+              mountPropagation: HostToContainer
+            - name: pki-ca
+              mountPath: /etc/pki/CA
+              mountPropagation: HostToContainer
+            {{ end }}
+            - name: run
+              mountPath: /run
+            - name: varliblibvirt
+              mountPath: /var/lib/libvirt
+            - name: masakari-etc
+              mountPath: /etc/sudoers.d/kolla_masakari_sudoers
+              subPath: monitors_sudoers
+              readOnly: true
+            - name: masakarimonitors-confd
+              mountPath: /etc/masakarimonitors/masakarimonitors.conf.d
+{{ if $mounts_masakari_monitors.volumeMounts }}{{ toYaml $mounts_masakari_monitors.volumeMounts | indent 12 }}{{ end }}
+{{- end }}
+      volumes:
+{{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "masakari" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
+        - name: pod-tmp
+          emptyDir: {}
+        - name: masakarimonitors-confd
+          emptyDir: {}
+        - name: masakari-bin
+          configMap:
+            name: masakari-bin
+            defaultMode: 504
+        - name: masakari-etc
+          secret:
+            secretName: {{ $configMapName }}
+            defaultMode: 416
+        - name: run
+          hostPath:
+            path: /run
+        - name: varliblibvirt
+          hostPath:
+            path: /var/lib/libvirt
+        - name: pod-shared
+          emptyDir: {}
+        {{- if .Values.conf.libvirt.tls }}
+        - name: pki-ca
+          hostPath:
+            path: /etc/pki/CA
+        - name: pki-libvirt
+          hostPath:
+            path: /etc/pki/libvirt
+        {{ end }}
+{{ if $mounts_masakari_monitors.volumes }}{{ toYaml $mounts_masakari_monitors.volumes | indent 8 }}{{ end }}
+{{- end }}
+{{- end }}
+
+{{- if .Values.manifests.daemonset_monitors }}
+{{- $envAll := . }}
+{{- $daemonset := "monitors" }}
+{{- $configMapName := "masakari-etc" }}
+{{- $serviceAccountName := "masakari-monitors" }}
+
+{{- $dependencyOpts := dict "envAll" $envAll "dependencyMixinParam" $envAll.Values.network.backend "dependencyKey" "monitors" -}}
+{{- $_ := include "helm-toolkit.utils.dependency_resolver" $dependencyOpts | toString | fromYaml }}
+
+{{ tuple $envAll "pod_dependency" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+{{- $daemonset_yaml := list $daemonset $configMapName $serviceAccountName . | include "masakari.monitors.daemonset" | toString | fromYaml }}
+{{- $configmap_yaml := "masakari.configmap.etc" }}
+
+{{/* Preffer using .Values.overrides rather than .Values.conf.overrides */}}
+{{- if index (index .Values "overrides" |default dict ) "masakari_monitors" }}
+{{- list $daemonset "masakari.monitors.daemonset" $serviceAccountName $configmap_yaml $configMapName "masakari.configmap.bin" "masakari-bin" . | include "helm-toolkit.utils.daemonset_overrides_root" }}
+{{- else }}
+{{- $daemonset_yaml := list $daemonset $configMapName $serviceAccountName . | include "masakari.monitors.daemonset" | toString | fromYaml }}
+{{- list $daemonset $daemonset_yaml $configmap_yaml $configMapName . | include "helm-toolkit.utils.daemonset_overrides" }}
+{{- end }}
+{{- end }}

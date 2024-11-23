@@ -1,0 +1,46 @@
+# Copyright 2019 Mirantis inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+conf:
+  ks_federations:
+    oidc:
+      domain:
+        name: acme
+      identity_provider:
+        remote_ids:
+          - "http://acme1/auth/realms/iam"
+          - "http://acme2/auth/realms/iam"
+        id: acme_idp
+        domain_id: acme
+      mapping:
+        id: "acme_mapping"
+        rules:
+          - local:
+              - user:
+                  name: "{0}"
+                  email: "{1}"
+                  domain:
+                    name: "Default"
+              - groups: "{2}"
+                domain:
+                   name: "Default"
+              - domain:
+                   name: "Default"
+            remote:
+              - type: "OIDC-iam_username"
+              - type: "OIDC-email"
+              - type: "OIDC-iam_roles"
+      protocol:
+        mapped:
+          idp_id: "acme_idp"
+          mapping_id: "acme_mapping"

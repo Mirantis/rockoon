@@ -1,0 +1,1048 @@
+#apiVersion: lcm.mirantis.com/v1alpha1
+#kind: HelmBundle
+
+{%- from 'macros/messaging_service_creds.j2' import messaging_service_creds %}
+{%- from 'macros/etcd3.j2' import get_etcd3_endpoint %}
+{%- set service = 'nova' %}
+{%- set components_with_dedicated_messaging = spec.get('features', {}).get('messaging', {}).get('components_with_dedicated_messaging', []) %}
+{%- set stacklight_enabled = spec.get('features', {}).get('stacklight', {}).get('enabled', False) %}
+{%- set notification_topics = ['notifications'] %}
+{%- do notification_topics.append('stacklight_notifications') if stacklight_enabled %}
+{%- set external_notifications_enabled = spec.get('features', {}).get('messaging', {}).get('notifications', {}).get('external', {}).get('enabled', False) %}
+{%- if external_notifications_enabled %}
+  {%- for topic in spec.get('features', {}).get('messaging', {}).get('notifications', {}).get('external', {}).get('topics', []) %}
+    {%- do notification_topics.append(topic) %}
+  {%- endfor %}
+{%- endif  %}
+{%- set neutron_backend = spec.features.neutron.get('backend', 'ml2') %}
+{%- set ovn_enabled = neutron_backend == 'ml2/ovn'%}
+{%- if ovn_enabled %}
+{%- set neutron_backend = "ml2" %}
+{%- endif %}
+{%- set baremetal_enabled = 'baremetal' in spec.features.services %}
+{%- set node_specific = {} %}
+{%- set overrides = namespace(enabled=false) %}
+{%- set dpdk = namespace(enabled=false) %}
+{%- for label, node_features in spec.get("nodes", {}).items() %}
+  {%- if "nova" in node_features.get("features", {}).keys() %}
+    {% set overrides.enabled = true %}
+  {%- endif  %}
+  {%- if node_features.get("features", {}).get("neutron", {}).get("sriov", {}).get("enabled", false) %}
+    {% set overrides.enabled = true %}
+  {%- endif  %}
+  {%- if node_features.get("features", {}).get("neutron", {}).get("dpdk", {}).get("enabled", false) %}
+    {% set dpdk.enabled = true %}
+  {%- endif  %}
+  {%- if node_features.get("features", {}) %}
+    {%- do node_specific.update({label: node_features.features}) %}
+  {%- endif %}
+{%- endfor %}
+
+{%- set signature = spec.get('features', {}).get('glance', {}).get("signature", {"enabled": false}) %}
+
+{%- set ephemeral_encryption = spec.get('features', {}).get('nova', {}).get('images', {}).get("encryption", {}) %}
+{%- set nova_db_cleanup = spec.get('features', {}).get('database', {}).get('cleanup', {}).get('nova', {'enabled': true}) %}
+{%- set cadf_audit = spec.get('features', {}).get('logging', {}).get('cadf', {'enabled': false}) %}
+{%- set cadf_audit_driver = spec.get('features', {}).get('logging', {}).get('cadf', {}).get('driver', 'messagingv2') %}
+
+{%- set libvirt_server_tls_enabled = spec.get('features', {}).get('nova', {}).get('libvirt', {}).get('tls', {}).get('enabled', false) %}
+{%- set nova_console = spec.get('features', {}).get('nova', {}).get('console', {}) %}
+{%- set spice_enabled = nova_console.get('spice', {}).get('enabled', false) %}
+{%- set vnc_enabled = nova_console.get('novnc', {}).get('enabled', true) %}
+{%- set vnc_tls_enabled = vnc_enabled and nova_console.get('novnc', {}).get('tls', {}).get('enabled', false) %}
+{%- set swtpm_enabled = false %}
+{%- if OSVer.antelope <= OSVer[spec.openstack_version] < OSVer.master %}
+  {%- set swtpm_enabled = true %}
+{%- endif %}
+# COMPUTE OVERCOMMITS
+{%- set compute_overcommits = {"cpu": 8.0, "disk": 1.6, "ram": 1.0} %}  # INTERNAL DEFAULTS
+{%- do compute_overcommits.update(spec.get('features', {}).get('nova', {}).get('allocation_ratios', {})) %}
+
+spec:
+  releases:
+{%- if 'compute' in components_with_dedicated_messaging %}
+  - name: openstack-nova-rabbitmq
+    chart: rabbitmq
+    values:
+{% include 'base/_rabbitmq_images.yaml' %}
+  {%- if stacklight_enabled %}
+      monitoring:
+        prometheus:
+          enabled: true
+  {%- endif %}
+      pod:
+        replicas:
+          server: 1
+        probes:
+          server:
+            rabbitmq:
+              readiness:
+                params:
+                  periodSeconds: 60
+                  timeoutSeconds: 30
+              liveness:
+                params:
+                  periodSeconds: 60
+                  timeoutSeconds: 30
+      manifests:
+        job_users_create: true
+        network_policy: {{ spec.features.network_policies.enabled }}
+        {%- if stacklight_enabled %}
+        monitoring:
+          prometheus:
+            configmap_bin: true
+            deployment_exporter: true
+            service_exporter: true
+        {%- endif %}
+{%- if spec.features.network_policies.enabled %}
+      network_policy:
+{% include 'base/network_policies/compute-rabbitmq.yaml' %}
+{%- endif %}
+      volume:
+        enabled: false
+      endpoints:
+        cluster_domain_suffix: {{ spec.internal_domain_name }}
+{% include 'base/_messaging_dedicated.yaml' %}
+      conf:
+        enabled_plugins:
+          - rabbitmq_management
+        {%- if stacklight_enabled %}
+          - rabbitmq_prometheus
+        {%- endif %}
+        users:
+          {{ messaging_service_creds(credentials, "nova", ["/nova"], enable_notifications=False)  }}
+        aux_conf:
+          policies:
+          - vhost: nova
+            name: default-policy
+            pattern: '^(?!amq\.).*'
+            definition:
+              message-ttl: 120000
+              expires: 600000
+          - vhost: nova
+            name: results_expire
+            pattern: '^results\.'
+            definition:
+              expires: 600000
+            priority: 1
+          - vhost: nova
+            name: tasks_expire
+            pattern: '^tasks\.'
+            definition:
+              expires: 600000
+            priority: 1
+  {%- if stacklight_enabled %}
+        prometheus_exporter:
+          rabbit_exporters: "overview,exchange,node"
+  {%- endif %}
+{%- endif %}
+  - name: openstack-libvirt
+    chart: libvirt
+    values:
+      images:
+        tags:
+{%- for image in ["image_repo_sync",
+                 "libvirt",
+                 "ceph_config_helper",
+                 "dep_check",] %}
+        {%- if image in images %}
+          {{ image }}: {{ images[image] }}
+        {%- endif %}
+{%- endfor %}
+# NODE SPECIFIC START
+{%- if overrides.enabled %}
+      overrides:
+        libvirt:
+          labels:
+  {%- for label, override in node_specific.items() %}
+    {%- set nova_override = override.get("nova", {}) %}
+            {{ label }}:
+              values:
+                conf:
+                  dynamic_options:
+                    libvirt:
+                      listen_interface: {{ nova_override.get("live_migration_interface", spec.features.nova.live_migration_interface) }}
+  {%- endfor %}
+{%- endif %}
+# NODE SPECIFIC END
+{%- if vnc_tls_enabled %}
+      secrets:
+        tls:
+          libvirt:
+            vnc:
+              vnc_server: libvirt-vnc-server-tls-certs
+      endpoints:
+        libvirt:
+          host_fqdn_override:
+            vnc_server:
+              tls:
+                ca: |
+{{ libvirt_vnc_certs.ca_cert | indent( width=18, first=True) }}
+                crt: |
+{{ libvirt_vnc_certs.server_cert | indent( width=18, first=True) }}
+                key: |
+{{ libvirt_vnc_certs.server_key | indent( width=18, first=True) }}
+{%- endif %}
+      manifests:
+        network_policy: false
+        ceph_conf: true
+{%- if vnc_tls_enabled %}
+        secret_libvirt_vnc_server_tls: true
+        secret_ca_bundle: true
+{%- endif %}
+{%- if libvirt_server_tls_enabled %}
+        secret_libvirt_server_tls: true
+{%- endif %}
+{%- if is_ceph_enabled %}
+      ceph_client:
+        configmap: rook-ceph-config
+        user_secret_name: {{ ceph.nova.secrets }}
+{%- endif %}
+      conf:
+        ceph:
+{%- if is_ceph_enabled %}
+          enabled: true
+          keyrings:
+            {{ ceph.cinder.username }}:
+              key: {{ ceph.cinder.keyring }}
+              secret_uuid: c9543a17-411c-45e1-8a25-3f03e0090dc2
+            {{ ceph.nova.username }}:
+              key: {{ ceph.nova.keyring }}
+              secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
+          cinder:
+            user: {{ ceph.nova.username }}
+          config:
+            global:
+              mon_host: {{ ceph.mon_host }}
+{%- else %}
+          enabled: false
+{%- endif %}
+        libvirt:
+          keepalive_count: 9
+          keepalive_interval: 10
+        {%- if libvirt_server_tls_enabled %}
+          listen_tcp: "0"
+          listen_tls: "1"
+        tls:
+          libvirt:
+            server:
+              ca:
+                cert: |
+{{ libvirt_certs.cert | indent( width=18, first=True) }}
+                key: |
+{{ libvirt_certs.key | indent( width=18, first=True) }}
+        {%- endif %}
+        qemu:
+          security_driver: apparmor
+        {%- if libvirt_server_tls_enabled %}
+          default_tls_x509_cert_dir: "/etc/pki/qemu"
+          default_tls_x509_verify: "1"
+        {%- endif %}
+        {%- if vnc_tls_enabled %}
+          vnc_tls: "1"
+          vnc_tls_x509_verify: "1"
+        {%- endif %}
+        dynamic_options:
+          libvirt:
+            listen_interface: {{ spec.features.nova.live_migration_interface }}
+      {%- if dpdk.enabled %}
+        apparmor:
+          templates:
+            TEMPLATE.qemu: |
+              # Managed by Kubernetes
+              # This profile is for the domain whose UUID matches this file.
+              #
+              #include <tunables/global>
+              profile LIBVIRT_TEMPLATE flags=(attach_disconnected) {
+                  #include <abstractions/libvirt-qemu>
+
+                  # allow mknod and rw in vhostuser dir, remove this workaround
+                  # when libvirt is upgraded to 7.10
+                  capability mknod,
+                  {%- if neutron_backend == 'tungstenfabric' %}
+                  /run/vrouter/* rw,
+                  {%- else %}
+                  /run/openvswitch/vhostuser/* rw,
+                  {%- endif %}
+              }
+      {%- endif %}
+      {%- if neutron_backend == 'tungstenfabric' %}
+      network:
+        backend: []
+      {%- endif %}
+      {%- if ovn_enabled %}
+      network:
+        backend:
+         - ovn
+      {%- endif %}
+      pod:
+        probes:
+          libvirt:
+            libvirt:
+              readiness:
+                params:
+                  initialDelaySeconds: 30
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+              liveness:
+                params:
+                  initialDelaySeconds: 30
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+{%- if OSVer[spec.openstack_version] <= OSVer.train %}
+      # in libvirt 4.0.0 there is no support of admin protocol to check virtlogd health
+            virtlogd:
+              readiness:
+                enabled: false
+              liveness:
+                enabled: false
+{%- endif %}
+{%- if spec.get('migration', {}).get('nova', {}).get('deploy_main_service', True) %}
+  - name: openstack-nova
+    chart: nova
+    values:
+      images:
+        tags:
+{%- for image in [
+    "nova_cell_setup_init",
+    "nova_placement",
+    "nova_placement_audit",
+    "nova_compute_ironic",
+    "nova_db_sync",
+    "nova_db_sync_online",
+    "nova_db_sync_db",
+    "nova_db_sync_api",
+    "nova_db_purge",
+    "db_drop",
+    "bootstrap",
+    "image_repo_sync",
+    "nova_compute_ssh",
+    "ks_endpoints",
+    "nova_api",
+    "db_init",
+    "nova_conductor",
+    "dep_check",
+    "nova_compute",
+    "nova_novncproxy",
+    "ks_user",
+    "ks_service",
+    "nova_spiceproxy",
+    "nova_scheduler",
+    "rabbit_init",
+    "nova_cell_setup",
+    "nova_consoleauth",
+    "test",
+    "nova_service_cleaner",] %}
+        {%- if image in images %}
+          {{ image }}: {{ images[image] }}
+        {%- endif %}
+{%- endfor %}
+      labels:
+        agent:
+          compute_ironic:
+            node_selector_key: openstack-control-plane
+            node_selector_value: enabled
+# NODE SPECIFIC START
+{%- if overrides.enabled %}
+      overrides:
+        nova_compute:
+          labels:
+  {%- for label, override in node_specific.items() %}
+    {%- set neutron_override = override.get("neutron", {}) %}
+    {%- set nova_override = override.get("nova", {}) %}
+    {%- if neutron_override.get("sriov", {}).get("enabled", False) or nova_override %}
+            {{ label }}:
+              values:
+      {%- if neutron_override.get("sriov", {}).get("enabled", False) %}
+                network:
+                  backend:
+                    - sriovnicswitch
+                  interface:
+                    sriov: {{ neutron_override.sriov.nics }}
+      {%- endif %}
+                conf:
+                  nova:
+                    DEFAULT:
+      {%- if OSVer[spec.openstack_version] <= OSVer.rocky %}
+                      cpu_allocation_ratio: {{ nova_override.get("allocation_ratios", {}).get("cpu", compute_overcommits["cpu"]) }}
+                      disk_allocation_ratio: {{ nova_override.get("allocation_ratios", {}).get("disk", compute_overcommits["disk"]) }}
+                      ram_allocation_ratio: {{ nova_override.get("allocation_ratios", {}).get("ram", compute_overcommits["ram"]) }}
+      {%- else %}
+                      initial_cpu_allocation_ratio: {{ nova_override.get("allocation_ratios", {}).get("cpu", compute_overcommits["cpu"]) }}
+                      initial_disk_allocation_ratio: {{ nova_override.get("allocation_ratios", {}).get("disk", compute_overcommits["disk"]) }}
+                      initial_ram_allocation_ratio: {{ nova_override.get("allocation_ratios", {}).get("ram", compute_overcommits["ram"]) }}
+                      cpu_allocation_ratio: 0
+                      disk_allocation_ratio: 0
+                      ram_allocation_ratio: 0
+      {%- endif %}
+      {%- if nova_override.get("images", {}).get("backend") %}
+        {%- if nova_override.images.backend == 'raw' %}
+                      force_raw_images: true
+                      use_cow_images: false
+        {%- endif %}
+      {%- endif %}
+      {%- if vnc_tls_enabled %}
+                    # Both auth schemes are enabled in favor of supporting backward compatibility
+                    # when VM instances were launched without TLS support.
+                    vnc:
+                      auth_schemes: vencrypt,none
+      {%- endif %}
+      {%- if nova_override.get("images", {}).get("backend") or nova_override.get("vcpu_type") %}
+                    libvirt:
+      {%- endif %}
+      {%- if nova_override.get("vcpu_type") in ("host-model", "host-passthrough") %}
+                      cpu_mode: {{ nova_override.vcpu_type }}
+      {%- elif nova_override.get("vcpu_type") and OSVer[spec.openstack_version] <= OSVer.stein %}
+                      cpu_mode: custom
+                      cpu_model: {{ nova_override.vcpu_type }}
+      {%- elif nova_override.get("vcpu_type") %}
+                      cpu_mode: custom
+                      cpu_models: {{ nova_override.vcpu_type }}
+      {%- endif %}
+      {%- if nova_override.get("images", {}).get("backend") %}
+        {%- if nova_override.images.backend == 'ceph' %}
+                      images_type: rbd
+        # 'local' option is deprecated and will be replaced to 'qcow2'
+        {%- elif nova_override.images.backend in ['local', 'qcow2'] %}
+                      images_type: qcow2
+        {%- elif nova_override.images.backend == 'raw' %}
+                      images_type: raw
+        {%- elif nova_override.images.backend == 'lvm' %}
+                      images_type: lvm
+                      images_volume_group: {{ nova_override.images.get('lvm', {}).get("volume_group", "nova-vol") }}
+          {%- if nova_override.get("images", {}).get("encryption", {}).get("enabled", false) %}
+                    ephemeral_storage_encryption:
+                      enabled: true
+                      cipher: {{ nova_override.images.encryption.get("cipher", "aes-xts-plain64") }}  # INTERNAL DEFAULT
+                      key_size: {{ nova_override.images.encryption.get("key_size", 256) }}  # INTERNAL DEFAULT
+          {%- endif %}
+        {%- endif %}
+      {%- endif %}
+      {%- if nova_override.get('live_migration_interface') %}
+                  libvirt:
+                    live_migration_interface: {{ nova_override.live_migration_interface }}
+                  hypervisor:
+                    host_interface: {{ nova_override.live_migration_interface }}
+      {%- endif %}
+      {%- if nova_override.get('live_migration_interface') or vnc_tls_enabled %}
+                console:
+                  novnc:
+      {%- endif %}
+      {%- if vnc_tls_enabled %}
+                    tls_enabled: true
+      {%- endif %}
+      {%- if nova_override.get('live_migration_interface') %}
+                    compute:
+                      vncserver_proxyclient_interface: {{ nova_override.live_migration_interface }}
+                {%- if spice_enabled %}
+                  spice:
+                    compute:
+                      server_proxyclient_interface: {{ nova_override.live_migration_interface }}
+                {%- endif %}
+      {%- endif %}
+    {%- endif %}
+  {%- endfor %}
+{%- endif %}
+# NODE SPECIFIC END
+      pod:
+        # NOTE(ohryhorov): use_fqdn is disabled not to use FQDN
+        # in service hostnames
+        use_fqdn:
+          compute: false
+        # NOTE(vsaienko): don't use host networking to be able to
+        # update pods with surge (when node hostport is used)
+        useHostNetwork:
+          novncproxy: false
+          spiceproxy: false
+        probes:
+          rpc_timeout: 30
+          rpc_retries: 2
+          compute:
+            default:
+              liveness:
+                enabled: True
+                params:
+                  initialDelaySeconds: 300
+                  periodSeconds: 50
+                  timeoutSeconds: 40
+              readiness:
+                enabled: True
+                params:
+                  initialDelaySeconds: 0
+                  periodSeconds: 50
+                  timeoutSeconds: 40
+          conductor:
+            default:
+              liveness:
+                enabled: True
+                params:
+                  initialDelaySeconds: 0
+                  periodSeconds: 50
+                  timeoutSeconds: 40
+              readiness:
+                enabled: True
+                params:
+                  initialDelaySeconds: 0
+                  periodSeconds: 50
+                  timeoutSeconds: 40
+          consoleauth:
+            default:
+              liveness:
+                enabled: True
+                params:
+                  initialDelaySeconds: 0
+                  periodSeconds: 50
+                  timeoutSeconds: 40
+              readiness:
+                enabled: True
+                params:
+                  initialDelaySeconds: 0
+                  periodSeconds: 50
+                  timeoutSeconds: 40
+          novncproxy:
+            default:
+              liveness:
+                enabled: True
+                params:
+                  initialDelaySeconds: 0
+              readiness:
+                enabled: True
+                params:
+                  initialDelaySeconds: 0
+          compute-spice-proxy:
+            default:
+              liveness:
+                enabled: True
+                params:
+                  initialDelaySeconds: 0
+              readiness:
+                enabled: True
+                params:
+                  initialDelaySeconds: 0
+          scheduler:
+            default:
+              liveness:
+                enabled: True
+                params:
+                  initialDelaySeconds: 0
+                  periodSeconds: 50
+                  timeoutSeconds: 40
+              readiness:
+                enabled: True
+                params:
+                  initialDelaySeconds: 0
+                  periodSeconds: 50
+                  timeoutSeconds: 40
+        replicas:
+          osapi: 3
+          placement: 3
+      dependencies:
+        static:
+          db_init:
+            jobs:
+              - openstack-mariadb-cluster-wait
+      manifests:
+        cron_job_db_purge: true
+        network_policy: {{ spec.features.network_policies.enabled }}
+        job_rabbit_init: false
+        ceph_conf: true
+{%- if OSVer[spec.openstack_version] >= OSVer.stein %}
+        deployment_consoleauth: false
+# Since Rocky placemnt is deployed as separate service
+        deployment_placement: false
+        ingress_placement: false
+        job_db_init_placement: false
+        job_ks_placement_endpoints: false
+        job_ks_placement_service: false
+        job_ks_placement_user: false
+        pdb_placement: false
+        secret_keystone_placement: false
+        service_ingress_placement: false
+        service_placement: false
+{%- endif %}
+        secret_ca_bundle: true
+      {%- if baremetal_enabled %}
+        statefulset_compute_ironic: true
+      {%- endif %}
+        secret_novncproxy_tls: {{ vnc_tls_enabled }}
+        service_ingress_novncproxy: {{ vnc_enabled }}
+        ingress_novncproxy: {{ vnc_enabled }}
+        service_ingress_spiceproxy: {{ spice_enabled }}
+        ingress_spiceproxy: {{ spice_enabled }}
+{%- if OSVer[spec.openstack_version] >= OSVer.ussuri %}
+        cron_job_placement_audit: true
+{%- endif %}
+{%- if spec.features.network_policies.enabled %}
+      network_policy:
+{% include 'base/network_policies/compute.yaml' %}
+{%- endif %}
+      endpoints:
+        cluster_domain_suffix: {{ spec.internal_domain_name }}
+{% include 'base/_admin_identity.yaml' %}
+{% include 'base/_cache.yaml' %}
+        oslo_db:
+          auth:
+            admin:
+              username: {{ admin_creds.database.username }}
+              password: {{ admin_creds.database.password }}
+            nova:
+              username: {{ credentials[0].database.user.username }}
+              password: {{ credentials[0].database.user.password }}
+        oslo_db_api:
+          auth:
+            admin:
+              username: {{ admin_creds.database.username }}
+              password: {{ admin_creds.database.password }}
+            nova:
+              username: {{ credentials[0].database.user.username }}
+              password: {{ credentials[0].database.user.password }}
+        oslo_db_cell0:
+          auth:
+            admin:
+              username: {{ admin_creds.database.username }}
+              password: {{ admin_creds.database.password }}
+            nova:
+              username: {{ credentials[0].database.user.username }}
+              password: {{ credentials[0].database.user.password }}
+{%- if 'compute' in components_with_dedicated_messaging %}
+{% include 'base/_messaging_dedicated.yaml' %}
+{%- else %}
+{% include 'base/_messaging_shared.yaml' %}
+{%- endif %}
+{% include 'base/_notifications.yaml' %}
+        compute:
+          host_fqdn_override:
+            public:
+              host: nova.{{ spec.public_domain_name }}
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+{%- if proxy_settings is defined %}
+{%- if proxy_settings.get("proxy_ca_certificate") %}
+{{ proxy_settings["proxy_ca_certificate"] | indent( width=18, first=True) }}
+{%- endif %}
+{%- endif %}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          hosts:
+            admin:
+              host: nova-api
+            default: nova
+            internal: nova-api
+            public:
+              host: nova
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          port:
+            api:
+              admin: 8774
+              default: 80
+              internal: 8774
+              public: 443
+          scheme:
+            default: http
+            public: https
+        placement:
+          host_fqdn_override:
+            public:
+              host: placement.{{ spec.public_domain_name }}
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          hosts:
+            admin:
+              host: placement-api
+            default: placement
+            internal: placement-api
+            public:
+              host: placement
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          port:
+            api:
+              admin: 8778
+              default: 80
+              internal: 8778
+              public: 443
+          scheme:
+            default: http
+            public: https
+{%- if vnc_enabled %}
+        compute_novnc_proxy:
+          host_fqdn_override:
+          {%- if vnc_tls_enabled %}
+            client:
+              tls:
+                ca: |
+{{ libvirt_vnc_certs.ca_cert | indent( width=18, first=True) }}
+                crt: |
+{{ libvirt_vnc_certs.client_cert | indent( width=18, first=True) }}
+                key: |
+{{ libvirt_vnc_certs.client_key | indent( width=18, first=True) }}
+          {%- endif %}
+            public:
+              host: novncproxy.{{ spec.public_domain_name }}
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent(width=18, first=True) }}
+{%- if vnc_tls_enabled %}
+{{ libvirt_vnc_certs.ca_cert | indent( width=18, first=True) }}
+{%- endif %}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent(width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent(width=18, first=True) }}
+          hosts:
+            default: nova-novncproxy
+            public:
+              host: novncproxy
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent(width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent(width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent(width=18, first=True) }}
+          port:
+            novnc_proxy:
+              default: 6080
+              public: 443
+          scheme:
+            default: http
+            public: https
+{%- endif %}
+{%- if spice_enabled %}
+        compute_spice_proxy:
+          host_fqdn_override:
+            public:
+              host: spiceproxy.{{ spec.public_domain_name }}
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent(width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent(width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent(width=18, first=True) }}
+          hosts:
+            default: nova-spiceproxy
+            public:
+              host: spiceproxy
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent(width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent(width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent(width=18, first=True) }}
+          port:
+            spice_proxy:
+              default: 6082
+              public: 443
+          scheme:
+            default: http
+            public: https
+{%- endif %}
+        compute_metadata:
+          host_fqdn_override:
+            public:
+              host: metadata.{{ spec.public_domain_name }}
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent(width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent(width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent(width=18, first=True) }}
+          hosts:
+            default: nova-metadata
+            public:
+              host: metadata
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent(width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent(width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent(width=18, first=True) }}
+          port:
+            metadata:
+              default: 8775
+              public: 443
+          scheme:
+            default: http
+            public: https
+{%- if is_ceph_enabled %}
+      ceph_client:
+        configmap: rook-ceph-config
+        user_secret_name: {{ ceph.nova.secrets }}
+{%- endif %}
+      conf:
+{%- if OSVer[spec.openstack_version] >= OSVer.yoga %}
+        inhibit_lock:
+          enabled: true
+{%- endif %}
+        policy.d:
+          01-controller-default.yaml: {{ service_policy }}
+          02-custom.yaml: {{ spec.get("features", {}).get("policies", {}).get("nova", {}) }}
+        ceph:
+{%- if is_ceph_enabled %}
+          enabled: true
+          cinder:
+            user: {{ ceph.nova.username }}
+          keyrings:
+            {{ ceph.cinder.username }}:
+              key: {{ ceph.cinder.keyring }}
+            {{ ceph.nova.username }}:
+              key: {{ ceph.nova.keyring }}
+          config:
+            global:
+              mon_host: {{ ceph.mon_host }}
+{%- else %}
+          enabled: false
+{%- endif %}
+# NOTE(pas-ha) see https://review.opendev.org/c/openstack/nova/+/685181
+{%- if OSVer[spec.openstack_version] >= OSVer.ussuri %}
+        paste:
+          composite:osapi_compute:
+            /v2: oscomputeversion_legacy_v2
+            /v2.1: oscomputeversion_v2
+            /v2/+: openstack_compute_api_v21_legacy_v2_compatible
+            /v2.1/+: openstack_compute_api_v21
+          pipeline:oscomputeversion_v2:
+            pipeline: cors compute_req_id faultwrap http_proxy_to_wsgi oscomputeversionapp_v2
+          pipeline:oscomputeversion_legacy_v2:
+            pipeline: cors compute_req_id faultwrap http_proxy_to_wsgi legacy_v2_compatible oscomputeversionapp_v2
+          app:oscomputeversionapp_v2:
+            paste.app_factory: nova.api.openstack.compute.versions:VersionsV2.factory
+{%- endif %}
+        nova:
+          DEFAULT:
+            # TODO(ohryhorov): set default availability zone to schedule instances
+            # to regular computes if AZ is not set in case of advanced computes are
+            # deployed as well.
+            default_schedule_zone: nova
+            allow_resize_to_same_host: true
+{%- if OSVer[spec.openstack_version] <= OSVer.rocky %}
+            cpu_allocation_ratio: {{ compute_overcommits.cpu }}
+            disk_allocation_ratio: {{ compute_overcommits.disk }}
+            ram_allocation_ratio: {{ compute_overcommits.ram }}
+{%- else %}
+            initial_cpu_allocation_ratio: {{ compute_overcommits.cpu }}
+            initial_disk_allocation_ratio: {{ compute_overcommits.disk }}
+            initial_ram_allocation_ratio: {{ compute_overcommits.ram }}
+            cpu_allocation_ratio: 0
+            disk_allocation_ratio: 0
+            ram_allocation_ratio: 0
+{%- endif %}
+{%- if spec.get('features', {}).get('nova', {}).get('images', {}).get('backend') == 'raw' %}
+            force_raw_images: true
+            use_cow_images: false
+{%- endif %}
+{%- if signature.enabled %}
+          glance:
+            verify_glance_signatures: true
+            enable_certificate_validation: {{ signature.get("certificate_validation", false) }}
+{%- endif %}
+          cache:
+            backend: oslo_cache.memcache_pool
+          keystone_authtoken:
+            memcache_security_strategy: ENCRYPT
+            memcache_secret_key: {{ credentials[0].memcached }}
+            {%- if OSVer[spec.openstack_version] >= OSVer.train %}
+            service_type: compute
+            {%- endif %}
+          ironic:
+            memcache_security_strategy: ENCRYPT
+            memcache_secret_key: {{ credentials[0].memcached }}
+          cinder:
+            # TODO(vsaienko): remove service_name when queens support is dropped.
+            catalog_info: volumev3:cinderv3:internalURL
+          neutron:
+            metadata_proxy_shared_secret: {{ metadata_secret }}
+{%- if 'metering' in spec.features.services %}
+          notifications:
+            notify_on_state_change: vm_and_task_state
+{%- endif %}
+{%- if ephemeral_encryption.get("enabled", false) %}
+          ephemeral_storage_encryption:
+            enabled: true
+            cipher: {{ ephemeral_encryption.get("cipher", "aes-xts-plain64") }}
+            key_size: {{ ephemeral_encryption.get("key_size", 256) }}
+{%- endif %}
+          filter_scheduler:
+            build_failure_weight_multiplier: 2.0
+{%- if neutron_backend == 'tungstenfabric' %}
+          compute:
+            live_migration_wait_for_vif_plug: false
+{%- endif %}
+{%- if neutron_backend == 'tungstenfabric' %}
+          os_vif_contrail_vrouter:
+            vrouter_port: {{ vrouter_port }}
+{%- else %}
+          os_vif_ovs:
+            isolate_vif: true
+{%- endif %}
+{%- if neutron_backend == 'tungstenfabric' or OSVer[spec.openstack_version] >= OSVer.ussuri %}
+          workarounds:
+  {%- if OSVer[spec.openstack_version] >= OSVer.ussuri %}
+            disable_fallback_pcpu_query: true
+  {%- endif %}
+  {%- if neutron_backend == 'tungstenfabric' %}
+            skip_migration_revert_events: true
+    {%- if OSVer[spec.openstack_version] >= OSVer.antelope %}
+            pass_hwveb_ports_to_os_vif_plugin: false
+    {%- endif %}
+  {%- else %}
+    {%- if OSVer[spec.openstack_version] >= OSVer.yoga %}
+            enable_qemu_monitor_announce_self: true
+    {%- endif %}
+  {%- endif %}
+{%- endif %}
+          libvirt:
+{%- set vcpu_type = spec.get("features", {}).get("nova", {}).get("vcpu_type", "host-model") %}  # INTERNAL DEFAULT
+{%- if vcpu_type in ("host-model", "host-passthrough") %}
+            cpu_mode: {{ vcpu_type }}
+{%- elif OSVer[spec.openstack_version] <= OSVer.stein %}
+            cpu_mode: custom
+            cpu_model: {{ vcpu_type }}
+{%- else %}
+            cpu_mode: custom
+            cpu_models: {{ vcpu_type }}
+{%- endif %}
+            live_migration_permit_auto_converge: true
+{%- if libvirt_server_tls_enabled %}
+            live_migration_scheme: tls
+            live_migration_with_native_tls: true
+{%- endif %}
+            virt_type: kvm
+{%- if is_ceph_enabled %}
+            rbd_user: {{ ceph.nova.username }}
+{%- endif %}
+{%- if swtpm_enabled %}
+            swtpm_enabled: true
+            swtpm_user: tss
+            swtpm_group: tss
+{%- endif %}
+{%- if spec.get('features', {}).get('nova', {}).get('images', {}).get('backend') == 'ceph' %}
+            images_type: rbd
+# 'local' option is deprecated and will be replaced to 'qcow2'
+{%- elif spec.get('features', {}).get('nova', {}).get('images', {}).get('backend') in ['local', 'qcow2'] %}
+            images_type: qcow2
+{%- elif spec.get('features', {}).get('nova', {}).get('images', {}).get('backend') == 'lvm' %}
+            images_type: lvm
+            images_volume_group: {{ spec.get('features', {}).get('nova', {}).get('images', {}).get('lvm', {}).get("volume_group", "nova-vol") }}
+{%- elif spec.get('features', {}).get('nova', {}).get('images', {}).get('backend') == 'raw' %}
+            images_type: raw
+{%- endif %}
+
+{%- if is_ceph_enabled %}
+  {%- for pools, pools_config in ceph.nova.pools.items() %}
+            images_rbd_pool: {{ pools_config.name }}
+  {%- endfor %}
+{%- endif %}
+{%- if cadf_audit.enabled %}
+          audit_middleware_notifications:
+            driver: {{ cadf_audit_driver }}
+{%- else %}
+          audit_middleware_notifications:
+            driver: noop
+{%- endif %}
+          oslo_messaging_notifications:
+            topics: {{ notification_topics|join(',') }}
+{% include 'base/_oslo_policy_enforce_defaults.yaml' %}
+          service_user:
+            send_service_user_token: true
+        {%- if vnc_tls_enabled %}
+          # Both auth schemes are enabled in favor of supporting backward compatibility
+          # when VM instances were launched without TLS support.
+          vnc:
+            auth_schemes: vencrypt,none
+        {%- endif %}
+          coordination:
+            backend_url: {{ get_etcd3_endpoint(spec.openstack_version, 'etcd3gw') }}
+      {%- if baremetal_enabled %}
+        nova_ironic:
+          DEFAULT:
+            compute_driver: ironic.IronicDriver
+            force_config_drive: true
+            reserved_host_memory_mb: 0
+            reserved_host_cpu: 0
+            reserved_host_disk_mb: 0
+          filter_scheduler:
+            track_instance_changes: false
+          scheduler:
+            discover_hosts_in_cells_interval: 120
+          ironic:
+            status_code_retries: 15
+            status_code_retry_delay: 15
+      {%- endif %}
+        logging:
+          logger_nova:
+            level: {{ spec.get('features', {}).get('logging', {}).get('nova', {}).get('level', 'INFO') }}
+          logger_os.brick:
+            level: {{ spec.get('features', {}).get('logging', {}).get('nova', {}).get('level', 'INFO') }}
+        ssh_private: |
+          {{ ssh_credentials.private|indent(10)|trim }}
+        ssh_public: |
+          {{ ssh_credentials.public }}
+      {%- if spec.get('features', {}).get('nova', {}).get('live_migration_interface') %}
+        libvirt:
+          live_migration_interface: {{ spec.features.nova.live_migration_interface }}
+        hypervisor:
+          host_interface: {{ spec.features.nova.live_migration_interface }}
+      {%- endif %}
+      console:
+        spice:
+          enabled: {{ spice_enabled }}
+        {%- if spec.get('features', {}).get('nova', {}).get('live_migration_interface') %}
+          compute:
+            server_proxyclient_interface: {{ spec.features.nova.live_migration_interface }}
+        {%- endif %}
+        novnc:
+          enabled: {{ vnc_enabled }}
+          tls_enabled: {{ vnc_tls_enabled }}
+        {%- if spec.get('features', {}).get('nova', {}).get('live_migration_interface') %}
+          compute:
+            vncserver_proxyclient_interface: {{ spec.features.nova.live_migration_interface }}
+        {%- endif %}
+      network:
+        core_plugin: {{ neutron_backend }}
+        {%- if neutron_backend == 'tungstenfabric' %}
+        backend: []
+        {%- endif %}
+        {%- if ovn_enabled %}
+        backend:
+         - ovn
+        {%- endif %}
+        sshd:
+          enabled: true
+        novncproxy:
+          ingress:
+            annotations:
+              nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+      jobs:
+{% include 'base/_ks_jobs.yaml' %}
+        db_purge:
+          enabled: {{ nova_db_cleanup.enabled }}
+          cron: {{ nova_db_cleanup.get("schedule", "1 1 * * 1") }}
+          script:
+            config:
+              age: {{ nova_db_cleanup.get("age", 30) }}
+              max_rows: {{ nova_db_cleanup.get("batch", 1000) }}
+{%- endif %}

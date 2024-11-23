@@ -1,0 +1,14 @@
+{%- from 'macros/connections.j2' import from_namespaces %}
+{%- set ns_list = ["os_controller", "lma_deployment"] | namespaces  %}
+{%- set gnocchi_api = "metric:gnocchi:Deployment:gnocchi-api" %}
+        api:
+          spec:
+            podSelector:
+              matchLabels:
+{{ service_childs[gnocchi_api].get_pod_labels() | toyaml | indent(16, first=True) }}
+            policyTypes:
+            - Ingress
+            ingress:
+{{ network_policies["ingress"][gnocchi_api] | toyaml | indent(14, first=True) }}
+              - from:
+{{ from_namespaces(ns_list, service_childs[gnocchi_api].get_np_ports(["gn-api"])) | indent(16) }}

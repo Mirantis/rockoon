@@ -1,0 +1,134 @@
+#apiVersion: lcm.mirantis.com/v1alpha1
+#kind: HelmBundle
+
+{%- set service = 'placement' %}
+{%- set logging = spec.get('features', {}).get('logging', {}) %}
+{%- set cadf_audit = logging.get('cadf', {}) %}
+{%- set cadf_audit_driver = logging.get('cadf', {}).get('driver', 'messagingv2') %}
+{%- set stacklight_enabled = spec.get('features', {}).get('stacklight', {}).get('enabled', False) %}
+{%- set notification_topics = ['notifications'] %}
+{%- do notification_topics.append('stacklight_notifications') if stacklight_enabled %}
+{%- set external_notifications_enabled = spec.get('features', {}).get('messaging', {}).get('notifications', {}).get('external', {}).get('enabled', False) %}
+{%- if external_notifications_enabled %}
+  {%- for topic in spec.get('features', {}).get('messaging', {}).get('notifications', {}).get('external', {}).get('topics', []) %}
+    {%- do notification_topics.append(topic) %}
+  {%- endfor %}
+{%- endif  %}
+spec:
+  releases:
+{%- if spec.get('migration', {}).get('placement', {}).get('deploy_main_service', True) %}
+  - name: openstack-placement
+    chart: placement
+    values:
+      images:
+        tags:
+{%- for image in [
+    "placement",
+    "ks_user",
+    "ks_service",
+    "ks_endpoints",
+    "db_init",
+    "db_drop",
+    "placement_db_sync",
+    "placement_db_nova_migrate_placement",
+    "dep_check",
+    "image_repo_sync", ] %}
+        {%- if image in images %}
+          {{ image }}: {{ images[image] }}
+        {%- endif %}
+{%- endfor %}
+      dependencies:
+        static:
+          db_init:
+            jobs:
+              - openstack-mariadb-cluster-wait
+      pod:
+        replicas:
+          api: 1
+      conf:
+        policy.d:
+          01-controller-default.yaml: {{ service_policy }}
+          02-custom.yaml: {{ spec.get("features", {}).get("policies", {}).get("placement", {}) }}
+        placement:
+          keystone_authtoken:
+            memcache_security_strategy: ENCRYPT
+            memcache_secret_key: {{ credentials[0].memcached }}
+            {%- if OSVer[spec.openstack_version] >= OSVer.train %}
+            service_type: placement
+            {%- endif %}
+          audit_middleware_notifications:
+          {%- if cadf_audit.enabled %}
+            driver: {{ cadf_audit_driver }}
+          audit:
+            enabled: true
+          {%- else %}
+            driver: noop
+          {%- endif %}
+          oslo_messaging_notifications:
+            topics: {{ notification_topics|join(',') }}
+{% include 'base/_oslo_policy_enforce_defaults.yaml' %}
+        logging:
+          logger_placement:
+            level: {{ spec.get('features', {}).get('logging', {}).get('placement', {}).get('level', 'INFO') }}
+      manifests:
+        network_policy: {{ spec.features.network_policies.enabled }}
+        secret_ca_bundle: true
+{%- if spec.features.network_policies.enabled %}
+      network_policy:
+{% include 'base/network_policies/placement.yaml' %}
+{%- endif %}
+      endpoints:
+        cluster_domain_suffix: {{ spec.internal_domain_name }}
+{% include 'base/_admin_identity.yaml' %}
+{% include 'base/_cache.yaml' %}
+{% include 'base/_notifications.yaml' %}
+        oslo_db:
+          auth:
+            admin:
+              username: {{ admin_creds.database.username }}
+              password: {{ admin_creds.database.password }}
+            placement:
+              username: {{ credentials[0].database.user.username }}
+              password: {{ credentials[0].database.user.password }}
+        placement:
+          host_fqdn_override:
+            public:
+              host: placement.{{ spec.public_domain_name }}
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+{%- if proxy_settings is defined %}
+{%- if proxy_settings.get("proxy_ca_certificate") %}
+{{ proxy_settings["proxy_ca_certificate"] | indent( width=18, first=True) }}
+{%- endif %}
+{%- endif %}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          hosts:
+            admin:
+              host: placement-api
+            default: placement
+            internal: placement-api
+            public:
+              host: placement
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          port:
+            api:
+              admin: 8778
+              default: 80
+              internal: 8778
+              public: 443
+          scheme:
+            default: http
+            public: https
+      jobs:
+{% include 'base/_ks_jobs.yaml' %}
+{%- endif %}

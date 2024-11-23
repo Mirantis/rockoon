@@ -1,0 +1,9 @@
+parameters:
+  neutron:
+    server:
+      message_queue:
+        ~members:
+        - host: ${_param:mcp2_rabbitmq_neutron_address}
+        password: ${_param:mcp2_rabbitmq_neutron_password}
+        user: ${_param:mcp2_rabbitmq_neutron_username}
+        virtual_host: 'neutron'

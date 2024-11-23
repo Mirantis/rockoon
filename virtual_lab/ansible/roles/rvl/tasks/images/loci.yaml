@@ -1,0 +1,47 @@
+- name: Clone LOCI repository
+  ansible.builtin.git:
+    repo: "{{ rvl_images_loci_repo }}"
+    dest: "{{ rvl_images_loci_path }}"
+    refspec: "{{ rvl_images_loci_refspec }}"
+    version: "{{ rvl_images_loci_branch }}"
+
+- name: Template a file osdpl /src/loci-images-profile.yaml
+  ansible.builtin.template:
+    src: images/loci/profiles/{{ rvl_images_loci_build_profile }}.yaml
+    dest: "/src/loci-images-profile.yaml"
+    owner: bin
+    group: root
+    mode: '0644'
+  vars:
+    images_base_url: "{{ rvl_images_public_base_url }}"
+
+- name: Build images
+  ansible.builtin.script:
+    cmd: "loci.py  --loci-path={{ rvl_images_loci_path }} --config /src/loci-images-profile.yaml build --image-path {{ rvl_images_loci_registry }}/openstack --image-tag {{ rvl_images_build_tag }} --push"
+
+- name: Create a openstack namespace
+  kubernetes.core.k8s:
+    name: openstack
+    api_version: v1
+    kind: Namespace
+    state: present
+
+# Create images override configmap
+- name: Create imagess override config map
+  kubernetes.core.k8s:
+    namespace: openstack
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: osh-dev-artifacts
+        labels:
+          penstack.lcm.mirantis.com/watch: "true"
+      data:
+        caracal: |
+          {% for component, images in rvl_images_loci_images_mapping.items() %}
+          {% for image in images %}
+          {{ image }}: {{ rvl_images_loci_registry }}/openstack/{{ component }}:{{ rvl_images_build_tag }}
+          {% endfor %}
+          {% endfor %}
+    state: present

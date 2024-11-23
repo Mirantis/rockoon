@@ -1,0 +1,312 @@
+# Default values for rockoon.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+global:
+  # set by LCM
+  # clusterRelease: 8.4.0-rc+22.1
+  dockerBaseUrl: mirantis.azurecr.io
+  helmBaseUrl: https://binary.mirantis.com
+  proxy:
+    enabled: false
+  podNetworks:
+  - cidr: 192.168.0.0/16
+
+replicaCount: 1
+
+image:
+  repository: openstack
+  name: rockoon
+  tag: 0.3.20
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: "rockoon"
+
+osdpl:
+  namespace: openstack
+  logging.conf:
+    disable_existing_loggers: false
+    formatters:
+      standard:
+        format: '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+    handlers:
+      default:
+        class: logging.StreamHandler
+        formatter: standard
+        stream: ext://sys.stdout
+    loggers:
+      rockoon:
+        level: INFO
+      aiohttp:
+        level: WARNING
+      kopf:
+        level: INFO
+      kopf.activities.probe:
+        level: WARNING
+      opensearch:
+        level: WARNING
+    root:
+      handlers:
+      - default
+      level: INFO
+    version: 1
+  settings:
+    raw:
+      OSCTL_NODE_NOT_READY_FLAPPING_TIMEOUT: 120
+      OSCTL_HELMBUNDLE_APPLY_DELAY: 10
+      #Redis namespace, should be different from osdpl namespace to avoid conflicts.
+      OSCTL_REDIS_NAMESPACE: "openstack-redis"
+      OS_CLIENT_CONFIG_FILE: "/etc/openstack/clouds.yaml"
+    osdpl:
+      raw: {}
+    osdplstatus:
+      raw: {}
+    node:
+      raw: {}
+    secrets:
+      raw: {}
+    health:
+      raw:
+        PYTHONASYNCIODEBUG: 1
+        KOPF_RUN_DEBUG: 1
+    node_maintenance_request:
+      raw:
+        OSCTL_MAINTENANCE_PARALLEL_MAX_COMPUTE: 30
+    tf_secrets: {}
+    ceph_secrets: {}
+  pod:
+    controller:
+      security_context:
+        runAsUser: 42424
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+        # NOTE(vsaienko): The range 32768 60999 is default range used by application
+        # to bind on local ports. Exclude 32768 - 32799 and use them for health probes
+        sysctls:
+        - name: net.ipv4.ip_local_port_range
+          value: 32800 60999
+      osdpl:
+        liveness:
+          params:
+            initialDelaySeconds: 120
+            periodSeconds: 60
+            timeoutSeconds: 5
+            # TODO(vsaienko): refactor resource_view to be initialized once
+            # as reading templates may take some time on loaded nodes.
+            failureThreshold: 10
+        security_context: &security_context
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+      osdplstatus:
+        liveness:
+          params:
+            initialDelaySeconds: 120
+            periodSeconds: 60
+            timeoutSeconds: 5
+        security_context: *security_context
+      health:
+        liveness:
+          params:
+            initialDelaySeconds: 120
+            periodSeconds: 60
+            timeoutSeconds: 5
+        security_context: *security_context
+      node:
+        liveness:
+          params:
+            initialDelaySeconds: 120
+            periodSeconds: 60
+            timeoutSeconds: 5
+        security_context: *security_context
+      secrets:
+        liveness:
+          params:
+            initialDelaySeconds: 120
+            periodSeconds: 60
+            timeoutSeconds: 5
+        security_context: *security_context
+      configmaps:
+        liveness:
+          params:
+            initialDelaySeconds: 120
+            periodSeconds: 60
+            timeoutSeconds: 5
+        security_context: *security_context
+      node_maintenance_request:
+        liveness:
+          params:
+            initialDelaySeconds: 120
+            periodSeconds: 60
+            timeoutSeconds: 5
+        security_context: *security_context
+      ceph_secrets:
+        liveness:
+          params:
+            initialDelaySeconds: 120
+            periodSeconds: 60
+            timeoutSeconds: 5
+        security_context: *security_context
+      tf_secrets:
+        liveness:
+          params:
+            initialDelaySeconds: 120
+            periodSeconds: 60
+            timeoutSeconds: 5
+        security_context: *security_context
+      convert_credentials:
+        security_context: *security_context
+      check_osdplsecrets:
+        security_context: *security_context
+    ensure_resources:
+      security_context:
+        runAsUser: 42424
+        runAsNonRoot: true
+      ensure_resources:
+        security_context:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+
+tf:
+  createSharedNamespace: true
+  sharedNamespace: openstack-tf-shared
+
+stacklight:
+  createSharedNamespace: true
+  sharedNamespace: openstack-lma-shared
+
+ceph:
+  createSharedNamespace: true
+  cephSharedNamespace: openstack-ceph-shared
+
+external_topics:
+  createSharedNamespace: true
+  sharedNamespace: openstack-external
+
+admission:
+  enabled: true
+  replicaCount: 1
+  cluster_domain_suffix: cluster.local
+  network_policy:
+    enabled: true
+  settings:
+    raw:
+      OSCTL_ADMISSION_BIND_PORT: 8443
+  pod:
+    controller:
+      security_context:
+        runAsUser: 42424
+        runAsNonRoot: true
+      admission:
+        security_context:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+
+node_maintenance:
+  enabled: true
+  create_crd: true
+  # webhook needs to run with TLS. By default certificates are generated automatically,
+  # if needed can be overridden manually here
+  #tls:
+    #crt:
+    #key:
+    #ca:
+
+iam:
+  enabled: false
+#  client: os
+#  oidcCASecret: oidc-cert
+#  url: https://172.16.43.149
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector:
+  openstack-control-plane: enabled
+
+tolerations: []
+
+affinity: {}
+
+exporter:
+  enabled: true
+  cmd:
+   - uwsgi
+   - --http
+   - 0.0.0.0:9102
+   - --wsgi-file
+   - /usr/local/bin/osctl-exporter
+   - --enable-threads
+   - --threads
+   - "128"
+   - --http-keepalive
+   - --need-app
+  pod:
+    exporter:
+      security_context:
+        runAsUser: 42424
+        runAsNonRoot: true
+      exporter:
+        security_context: *security_context
+    liveness:
+      params:
+        # NOTE(vsaienko): this will call metric polling, use 5 min probe to
+        # do not cause high load
+        initialDelaySeconds: 60
+        periodSeconds: 300
+        timeoutSeconds: 120
+    readiness:
+      params:
+        initialDelaySeconds: 10
+        periodSeconds: 60
+        timeoutSeconds: 5
+  settings:
+    certificates:
+      certs_info:
+        libvirt_vnc_server:
+          name: libvirt-vnc-tls-certs
+          namespace: openstack
+          key_name: server_cert
+        libvirt_vnc_client:
+          name: libvirt-vnc-tls-certs
+          namespace: openstack
+          key_name: client_cert
+        octavia_amphora_ca:
+          name: octavia-certs
+          namespace: openstack
+          key_name: cert
+        keystone_public:
+          name: keystone-tls-public
+          namespace: openstack
+          key_name: tls.crt
+        libvirt_server_ca:
+          name: libvirt-server-tls-certs
+          namespace: openstack
+          key_name: cert
+        rabbitmq_server:
+          name: rabbitmq-external-certs
+          namespace: openstack
+          key_name: server_cert
+        rabbitmq_client:
+          name: rabbitmq-external-certs
+          namespace: openstack
+          key_name: client_cert
+    raw:
+      OSCTL_EXPORTER_BIND_PORT: 9102
+  network_policy:
+    enabled: true

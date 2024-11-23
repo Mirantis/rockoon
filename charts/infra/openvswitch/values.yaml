@@ -1,0 +1,525 @@
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Default values for openvswitch.
+# This is a YAML-formatted file.
+# Declare name/value pairs to be passed into your templates.
+# name: value
+
+---
+release_group: null
+
+images:
+  tags:
+    openvswitch_db_server: docker.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
+    openvswitch_ovn_db_nb: docker.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
+    openvswitch_ovn_db_sb: docker.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
+    openvswitch_ovn_northd: docker.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
+    openvswitch_ovn_vswitchd: docker.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
+    openvswitch_ovn_db: docker.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
+    openvswitch_ovn_controller: docker.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
+    openvswitch_vswitchd: docker.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
+    openvswitch_vswitchd_dpdk: docker.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
+    dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
+    image_repo_sync: docker.io/docker:17.07.0
+  pull_policy: "IfNotPresent"
+  local_registry:
+    active: false
+    exclude:
+      - dep_check
+      - image_repo_sync
+
+labels:
+  ovs:
+    node_selector_key: openvswitch
+    node_selector_value: enabled
+  ovn_db:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  ovn_northd:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  ovn_controller:
+    node_selector_key: openvswitch
+    node_selector_value: enabled
+
+
+pod:
+  replicas:
+    ovn_db: 3
+    ovn_northd: 1
+  affinity:
+    anti:
+      type:
+        default: requiredDuringSchedulingIgnoredDuringExecution
+      topologyKey:
+        default: kubernetes.io/hostname
+      weight:
+        default: 10
+  cmd:
+    startup:
+      ovs_vswitchd:
+        ovs_vswitchd:
+          cmd_args: "-vconsole:emer -vconsole:err -vconsole:info"
+
+  probes:
+    ovn:
+      northd:
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+        readiness:
+          enabled: true
+          params:
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            timeoutSeconds: 5
+      nb:
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+        readiness:
+          enabled: true
+          params:
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            timeoutSeconds: 5
+      sb:
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+        readiness:
+          enabled: true
+          params:
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            timeoutSeconds: 5
+      vswitchd:
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+        readiness:
+          enabled: true
+          params:
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            timeoutSeconds: 5
+      controller:
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+        readiness:
+          enabled: true
+          params:
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            timeoutSeconds: 5
+      db:
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+        readiness:
+          enabled: true
+          params:
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            timeoutSeconds: 5
+    ovs_vswitchd:
+      ovs_vswitchd:
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+        readiness:
+          enabled: true
+          params:
+            failureThreshold: 3
+            periodSeconds: 10
+            timeoutSeconds: 1
+      ovs_db:
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+        readiness:
+          enabled: true
+          params:
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            timeoutSeconds: 5
+  security_context:
+    openvswitch_ovn_db:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+      container:
+        perms:
+          runAsUser: 0
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: false
+          capabilities:
+            drop:
+              - ALL
+            add:
+              - CHOWN
+              - DAC_READ_SEARCH
+        nb:
+          runAsUser: 42424
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+        sb:
+          runAsUser: 42424
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+    openvswitch_ovn_northd:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+      container:
+        perms:
+          runAsUser: 0
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: false
+          capabilities:
+            drop:
+              - ALL
+            add:
+              - CHOWN
+              - DAC_READ_SEARCH
+        northd:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+    openvswitch_ovn_controller:
+      pod:
+        runAsUser: 0
+        runAsNonRoot: false
+      container:
+        modules:
+          capabilities:
+            drop:
+              - ALL
+            add:
+              - SYS_MODULE
+              - SYS_CHROOT
+          readOnlyRootFilesystem: true
+        perms:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+            add:
+              - CHOWN
+              - DAC_READ_SEARCH
+        db:
+          runAsUser: 42424
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+        controller:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+            # OVS DB is running under non-root user,
+            # so ovn controller need access to OVS DB unix socket
+            add:
+              - DAC_OVERRIDE
+        vswitchd:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            add:
+              - NET_ADMIN
+              # NET_RAW capability is needed to run tcpdump inside container
+              - NET_RAW
+    openvswitch_vswitchd:
+      pod:
+        runAsUser: 0
+      container:
+        perms:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+            add:
+              - CHOWN
+              - DAC_READ_SEARCH
+        modules:
+          runAsUser: 0
+          capabilities:
+            drop:
+              - ALL
+            add:
+              - SYS_MODULE
+              - SYS_CHROOT
+          readOnlyRootFilesystem: true
+        db:
+          runAsUser: 42424
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+        vswitchd:
+          runAsUser: 0
+          readOnlyRootFilesystem: true
+          capabilities:
+           add:
+             - NET_ADMIN
+             # NET_RAW capability is needed to run tcpdump inside container
+             - NET_RAW
+  dns_policy: "ClusterFirstWithHostNet"
+  lifecycle:
+    upgrades:
+      daemonsets:
+        pod_replacement_strategy: RollingUpdate
+        ovs_db:
+          enabled: true
+          min_ready_seconds: 0
+          max_unavailable: 1
+        ovs_vswitchd:
+          enabled: true
+          min_ready_seconds: 0
+          max_unavailable: 1
+  resources:
+    enabled: false
+    ovs:
+      db:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      vswitchd:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+          # set resources to enabled and specify one of the following when using dpdk
+          # hugepages-1Gi: "1Gi"
+          # hugepages-2Mi: "512Mi"
+    ovn_db:
+      sb:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      nb:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+    ovn_northd:
+      northd:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+    ovn_controller:
+      perms:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+      db:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      vswitch:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      controller:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+    jobs:
+      image_repo_sync:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+  user:
+    nova:
+      uid: 42424
+
+endpoints:
+  cluster_domain_suffix: cluster.local
+  local_image_registry:
+    name: docker-registry
+    namespace: docker-registry
+    hosts:
+      default: localhost
+      internal: docker-registry
+      node: localhost
+    host_fqdn_override:
+      default: null
+    port:
+      registry:
+        node: 5000
+  ovn_db:
+    namespace: null
+    hosts:
+      default: ovn-db
+      direct: ovn-db
+      discovery: ovn-discovery
+    host_fqdn_override:
+      default: null
+    path: null
+    scheme: tcp
+    port:
+      sb:
+        default: 6642
+        raft: 6644
+      nb:
+        default: 6641
+        raft: 6643
+network_policy:
+  openvswitch:
+    ingress:
+      - {}
+    egress:
+      - {}
+network:
+  ovn_discovery: {}
+  ovn_master: {}
+  interface:
+    tunnel: null
+dependencies:
+  dynamic:
+    common:
+      local_image_registry:
+        jobs:
+          - openvswitch-image-repo-sync
+        services:
+          - endpoint: node
+            service: local_image_registry
+  static:
+    db: null
+    openvswitch_ovn_db: null
+    image_repo_sync:
+      services:
+        - endpoint: internal
+          service: local_image_registry
+
+manifests:
+  configmap_bin: true
+  daemonset_ovs_db: true
+  daemonset_ovs_vswitchd: true
+  statefulset_ovn_db: false
+  statefulset_ovn_northd: false
+  daemonset_ovn_controller: false
+  job_image_repo_sync: true
+  network_policy: false
+  service_discovery_ovn_db: false
+  service_master_ovn_db: false
+conf:
+  openvswitch_db_server:
+    ptcp_port: null
+  ovs_other_config:
+    "n-handler-threads": null
+    "n-revalidator-threads": null
+  external-ids:
+    #ovn-bridge-mappings: "external:br-ex"
+    # For gateway node
+    #ovn-cms-options="enable-chassis-as-gw"
+    ovn-encap-type: geneve
+  neutron:
+    DEFAULT:
+      support_sync_ovs_info: true
+      state_path: "/var/lib/neutron"
+  ovs_dpdk:
+    enabled: false
+    ## Mandatory parameters. Please uncomment when enabling DPDK
+    # socket_memory: 1024
+    # hugepages_mountpath: /dev/hugepages
+    # vhostuser_socket_dir: vhostuser
+    #
+    ## Optional hardware specific parameters: modify to match NUMA topology
+    # mem_channels: 4
+    # lcore_mask: 0x1
+    # pmd_cpu_mask: 0x4
+    #
+    ## Optional driver to use. Driver name should be the same as the one
+    ## specified in the ovs_dpdk section in the Neutron values and vice versa
+    driver: uio_pci_generic
+    #
+    ## Optional security feature
+    #     vHost IOMMU feature restricts the vhost memory that a virtio device
+    #     access, available with DPDK v17.11
+    # vhost_iommu_support: true
+volume:
+  ovn_db:
+    enabled: true
+    size: 1G
+    class_name: default
+...

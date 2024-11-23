@@ -1,0 +1,67 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.configmap_bin }}
+{{- $envAll := . }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: glance-bin
+data:
+{{- if .Values.images.local_registry.active }}
+  image-repo-sync.sh: |
+{{- include "helm-toolkit.scripts.image_repo_sync" . | indent 4 }}
+{{- end }}
+{{- if .Values.bootstrap.enabled }}
+  bootstrap.py: |
+{{ tuple "bin/_bootstrap.py.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{- end }}
+  barbican-cert-init.py: |
+{{ tuple "bin/_barbican_cert_init.py.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  metadefs-load.sh: |
+{{ tuple "bin/_metadefs-load.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  db-init.py: |
+{{- include "helm-toolkit.scripts.db_init" . | indent 4 }}
+  db-sync.sh: |
+{{ tuple "bin/_db-sync.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  cacert-init.sh: |
+{{ tuple "bin/_cacert-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  db-drop.py: |
+{{- include "helm-toolkit.scripts.db_drop" . | indent 4 }}
+  db-expand.sh: |
+{{ tuple "bin/_db-expand.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  db-migrate.sh: |
+{{ tuple "bin/_db-migrate.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  db-contract.sh: |
+{{ tuple "bin/_db-contract.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  ks-service.py: |
+{{- include "helm-toolkit.scripts.keystone_service" . | indent 4 }}
+  ks-endpoints.py: |
+{{- include "helm-toolkit.scripts.keystone_endpoints" . | indent 4 }}
+  ks-user.py: |
+{{- include "helm-toolkit.scripts.keystone_user" . | indent 4 }}
+  glance-api.sh: |
+{{ tuple "bin/_glance-api.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  glance-init-config.py: |
+{{ tuple "bin/_glance-init-config.py.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  glance-registry.sh: |
+{{ tuple "bin/_glance-registry.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{- if .Values.manifests.certificates }}
+  nginx.sh: |
+{{ tuple "bin/_nginx.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{- end }}
+  iscsiadm: |
+{{ tuple "bin/_iscsiadm.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{- end }}

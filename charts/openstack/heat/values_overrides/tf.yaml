@@ -1,0 +1,9 @@
+---
+network:
+  core_plugin: tungstenfabric
+conf:
+  heat:
+    clients_contrail:
+        api_server: config-api-server.tungsten-fabric.svc.cluster.local
+        api_port: 8082
+...

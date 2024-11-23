@@ -1,0 +1,39 @@
+#apiVersion: lcm.mirantis.com/v1alpha1
+#kind: HelmBundle
+
+{%- set stacklight_enabled = spec.get('features', {}).get('stacklight', {}).get('enabled', False) %}
+
+spec:
+  releases:
+  - name: openstack-memcached
+    chart: memcached
+    values:
+      images:
+        tags:
+{%- for image in [
+    "dep_check",
+    "memcached",
+    "prometheus_memcached_exporter",
+    "image_repo_sync",] %}
+        {%- if image in images %}
+          {{ image }}: {{ images[image] }}
+        {%- endif %}
+{%- endfor %}
+  {%- if stacklight_enabled %}
+      monitoring:
+        prometheus:
+          enabled: true
+  {%- endif %}
+      manifests:
+        network_policy: {{ spec.features.network_policies.enabled }}
+        statefulset: true
+        deployment: false
+{%- if spec.features.network_policies.enabled %}
+      network_policy:
+{% include 'base/network_policies/memcached.yaml' %}
+{%- endif %}
+      endpoints:
+        cluster_domain_suffix: {{ spec.internal_domain_name }}
+      pod:
+        replicas:
+          server: 3

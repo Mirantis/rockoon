@@ -1,0 +1,246 @@
+# Copyright 2019 The Openstack-Helm Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Default values for stepler tests.
+# This is a YAML-formatted file.
+# Declare name/value pairs to be passed into your templates.
+# name: value
+
+labels:
+  job:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+
+images:
+  tags:
+    dep_check: quay.io/stackanetes/kubernetes-entrypoint:v0.3.1
+    stepler_run_tests: docker-dev-kaas-local.docker.mirantis.net/openstack/stepler:ussuri-20201224173522
+    ks_user: docker.io/openstackhelm/heat:ocata-ubuntu_xenial
+    bootstrap: docker.io/openstackhelm/heat:ocata-ubuntu_xenial
+  pull_policy: "IfNotPresent"
+  local_registry:
+    active: false
+    exclude:
+      - dep_check
+
+network: {}
+
+bootstrap:
+  enabled: true
+  ks_user: admin
+
+jobs:
+  run_tests:
+    backoffLimit: 6
+    restartPolicy: OnFailure
+
+pod:
+  user:
+    steppler:
+      uid: 1000
+  security_context:
+    ks_user:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+      container:
+        ks_user:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    bootstrap:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+      container:
+        bootstrap:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+  resources:
+    enabled: false
+    jobs:
+      ks_user:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      bootstrap:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      run_tests:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+
+dependencies:
+  dynamic:
+    job_bootstrap:
+      run_tests:
+        jobs:
+          - stepler-bootstrap
+  static:
+    ks_user:
+      services:
+      - service: identity
+        endpoint: internal
+    bootstrap:
+      jobs:
+      - stepler-ks-user
+      services:
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: network
+    run_tests:
+      jobs:
+      - stepler-ks-user
+      services:
+      - service: identity
+        endpoint: internal
+      - service: dashboard
+        endpoint: internal
+
+conf:
+  script: |
+    pytest stepler/horizon -v --skip-file /etc/stepler/skiplist.yaml --junitxml="/opt/stepler/test_reports/integration_test_results.xml" --html="/opt/stepler/test_reports/integration_test_results.html"
+  skiplist: |
+    85461edd-7c82-4c27-ad19-d3af178818fe:
+      reason: Glance API v1 is disabled
+  stepler_env:
+    TEST_REPORTS_DIR: /opt/stepler/test_reports/
+  # TODO(vsaienko): move stepler to oslo.conf at some point.
+  stepler: {}
+
+pvc:
+  enabled: true
+  name: pvc-stepler
+  requests:
+    storage: 2Gi
+  storage_class: general
+
+secrets:
+  identity:
+    admin: stepler-keystone-admin
+    stepler: stepler-keystone-user
+
+endpoints:
+  cluster_domain_suffix: cluster.local
+  local_image_registry:
+    name: docker-registry
+    namespace: docker-registry
+    hosts:
+      default: localhost
+      internal: docker-registry
+      node: localhost
+    host_fqdn_override:
+      default: null
+    port:
+      registry:
+        node: 5000
+  identity:
+    name: keystone
+    auth:
+      admin:
+        region_name: RegionOne
+        username: admin
+        password: password
+        project_name: admin
+        user_domain_name: default
+        project_domain_name: default
+        domain: Default
+        home_project: admin
+      stepler:
+        role: admin
+        region_name: RegionOne
+        username: stepler
+        password: password
+        project_name: admin
+        user_domain_name: default
+        project_domain_name: default
+        domain: Default
+        home_project: admin
+    hosts:
+      default: keystone
+      internal: keystone-api
+    host_fqdn_override:
+      default: null
+    path:
+      default: /v3
+    scheme:
+      default: http
+    port:
+      api:
+        default: 80
+        internal: 5000
+  dashboard:
+    name: horizon
+    hosts:
+      default: horizon-int
+      public: horizon
+    host_fqdn_override:
+      default: null
+      # NOTE(portdirect): this chart supports TLS for fqdn over-ridden public
+      # endpoints using the following format:
+      # public:
+      #   host: null
+      #   tls:
+      #     crt: null
+      #     key: null
+    path:
+      default: null
+    scheme:
+      default: http
+    port:
+      web:
+        default: 80
+  network:
+    name: neutron
+    hosts:
+      default: neutron-server
+      public: neutron
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    scheme:
+      default: 'http'
+    port:
+      api:
+        default: 9696
+        public: 80
+
+manifests:
+  secret_ca_bundle: false
+  configmap_bin: true
+  configmap_etc: true
+  job_bootstrap: false
+  job_ks_user: true
+  job_run_tests: true
+  secret_keystone: true

@@ -1,0 +1,61 @@
+builder:
+  projects:
+    - requirements
+    - keystone
+    - glance
+    - horizon
+    - neutron
+    - nova
+    - placement
+  docker_build_args: &build_args_common
+    REGISTRY_PROTOCOL: https
+    REGISTRY_INSECURE: True
+    FROM: "{{ rvl_images_ubuntu_base }}"
+    PROJECT_REF: stable/2024.1
+  projects_configs:
+    requirements:
+      docker_build_args:
+        <<: *build_args_common
+        KEEP_ALL_WHEELS: True
+    keystone:
+      docker_build_args:
+        <<: *build_args_common
+        PROFILES: 'apache openidc fluent ldap'
+    horizon:
+      docker_build_args:
+        <<: *build_args_common
+        PROFILES: 'apache fluent'
+        PIP_PACKAGES: 'pymemcache'
+    glance:
+      docker_build_args:
+        <<: *build_args_common
+        PROFILES: 'apache ceph fluent'
+        # NOTE(vsaienko): boto3 is requirement of s3 storage
+        PIP_PACKAGES: 'python-cinderclient os-brick oslo.rootwrap boto3 python-swiftclient'
+        # NOTE(vsaienko) multipath-tools lsscsi sysfsutils FIELD-4624
+        DIST_PACKAGES: 'open-iscsi multipath-tools lsscsi sysfsutils'
+        CEPH_RELEASE: reef
+    cinder:
+      docker_build_args:
+        <<: *build_args_common
+        PROFILES: 'lvm ceph qemu apache fluent purestorage netapp fujitsu'
+        # NOTE(vsaienko) multipath-tools lsscsi sysfsutils FIELD-4624
+        DIST_PACKAGES: 'open-iscsi multipath-tools lsscsi sysfsutils'
+        CEPH_RELEASE: reef
+    neutron:
+      docker_build_args:
+        <<: *build_args_common
+        PROFILES: 'linuxbridge openvswitch apache fluent'
+        DIST_PACKAGES: 'ethtool lshw radvd jq strongswan daemonize'
+    nova:
+      docker_build_args:
+        <<: *build_args_common
+        PROFILES: 'ceph linuxbridge openvswitch configdrive qemu apache fluent purestorage lvm'
+        PIP_PACKAGES: 'python-ironicclient'
+        # NOTE(vsaienko) multipath-tools lsscsi sysfsutils FIELD-4624
+        DIST_PACKAGES: 'openssh-client genisoimage openssh-server jq dosfstools multipath-tools lsscsi sysfsutils ovmf swtpm swtpm-tools python3-dbus python3-gi'
+        CEPH_RELEASE: reef
+    placement:
+      docker_build_args:
+        <<: *build_args_common
+        PROFILES: 'apache fluent audit'

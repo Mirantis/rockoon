@@ -1,0 +1,6 @@
+parameters:
+  ironic:
+    conductor:
+      cache:
+        ~members:
+        - host: ${_param:mcp2_memcached_ironic_members}

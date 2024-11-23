@@ -1,0 +1,12 @@
+{{- if .Values.exporter.enabled }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "rockoon.fullname" . }}-exporter-etc
+  namespace: {{ .Release.Namespace }}
+data:
+  certs_info.yaml: {{ toJson .Values.exporter.settings.certificates.certs_info | b64enc }}
+type: Opaque
+
+{{- end }}

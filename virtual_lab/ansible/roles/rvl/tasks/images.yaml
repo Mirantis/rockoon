@@ -1,0 +1,20 @@
+- name: Install the docker client
+  ansible.builtin.package:
+    name:
+      - docker.io
+    state: latest
+  when: rvl_images_build_rockoon or rvl_images_build_loci
+
+- name: Include build images for openstack controller
+  ansible.builtin.include_tasks:
+    file: images/rockoon.yaml
+  tags:
+  - rvl_images
+  when: rvl_images_build_rockoon
+
+- name: Include build images for loci
+  ansible.builtin.include_tasks:
+    file: images/loci.yaml
+  tags:
+  - rvl_images
+  when: rvl_images_build_loci

@@ -1,0 +1,232 @@
+spec:
+  releases:
+  - name: openstack-gnocchi
+    chart: gnocchi
+    values:
+      images:
+        tags:
+          dep_check: dep-check:latest
+          bootstrap: bootstrap:latest
+          db_init: db-init:latest
+          db_drop: db-drop:latest
+          ks_user: ks-user:latest
+          ks_service: ks-service:latest
+          ks_endpoints: ks-endpoints:latest
+          image_repo_sync: image-repo-sync:latest
+          gnocchi_db_sync: gnocchi-db-sync:latest
+          gnocchi_storage_init: gnocchi-storage-init:latest
+          gnocchi_api: gnocchi-api:latest
+          gnocchi_statsd: gnocchi-statsd:latest
+          gnocchi_metricd: gnocchi-metricd:latest
+          gnocchi_resources_cleaner: gnocchi-resources-cleaner:latest
+      conf:
+        policy.d:
+          01-controller-default.yaml: {'metric_rule1': 'metric_value1'}
+          02-custom.yaml: {}
+        apache: |
+          {{- $portInt := tuple "metric" "internal" "api" $ | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+          Listen 0.0.0.0:{{ $portInt }}
+          LogFormat "%h %l %u %t \"%r\" %>s %b %D \"%{Referer}i\" \"%{User-Agent}i\"" combined
+          LogFormat "%{X-Forwarded-For}i %l %u %t \"%r\" %>s %b %D \"%{Referer}i\" \"%{User-Agent}i\"" proxy
+          SetEnvIf X-Forwarded-For "^.*\..*\..*\..*" forwarded
+          CustomLog /dev/stdout combined env=!forwarded
+          CustomLog /dev/stdout proxy env=forwarded
+
+          <VirtualHost *:{{ $portInt }}>
+              WSGIDaemonProcess gnocchi processes={{ .Values.conf.software.apache2.processes }} threads=1 user=gnocchi group=gnocchi display-name=%{GROUP}
+              WSGIProcessGroup gnocchi
+              WSGIScriptAlias / "/var/lib/openstack/bin/gnocchi-api"
+              WSGIApplicationGroup %{GLOBAL}
+
+              ErrorLog /dev/stdout
+              SetEnvIf X-Forwarded-For "^.*\..*\..*\..*" forwarded
+              CustomLog /dev/stdout combined env=!forwarded
+              CustomLog /dev/stdout proxy env=forwarded
+
+              <Directory "/var/lib/openstack/bin">
+                   <Files gnocchi-api>
+                    Require all granted
+                   </Files>
+              </Directory>
+          </VirtualHost>
+        paste:
+          composite:gnocchi+keystone:
+            use: egg:Paste#urlmap
+            /: gnocchiversions_pipeline
+            /v1: gnocchiv1+keystone
+            /healthcheck: healthcheck
+          pipeline:gnocchiv1+keystone:
+            pipeline: http_proxy_to_wsgi keystone_authtoken gnocchiv1
+          filter:http_proxy_to_wsgi:
+            use: egg:oslo.middleware#http_proxy_to_wsgi
+            oslo_config_project: gnocchi
+          pipeline:gnocchiversions_pipeline:
+            pipeline: http_proxy_to_wsgi gnocchiversions
+          app:gnocchiversions:
+            paste.app_factory: gnocchi.rest.app:app_factory
+            root: gnocchi.rest.api.VersionsController
+          app:gnocchiv1:
+            paste.app_factory: gnocchi.rest.app:app_factory
+            root: gnocchi.rest.api.V1Controller
+          app:healthcheck:
+            use: egg:oslo.middleware#healthcheck
+            oslo_config_project: gnocchi
+        gnocchi:
+          DEFAULT:
+            debug: false
+            coordination_url: etcd3://etcd:2379
+          storage:
+            driver: redis
+            redis_url: redis://:cfLDYSsNbuCywa6VmBvZ8h2sJXuZnvqW@rfs-openstack-redis.openstack-redis:26379?sentinel=mymaster&db=0
+          keystone_authtoken:
+            memcache_security_strategy: ENCRYPT
+            memcache_secret_key: mAcisvqaTNUVKNeE
+            service_type: metric
+          indexer:
+            driver: mysql
+          oslo_policy:
+            enforce_new_defaults: false
+            enforce_scope: false
+      dependencies:
+        static:
+          db_init:
+            jobs:
+              - openstack-mariadb-cluster-wait
+      network_policy:
+        api:
+          spec:
+            ingress:
+              - from:
+                - default: selector
+              - from:
+                - namespaceSelector:
+                    matchLabels:
+                      kubernetes.io/metadata.name: osh-system
+                - namespaceSelector:
+                    matchLabels:
+                      kubernetes.io/metadata.name: stacklight
+                ports:
+                - port: 8041
+                  protocol: TCP
+            podSelector:
+              matchLabels:
+                application: gnocchi
+                component: api
+            policyTypes:
+            - Ingress
+      manifests:
+        network_policy: true
+        job_rabbit_init: false
+        secret_ca_bundle: true
+        job_storage_init: false
+        job_db_init_indexer: false
+        job_db_init: true
+        daemonset_statsd: false
+        service_statsd: false
+        pod_gnocchi_test: false
+        job_clean: false
+      endpoints:
+        cluster_domain_suffix: cluster.local
+        identity:
+          auth:
+            admin:
+              region_name: RegionOne
+              username: admin
+              password: ZUqTyP2XwsgEGKZ7qNhhecYyq9NLkGE6
+              project_name: admin
+              user_domain_name: default
+              project_domain_name: default
+              default_domain_id: default
+            gnocchi:
+              username: gnocchicx1gn3j
+              password: 4WEYNKaBF95C8UqMpj7ZD8u1q7Z3WdcR
+              region_name: 'RegionOne'
+            test:
+              username: testSTmV
+              password: 5s94mESUaC5t4gTrNKmFIIEAVj3JEJ6p
+              region_name: 'RegionOne'
+        oslo_cache:
+          statefulset:
+            name: openstack-memcached-memcached
+            replicas: 3
+        oslo_db_indexer:
+          auth:
+            admin:
+              username: root
+              password: QACDSM6FBTH2LuXjTuRQ6DXhD8bSgPbn
+            gnocchi:
+              username: gnocchiuTTQl1b
+              password: hY4hMF1YKC5DBbdjTtMdNRfDVgviki7a
+          hosts:
+            default: mariadb
+          scheme: mysql+pymysql
+          port:
+            indexer_port:
+              default: 3306
+        oslo_db:
+          auth:
+            admin:
+              username: root
+              password: QACDSM6FBTH2LuXjTuRQ6DXhD8bSgPbn
+            gnocchi:
+              username: gnocchiuTTQl1b
+              password: hY4hMF1YKC5DBbdjTtMdNRfDVgviki7a
+        oslo_messaging_notifications:
+          auth:
+            gnocchi:
+              password: AmlSFp4mL6MW5RyTqnYhcLVe3H9uqglL
+              username: gnocchi3uKHLFZ
+          host_fqdn_override: {}
+          hosts:
+            default: rabbitmq
+          path: /openstack
+          port:
+            amqp:
+              default: 5672
+            http:
+              default: 15672
+          scheme: rabbit
+          statefulset:
+            name: openstack-rabbitmq-rabbitmq
+            replicas: 1
+        metric:
+          host_fqdn_override:
+            public:
+              host: gnocchi.it.just.works
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          hosts:
+            admin:
+              host: gnocchi-api
+            default: gnocchi
+            internal: gnocchi-api
+            public:
+              host: gnocchi
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          port:
+            api:
+              admin: 8041
+              default: 80
+              internal: 8041
+              public: 443
+          scheme:
+            default: http
+            public: https
+      jobs:
+        ks_service:
+          restartPolicy: Never
+        ks_endpoints:
+          restartPolicy: Never
+        ks_user:
+          restartPolicy: Never

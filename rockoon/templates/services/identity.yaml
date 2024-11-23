@@ -1,0 +1,321 @@
+#apiVersion: lcm.mirantis.com/v1alpha1
+#kind: HelmBundle
+
+{%- set service = 'keystone' %}
+{%- set keystone_domain_specific_config = spec.get('features', {}).get('keystone', {}).get('domain_specific_configuration', {}) %}
+{%- set stacklight_enabled = spec.get('features', {}).get('stacklight', {}).get('enabled', False) %}
+{%- set notification_topics = ['notifications'] %}
+{%- do notification_topics.append('stacklight_notifications') if stacklight_enabled %}
+{%- set external_notifications_enabled = spec.get('features', {}).get('messaging', {}).get('notifications', {}).get('external', {}).get('enabled', False) %}
+{%- if external_notifications_enabled %}
+  {%- for topic in spec.get('features', {}).get('messaging', {}).get('notifications', {}).get('external', {}).get('topics', []) %}
+    {%- do notification_topics.append(topic) %}
+  {%- endfor %}
+{%- endif  %}
+
+spec:
+  releases:
+  - name: openstack-keystone
+    chart: keystone
+    values:
+      images:
+        tags:
+{%- for image in [
+    "keystone_domain_manage",
+    "keystone_federations_create",
+    "db_drop",
+    "image_repo_sync",
+    "db_init",
+    "keystone_api",
+    "keystone_credential_cleanup",
+    "dep_check",
+    "keystone_credential_rotate",
+    "keystone_fernet_rotate",
+    "ks_user",
+    "keystone_fernet_setup",
+    "bootstrap",
+    "keystone_credential_setup",
+    "keystone_db_sync",
+    "keystone_db_sync_expand",
+    "keystone_db_sync_migrate",
+    "keystone_db_sync_contract",
+    "keystone_client",
+    "keystone_init_secrets",
+    "rabbit_init",
+    "test",] %}
+        {%- if image in images %}
+          {{ image }}: {{ images[image] }}
+        {%- endif %}
+{%- endfor %}
+      dependencies:
+        static:
+          db_init:
+            jobs:
+              - openstack-mariadb-cluster-wait
+      network:
+        api:
+          ingress:
+            annotations:
+              nginx.ingress.kubernetes.io/proxy-body-size: "114688"
+{%- if federation.get("openid", {}).get("enabled") %}
+              nginx.ingress.kubernetes.io/affinity: cookie
+              nginx.ingress.kubernetes.io/session-cookie-expires: "1800"
+              nginx.ingress.kubernetes.io/session-cookie-max-age: "1800"
+              nginx.ingress.kubernetes.io/session-cookie-name: os-keycloak-sso
+{%- endif %}
+      objects:
+        secret_credentials_keys:
+          secret: {{ credentials_secret_name }}
+        secret_fernet_keys:
+          secret: {{ fernet_secret_name }}
+      jobs:
+        fernet_rotate:
+          cron: "0 */12 * * *"  # once per 12h
+      conf:
+        policy.d:
+          01-controller-default.yaml: {{ service_policy }}
+          02-custom.yaml: {{ spec.get("features", {}).get("policies", {}).get("keystone", {}) }}
+{%- if federation.get("openid", {}).get("enabled") %}
+        ks_federations:
+{%-   for name, opts in federation.get("openid", {}).get("providers", {}).items() %}
+{%-     if opts.get("enabled", True) %}
+          {{ name }}:
+            domain:
+              name: {{ name }}
+            identity_provider:
+              remote_ids:
+                - "{{ opts.issuer }}"
+              id: {{ name }}
+              domain_id: {{ name }}
+            mapping:
+              id: "{{ name }}_mapping"
+              rules:
+                {{ opts.mapping | toyaml | indent(16) }}
+            protocol:
+              mapped:
+                idp_id: {{ name }}
+                mapping_id: "{{ name }}_mapping"
+{%-     endif %}
+{%-   endfor %}
+        federation:
+          {{ federation | toyaml | indent(10) }}
+{%- endif %}
+{%- if keystone_domain_specific_config.get("enabled", False) %}
+        ks_domains:
+{%- for domain in keystone_domain_specific_config.get('domains', []) %}
+  {%- if domain.get('enabled', True) %}
+          {{ domain.name }}: {{ domain.config }}
+  {%- endif %}
+{%- endfor %}
+{%- for domain_name, data in keystone_domain_specific_config.get('ks_domains', {}).items() %}
+  {%- if data.enabled %}
+          {{ domain_name }}: {{ data.config }}
+  {%- endif %}
+{%- endfor %}
+{%- endif %}
+        logging:
+          logger_keystone:
+            level: {{ spec.get('features', {}).get('logging', {}).get('keystone', {}).get('level', 'INFO') }}
+        keystone:
+          DEFAULT:
+            notification_format: cadf
+          token:
+            expiration: 43200  # 12h
+            allow_expired_window: 172800 # 48h - default in Keystone, but set it explicitly here
+          fernet_tokens:
+            # NOTE(pas-ha) defaults set set above are:
+            # - token expiry 12h
+            # - allow expired window 48h
+            # - rotation once in 12h (jobs:fernet_rotate:cron)
+            # since we do enable service auth (in e.g. Cinder and Nova) by default,
+            # we need to account for allow expired window for max_active_keys
+            # max_active_keys = 2 + (token_expiration + allow_expired_window) / rotation_frequency
+            max_active_keys: 7
+          cache:
+            backend: oslo_cache.memcache_pool
+          oslo_messaging_notifications:
+            topics: {{ notification_topics|join(',') }}
+{% include 'base/_oslo_policy_enforce_defaults.yaml' %}
+{%- if spec.get("features", {}).get("policies", {}).get("strict_admin", {}).get('enabled') %}
+          resource:
+            admin_project_name: admin
+            admin_project_domain_name: Default
+{%- endif %}
+{%- if keystone_domain_specific_config.get("enabled", False) %}
+          identity:
+            driver: sql
+            default_domain_id: default
+            domain_specific_drivers_enabled: True
+            domain_config_dir: /etc/keystonedomains
+{%- endif %}
+{%- if federation.get("openid", {}).get("enabled") %}
+          federation:
+            # TODO: move this logic to keystone helm chart
+            trusted_dashboard:
+              type: multistring
+              values:
+                - "https://horizon.{{ spec.public_domain_name }}/auth/websso/"
+            remote_id_attribute: HTTP_OIDC_ISS
+          mapped:
+            remote_id_attribute: HTTP_OIDC_ISS
+          auth:
+            methods: password,token,mapped,application_credential
+{%- endif %}
+        wsgi_keystone: |
+          {%- raw %}
+          {{- $portInt := tuple "identity" "internal" "api" $ | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+          {{- $keystoneHost := tuple "identity" "public" . | include "helm-toolkit.endpoints.hostname_fqdn_endpoint_lookup" }}
+          {{- $keystoneProtocol := tuple "identity" "public" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" }}
+          Listen 0.0.0.0:{{ $portInt }}
+          {%- endraw %}
+          LogFormat "%h %l %u %t \"%r\" %>s %b %D \"%{Referer}i\" \"%{User-Agent}i\"" combined
+          LogFormat "%{X-Forwarded-For}i %l %u %t \"%r\" %>s %b %D \"%{Referer}i\" \"%{User-Agent}i\"" proxy
+          SetEnvIf X-Forwarded-For "^.*\..*\..*\..*" forwarded
+          CustomLog /dev/stdout combined env=!forwarded
+          CustomLog /dev/stdout proxy env=forwarded
+          <VirtualHost *:{% raw %}{{ $portInt }}{% endraw %}>
+              WSGIDaemonProcess keystone-public processes=8 threads=1 user=keystone group=keystone display-name=%{GROUP}
+              WSGIProcessGroup keystone-public
+              WSGIScriptAlias / /var/www/cgi-bin/keystone/keystone-wsgi-public
+              WSGIApplicationGroup %{GLOBAL}
+              WSGIPassAuthorization On
+              ServerSignature Off
+              LimitRequestFieldSize 16380
+              TraceEnable Off
+              <IfVersion >= 2.4>
+                 ErrorLogFormat "%{cu}t %M"
+              </IfVersion>
+              ErrorLog /dev/stdout
+              SetEnvIf X-Forwarded-For "^.*\..*\..*\..*" forwarded proxy env=forwarded
+{%- if federation.get("openid", {}).get("enabled") %}
+{%-   if federation.get("openid", {}).get("oidc_auth_type") == "oauth2" %}
+              OIDCMetadataDir /var/www/federation_metadata
+{%-   endif %}
+{%-   if federation.get("openid", {}).get("oidc_ca_bundle") %}
+              OIDCCABundlePath /usr/local/share/ca-certificates/openstack-iam-api.crt
+{%-   endif %}
+{%    set squote_opts = ["OIDCScope", "OIDCResponseType", "OIDCClaimPrefix", "OIDCClaimDelimiter"] %}
+{%-   for oidc_name, oidc_value in federation.get("openid", {}).get("oidc", {}).items() %}
+{%-   if oidc_name in squote_opts %}
+              {{oidc_name}} "{{oidc_value}}"
+{%-   else %}
+              {{oidc_name}} {{ oidc_value }}
+{%-   endif %}
+{%-   endfor %}
+              <Location /v3/auth/OS-FEDERATION/websso/mapped>
+                  AuthType openid-connect
+                  Require valid-user
+                  LogLevel debug
+              </Location>
+              # TODO(vsaienko): change redirect URI to match with this
+              <Location /v3/auth/OS-FEDERATION/identity_providers/>
+                  AuthType openid-connect
+                  Require valid-user
+                  LogLevel debug
+              </Location>
+{%-   for name, opts in federation.get("openid", {}).get("providers", {}).items() %}
+{%-     if opts.get("enabled", True) %}
+              <Location /v3/OS-FEDERATION/identity_providers/{{ name }}/protocols/mapped/auth>
+{%-       if federation.get("openid", {}).get("oidc_auth_type") == "oauth2" %}
+                  AuthType oauth2
+{%-         if opts.oauth2 is defined %}
+{%-           for k, v in opts.oauth2.items() %}
+                  {{ k }} {{ v }}
+{%-           endfor %}
+{%-         endif %}
+{%-       else %}
+                  AuthType oauth20
+{%-       endif %}
+                  Require valid-user
+                  LogLevel debug
+              </Location>
+              <Location /v3/auth/OS-FEDERATION/identity_providers/{{ name }}/protocols/mapped/websso>
+{%-  if federation.get("openid", {}).get("oidc_auth_type") == "oauth2" %}
+                  OIDCDiscoverURL {{ federation.openid.oidc.OIDCRedirectURI }}?iss={{ opts.issuer | urlencode | replace("/", "%2F") }}
+{%-  endif %}
+                  AuthType openid-connect
+                  Require valid-user
+                  LogLevel debug
+              </Location>
+{%-     endif %}
+{%-   endfor %}
+{%- endif %}
+              </VirtualHost>
+{%- if spec.features.network_policies.enabled %}
+      network_policy:
+{% include 'base/network_policies/identity.yaml' %}
+{%- endif %}
+      manifests:
+        network_policy: {{ spec.features.network_policies.enabled }}
+        job_credential_cleanup: false
+{%- if federation.get("openid", {}).get("enabled") %}
+        job_federations_create: true
+{%- endif %}
+        job_rabbit_init: false
+        secret_ca_bundle: true
+      endpoints:
+        cluster_domain_suffix: {{ spec.internal_domain_name }}
+{% include 'base/_messaging_shared.yaml' %}
+{% include 'base/_admin_identity.yaml' %}
+          host_fqdn_override:
+            public:
+              host: keystone.{{ spec.public_domain_name }}
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+{%- if rgw_internal_cacert is defined %}
+{{ rgw_internal_cacert | indent( width=18, first=True) }}
+{%- endif %}
+{%- if proxy_settings is defined %}
+{%- if proxy_settings.get("proxy_ca_certificate") %}
+{{ proxy_settings["proxy_ca_certificate"] | indent( width=18, first=True) }}
+{%- endif %}
+{%- endif %}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          hosts:
+            admin:
+              host: keystone-api
+            default: keystone
+            internal: keystone-api
+            public:
+              host: keystone
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+{%- if rgw_internal_cacert is defined %}
+{{ rgw_internal_cacert | indent( width=18, first=True) }}
+{%- endif %}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          port:
+            api:
+              admin: 5000
+              default: 80
+              internal: 5000
+              public: 443
+          scheme:
+            default: http
+            public: https
+{% include 'base/_cache.yaml' %}
+        oslo_db:
+          auth:
+            admin:
+              username: {{ admin_creds.database.username }}
+              password: {{ admin_creds.database.password }}
+            keystone:
+              username: {{ credentials[0].database.user.username }}
+              password: {{ credentials[0].database.user.password }}
+{% include 'base/_notifications.yaml' %}
+{%- if federation.get("openid", {}).get("oidc_ca_bundle") %}
+        oidc:
+          auth:
+            client:
+              tls:
+                ca: |
+{{ federation.openid.oidc_ca_bundle | indent(width=18, first=True) }}
+{%- endif %}

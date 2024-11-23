@@ -1,0 +1,362 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "apiProbeTemplate" }}
+httpGet:
+  scheme: HTTP
+  path: /healthcheck
+  port: {{ tuple "image" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- end }}
+
+{{- if .Values.manifests.deployment_api }}
+{{- $envAll := . }}
+
+{{- $configured_storages := tuple $envAll | include "glance.utils.get_storages" | fromJsonArray }}
+
+{{- $mounts_glance_api := .Values.pod.mounts.glance_api.glance_api }}
+{{- $mounts_glance_api_init := .Values.pod.mounts.glance_api.init_container }}
+
+{{- $serviceAccountName := "glance-api" }}
+{{ tuple $envAll "api" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: glance-api
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "glance" "api" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  replicas: {{ .Values.pod.replicas.api }}
+  selector:
+    matchLabels:
+{{ tuple $envAll "glance" "api" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll | include "helm-toolkit.snippets.kubernetes_upgrades_deployment" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "glance" "api" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+        endpoints-hash: {{ .Values.endpoints | include "helm-toolkit.utils.get_hash" }}
+{{ dict "envAll" $envAll "podName" "glance-api" "containerNames" ( list "glance-perms" "glance-api" "init" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "glance" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      affinity:
+{{ tuple $envAll "glance" "api" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      nodeSelector:
+        {{ .Values.labels.api.node_selector_key }}: {{ .Values.labels.api.node_selector_value }}
+      terminationGracePeriodSeconds: {{ .Values.pod.lifecycle.termination_grace_period.api.timeout | default "600" }}
+{{- if .Values.conf.enable_iscsi }}
+      dnsPolicy: ClusterFirstWithHostNet
+      hostIPC: true
+      hostNetwork: true
+      hostPID: false
+{{- end }}
+      initContainers:
+{{ tuple $envAll "api" $mounts_glance_api_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+        - name: init-config
+{{ tuple $envAll "glance_api" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "glance" "container" "update_config" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/glance-init-config.py
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: etcglance
+              mountPath: /etc/glance
+            - name: etcglanceconfd
+              mountPath: /etc/glance/glance-api.conf.d
+            - name: glance-bin
+              mountPath: /tmp/glance-init-config.py
+              subPath: glance-init-config.py
+              readOnly: true
+        {{/* when pvc is not in configured_storages, filesystem_store_datadir is mounted as empty_dir so no need to chown */}}
+        {{- if and (has "file" $configured_storages) .Values.manifests.pvc_images }}
+        - name: glance-perms
+{{ tuple $envAll "glance_api" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.api | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "glance" "container" "glance_perms" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - chown
+            - -R
+            - "glance:"
+            - {{ .Values.conf.glance.glance_store.filesystem_store_datadir }}
+          {{- if .Values.conf.enable_iscsi }}
+          terminationMessagePath: /var/log/termination-log
+          {{- end }}
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: glance-images
+              mountPath: {{ .Values.conf.glance.glance_store.filesystem_store_datadir }}
+        {{ end }}
+        - name: lock-perms
+{{ tuple $envAll "glance_api" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "glance" "container" "lock_perms" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - chown
+            - -R
+            - "glance:"
+            - {{ .Values.conf.glance.oslo_concurrency.lock_path }}
+          {{- if .Values.conf.enable_iscsi }}
+          terminationMessagePath: /var/log/termination-log
+          {{- end }}
+          volumeMounts:
+            - name: lockpath
+              mountPath: {{ .Values.conf.glance.oslo_concurrency.lock_path }}
+      containers:
+        {{- if $envAll.Values.manifests.certificates }}
+        - name: nginx
+{{ tuple $envAll "nginx" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.nginx | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          ports:
+            - name: g-api
+              containerPort: {{ tuple "image" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+          env:
+            - name: PORT
+              value: {{ tuple "image" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | quote }}
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: SHORTNAME
+              value: {{ tuple "image" "internal" .  | include "helm-toolkit.endpoints.hostname_short_endpoint_lookup" | quote }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ tuple "image" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+          command:
+            - /tmp/nginx.sh
+            - start
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /tmp/nginx.sh
+                  - stop
+          {{- if .Values.conf.enable_iscsi }}
+          terminationMessagePath: /var/log/termination-log
+          {{- end }}
+          volumeMounts:
+            - name: glance-bin
+              mountPath: /tmp/nginx.sh
+              subPath: nginx.sh
+              readOnly: true
+            - name: glance-etc
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+              readOnly: true
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.image.api.internal "path" "/etc/nginx/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+        {{- end }}
+        - name: glance-api
+{{ tuple $envAll "glance_api" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.api | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "glance" "container" "glance_api" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+{{ dict "envAll" $envAll | include "helm-toolkit.snippets.kubernetes_proxy_env_vars" | indent 12 }}
+          command:
+            - /tmp/glance-api.sh
+            - start
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /tmp/glance-api.sh
+                  - stop
+          {{- if $envAll.Values.manifests.certificates }}
+          readinessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - "import requests; requests.get('http://127.0.0.1:{{ tuple "image" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}')"
+          livenessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - "import requests; requests.get('http://127.0.0.1:{{ tuple "image" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}')"
+            initialDelaySeconds: 30
+          {{- else }}
+          ports:
+            - name: g-api
+              containerPort: {{ tuple "image" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{ dict "envAll" $envAll "component" "api" "container" "api" "type" "readiness" "probeTemplate" (include "apiProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | trim | indent 10 }}
+{{ dict "envAll" $envAll "component" "api" "container" "api" "type" "liveness" "probeTemplate" (include "apiProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | trim | indent 10 }}
+          {{- end }}
+          {{- if .Values.conf.enable_iscsi }}
+          terminationMessagePath: /var/log/termination-log
+          {{- end }}
+          volumeMounts:
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "glance" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: etcglance
+              mountPath: /etc/glance
+            - name: etcglanceconfd
+              mountPath: /etc/glance/glance-api.conf.d
+            - name: glance-bin
+              mountPath: /tmp/glance-api.sh
+              subPath: glance-api.sh
+              readOnly: true
+            - name: glance-etc
+              mountPath: /etc/glance/glance-api.conf
+              subPath: glance-api.conf
+              readOnly: true
+            {{- if .Values.conf.glance.DEFAULT.log_config_append }}
+            - name: glance-etc
+              mountPath: {{ .Values.conf.glance.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.glance.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+            - name: glance-etc
+              mountPath: /etc/glance/glance-api-paste.ini
+              subPath: glance-api-paste.ini
+              readOnly: true
+            - name: glance-oslo-policy
+              mountPath: /etc/glance/policy.d/
+            - name: glance-etc
+              mountPath: /etc/glance/api_audit_map.conf
+              subPath: api_audit_map.conf
+              readOnly: true
+            - name: glance-etc
+              mountPath: {{ .Values.conf.glance.glance_store.swift_store_config_file }}
+              subPath: swift-store.conf
+              readOnly: true
+            - name: glance-images
+              mountPath: {{ .Values.conf.glance.glance_store.filesystem_store_datadir }}
+            - name: glance-tasks-store
+              mountPath: {{ .Values.conf.glance.os_glance_tasks_store.filesystem_store_datadir }}
+            - name: glance-staging-store
+              mountPath: {{ .Values.conf.glance.os_glance_staging_store.filesystem_store_datadir }}
+            - name: glance-etc
+              mountPath: /etc/glance/rootwrap.conf
+              subPath: rootwrap.conf
+              readOnly: true
+            - name: glance-etc
+              mountPath: /etc/sudoers.d/glance_sudoers
+              subPath: glance_sudoers
+              readOnly: true
+            - name: glance-etc
+              mountPath: /etc/glance/rootwrap.d/glance_cinder.filters
+              subPath: rootwrap_filters
+              readOnly: true
+            - name: run-dir
+              mountPath: /run
+            - name: lockpath
+              mountPath: {{ .Values.conf.glance.oslo_concurrency.lock_path }}
+{{- if has "rbd" $configured_storages }}
+            - name: ceph-etc
+              mountPath: /etc/ceph/ceph.conf
+              subPath: ceph.conf
+              readOnly: true
+            {{ dict "envAll" $envAll "objectType" "mountpoint" "application" "glance" | include "helm-toolkit.snippets.kubernetes_ceph_keyring_objects" | indent 12 }}
+{{- end }}
+{{- if .Values.conf.enable_iscsi }}
+            - mountPath: /dev
+              mountPropagation: HostToContainer
+              name: dev
+            - mountPath: /etc/iscsi
+              name: etciscsi
+            - mountPath: /run/lock
+              name: runlock
+            - mountPath: /mnt/host-rootfs
+              name: host-rootfs
+            - mountPath: /usr/local/sbin
+              name: usrlocalsbin
+            - mountPath: /usr/local/sbin/iscsiadm
+              name: glance-bin
+              subPath: iscsiadm
+{{- end }}
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.image.api.internal "path" "/etc/glance/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{ if $mounts_glance_api.volumeMounts }}{{ toYaml $mounts_glance_api.volumeMounts | indent 12 }}{{ end }}
+      volumes:
+{{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "glance" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
+        - name: pod-tmp
+          emptyDir: {}
+        - name: etcglance
+          emptyDir: {}
+        - name: etcglanceconfd
+          emptyDir: {}
+        - name: glance-bin
+          configMap:
+            name: glance-bin
+            defaultMode: 504
+        - name: glance-etc
+          secret:
+            secretName: glance-etc
+            defaultMode: 416
+        - name: glance-oslo-policy
+          secret:
+            secretName: glance-oslo-policy
+            defaultMode: 416
+        - name: run-dir
+          hostPath:
+            path: /run
+{{- if and (has "file" $configured_storages) .Values.manifests.pvc_images }}
+        - name: glance-images
+          persistentVolumeClaim:
+            claimName: glance-images
+{{ else }}
+        - name: glance-images
+          emptyDir: {}
+{{- end }}
+        - name: glance-tasks-store
+          emptyDir: {}
+        - name: glance-staging-store
+          emptyDir: {}
+{{- if has "rbd" $configured_storages }}
+        - name: ceph-etc
+{{- if .Values.manifests.ceph_conf }}
+          secret:
+            secretName: glance-etc
+{{- else }}
+          configMap:
+            name: {{ .Values.ceph_client.configmap }}
+{{- end }}
+            defaultMode: 416
+{{- end }}
+{{- if .Values.conf.enable_iscsi }}
+        - hostPath:
+            path: /etc/iscsi
+          name: etciscsi
+        - hostPath:
+            path: /dev
+          name: dev
+        - hostPath:
+            path: /run/lock
+          name: runlock
+        - emptyDir: {}
+          name: usrlocalsbin
+        - hostPath:
+            path: /
+          name: host-rootfs
+{{- end }}
+        - name: lockpath
+          hostPath:
+            path: {{ .Values.conf.glance.oslo_concurrency.lock_path }}
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.image.api.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{ if $mounts_glance_api.volumes }}{{ toYaml $mounts_glance_api.volumes | indent 8 }}{{ end }}
+{{- end }}

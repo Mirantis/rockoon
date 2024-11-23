@@ -1,0 +1,240 @@
+#apiVersion: lcm.mirantis.com/v1alpha1
+#kind: HelmBundle
+
+{%- from 'macros/messaging_service_creds.j2' import messaging_service_creds %}
+{%- set service = 'manila' %}
+{%- set stacklight_enabled = spec.get('features', {}).get('stacklight', {}).get('enabled', False) %}
+{%- set notification_topics = ['notifications'] %}
+{%- do notification_topics.append('stacklight_notifications') if stacklight_enabled %}
+{%- set external_notifications_enabled = spec.get('features', {}).get('messaging', {}).get('notifications', {}).get('external', {}).get('enabled', False) %}
+{%- if external_notifications_enabled %}
+  {%- for topic in spec.get('features', {}).get('messaging', {}).get('notifications', {}).get('external', {}).get('topics', []) %}
+    {%- do notification_topics.append(topic) %}
+  {%- endfor %}
+{%- endif  %}
+{%- set manila_db_cleanup = spec.get('features', {}).get('database', {}).get('cleanup', {}).get('manila', {'enabled': true}) %}
+{%- from 'macros/etcd3.j2' import get_etcd3_endpoint %}
+{%- set cadf_audit = spec.get('features', {}).get('logging', {}).get('cadf', {'enabled': false}) %}
+{%- set cadf_audit_driver = spec.get('features', {}).get('logging', {}).get('cadf', {}).get('driver', 'messagingv2') %}
+{%- set share_sts = {} %}
+{%- set share_backends = spec.get('features', {}).get('manila', {}).get('share', {}).get('backends', {}) %}
+
+{%- for sts_name, sts_opts in share_backends.items() %}
+{%-   if sts_opts.get('enabled', True) %}
+{%-     for backend in sts_opts['values']['conf']['manila']['DEFAULT']['enabled_share_backends'].split(',') %}
+{%-       set sts_backend_opts = sts_opts['values']['conf']['manila'][backend] %}
+{%-       set share_driver = sts_backend_opts['share_driver'] %}
+{%-       set opts = {} %}
+{%-       if share_driver == 'manila.share.drivers.cephfs.driver.CephFSDriver' %}
+{%-         do opts.update({'cephfs_auth_id': ceph.manila.username,
+                            'cephfs_protocol_helper_type': 'CEPHFS',
+                            'driver_handles_share_servers': false
+                          }) %}
+{%-       endif %}
+          {# merge default options and user provided options #}
+{%-       do opts.update(sts_backend_opts) %}
+          {# put result back into the values #}
+{%-       do sts_backend_opts.update(opts) %}
+{%-     endfor %}
+        {# overwrite default options by user defined #}
+{%-     do share_sts.update({sts_name: {'values': sts_opts['values']}}) %}
+{%-   endif %}
+{%-   endfor %}
+
+spec:
+  releases:
+  - name: openstack-manila
+    chart: manila
+    values:
+      images:
+        tags:
+{%- for image in [
+    "bootstrap",
+    "db_init",
+    "db_drop",
+    "dep_check",
+    "image_repo_sync",
+    "ks_endpoints",
+    "ks_service",
+    "ks_user",
+    "manila_api",
+    "manila_db_sync",
+    "manila_scheduler",
+    "manila_share",
+    "manila_share_daemonset",
+    "manila-uuids-init",
+    "manila_db_purge",
+    "test",] %}
+        {%- if image in images %}
+          {{ image }}: {{ images[image] }}
+        {%- endif %}
+{%- endfor %}
+      bootstrap:
+        share_types:
+          default:
+            driver_handles_share_servers: {{ not is_ceph_enabled }}
+      endpoints:
+        cluster_domain_suffix: {{ spec.internal_domain_name }}
+{% include 'base/_admin_identity.yaml' %}
+{% include 'base/_messaging_shared.yaml' %}
+{% include 'base/_notifications.yaml' %}
+        oslo_db:
+          auth:
+            admin:
+              username: {{ admin_creds.database.username }}
+              password: {{ admin_creds.database.password }}
+            manila:
+              username: {{ credentials[0].database.user.username }}
+              password: {{ credentials[0].database.user.password }}
+        sharev2:
+          host_fqdn_override:
+            public:
+              host: manila.{{ spec.public_domain_name }}
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+{%- if proxy_settings is defined %}
+{%- if proxy_settings.get("proxy_ca_certificate") %}
+{{ proxy_settings["proxy_ca_certificate"] | indent( width=18, first=True) }}
+{%- endif %}
+{%- endif %}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          hosts:
+            admin:
+              host: manila-api
+            default: manila
+            internal: manila-api
+            public:
+              host: manila
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          port:
+            api:
+              admin: 8786
+              default: 80
+              internal: 8786
+              public: 443
+          scheme:
+            default: http
+            public: https
+      conf:
+{%- if is_ceph_enabled %}
+        ceph:
+          keyrings:
+            {{ ceph.manila.username }}:
+              key: {{ ceph.manila.keyring }}
+          config:
+            global:
+              mon_host: {{ ceph.mon_host }}
+{%- endif %}
+        policy.d:
+          01-controller-default.yaml: {{ service_policy }}
+          02-custom.yaml: {{ spec.get("features", {}).get("policies", {}).get("manila", {}) }}
+        manila:
+{%- if is_ceph_enabled %}
+          DEFAULT:
+            enabled_share_protocols: CEPHFS
+{%- endif %}
+          keystone_authtoken:
+            memcache_security_strategy: ENCRYPT
+            memcache_secret_key: {{ credentials[0].memcached }}
+          coordination:
+            backend_url: {{ get_etcd3_endpoint(spec.openstack_version, 'etcd3gw') }}
+{%- if cadf_audit.enabled %}
+          audit_middleware_notifications:
+            driver: {{ cadf_audit_driver }}
+{%- else %}
+          audit_middleware_notifications:
+            driver: noop
+{%- endif %}
+          oslo_messaging_notifications:
+            topics: {{ notification_topics|join(',') }}
+{% include 'base/_oslo_policy_enforce_defaults.yaml' %}
+        aux_conf:
+          policies:
+          - definition:
+              message-ttl: 120000
+              expires: 600000
+            name: default-policy
+            pattern: ^(?!amq\.).*
+            vhost: manila
+          - definition:
+              expires: 600000
+            name: results_expire
+            pattern: ^results\.
+            priority: 1
+            vhost: manila
+          - definition:
+              expires: 600000
+            name: tasks_expire
+            pattern: ^tasks\.
+            priority: 1
+            vhost: manila
+  {%- if stacklight_enabled %}
+        prometheus_exporter:
+          rabbit_exporters: "overview,exchange,node"
+  {%- endif %}
+  {%- if not share_backends %}
+        standalone_backends:
+          daemonset:
+            conf:
+              generic:
+                driver_handles_share_servers: True
+                share_backend_name: GENERIC
+                share_driver: manila.share.drivers.generic.GenericShareDriver
+                service_image_name: manila-service-image
+                service_instance_user: manila
+                interface_driver: manila.network.linux.interface.OVSInterfaceDriver
+                service_network_name: fs-mgmt-net
+                service_network_cidr: 10.254.0.0/16
+                path_to_public_key: /etc/manila/ssh/manila.pub
+                path_to_private_key: /etc/manila/ssh/manila
+              DEFAULT:
+                enabled_share_backends: generic
+  {%- endif %}
+        logging:
+          logger_manila:
+            level: {{ spec.get('features', {}).get('logging', {}).get('manila', {}).get('level', 'INFO') }}
+  {%- if share_sts %}
+      overrides:
+        manila_share_sts:
+          {{ share_sts | toyaml | indent(10) }}
+  {%- endif %}
+      jobs:
+{% include 'base/_ks_jobs.yaml' %}
+        db_purge:
+          enabled: {{ manila_db_cleanup.enabled }}
+          cron: {{ manila_db_cleanup.get("schedule", "1 7 * * 1") }}
+          script:
+            config:
+              age: {{ manila_db_cleanup.get("age", 30) }}
+      dependencies:
+        static:
+          db_init:
+            jobs:
+              - openstack-mariadb-cluster-wait
+      secrets:
+        service_instance_ssh_key:
+          private: |
+            {{ ssh_credentials.private|indent(12)|trim }}
+          public: |
+            {{ ssh_credentials.public }}
+{%- if spec.features.network_policies.enabled %}
+      network_policy:
+{% include 'base/network_policies/shared-file-system.yaml' %}
+{%- endif %}
+      manifests:
+        secret_ca_bundle: true
+        cron_job_db_purge: {{ manila_db_cleanup.enabled }}
+        daemonset_share: {{ not share_backends }}
+        service_instance_ssh_key: true
+        network_policy: {{ spec.features.network_policies.enabled }}
+        ceph_conf: {{ is_ceph_enabled }}

@@ -1,0 +1,42 @@
+#apiVersion: lcm.mirantis.com/v1alpha1
+#kind: HelmBundle
+
+spec:
+  releases:
+  - name: etcd
+    chart: etcd
+    values:
+      images:
+        tags:
+{%- for image in [
+    "etcd",
+    "etcd_db_compact",
+    "dep_check",
+    "image_repo_sync",] %}
+        {%- if image in images %}
+          {{ image }}: {{ images[image] }}
+        {%- endif %}
+{%- endfor %}
+      manifests:
+        cron_job_db_compact: true
+        network_policy: {{ spec.features.network_policies.enabled }}
+{%- if spec.features.network_policies.enabled %}
+      network_policy:
+{% include 'base/network_policies/coordination.yaml' %}
+{%- endif %}
+      conf:
+        etcd:
+          ETCD_ELECTION_TIMEOUT: 5000
+          ETCD_HEARTBEAT_INTERVAL: 500
+      endpoints:
+        cluster_domain_suffix: {{ spec.internal_domain_name }}
+      pod:
+        replicas:
+          etcd: 3
+        affinity:
+          anti:
+            type:
+              default: requiredDuringSchedulingIgnoredDuringExecution
+      volume:
+        class_name: {{ spec.get('local_volume_storage_class', 'rockoon-bind-mounts') }}
+

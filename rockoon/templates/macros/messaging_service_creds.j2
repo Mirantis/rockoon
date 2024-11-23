@@ -1,0 +1,20 @@
+{% macro messaging_service_creds(credentials, service, vhosts, enable_notifications=True) %}
+          {{ service }}_service:
+            auth:
+              {%- for cred in credentials %}
+              {{ service }}_{{ loop.index }}:
+                username: {{ cred.messaging.user.username }}
+                password: {{ cred.messaging.user.password }}
+              {%- endfor %}
+            path: {{ vhosts }}
+          {%- if enable_notifications %}
+          {{ service }}_service_notifications:
+            auth:
+              {%- for cred in credentials %}
+              {{ service }}_{{ loop.index }}:
+                username: {{ cred.notifications.user.username }}
+                password: {{ cred.notifications.user.password }}
+              {%- endfor %}
+            path: /openstack
+          {%- endif %}
+{%- endmacro -%}

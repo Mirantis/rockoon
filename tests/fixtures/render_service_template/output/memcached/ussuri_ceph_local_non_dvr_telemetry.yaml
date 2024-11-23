@@ -1,0 +1,48 @@
+spec:
+  releases:
+  - chart: memcached
+    name: openstack-memcached
+    values:
+      endpoints:
+        cluster_domain_suffix: cluster.local
+      images:
+        tags:
+          dep_check: dep-check:latest
+          image_repo_sync: image-repo-sync:latest
+          memcached: memcached:latest
+          prometheus_memcached_exporter: prometheus-memcached-exporter:latest
+      manifests:
+        deployment: false
+        network_policy: true
+        statefulset: true
+      network_policy:
+        server:
+          spec:
+            ingress:
+              - from:
+                - default: selector
+              - from:
+                - ipBlock:
+                    cidr: 192.168.0.0/16
+                ports:
+                - port: 11211
+                  protocol: TCP
+              - from:
+                - namespaceSelector:
+                    matchLabels:
+                      kubernetes.io/metadata.name: stacklight
+                ports:
+                - port: 9150
+                  protocol: TCP
+            podSelector:
+              matchLabels:
+                application: memcached
+                component: server
+            policyTypes:
+            - Ingress
+      monitoring:
+        prometheus:
+          enabled: true
+      pod:
+        replicas:
+          server: 3

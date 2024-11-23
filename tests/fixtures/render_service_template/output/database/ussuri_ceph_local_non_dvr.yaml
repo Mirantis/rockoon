@@ -1,0 +1,107 @@
+spec:
+  releases:
+  - chart: mariadb
+    name: openstack-mariadb
+    values:
+      conf:
+        database_conf:
+          mysqld:
+            wsrep_provider_options:
+              cert.optimistic_pa: 'NO'
+        database:
+          config_override: |
+            [mysqld]
+            innodb_io_capacity=2000
+            innodb_io_capacity_max=5000
+        phy_backup:
+          backup_type: incremental
+          backend: pvc
+          openssl_encryption: false
+          openssl_kek: "opensslkek"
+      endpoints:
+        cluster_domain_suffix: cluster.local
+        oslo_db:
+          auth:
+            admin:
+              password: QACDSM6FBTH2LuXjTuRQ6DXhD8bSgPbn
+              username: root
+            audit:
+              password: FLrW91FwKgBvunCRdbvLAHYGJ5zTC6tk
+              username: auditfHeBI
+            exporter:
+              password: 7STInCAmfXhY01JfYd293nhewuQxG10m
+              username: exportergr8suIPh
+            mariabackup:
+              password: HxPZlfzlEkk4GKUNFyDs4JeNa8gtlPFn
+              username: backup0LlWwe
+            sst:
+              password: RbLblzhS7yNE8WQ4nY829uRQpvTegI87
+              username: sstybw
+          host_fqdn_override:
+            public:
+              tls:
+                ca: |
+                  TEST CA
+          namespace: null
+      images:
+        tags:
+          dep_check: dep-check:latest
+          error_pages: error-pages:latest
+          image_repo_sync: image-repo-sync:latest
+          ingress: ingress:latest
+          mariadb: mariadb:latest
+          mariadb_backup: mariadb-backup:latest
+          mariadb_controller: mariadb-controller:latest
+          mariadb_phy_backup: mariadb-phy-backup:latest
+          mariadb_phy_restore: mariadb-phy-restore:latest
+          mariadb_scripted_test: mariadb-scripted-test:latest
+          prometheus_create_mysql_user: prometheus-create-mysql-user:latest
+          prometheus_mysql_exporter: prometheus-mysql-exporter:latest
+          prometheus_mysql_exporter_helm_tests: prometheus-mysql-exporter-helm-tests:latest
+      jobs:
+        phy_backup_mariadb:
+          cron: 0 1 * * *
+          suspend: true
+      manifests:
+        configmap_ingress_conf: false
+        configmap_ingress_etc: false
+        cron_job_mariadb_phy_backup: true
+        deployment_controller: true
+        deployment_error: false
+        deployment_ingress: false
+        job_cluster_wait: true
+        network_policy: false
+        service_ingress: false
+        service_master: true
+        secret_ca_bundle: true
+      monitoring:
+        prometheus:
+          enabled: true
+      network:
+        proxy:
+          enabled: true
+          env_vars:
+            HTTP_PROXY: http://127.0.0.1:3128
+            NO_PROXY: .svc.cluster.local
+      pod:
+        probes:
+          server:
+            mariadb:
+              readiness:
+                enabled: true
+                disk_usage_percent: 99
+                params:
+                  initialDelaySeconds: 30
+                  periodSeconds: 5 
+                  timeoutSeconds: 5
+        affinity:
+          anti:
+            type:
+              default: requiredDuringSchedulingIgnoredDuringExecution
+        replicas:
+          server: 3
+      volume:
+        class_name: lvp-fake-root
+        phy_backup:
+          class_name: mirablock-k8s-block-hdd
+          enabled: true

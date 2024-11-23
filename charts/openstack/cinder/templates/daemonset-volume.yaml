@@ -1,0 +1,328 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "volumeProbeTemplate" }}
+{{- $probeType := . }}
+exec:
+  command:
+    - python
+    - /tmp/health-probe.py
+    - --config-file
+    - /etc/cinder/cinder.conf
+    - --probe-type
+    - {{ $probeType }}
+    - --check
+    - rabbitmq_sockets
+    - --process-name
+    - cinder-volume
+{{- end }}
+
+{{- define "cinder.volume.daemonset" }}
+  {{- $daemonset := index . 0 }}
+  {{- $configMapName := index . 1 }}
+  {{- $serviceAccountName := index . 2 }}
+  {{- $envAll := index . 3 }}
+
+  {{- with $envAll }}
+
+{{- $mounts_cinder_volume := .Values.pod.mounts.cinder_volume.cinder_volume }}
+{{- $mounts_cinder_volume_init := .Values.pod.mounts.cinder_volume.init_container }}
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ $daemonset }}
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "cinder" "volume_daemonset" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+{{ tuple $envAll "cinder" "volume_daemonset" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll "volume_daemonset"| include "helm-toolkit.snippets.kubernetes_upgrades_daemonset" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "cinder" "volume_daemonset" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+        endpoints-hash: {{ .Values.endpoints | include "helm-toolkit.utils.get_hash" }}
+{{ dict "envAll" $envAll "podName" "cinder-volume" "containerNames" (list "cinder-volume" "ceph-coordination-volume-perms" "init-cinder-conf" "init" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "cinder_volume_daemonset" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      affinity:
+{{ tuple $envAll "cinder" "volume_daemonset" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      nodeSelector:
+        {{ .Values.labels.volume_daemonset.node_selector_key }}: {{ .Values.labels.volume_daemonset.node_selector_value }}
+      hostNetwork: true
+      hostPID: false
+      # To let udev work
+      hostIPC: true
+      dnsPolicy: ClusterFirstWithHostNet
+      initContainers:
+{{ tuple $envAll "volume_daemonset" $mounts_cinder_volume_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+        - name: cinder-volume-init
+{{ tuple $envAll "cinder_volume_daemonset" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "cinder_volume_daemonset" "container" "cinder_volume_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+            - name: CINDER_USER_UID
+              value: "{{ .Values.pod.security_context.cinder_volume_daemonset.pod.runAsUser }}"
+          command:
+            - /tmp/cinder-volume-ds-init.sh
+          terminationMessagePath: /var/log/termination-log
+          volumeMounts:
+            - name: cinder-bin
+              mountPath: /tmp/cinder-volume-ds-init.sh
+              subPath: cinder-volume-ds-init.sh
+              readOnly: true
+            - name: varlibcinder
+              mountPath: {{ .Values.conf.cinder.DEFAULT.state_path | default "/var/lib/cinder" }}
+            - name: lockpath
+              mountPath: {{ .Values.conf.cinder.oslo_concurrency.lock_path }}
+      containers:
+        - name: cinder-volume
+{{ tuple $envAll "cinder_volume_daemonset" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.volume | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "cinder_volume" "container" "cinder_volume" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/cinder-volume.sh
+{{ dict "envAll" $envAll "component" "volume" "container" "default" "type" "readiness" "probeTemplate" (include "volumeProbeTemplate" "readiness" | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "volume" "container" "default" "type" "liveness" "probeTemplate" (include "volumeProbeTemplate" "liveness" | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          terminationMessagePath: /var/log/termination-log
+          env:
+            - name: CINDER_INTERNAL_TENANT_PROJECT_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: cinder-internal-tenant-ids
+                  key: CINDER_INTERNAL_TENANT_PROJECT_ID
+            - name: CINDER_INTERNAL_TENANT_USER_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: cinder-internal-tenant-ids
+                  key: CINDER_INTERNAL_TENANT_USER_ID
+          volumeMounts:
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "cinder" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: cinder-bin
+              mountPath: /tmp/cinder-volume.sh
+              subPath: cinder-volume.sh
+              readOnly: true
+            - name: pod-shared
+              mountPath: /tmp/pod-shared
+            - name: {{ $configMapName }}
+              mountPath: /etc/cinder/cinder.conf
+              subPath: cinder.conf
+              readOnly: true
+            - name: lockpath
+              mountPath: {{ .Values.conf.cinder.oslo_concurrency.lock_path }}
+            {{- if .Values.conf.cinder.DEFAULT.log_config_append }}
+            - name: {{ $configMapName }}
+              mountPath: {{ .Values.conf.cinder.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.cinder.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+            - name: {{ $configMapName }}
+              mountPath: /etc/cinder/conf/backends.conf
+              subPath: backend_ds.conf
+              readOnly: true
+            {{- if or .Values.manifests.ceph_conf ( eq "true" ( list .Values.conf.backends | include "cinder.utils.has_ceph_backend")) }}
+            - name: ceph-etc
+              mountPath: /etc/ceph/ceph.conf
+              subPath: ceph.conf
+              readOnly: true
+            {{ dict "envAll" $envAll "objectType" "mountpoint" "application" "cinder" | include "helm-toolkit.snippets.kubernetes_ceph_keyring_objects" | indent 12 }}
+            {{- end }}
+            - name: {{ $configMapName }}
+              # NOTE (Portdirect): We mount here to override Kollas
+              # custom sudoers file when using Kolla images, this
+              # location will also work fine for other images.
+              mountPath: /etc/sudoers.d/kolla_cinder_sudoers
+              subPath: cinder_sudoers
+              readOnly: true
+            - name: {{ $configMapName }}
+              mountPath: /etc/sudoers.d/kolla_cinder_volume_sudoers
+              subPath: cinder_sudoers
+              readOnly: true
+            - name: {{ $configMapName }}
+              mountPath: /etc/cinder/rootwrap.conf
+              subPath: rootwrap.conf
+              readOnly: true
+            {{- range $key, $value := $envAll.Values.conf.rootwrap_filters }}
+            {{- if ( has "volume" $value.pods ) }}
+            {{- $filePrefix := replace "_" "-"  $key }}
+            {{- $rootwrapFile := printf "/etc/cinder/rootwrap.d/%s.filters" $filePrefix }}
+            - name: {{ $configMapName }}
+              mountPath: {{ $rootwrapFile }}
+              subPath: {{ base $rootwrapFile }}
+              readOnly: true
+            {{- end }}
+            {{- end }}
+            - name: cinder-bin
+              mountPath: /tmp/health-probe.py
+              subPath: health-probe.py
+              readOnly: true
+            {{- if .Values.conf.enable_iscsi }}
+            - name: host-rootfs
+              mountPath: /mnt/host-rootfs
+            - name: runlock
+              mountPath: /run/lock
+            - name: etciscsi
+              mountPath: /etc/iscsi
+            - name: etcmultipath
+              mountPath: /etc/multipath
+              readOnly: false
+            - name: usrlocalsbin
+              mountPath: /usr/local/sbin
+            - name: cinder-bin
+              mountPath: /usr/local/sbin/iscsiadm
+              subPath: iscsiadm
+            - name: dev
+              mountPath: /dev
+              mountPropagation: HostToContainer
+            {{- end }}
+            - name: varlibcinder
+              mountPath: {{ .Values.conf.cinder.DEFAULT.state_path | default "/var/lib/cinder" }}
+            {{- if ( eq "true" ( list .Values.conf.standalone_backends.daemonset.conf | include "cinder.utils.has_lvm_backend")) }}
+            - name: run-dir
+              mountPath: /run
+            - name: lib-dir
+              mountPath: /lib/modules
+            - name: etclvm
+              mountPath: /etc/lvm
+              {{- if (eq "true" (.Values.conf | include "cinder.utils.is_tgt_used")) }}
+            - name: etctargetsconf
+              mountPath: /etc/tgt/targets.conf
+              {{- else }}
+            - mountPath: /etc/target
+              name: etctarget
+            - mountPath: /sys/kernel/config
+              name: syskernelconfig
+              {{- end }}
+            {{- end }}
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{ if $mounts_cinder_volume.volumeMounts }}{{ toYaml $mounts_cinder_volume.volumeMounts | indent 12 }}{{ end }}
+      volumes:
+{{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "cinder" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
+        - name: pod-tmp
+          emptyDir: {}
+        - name: cinder-bin
+          configMap:
+            name: cinder-bin
+            defaultMode: 504
+        - name: {{ $configMapName }}
+          secret:
+            secretName: {{ $configMapName }}
+            defaultMode: 416
+        - name: pod-shared
+          emptyDir: {}
+        - name: cinder-internal-tenant-ids
+          configMap:
+            name: cinder-internal-tenant-ids
+            defaultMode: 416
+        {{- if or .Values.manifests.ceph_conf ( eq "true" ( list .Values.conf.backends | include "cinder.utils.has_ceph_backend")) }}
+        - name: ceph-etc
+        {{- if .Values.manifests.ceph_conf }}
+          secret:
+            secretName: {{ $configMapName }}
+        {{- else }}
+          configMap:
+            name: {{ .Values.ceph_client.configmap }}
+        {{- end }}
+            defaultMode: 416
+        {{ end }}
+        {{- if .Values.conf.enable_iscsi }}
+        - name: host-rootfs
+          hostPath:
+            path: /
+        - name: runlock
+          hostPath:
+            path: /run/lock
+        - name: etciscsi
+          hostPath:
+            path: /etc/iscsi
+        - name: etcmultipath
+          hostPath:
+            path: /etc/multipath
+            type: DirectoryOrCreate
+        - name: usrlocalsbin
+          emptyDir: {}
+        - name: dev
+          hostPath:
+            path: /dev
+        {{- end }}
+        - name: libmodules
+          hostPath:
+            path: /lib/modules
+        - name: varlibcinder
+          hostPath:
+            path: {{ .Values.conf.cinder.DEFAULT.state_path | default "/var/lib/cinder" }}
+        - name: lockpath
+          hostPath:
+            path: {{ .Values.conf.cinder.oslo_concurrency.lock_path }}
+        {{- if ( eq "true" ( list .Values.conf.standalone_backends.daemonset.conf | include "cinder.utils.has_lvm_backend")) }}
+        - hostPath:
+            path: /run
+          name: run-dir
+        - hostPath:
+            path: /lib/modules
+          name: lib-dir
+        - hostPath:
+            path: /etc/lvm
+          name:  etclvm
+          {{- if (eq "true" (.Values.conf | include "cinder.utils.is_tgt_used")) }}
+        - hostPath:
+            path: /etc/tgt/targets.conf
+            type: "File"
+          name: etctargetsconf
+          {{- else }}
+        - hostPath:
+            path: /etc/target
+          name: etctarget
+        - hostPath:
+            path: /sys/kernel/config
+          name: syskernelconfig
+          {{- end }}
+        {{- end }}
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.volumev3.api.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{ if $mounts_cinder_volume.volumes }}{{ toYaml $mounts_cinder_volume.volumes | indent 8 }}{{ end }}
+{{- end }}
+{{- end }}
+
+{{- if .Values.manifests.daemonset_volume }}
+{{- if .Values.conf.standalone_backends }}
+{{- if hasKey .Values.conf.standalone_backends "daemonset" }}
+{{- $envAll := . }}
+{{- $daemonset := "volume_ds" }}
+{{- $configMapName := "cinder-etc" }}
+{{- $serviceAccountName := "cinder-volume-ds"  }}
+{{ tuple $envAll "volume" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+{{- $configmap_yaml := "cinder.configmap.etc" }}
+
+{{/* Prefer using .Values.overrides rather than .Values.conf.overrides */}}
+{{- if index (index $envAll.Values "overrides" |default dict ) "cinder_volume_ds" }}
+{{- list $daemonset "cinder.volume.daemonset" $serviceAccountName $configmap_yaml $configMapName "cinder.configmap.bin" "cinder-bin" $envAll | include "helm-toolkit.utils.daemonset_overrides_root" }}
+{{- else }}
+{{- $daemonset_yaml := list $daemonset $configMapName $serviceAccountName $envAll | include "cinder.volume.daemonset" | toString | fromYaml }}
+{{- list $daemonset $daemonset_yaml $configmap_yaml $configMapName $envAll | include "helm-toolkit.utils.daemonset_overrides" }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,165 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "ceilometer.configmap.etc" }}
+{{- $configMapName := index . 0 }}
+{{- $envAll := index . 1 }}
+{{- with $envAll }}
+
+{{- if empty .Values.conf.ceilometer.keystone_authtoken.auth_uri -}}
+{{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.ceilometer.keystone_authtoken "auth_uri" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.ceilometer.keystone_authtoken.auth_url -}}
+{{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.ceilometer.keystone_authtoken "auth_url" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.ceilometer.keystone_authtoken.memcached_servers -}}
+{{- $_ := tuple "oslo_cache" "internal" "memcache" . | include "helm-toolkit.endpoints.host_and_port_endpoint_uri_lookup" | set .Values.conf.ceilometer.keystone_authtoken "memcached_servers" -}}
+{{- end -}}
+{{- if empty .Values.conf.ceilometer.keystone_authtoken.memcache_secret_key -}}
+{{- $_ := set .Values.conf.ceilometer.keystone_authtoken "memcache_secret_key" ( default ( randAlphaNum 64 ) .Values.endpoints.oslo_cache.auth.memcache_secret_key ) -}}
+{{- end -}}
+
+{{- if empty .Values.conf.ceilometer.cache.memcache_servers -}}
+{{- $_ := tuple "oslo_cache" "internal" "memcache" . | include "helm-toolkit.endpoints.host_and_port_endpoint_uri_lookup" | set .Values.conf.ceilometer.cache "memcache_servers" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.ceilometer.database.connection -}}
+{{- $_ := tuple "oslo_db" "internal" "ceilometer" "mysql" . | include "helm-toolkit.endpoints.authenticated_endpoint_uri_lookup"| set .Values.conf.ceilometer.database "connection" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.panko.database.connection -}}
+{{- $_ := tuple "oslo_db_panko" "internal" "panko" "mysql" . | include "helm-toolkit.endpoints.authenticated_endpoint_uri_lookup"| set .Values.conf.panko.database "connection" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.ceilometer.database.event_connection -}}
+{{- $_ := tuple "mongodb" "internal" "ceilometer" "mongodb" . | include "helm-toolkit.endpoints.authenticated_endpoint_uri_lookup"| set .Values.conf.ceilometer.database "event_connection" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.ceilometer.database.metering_connection -}}
+{{- $_ := tuple "mongodb" "internal" "ceilometer" "mongodb" . | include "helm-toolkit.endpoints.authenticated_endpoint_uri_lookup"| set .Values.conf.ceilometer.database "metering_connection" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.ceilometer.DEFAULT.transport_url -}}
+{{- $_ := tuple "oslo_messaging" "internal" "ceilometer" "amqp" . | include "helm-toolkit.endpoints.authenticated_transport_endpoint_uri_lookup" | set .Values.conf.ceilometer.DEFAULT "transport_url" -}}
+{{- end -}}
+
+{{- if not (empty .Values.conf.ceilometer.oslo_messaging_notifications) -}}
+{{- if empty .Values.conf.ceilometer.oslo_messaging_notifications.transport_url -}}
+{{- if .Values.endpoints.oslo_messaging_notifications -}}
+{{- $_ := tuple "oslo_messaging_notifications" "internal" "ceilometer" "amqp" . | include "helm-toolkit.endpoints.authenticated_transport_endpoint_uri_lookup" | set .Values.conf.ceilometer.oslo_messaging_notifications "transport_url" -}}
+{{- else -}}
+{{- $_ := tuple "oslo_messaging" "internal" "ceilometer" "amqp" . | include "helm-toolkit.endpoints.authenticated_transport_endpoint_uri_lookup" | set .Values.conf.ceilometer.oslo_messaging_notifications "transport_url" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{- if hasKey .Values.conf.ceilometer "notification" -}}
+{{- if empty .Values.conf.ceilometer.notification.messaging_urls -}}
+{{- $_ := set .Values.conf.ceilometer.notification "messaging_urls" .Values.conf.ceilometer.oslo_messaging_notifications.transport_url -}}
+{{- end -}}
+{{- else -}}
+{{- $_ := set $envAll.Values.conf.ceilometer "notification" ( dict "messaging_urls" .Values.conf.ceilometer.oslo_messaging_notifications.transport_url ) }}
+{{- end -}}
+
+{{- if empty .Values.conf.ceilometer.keystone_authtoken.region_name -}}
+{{- $_ := set .Values.conf.ceilometer.keystone_authtoken "region_name" .Values.endpoints.identity.auth.ceilometer.region_name -}}
+{{- end -}}
+{{- if empty .Values.conf.ceilometer.keystone_authtoken.project_name -}}
+{{- $_ := set .Values.conf.ceilometer.keystone_authtoken "project_name" .Values.endpoints.identity.auth.ceilometer.project_name -}}
+{{- end -}}
+{{- if empty .Values.conf.ceilometer.keystone_authtoken.project_domain_name -}}
+{{- $_ := set .Values.conf.ceilometer.keystone_authtoken "project_domain_name" .Values.endpoints.identity.auth.ceilometer.project_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.ceilometer.keystone_authtoken.user_domain_name -}}
+{{- $_ := set .Values.conf.ceilometer.keystone_authtoken "user_domain_name" .Values.endpoints.identity.auth.ceilometer.user_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.ceilometer.keystone_authtoken.username -}}
+{{- $_ := set .Values.conf.ceilometer.keystone_authtoken "username" .Values.endpoints.identity.auth.ceilometer.username -}}
+{{- end -}}
+{{- if empty .Values.conf.ceilometer.keystone_authtoken.password -}}
+{{- $_ := set .Values.conf.ceilometer.keystone_authtoken "password" .Values.endpoints.identity.auth.ceilometer.password -}}
+{{- end -}}
+
+{{- if empty .Values.conf.ceilometer.service_credentials.auth_url -}}
+{{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.ceilometer.service_credentials "auth_url" -}}
+{{- end -}}
+{{- if empty .Values.conf.ceilometer.service_credentials.region_name -}}
+{{- $_ := set .Values.conf.ceilometer.service_credentials "region_name" .Values.endpoints.identity.auth.ceilometer.region_name -}}
+{{- end -}}
+{{- if empty .Values.conf.ceilometer.service_credentials.project_name -}}
+{{- $_ := set .Values.conf.ceilometer.service_credentials "project_name" .Values.endpoints.identity.auth.ceilometer.project_name -}}
+{{- end -}}
+{{- if empty .Values.conf.ceilometer.service_credentials.project_domain_name -}}
+{{- $_ := set .Values.conf.ceilometer.service_credentials "project_domain_name" .Values.endpoints.identity.auth.ceilometer.project_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.ceilometer.service_credentials.user_domain_name -}}
+{{- $_ := set .Values.conf.ceilometer.service_credentials "user_domain_name" .Values.endpoints.identity.auth.ceilometer.user_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.ceilometer.service_credentials.username -}}
+{{- $_ := set .Values.conf.ceilometer.service_credentials "username" .Values.endpoints.identity.auth.ceilometer.username -}}
+{{- end -}}
+{{- if empty .Values.conf.ceilometer.service_credentials.password -}}
+{{- $_ := set .Values.conf.ceilometer.service_credentials "password" .Values.endpoints.identity.auth.ceilometer.password -}}
+{{- end -}}
+
+{{- if empty .Values.conf.ceilometer.dispatcher_gnocchi.url -}}
+{{- $_ := tuple "metric" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.ceilometer.dispatcher_gnocchi "url" -}}
+{{- end -}}
+
+{{- if empty .Values.conf.ceilometer.api.aodh_url -}}
+{{- $_ := tuple "alarming" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.ceilometer.api "aodh_url" -}}
+{{- end -}}
+
+{{- if and (empty .Values.conf.logging.handler_fluent) (has "fluent" .Values.conf.logging.handlers.keys) -}}
+{{- $fluentd_host := tuple "fluentd" "internal" $envAll | include "helm-toolkit.endpoints.hostname_namespaced_endpoint_lookup" }}
+{{- $fluentd_port := tuple "fluentd" "internal" "service" $envAll | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- $fluent_args := printf "('%s.%s', '%s', %s)" .Release.Namespace .Release.Name $fluentd_host $fluentd_port }}
+{{- $handler_fluent := dict "class" "fluent.handler.FluentHandler" "formatter" "fluent" "args" $fluent_args -}}
+{{- $_ := set .Values.conf.logging "handler_fluent" $handler_fluent -}}
+{{- end -}}
+
+{{- if and (empty .Values.conf.logging.formatter_fluent) (has "fluent" .Values.conf.logging.formatters.keys) -}}
+{{- $formatter_fluent := dict "class" "oslo_log.formatters.FluentFormatter" -}}
+{{- $_ := set .Values.conf.logging "formatter_fluent" $formatter_fluent -}}
+{{- end -}}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $configMapName }}
+type: Opaque
+data:
+  rally_tests.yaml: {{ toYaml .Values.conf.rally_tests | b64enc }}
+  ceilometer.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.ceilometer | b64enc }}
+  api_paste.ini: {{ include "helm-toolkit.utils.to_ini" .Values.conf.paste | b64enc }}
+  api_audit_map.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.api_audit_map | b64enc }}
+  event_pipeline.yaml: {{ .Values.conf.event_pipeline | b64enc }}
+  pipeline.yaml: {{ .Values.conf.pipeline | b64enc }}
+  event_definitions.yaml: {{ .Values.conf.event_definitions | b64enc }}
+  gnocchi_resources.yaml: {{ .Values.conf.gnocchi_resources | b64enc }}
+  meters.yaml: {{ .Values.conf.meters | b64enc }}
+  polling.yaml: {{ .Values.conf.polling | b64enc }}
+  panko.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.panko | b64enc }}
+  logging.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.logging | b64enc }}
+{{- if .Values.conf.security }}
+{{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.security "key" "security.conf" "format" "Secret" ) | indent 2 }}
+{{- end}}
+{{ include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.wsgi_ceilometer "key" "wsgi-ceilometer.conf" "format" "Secret" ) | indent 2 }}
+{{- end }}
+{{- end }}
+{{- if .Values.manifests.configmap_etc }}
+{{- list "ceilometer-etc" . | include "ceilometer.configmap.etc" }}
+{{- end }}

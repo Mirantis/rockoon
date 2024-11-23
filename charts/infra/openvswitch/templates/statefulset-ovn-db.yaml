@@ -1,0 +1,212 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "ovn_db.sb.livenessProbeTemplate" }}
+tcpSocket:
+  port: {{ tuple "ovn_db" "internal" "sb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- end }}
+{{- define "ovn_db.nb.livenessProbeTemplate" }}
+tcpSocket:
+  port: {{ tuple "ovn_db" "internal" "nb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- end }}
+
+{{- define "ovn_db.readinessProbeTemplate" }}
+{{- $component := . }}
+exec:
+  command:
+    - /tmp/ovn-db-probe.sh
+    - {{ $component }}
+    - readiness
+{{- end }}
+
+{{- if .Values.manifests.statefulset_ovn_db }}
+
+{{- $serviceAccountName := "openvswitch-ovn-db" }}
+{{- $envAll := . }}
+
+{{ tuple $envAll "ovn_db" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: openvswitch-ovn-db
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "openvswitch_ovn" "db" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  serviceName: "{{ tuple "ovn_db" "discovery" . | include "helm-toolkit.endpoints.hostname_short_endpoint_lookup" }}"
+  replicas: {{ .Values.pod.replicas.ovn_db }}
+  podManagementPolicy: "Parallel"
+  selector:
+    matchLabels:
+{{ tuple $envAll "openvswitch_ovn" "db" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll "ovn" | include "helm-toolkit.snippets.kubernetes_upgrades_daemonset" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "openvswitch_ovn" "db" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+{{ dict "envAll" $envAll "podName" "openvswitch-ovn-db" "containerNames" (list "sb" "nb" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "openvswitch_ovn_db" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      affinity:
+        {{ tuple $envAll "openvswitch_ovn" "db" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      nodeSelector:
+        {{ .Values.labels.ovn_db.node_selector_key }}: {{ .Values.labels.ovn_db.node_selector_value }}
+      initContainers:
+{{ tuple $envAll "db" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+        - name: db-perms
+{{ tuple $envAll "openvswitch_ovn_db" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "openvswitch_ovn_db" "container" "perms" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.ovn_db | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          command:
+            - chown
+            - -R
+            - {{ $envAll.Values.pod.security_context.openvswitch_ovn_db.pod.runAsUser | quote }}
+            - /run/ovn
+            - /var/lib/ovn
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: run
+              mountPath: /run/ovn
+            - name: openvswitch-ovn-db
+              mountPath: /var/lib/ovn
+              readOnly: false
+      containers:
+        - name: nb
+{{ tuple $envAll "openvswitch_ovn_db_nb" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "openvswitch_ovn_db" "container" "nb" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.ovn_db.nb | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "component" "ovn" "container" "nb" "type" "liveness" "probeTemplate" (include "ovn_db.nb.livenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "ovn" "container" "nb" "type" "readiness" "probeTemplate" (include "ovn_db.readinessProbeTemplate" "nb" | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          command:
+            - /tmp/ovn-db-generic.sh
+            - start
+          env:
+            - name: DB_TYPE
+              value: nb
+            - name: DB_PORT
+              value: {{ tuple "ovn_db" "direct" "nb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | quote }}
+            - name: RAFT_PORT
+              value: {{ tuple "ovn_db" "raft" "nb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | quote }}
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /tmp/ovn-db-generic.sh
+                  - stop
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: openvswitch-bin
+              mountPath: /tmp/ovn-db-generic.sh
+              subPath: ovn-db-generic.sh
+              readOnly: true
+            - name: openvswitch-bin
+              mountPath: /tmp/ovn-db-probe.sh
+              subPath: ovn-db-probe.sh
+              readOnly: true
+            - name: run
+              mountPath: /run/ovn
+            - name: openvswitch-ovn-db
+              mountPath: /var/lib/ovn
+              readOnly: false
+            - name: varlog
+              mountPath: /var/log/ovn
+          ports:
+            - name: nb
+              protocol: TCP
+              containerPort: {{ tuple "ovn_db" "internal" "nb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+            - name: nb-raft
+              protocol: TCP
+              containerPort: {{ tuple "ovn_db" "raft" "nb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+        - name: sb
+{{ tuple $envAll "openvswitch_ovn_db_sb" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "openvswitch_ovn_db" "container" "sb" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.ovn_db.sb | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "component" "ovn" "container" "sb" "type" "liveness" "probeTemplate" (include "ovn_db.sb.livenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "ovn" "container" "sb" "type" "readiness" "probeTemplate" (include "ovn_db.readinessProbeTemplate" "sb" | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          command:
+            - /tmp/ovn-db-generic.sh
+            - start
+          env:
+            - name: DB_TYPE
+              value: sb
+            - name: DB_PORT
+              value: {{ tuple "ovn_db" "direct" "sb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | quote }}
+            - name: RAFT_PORT
+              value: {{ tuple "ovn_db" "raft" "sb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | quote }}
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /tmp/ovn-db-generic.sh
+                  - stop
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: openvswitch-bin
+              mountPath: /tmp/ovn-db-generic.sh
+              subPath: ovn-db-generic.sh
+              readOnly: true
+            - name: run
+              mountPath: /run/ovn
+            - name: openvswitch-bin
+              mountPath: /tmp/ovn-db-probe.sh
+              subPath: ovn-db-probe.sh
+              readOnly: true
+            - name: openvswitch-ovn-db
+              mountPath: /var/lib/ovn
+              readOnly: false
+            - name: varlog
+              mountPath: /var/log/ovn
+          ports:
+            - name: sb
+              protocol: TCP
+              containerPort: {{ tuple "ovn_db" "internal" "sb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+            - name: sb-raft
+              protocol: TCP
+              containerPort: {{ tuple "ovn_db" "raft" "sb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: varlog
+          emptyDir: {}
+        - name: openvswitch-bin
+          configMap:
+            name: openvswitch-bin
+            defaultMode: 365
+        - name: run
+          hostPath:
+            path: /run/ovn
+{{- if .Values.volume.ovn_db.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: openvswitch-ovn-db
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: {{ .Values.volume.ovn_db.size }}
+      {{- if ne .Values.volume.ovn_db.class_name "default" }}
+      storageClassName: {{ .Values.volume.ovn_db.class_name }}
+      {{- end }}
+{{- end }}
+{{- end }}

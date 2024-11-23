@@ -1,0 +1,70 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.pod_test }}
+{{- $envAll := . }}
+
+{{ if kindIs "string" $envAll.Values.dependencies.static.tests.jobs }}
+{{ if eq $envAll.Values.dependencies.static.tests.jobs "cluster_wait" }}
+{{ $_ := set $envAll.Values.dependencies.static.tests "jobs" ( list ( print $envAll.Release.Name "-cluster-wait" ) ) }}
+{{ end }}
+{{ end }}
+
+{{- $serviceAccountName := print .Release.Name "-test" }}
+{{ tuple $envAll "tests" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{.Release.Name}}-test"
+  labels:
+{{ tuple $envAll "rabbitmq" "test" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+    "helm.sh/hook": test-success
+{{ dict "envAll" $envAll "podName" "rabbitmq-rabbitmq-test" "containerNames" (list "init" "rabbitmq-rabbitmq-test") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 4 }}
+spec:
+{{ dict "envAll" $envAll "application" "test" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 2 }}
+  serviceAccountName: {{ $serviceAccountName }}
+  nodeSelector:
+    {{ $envAll.Values.labels.test.node_selector_key }}: {{ $envAll.Values.labels.test.node_selector_value | quote }}
+  restartPolicy: Never
+  initContainers:
+{{ tuple $envAll "tests" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 4 }}
+  containers:
+    - name: {{.Release.Name}}-rabbitmq-test
+{{ tuple $envAll "rabbitmq_scripted_test" | include "helm-toolkit.snippets.image" | indent 6 }}
+{{ dict "envAll" $envAll "application" "test" "container" "rabbitmq_test" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 6 }}
+      env:
+        - name: RABBITMQ_ADMIN_CONNECTION
+          value: {{ tuple "oslo_messaging" "internal" "user" "http" $envAll | include "helm-toolkit.endpoints.authenticated_endpoint_uri_lookup" | quote }}
+        - name: RABBIT_REPLICA_COUNT
+          value: {{ $envAll.Values.pod.replicas.server | quote }}
+      command:
+        - /tmp/rabbitmq-test.sh
+      volumeMounts:
+        - name: pod-tmp
+          mountPath: /tmp
+        - name: rabbitmq-bin
+          mountPath: /tmp/rabbitmq-test.sh
+          subPath: rabbitmq-test.sh
+          readOnly: true
+  volumes:
+    - name: pod-tmp
+      emptyDir: {}
+    - name: rabbitmq-bin
+      configMap:
+        name: {{ printf "%s-%s" $envAll.Release.Name "rabbitmq-bin" | quote }}
+        defaultMode: 365
+{{- end }}

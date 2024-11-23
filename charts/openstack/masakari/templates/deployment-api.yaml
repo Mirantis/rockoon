@@ -1,0 +1,151 @@
+{{/*
+Copyright 2021 Mirantis Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "masakariApiProbeTemplate" }}
+httpGet:
+  scheme: HTTP
+  path: /
+  port: {{ tuple "instance_ha" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- end }}
+
+{{- if .Values.manifests.deployment_api }}
+{{- $envAll := . }}
+
+{{- $mounts_masakari_api := .Values.pod.mounts.masakari_api.masakari_api }}
+{{- $mounts_masakari_api_init := .Values.pod.mounts.masakari_api.init_container }}
+
+{{- $serviceAccountName := "masakari-api" }}
+{{ tuple $envAll "api" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: masakari-api
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "masakari" "api" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  replicas: {{ .Values.pod.replicas.api }}
+  selector:
+    matchLabels:
+{{ tuple $envAll "masakari" "api" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll | include "helm-toolkit.snippets.kubernetes_upgrades_deployment" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "masakari" "api" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+        endpoints-hash: {{ .Values.endpoints | include "helm-toolkit.utils.get_hash" }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "masakari_api" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      affinity:
+{{ tuple $envAll "masakari" "api" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      nodeSelector:
+        {{ .Values.labels.api.node_selector_key }}: {{ .Values.labels.api.node_selector_value }}
+      terminationGracePeriodSeconds: {{ .Values.pod.lifecycle.termination_grace_period.api.timeout | default "30" }}
+      initContainers:
+{{ tuple $envAll "api" $mounts_masakari_api_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+      containers:
+        - name: masakari-api
+{{ tuple $envAll "masakari_api" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.api | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "masakari_api" "container" "masakari_api" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/masakari-api.sh
+            - start
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /tmp/masakari-api.sh
+                  - stop
+          ports:
+            - name: p-api
+              containerPort: {{ tuple "instance_ha" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{ dict "envAll" $envAll "component" "masakari_api" "container" "masakari_api" "type" "readiness" "probeTemplate" (include "masakariApiProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "masakari_api" "container" "masakari_api" "type" "liveness" "probeTemplate" (include "masakariApiProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          volumeMounts:
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "masakari" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: wsgi-masakari
+              mountPath: /var/www/cgi-bin/masakari
+            - name: etcmasakari
+              mountPath: /etc/masakari
+            - name: masakari-etc
+              mountPath: /etc/masakari/masakari.conf
+              subPath: masakari.conf
+              readOnly: true
+            {{- if .Values.conf.masakari.DEFAULT.log_config_append }}
+            - name: masakari-etc
+              mountPath: {{ .Values.conf.masakari.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.masakari.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+            - name: masakari-etc
+              mountPath: /etc/masakari/api-paste.ini
+              subPath: api_paste.ini
+              readOnly: true
+            - name: masakari-oslo-policy
+              mountPath: /etc/masakari/policy.d/
+            - name: masakari-etc
+              mountPath: /etc/apache2/conf-enabled/wsgi-masakari.conf
+              subPath: wsgi-masakari.conf
+              readOnly: true
+            - name: masakari-bin
+              mountPath: /tmp/masakari-api.sh
+              subPath: masakari-api.sh
+              readOnly: true
+            - name: masakari-etc
+              mountPath: /etc/apache2/ports.conf
+              subPath: ports.conf
+              readOnly: true
+            - name: logs-apache
+              mountPath: /var/log/apache2
+            - name: run-apache
+              mountPath: /var/run/apache2
+{{ if $mounts_masakari_api.volumeMounts }}{{ toYaml $mounts_masakari_api.volumeMounts | indent 12 }}{{ end }}
+      volumes:
+{{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "masakari" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
+        - name: pod-tmp
+          emptyDir: {}
+        - name: wsgi-masakari
+          emptyDir: {}
+        - name: etcmasakari
+          emptyDir: {}
+        - name: masakari-etc
+          secret:
+            secretName: masakari-etc
+            defaultMode: 416
+        - name: masakari-bin
+          configMap:
+            name: masakari-bin
+            defaultMode: 504
+        - name: masakari-oslo-policy
+          secret:
+            secretName: masakari-oslo-policy
+            defaultMode: 416
+        - name: logs-apache
+          emptyDir: {}
+        - name: run-apache
+          emptyDir: {}
+{{ if $mounts_masakari_api.volumes }}{{ toYaml $mounts_masakari_api.volumes | indent 8 }}{{ end }}
+{{- end }}

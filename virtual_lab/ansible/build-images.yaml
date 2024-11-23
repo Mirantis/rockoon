@@ -1,0 +1,20 @@
+---
+- name: Build OC images
+  hosts: k8s_controllers[0]
+  become: true
+  become_user: root
+  pre_tasks:
+    - name: Set node role fact
+      set_fact:
+        rvl_controller_node: "{%- if ansible_hostname in groups.controllers %}True{%- endif %}"
+        rvl_compute_node: "{%- if ansible_hostname in groups.computes %}True{%- endif %}"
+        rvl_resolved_ip_address: "{{ hostvars[groups.k8s_controllers[0]]['ansible_default_ipv4']['address'] }}"
+      tags:
+        - all
+  tasks:
+  - name: Build images
+    include_role:
+      name: rvl
+      tasks_from: images
+    tags:
+      - images

@@ -1,0 +1,33 @@
+metric:gnocchi:Deployment:gnocchi-api:
+- from:
+  - podSelector:
+      matchLabels:
+        application: aodh
+        component: api
+  - podSelector:
+      matchLabels:
+        application: aodh
+        component: evaluator
+  - podSelector:
+      matchLabels:
+        application: keystone
+        component: client
+  - podSelector:
+      matchLabels:
+        application: ingress
+        component: server
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: notification
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: db-sync
+  - podSelector:
+      matchLabels:
+        application: gnocchi
+        component: resources-cleaner
+  ports:
+  - port: 8041
+    protocol: TCP

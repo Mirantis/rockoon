@@ -1,0 +1,1 @@
+../public_endpoints_redirect/03-apply-forwarder-cr.sh

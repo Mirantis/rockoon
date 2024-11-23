@@ -1,0 +1,77 @@
+key-manager:barbican:Deployment:barbican-api:
+- from:
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: volume_daemonset
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: api
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: backup
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: volume
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: compute
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: os-api
+  - podSelector:
+      matchLabels:
+        application: horizon
+        component: server
+  - podSelector:
+      matchLabels:
+        application: keystone
+        component: client
+  - podSelector:
+      matchLabels:
+        application: glance
+        component: api
+  - podSelector:
+      matchLabels:
+        application: glance
+        component: barbican-cert-init
+  - podSelector:
+      matchLabels:
+        application: ingress
+        component: server
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: health_manager
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: api
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: housekeeping
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: worker
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: engine
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: engine
+  - podSelector:
+      matchLabels:
+        application: tempest
+        component: static-accounts
+  ports:
+  - port: 9311
+    protocol: TCP

@@ -1,0 +1,16 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rockoon.name" . }}-deploy-resources-bin
+  annotations:
+    "helm.sh/hook": "pre-install,pre-upgrade"
+    "helm.sh/hook-delete-policy": "before-hook-creation"
+data:
+{{- $context := . }}
+{{- range $resource := tuple "10-namespaces.yaml" "22-kopfpeering-crd.yaml" "23-openstackdeployment-crd.yaml" "23-openstackdeploymentsecret-crd.yaml" "24-openstackdeploymentstatus-crd.yaml" "25-node-maintenances-crd.yaml" "26-redisfailover-crd.yaml" "27-drbcontroller-crd.yaml" "50_kopfpeering.yaml" "51_drb-kopfpeering.yaml" "60_configuration.yaml" "70_os_clouds.yaml"}}
+  {{ $resource }}: |
+  {{- $fname := printf "resources_shared/_%s.tpl" $resource }}
+{{ tuple  $fname $context | include "template"  | indent 4 }}
+
+{{- end }}

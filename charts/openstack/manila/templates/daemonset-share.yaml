@@ -1,0 +1,234 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "shareProbeTemplate" }}
+{{- $probeType := . }}
+exec:
+  command:
+    - python
+    - /tmp/health-probe.py
+    - --config-file
+    - /etc/manila/manila.conf
+    - --probe-type
+    - {{ $probeType }}
+    - --check
+    - rabbitmq_sockets
+    - --process-name
+    - manila-share
+{{- end }}
+
+{{- define "manila.share.daemonset" }}
+  {{- $daemonset := index . 0 }}
+  {{- $configMapName := index . 1 }}
+  {{- $serviceAccountName := index . 2 }}
+  {{- $envAll := index . 3 }}
+
+  {{- with $envAll }}
+
+{{- $mounts_manila_share := .Values.pod.mounts.manila_share.manila_share }}
+{{- $mounts_manila_share_init := .Values.pod.mounts.manila_share.init_container }}
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ $daemonset }}
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "manila" "share_daemonset" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+{{ tuple $envAll "manila" "share_daemonset" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll "share_daemonset"| include "helm-toolkit.snippets.kubernetes_upgrades_daemonset" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "manila" "share_daemonset" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+        endpoints-hash: {{ .Values.endpoints | include "helm-toolkit.utils.get_hash" }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "manila_share_daemonset" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      affinity:
+{{ tuple $envAll "manila" "share_daemonset" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      nodeSelector:
+        {{ .Values.labels.share_daemonset.node_selector_key }}: {{ .Values.labels.share_daemonset.node_selector_value }}
+      hostNetwork: true
+      hostPID: false
+      # To let udev work
+      hostIPC: true
+      dnsPolicy: ClusterFirstWithHostNet
+      initContainers:
+{{ tuple $envAll "share_daemonset" $mounts_manila_share_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+{{ tuple $envAll "manila" "manila_share" | include "helm-toolkit.snippets.kubernetes_cacert_init_container" | indent 8 }}
+        - name: manila-uuids-init
+{{ tuple $envAll "manila-uuids-init" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.share | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "manila_share_daemonset" "container" "manila_share_uuids" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/manila-uuids.py
+          env:
+            - name: CONVERT_TO_UUID
+              value: {{ toJson $envAll.Values.conf.convert_to_uuid | quote }}
+{{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" "admin" ) | indent 12 }}
+          volumeMounts:
+            - name: manila-tmp
+              mountPath: /tmp
+            - name: manila-bin
+              mountPath: /tmp/manila-uuids.py
+              subPath: manila-uuids.py
+              readOnly: true
+            - name: etcmanila
+              mountPath: /etc/manila/manila.conf.d
+            - name: os-clouds
+              mountPath: /etc/openstack/clouds.yaml
+              subPath: clouds.yaml
+              readOnly: true
+      containers:
+        - name: manila-share
+{{ tuple $envAll "manila_share_daemonset" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.share | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "manila_share_daemonset" "container" "manila_share" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/manila-share.sh
+{{ dict "envAll" $envAll "component" "share" "container" "default" "type" "readiness" "probeTemplate" (include "shareProbeTemplate" "readiness" | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "share" "container" "default" "type" "liveness" "probeTemplate" (include "shareProbeTemplate" "liveness" | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          terminationMessagePath: /var/log/termination-log
+          env:
+            - name: REQUESTS_CA_BUNDLE
+              value: /certs/ca-bundle.pem
+          volumeMounts:
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "manila" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+            - name: manila-tmp
+              mountPath: /tmp
+            - name: manila-bin
+              mountPath: /tmp/manila-share.sh
+              subPath: manila-share.sh
+              readOnly: true
+            - name: {{ $configMapName }}
+              mountPath: /etc/manila/manila.conf
+              subPath: manila.conf
+              readOnly: true
+            {{- if .Values.conf.manila.DEFAULT.log_config_append }}
+            - name: {{ $configMapName }}
+              mountPath: {{ .Values.conf.manila.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.manila.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+            - name: etcmanila
+              mountPath: /etc/manila/manila.conf.d
+            - name: {{ $configMapName }}
+              mountPath: /etc/manila/manila.conf.d/99_backends.conf
+              subPath: backend_ds.conf
+              readOnly: true
+            - name: {{ $configMapName }}
+              # NOTE (Portdirect): We mount here to override Kollas
+              # custom sudoers file when using Kolla images, this
+              # location will also work fine for other images.
+              mountPath: /etc/sudoers.d/kolla_manila_sudoers
+              subPath: manila_sudoers
+              readOnly: true
+            - name: {{ $configMapName }}
+              mountPath: /etc/sudoers.d/kolla_manila_share_sudoers
+              subPath: manila_sudoers
+              readOnly: true
+            - name: {{ $configMapName }}
+              mountPath: /etc/manila/rootwrap.conf
+              subPath: rootwrap.conf
+              readOnly: true
+            {{- range $key, $value := $envAll.Values.conf.rootwrap_filters }}
+            {{- if ( has "share" $value.pods ) }}
+            {{- $filePrefix := replace "_" "-"  $key }}
+            {{- $rootwrapFile := printf "/etc/manila/rootwrap.d/%s.filters" $filePrefix }}
+            - name: {{ $configMapName }}
+              mountPath: {{ $rootwrapFile }}
+              subPath: {{ base $rootwrapFile }}
+              readOnly: true
+            {{- end }}
+            {{- end }}
+            - name: run
+              mountPath: /run
+            - name: manila-bin
+              mountPath: /tmp/health-probe.py
+              subPath: health-probe.py
+              readOnly: true
+            {{- if .Values.manifests.service_instance_ssh_key }}
+            - name: manila-ssh-key
+              mountPath: /etc/manila/ssh/manila
+              subPath: manila_ssh_key
+              readOnly: true
+            - name: manila-ssh-key
+              mountPath: /etc/manila/ssh/manila.pub
+              subPath: manila_ssh_key_pub
+              readOnly: true
+            {{- end }}
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{ if $mounts_manila_share.shareMounts }}{{ toYaml $mounts_manila_share.shareMounts | indent 12 }}{{ end }}
+      volumes:
+{{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "manila" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
+        - name: manila-bin
+          configMap:
+            name: manila-bin
+            defaultMode: 504
+        - name: {{ $configMapName }}
+          secret:
+            secretName: {{ $configMapName }}
+            defaultMode: 416
+        - name: etcmanila
+          emptyDir: {}
+        - name: manila-tmp
+          emptyDir: {}
+        - name: run
+          hostPath:
+            path: /run
+        - name: os-clouds
+          secret:
+            secretName: "manila-os-clouds"
+            defaultMode: 416
+        {{- if .Values.manifests.service_instance_ssh_key }}
+        - name: manila-ssh-key
+          secret:
+            secretName: manila-ssh-key
+            defaultMode: 416
+        {{- end }}
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{ if $mounts_manila_share.shares }}{{ toYaml $mounts_manila_share.shares | indent 8 }}{{ end }}
+{{- end }}
+{{- end }}
+
+{{- if .Values.manifests.daemonset_share }}
+{{- if .Values.conf.standalone_backends }}
+{{- if hasKey .Values.conf.standalone_backends "daemonset" }}
+{{- $envAll := . }}
+{{- $daemonset := "share_ds" }}
+{{- $configMapName := "manila-etc" }}
+{{- $serviceAccountName := "manila-share-ds"  }}
+{{ tuple $envAll "share" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+{{- $configmap_yaml := "manila.configmap.etc" }}
+
+{{/* Prefer using .Values.overrides rather than .Values.conf.overrides */}}
+{{- if index (index $envAll.Values "overrides" |default dict ) "manila_share_ds" }}
+{{- list $daemonset "manila.share.daemonset" $serviceAccountName $configmap_yaml $configMapName "manila.configmap.bin" "manila-bin" $envAll | include "helm-toolkit.utils.daemonset_overrides_root" }}
+{{- else }}
+{{- $daemonset_yaml := list $daemonset $configMapName $serviceAccountName $envAll | include "manila.share.daemonset" | toString | fromYaml }}
+{{- list $daemonset $daemonset_yaml $configmap_yaml $configMapName $envAll | include "helm-toolkit.utils.daemonset_overrides" }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

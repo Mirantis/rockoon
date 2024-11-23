@@ -1,0 +1,1 @@
+../public_endpoints_redirect/02-create-forwarder-cr.sh

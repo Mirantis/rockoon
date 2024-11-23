@@ -1,0 +1,20 @@
+nova:
+  metadata:
+    generation: 2
+    status: ready
+  os-api:
+    generation: 2
+    status: ready
+  scheduler:
+    generation: 2
+    status: ready
+octavia:
+  api:
+    generation: 2
+    status: ready
+  housekeeping:
+    generation: 2
+    status: ready
+  worker:
+    generation: 2
+    status: ready

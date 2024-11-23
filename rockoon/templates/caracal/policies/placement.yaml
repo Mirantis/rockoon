@@ -1,0 +1,3 @@
+{%- if spec.get("features", {}).get("policies", {}).get("strict_admin", {}).get('enabled') %}
+admin_api: "(role:admin and is_admin_project:True) or role:service"
+{%- endif %}

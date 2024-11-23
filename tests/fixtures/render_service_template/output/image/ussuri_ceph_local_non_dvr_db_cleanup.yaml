@@ -1,0 +1,321 @@
+spec:
+  releases:
+  - chart: glance
+    name: openstack-glance
+    values:
+      bootstrap:
+        enabled: true
+        ks_user: glance
+        structured:
+          images:
+            cirros-5.1:
+              checksum: 050056e630cf
+              container_format: bare
+              image_file: cirros-0.5.1-x86_64-disk.img
+              image_type: qcow2
+              min_disk: 1
+              name: Cirros-5.1
+              private: false
+              properties:
+                os_distro: cirros
+              source_url: https://artifactory.mcp.mirantis.net/binary-dev-kaas-local/openstack/bin/cirros/0.5.1/
+            cirros-5.1.alt:
+              checksum: 050056e630cf
+              container_format: bare
+              image_file: cirros-0.5.1-x86_64-disk.img
+              image_type: qcow2
+              min_disk: 1
+              name: Cirros-5.1.alt
+              private: false
+              properties:
+                os_distro: cirros
+              source_url: https://artifactory.mcp.mirantis.net/binary-dev-kaas-local/openstack/bin/cirros/0.5.1/
+            cirros-5.1.raw:
+              checksum: 479256d697ca
+              container_format: bare
+              image_file: cirros-0.5.1-x86_64-disk.raw
+              image_type: raw
+              min_disk: 1
+              name: Cirros-5.1.raw
+              private: false
+              properties:
+                os_distro: cirros
+              source_url: https://artifactory.mcp.mirantis.net/binary-dev-kaas-local/openstack/bin/cirros/0.5.1/
+            fedora:
+              checksum: 8bc56d70a3e2
+              container_format: bare
+              image_file: Fedora-Cloud-Base-27-1.6.x86_64.qcow2
+              image_type: qcow2
+              min_disk: 1
+              name: Fedora-27-1.6
+              private: false
+              properties:
+                os_distro: fedora
+              source_url: https://artifactory.mcp.mirantis.net/binary-dev-kaas-local/openstack/bin/Fedora/27/
+            ubuntu:
+              checksum: 3fb7422b5843
+              container_format: bare
+              image_file: bionic-server-cloudimg-amd64.img
+              image_type: qcow2
+              min_disk: 1
+              name: Ubuntu-18.04
+              private: false
+              properties:
+                os_distro: ubuntu
+              source_url: https://artifactory.mcp.mirantis.net/binary-dev-kaas-local/openstack/bin/ubuntu/18.04/
+            amphora-x64-haproxy:
+              checksum: md5summ
+              container_format: bare
+              image_type: qcow2
+              name: amphora-x64-haproxy
+              private: true
+              properties:
+                os_distro: ubuntu
+              source_url: 'https://amphora-image-url/latest'
+              tags:
+                - amphora
+      ceph_client:
+        configmap: rook-ceph-config
+        user_secret_name: glance-rbd-keyring
+      network:
+        api:
+          ingress:
+            annotations:
+              nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+        proxy:
+          enabled: true
+          env_vars:
+            HTTP_PROXY: http://127.0.0.1:3128
+            NO_PROXY: .svc.cluster.local
+      conf:
+        policy.d:
+          01-controller-default.yaml: {'image_rule1': 'image_value1'}
+          02-custom.yaml: {}
+        ceph:
+          config:
+            global:
+              mon_host:
+                - "10.10.10.1:6789"
+                - "10.10.10.2:6789"
+                - "10.10.10.3:6789"
+          keyrings:
+            glance:
+              key: AQDKZLJfoTtgAhAA7f9e8GriyIpFbj8Ez88l2A==
+        glance:
+          DEFAULT:
+            enable_v2_registry: true
+            show_multiple_locations: true
+          cors:
+            allow_headers: Content-Type,Cache-Control,Content-Language,Expires,Last-Modified,Pragma,X-Custom-Header,X-Auth-Token
+          glance_store:
+            rbd_store_ceph_conf: /etc/ceph/ceph.conf
+            rbd_store_chunk_size: 8
+            rbd_store_crush_rule: replicated_rule
+            rbd_store_pool: images-hdd
+            rbd_store_replication: 3
+            rbd_store_user: glance
+            stores: rbd
+          keystone_authtoken:
+            memcache_secret_key: yXjj5J8Ad1hHdCCh
+            memcache_security_strategy: ENCRYPT
+            service_type: image
+          audit_middleware_notifications:
+            driver: noop
+          oslo_messaging_notifications:
+            topics: notifications,stacklight_notifications
+          oslo_policy:
+            enforce_new_defaults: false
+            enforce_scope: false
+          import_filtering_opts:
+            allowed_ports: "[80,443,8801]"
+        glance_registry:
+          keystone_authtoken:
+            memcache_secret_key: yXjj5J8Ad1hHdCCh
+            memcache_security_strategy: ENCRYPT
+            service_type: image
+        logging:
+          logger_glance:
+            level: INFO
+          logger_os.brick:
+            level: INFO
+      dependencies:
+        static:
+          db_init:
+            jobs:
+            - openstack-mariadb-cluster-wait
+      endpoints:
+        cluster_domain_suffix: cluster.local
+        dashboard:
+          host_fqdn_override:
+            public:
+              host: horizon.it.just.works
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          hosts:
+            default: horizon-int
+            public:
+              host: horizon
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+        identity:
+          auth:
+            admin:
+              default_domain_id: default
+              password: ZUqTyP2XwsgEGKZ7qNhhecYyq9NLkGE6
+              project_domain_name: default
+              project_name: admin
+              region_name: RegionOne
+              user_domain_name: default
+              username: admin
+            glance:
+              password: tAXKyhKBuNVBHlbRPvC1C24f3U4wqbhm
+              username: glancefVB5ZF
+              region_name: 'RegionOne'
+            test:
+              password: UBCA8WZMUg3PDSAD5ppiLNNZrNjWAEBI
+              username: test5RyH
+              region_name: 'RegionOne'
+        image:
+          host_fqdn_override:
+            public:
+              host: glance.it.just.works
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          hosts:
+            admin:
+              host: glance-api
+            default: glance
+            internal: glance-api
+            public:
+              host: glance
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          port:
+            api:
+              admin: 9292
+              default: 80
+              internal: 9292
+              public: 443
+          scheme:
+            default: http
+            public: https
+        oslo_cache:
+          statefulset:
+            name: openstack-memcached-memcached
+            replicas: 3
+        oslo_db:
+          auth:
+            admin:
+              password: QACDSM6FBTH2LuXjTuRQ6DXhD8bSgPbn
+              username: root
+            glance:
+              password: vwAUndcvyeKBi455lrWGkB8NAUXEeWVn
+              username: glanceFEVFCm
+        oslo_messaging:
+          auth:
+            admin:
+              password: 2tnAuP0j9MsgaVHErehZkC5HCK3ZxYLr
+              username: rabbitmq
+            guest:
+              password: 7TnAuP0dKMsgaVHErehZkC5HCK3ZxOi4
+              username: guest
+            glance:
+              password: a1tgZk2bR7f5WyweUt2a4PuFYEty6Igv
+              username: glanceFjTBUv
+            user:
+              password: 2tnAuP0j9MsgaVHErehZkC5HCK3ZxYLr
+              username: rabbitmq
+          hosts:
+            default: rabbitmq
+          path: /glance
+          statefulset:
+            name: openstack-rabbitmq-rabbitmq
+            replicas: 1
+        oslo_messaging_notifications:
+          auth:
+            glance:
+              password: uYRL35JdXg39DumFdDG8xdJeqvL0cswM
+              username: glancejdih0V
+          host_fqdn_override: {}
+          hosts:
+            default: rabbitmq
+          path: /openstack
+          port:
+            amqp:
+              default: 5672
+            http:
+              default: 15672
+          scheme: rabbit
+          statefulset:
+            name: openstack-rabbitmq-rabbitmq
+            replicas: 1
+      images:
+        tags:
+          bootstrap: bootstrap:latest
+          db_drop: db-drop:latest
+          db_init: db-init:latest
+          dep_check: dep-check:latest
+          glance_api: glance-api:latest
+          glance_db_contract: glance-db-contract:latest
+          glance_db_expand: glance-db-expand:latest
+          glance_db_migrate: glance-db-migrate:latest
+          glance_db_sync: glance-db-sync:latest
+          glance_metadefs_load: glance-metadefs-load:latest
+          glance_registry: glance-registry:latest
+          glance_storage_init: glance-storage-init:latest
+          image_repo_sync: image-repo-sync:latest
+          ks_endpoints: ks-endpoints:latest
+          ks_service: ks-service:latest
+          ks_user: ks-user:latest
+          rabbit_init: rabbit-init:latest
+          test: test:latest
+      jobs:
+        ks_endpoints:
+          restartPolicy: Never
+        ks_service:
+          restartPolicy: Never
+        ks_user:
+          restartPolicy: Never
+        db_purge:
+          enabled: true
+          cron: "1 2 3 4 5"
+          script:
+            config:
+              age: 1
+              max_rows: 2
+      manifests:
+        job_rabbit_init: false
+        job_storage_init: false
+        network_policy: false
+        secret_ca_bundle: true
+        cron_job_db_purge: true
+        ceph_conf: true
+        job_clean: false
+        pvc_images: false
+      pod:
+        replicas:
+          api: 1
+          registry: 1
+      secrets:
+        rbd: glance-rbd-keyring
+      storage: rbd

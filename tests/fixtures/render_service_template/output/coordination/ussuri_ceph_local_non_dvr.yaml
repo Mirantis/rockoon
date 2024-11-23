@@ -1,0 +1,29 @@
+spec:
+  releases:
+  - chart: etcd
+    name: etcd
+    values:
+      endpoints:
+        cluster_domain_suffix: cluster.local
+      images:
+        tags:
+          dep_check: dep-check:latest
+          etcd: etcd:latest
+          etcd_db_compact: etcd-db-compact:latest
+          image_repo_sync: image-repo-sync:latest
+      manifests:
+        cron_job_db_compact: true
+        network_policy: false
+      pod:
+        replicas:
+          etcd: 3
+        affinity:
+          anti:
+            type:
+              default: requiredDuringSchedulingIgnoredDuringExecution
+      volume:
+        class_name: lvp-fake-root
+      conf:
+        etcd:
+          ETCD_ELECTION_TIMEOUT: 5000
+          ETCD_HEARTBEAT_INTERVAL: 500

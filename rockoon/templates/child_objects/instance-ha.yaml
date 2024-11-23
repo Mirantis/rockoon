@@ -1,0 +1,139 @@
+{%- from 'macros/connections.j2' import to_child_object %}
+masakari:
+  CronJob:
+    masakari-db-purge:
+      hash_fields: []
+      images:
+      - masakari_db_purge
+      manifest: cron_job_db_purge
+      pod_labels:
+        application: masakari
+        component: db-purge
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+  DaemonSet:
+    masakari-monitors:
+      connections:
+        egress:
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("instance-ha", "masakari", "Deployment", "masakari-api", ["m-api"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - masakari_monitors
+      manifest: daemonset_monitors
+      pod_labels:
+        application: masakari
+        component: monitors
+      type: dynamic
+  Deployment:
+    masakari-api:
+      connections:
+        egress:
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - masakari_api
+      manifest: deployment_api
+      pod_labels:
+        application: masakari
+        component: api
+      ports:
+      - name: m-api
+        port: 15868
+        protocol: TCP
+    masakari-engine:
+      connections:
+        egress:
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("compute", "nova", "Deployment", "nova-api-osapi", ["n-api"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - masakari_engine
+      manifest: deployment_engine
+      pod_labels:
+        application: masakari
+        component: engine
+  Job:
+    masakari-bootstrap:
+      hash_fields:
+      - network.proxy.*
+      - bootstrap.*
+      images:
+      - bootstrap
+      manifest: job_bootstrap
+      pod_labels:
+        application: masakari
+        component: bootstrap
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+    masakari-db-init:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - db_init
+      manifest: job_db_init
+      pod_labels:
+        application: masakari
+        component: db-init
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    masakari-db-sync:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - masakari_db_sync
+      manifest: job_db_sync
+      pod_labels:
+        application: masakari
+        component: db-sync
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    masakari-ks-endpoints:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_endpoints
+      manifest: job_ks_endpoints
+      pod_labels:
+        application: masakari
+        component: ks-endpoints
+    masakari-ks-service:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_service
+      manifest: job_ks_service
+      pod_labels:
+        application: masakari
+        component: ks-service
+    masakari-ks-user:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields:
+      - endpoints.*
+      images:
+      - ks_user
+      manifest: job_ks_user
+      pod_labels:
+        application: masakari
+        component: ks-user

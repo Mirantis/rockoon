@@ -1,0 +1,156 @@
+spec:
+  releases:
+  - chart: rabbitmq
+    name: openstack-neutron-rabbitmq
+    values:
+      conf:
+        enabled_plugins:
+          - rabbitmq_management
+          - rabbitmq_prometheus
+        aux_conf:
+          policies:
+          - definition:
+              message-ttl: 120000
+              expires: 600000
+            name: default-policy
+            pattern: ^(?!amq\.).*
+            vhost: neutron
+          - definition:
+              expires: 600000
+            name: results_expire
+            pattern: ^results\.
+            priority: 1
+            vhost: neutron
+          - definition:
+              expires: 600000
+            name: tasks_expire
+            pattern: ^tasks\.
+            priority: 1
+            vhost: neutron
+        prometheus_exporter:
+          rabbit_exporters: overview,exchange,node
+        users:
+          neutron_service:
+            auth:
+              neutron_1:
+                password: TRRhbnUMsepnqSzyJngJtgZD9gRu0Fwy
+                username: neutronx7uHpit
+            path:
+            - /neutron
+      endpoints:
+        cluster_domain_suffix: cluster.local
+        oslo_messaging:
+          auth:
+            admin:
+              password: 2tnAuP0j9MsgaVHErehZkC5HCK3ZxYLr
+              username: rabbitmq
+            guest:
+              password: 7TnAuP0dKMsgaVHErehZkC5HCK3ZxOi4
+              username: guest
+            neutron:
+              password: TRRhbnUMsepnqSzyJngJtgZD9gRu0Fwy
+              username: neutronx7uHpit
+            user:
+              password: 2tnAuP0j9MsgaVHErehZkC5HCK3ZxYLr
+              username: rabbitmq
+          hosts:
+            default: rabbitmq-neutron
+          path: /neutron
+          statefulset:
+            name: openstack-neutron-rabbitmq-rabbitmq
+            replicas: 1
+        prometheus_rabbitmq_exporter:
+          hosts:
+            default: rabbitmq-exporter-neutron
+      images:
+        tags:
+          dep_check: dep-check:latest
+          image_repo_sync: image-repo-sync:latest
+          prometheus_rabbitmq_exporter: prometheus-rabbitmq-exporter:latest
+          prometheus_rabbitmq_exporter_helm_tests: prometheus-rabbitmq-exporter-helm-tests:latest
+          rabbitmq: rabbitmq:latest
+          rabbitmq_init: rabbitmq-init:latest
+          rabbitmq_scripted_test: rabbitmq-scripted-test:latest
+      manifests:
+        job_users_create: true
+        network_policy: false
+        monitoring:
+          prometheus:
+            configmap_bin: true
+            deployment_exporter: true
+            service_exporter: true
+      monitoring:
+        prometheus:
+          enabled: true
+      pod:
+        replicas:
+          server: 1
+        probes:
+          server:
+            rabbitmq:
+              readiness:
+                params:
+                  periodSeconds: 60
+                  timeoutSeconds: 30
+              liveness:
+                params:
+                  periodSeconds: 60
+                  timeoutSeconds: 30
+      volume:
+        enabled: false
+  - chart: openvswitch
+    name: openstack-openvswitch
+    values:
+      endpoints:
+        cluster_domain_suffix: cluster.local
+      conf:
+        neutron:
+          DEFAULT:
+            support_sync_ovs_info: true
+      images:
+        tags:
+          dep_check: dep-check:latest
+          image_repo_sync: image-repo-sync:latest
+          openvswitch_db_server: openvswitch-db-server:latest
+          openvswitch_vswitchd: openvswitch-vswitchd:latest
+          openvswitch_vswitchd_dpdk: openvswitch-vswitchd-dpdk:latest
+          openvswitch_ovn_db_nb: openvswitch-ovn-db-nb:latest
+          openvswitch_ovn_db_sb: openvswitch-ovn-db-sb:latest
+          openvswitch_ovn_northd: openvswitch-ovn-northd:latest
+          openvswitch_ovn_vswitchd: openvswitch-ovn-vswitchd:latest
+          openvswitch_ovn_db: openvswitch-ovn-db:latest
+          openvswitch_ovn_controller: openvswitch-ovn-controller:latest
+      pod:
+        probes:
+          ovs_db:
+            ovs_db:
+              liveness:
+                enabled: true
+                params:
+                  failureThreshold: 3
+                  initialDelaySeconds: 0
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+              readiness:
+                enabled: true
+                params:
+                  failureThreshold: 3
+                  initialDelaySeconds: 0
+                  periodSeconds: 20
+                  timeoutSeconds: 5
+          ovs_vswitch:
+            ovs_vswitch:
+              liveness:
+                enabled: true
+                params:
+                  failureThreshold: 3
+                  initialDelaySeconds: 0
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+              readiness:
+                enabled: true
+                params:
+                  failureThreshold: 3
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 5

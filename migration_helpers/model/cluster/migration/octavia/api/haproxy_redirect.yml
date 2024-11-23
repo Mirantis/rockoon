@@ -1,0 +1,8 @@
+parameters:
+  haproxy:
+    proxy:
+      listen:
+        octavia_api:
+          redirects:
+           - code: 301
+             location: https://octavia.${_param:mcp2_public_domain_name}%[path]

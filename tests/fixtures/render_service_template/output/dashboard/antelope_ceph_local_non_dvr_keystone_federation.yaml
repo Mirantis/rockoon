@@ -1,0 +1,309 @@
+spec:
+  releases:
+  - chart: horizon
+    name: openstack-horizon
+    values:
+      network:
+        proxy:
+          enabled: true
+          env_vars:
+            HTTP_PROXY: http://127.0.0.1:3128
+            NO_PROXY: .svc.cluster.local
+        dashboard:
+          ingress:
+            annotations:
+              nginx.ingress.kubernetes.io/proxy-body-size: "0"
+      conf:
+        software:
+          horizon:
+            dashboard_path: '/usr/local/share/openstack_dashboard'
+        policy.d: {}
+        horizon:
+          motd:
+            test.json:
+              level: info
+              message: test
+              afterLogin: true
+              beforeLogin: false
+          policy:
+            aodh: {'alarming_rule1': 'alarming_value1'}
+            barbican: {'key-manager_rule1': 'key-manager_value1'}
+            cinder: {'block-storage_rule1': 'block-storage_value1'}
+            designate: {'dns_rule1': 'dns_value1'}
+            glance: {'image_rule1': 'image_value1'}
+            gnocchi: {'metric_rule1': 'metric_value1'}
+            heat: {'orchestration_rule1': 'orchestration_value1'}
+            ironic: {'baremetal_rule1': 'baremetal_value1'}
+            keystone: {'identity_rule1': 'identity_value1'}
+            masakari: {'instance-ha_rule1': 'instance-ha_value1'}
+            neutron: {'networking_rule1': 'networking_value1'}
+            nova:  {'compute_rule1': 'compute_value1'}
+            octavia: {'load-balancer_rule1': 'load-balancer_value1'}
+            panko: {'event_rule1': 'event_value1'}
+            placement: {'placement_rule1': 'placement_value1'}
+          openstack_clouds_yaml_custom_template:
+            template: |
+              # This is a clouds.yaml file, which can be used by OpenStack tools as a source
+              # of configuration on how to connect to a cloud. If this is your only cloud,
+              # just put this file in ~/.config/openstack/clouds.yaml and tools like
+              # python-openstackclient will just work with no further config. (You will need
+              # to add your password to the auth section)
+              # If you have more than one cloud account, add the cloud entry to the clouds
+              # section of your existing file and you can refer to them by name with
+              # OS_CLOUD={{ "{{" }} cloud_name {{ "}}" }} or --os-cloud={{ "{{" }} cloud_name {{ "}}" }}
+              clouds:
+                {{ "{{" }} cloud_name {{ "}}" }}:
+                  {% if profile %}
+                  profile: {{ "{{" }} profile {{ "}}" }}
+                  {% endif %}
+                  auth:
+                    {% if not profile %}
+                    {% if auth_type in "keycloak,okta" %}
+                    # v3oidcpassword does not work with unversioned identity endpoint
+                    # TODO: remove once LP bug/1998366 is fixed and released
+                    auth_url: {{ "{{" }} auth_url {{ "}}/v3" }}
+                    {% else %}
+                    auth_url: {{ "{{" }} auth_url {{ "}}" }}
+                    {% endif %}
+                    {% endif %}
+                    username: "{{ "{{" }} user.username {{ "}}" }}"
+                    project_id: {{ "{{" }} tenant_id {{ "}}" }}
+                    project_name: "{{ "{{" }} tenant_name {{ "}}" }}"
+                    project_domain_id: {{ "{{" }} tenant_id {{ "}}" }}
+                    {% if auth_type not in "keycloak,okta" %}
+                    {% if user_domain_name %}
+                    user_domain_name: "{{ "{{" }} user_domain_name {{ "}}" }}"
+                    {%  endif %}
+                    {%  endif %}
+                    {% if auth_type in "keycloak,okta" %}
+                    identity_provider: {{ "{{" }} auth_type {{ "}}" }}
+                    {% endif %}
+                  {% if not profile %}
+                    {% if regions %}
+                  regions:
+                      {% for r in regions %}
+                  - {{ "{{" }} r {{ "}}" }}
+                      {% endfor %}
+                    {% else %}
+                      {% if region %}
+                  region_name: "{{ "{{" }} region {{ "}}" }}"
+                      {% endif %}
+                    {% endif %}
+                  interface: "{{ "{{" }} interface {{ "}}" }}"
+                  identity_api_version: {{ "{{" }} os_identity_api_version {{ "}}" }}
+                  {% endif %}
+                  {% if auth_type in "keycloak,okta" %}
+                  {% if auth_type == 'keycloak' %}
+                  client_secret: someRandomClientSecretMightBeNull
+                  protocol: mapped
+                  openid_scope: openid
+                  client_id: os
+                  discovery_endpoint: https://keycloak.it.just.works/auth/realms/iam/.well-known/openid-configuration
+                  {% elif auth_type == 'okta' %}
+                  client_secret: HencsGagyfmQ
+                  protocol: mapped
+                  openid_scope: openid
+                  client_id: cdid
+                  discovery_endpoint: https://dev-xxxx.okta.com/oauth2/default/.well-known/openid-configuration
+                  {% endif %}
+                  auth_type: v3oidcpassword
+                  {% endif %}
+          openrc_custom_template:
+            template: |
+              {% load shellfilter %}#!/usr/bin/env bash
+
+              # To use an OpenStack cloud you need to authenticate against the Identity
+              # service named keystone, which returns a **Token** and **Service Catalog**.
+              # The catalog contains the endpoints for all services the user/tenant has
+              # access to - such as Compute, Image Service, Identity, Object Storage, Block
+              # Storage, and Networking (code-named nova, glance, keystone, swift,
+              # cinder, and neutron).
+              #
+              # *NOTE*: Using the 3 *Identity API* does not necessarily mean any other
+              # OpenStack API is version 3. For example, your cloud provider may implement
+              # Image API v1.1, Block Storage API v2, and Compute API v2.0. OS_AUTH_URL is
+              # only for the Identity API served through keystone.
+              {% if auth_type in "keycloak,okta" %}
+              # v3oidcpassword does not work with unversioned identity endpoint
+              # TODO: remove once LP bug/1998366 is fixed and released
+              export OS_AUTH_URL={{ "{{" }} auth_url {{ "}}/v3" }}
+              {% else %}
+              export OS_AUTH_URL={{ "{{" }} auth_url {{ "}}" }}
+              {% endif %}
+
+              # With the addition of Keystone we have standardized on the term **project**
+              # as the entity that owns the resources.
+              {% if auth_type not in "keycloak,okta" %}
+              export OS_PROJECT_ID={{ "{{" }} tenant_id {{ "}}" }}
+              export OS_USER_DOMAIN_NAME="{{ "{{" }} user_domain_name|shellfilter {{ "}}" }}"
+              if [ -z "$OS_USER_DOMAIN_NAME" ]; then unset OS_USER_DOMAIN_NAME; fi
+              {% endif %}
+              export OS_PROJECT_NAME="{{ "{{" }} tenant_name|shellfilter {{ "}}" }}"
+              export OS_PROJECT_DOMAIN_ID="{{ "{{" }} project_domain_id|shellfilter {{ "}}" }}"
+              if [ -z "$OS_PROJECT_DOMAIN_ID" ]; then unset OS_PROJECT_DOMAIN_ID; fi
+
+              # unset v2.0 items in case set
+              unset OS_TENANT_ID
+              unset OS_TENANT_NAME
+
+              # In addition to the owning entity (tenant), OpenStack stores the entity
+              # performing the action as the **user**.
+              export OS_USERNAME="{{ "{{" }} user.username|shellfilter {{ "}}" }}"
+
+              # With Keystone you pass the keystone password.
+              echo "Please enter your OpenStack Password for project $OS_PROJECT_NAME as user $OS_USERNAME: "
+              read -sr OS_PASSWORD_INPUT
+              export OS_PASSWORD=$OS_PASSWORD_INPUT
+              # If your configuration has multiple regions, we set that information here.
+              # OS_REGION_NAME is optional and only valid in certain environments.
+              export OS_REGION_NAME="{{ "{{" }} region|shellfilter {{ "}}" }}"
+              # Don't leave a blank variable, unset it if it was empty
+              if [ -z "$OS_REGION_NAME" ]; then unset OS_REGION_NAME; fi
+
+              export OS_INTERFACE={{ "{{" }} interface {{ "}}" }}
+              export OS_IDENTITY_API_VERSION={{ "{{" }} os_identity_api_version {{ "}}" }}
+              {% if auth_type in "keycloak,okta" %}
+              {% if auth_type == 'keycloak' %}
+              export OS_CLIENT_SECRET=someRandomClientSecretMightBeNull
+              export OS_PROTOCOL=mapped
+              export OS_OPENID_SCOPE=openid
+              export OS_CLIENT_ID=os
+              export OS_DISCOVERY_ENDPOINT=https://keycloak.it.just.works/auth/realms/iam/.well-known/openid-configuration
+              export OS_IDENTITY_PROVIDER=keycloak
+              {% elif auth_type == 'okta' %}
+              export OS_CLIENT_SECRET=HencsGagyfmQ
+              export OS_PROTOCOL=mapped
+              export OS_OPENID_SCOPE=openid
+              export OS_CLIENT_ID=cdid
+              export OS_DISCOVERY_ENDPOINT=https://dev-xxxx.okta.com/oauth2/default/.well-known/openid-configuration
+              export OS_IDENTITY_PROVIDER=okta
+              {% endif %}
+              export OS_AUTH_TYPE=v3oidcpassword
+              {% endif %}
+          local_settings:
+            config:
+              horizon_images_upload_mode: direct
+              horizon_secret_key: kQt7XsbPVNDABuHyngdJuppnzP5i82Mz
+              csrf_cookie_secure: "True"
+              session_cookie_secure: "True"
+              session_cookie_httponly: "True"
+              password_autocomplete: "off"
+              password_validator:
+                regex: '^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&+-_/]{8,}$'
+                help_text: 'Your password does not meet the requirements. Password must contain at least one letter, one number and be longer than eight characters.'
+              disallow_iframe_embed: "True"
+              raw:
+                DEFAULT_THEME: default
+                LOGOUT_URL: https://keystone.it.just.works/v3/auth/OS-FEDERATION/identity_providers/keycloak/protocols/mapped/websso/?logout=https://horizon.it.just.works/auth/logout
+                WEBSSO_DEFAULT_REDIRECT_LOGOUT: https://keystone.it.just.works/v3/auth/OS-FEDERATION/identity_providers/keycloak/protocols/mapped/websso/?logout=https://horizon.it.just.works/auth/logout
+                WEBSSO_DEFAULT_REDIRECT_PROTOCOL: mapped
+              secure_proxy_ssl_header: true
+              tungstenfabric:
+                enabled: false
+              auth:
+                idp_mapping:
+                - idp: keycloak
+                  label: Keycloak provider
+                  name: keycloak
+                  protocol: mapped
+                - idp: okta
+                  label: OKTA provider
+                  name: okta
+                  protocol: mapped
+                sso:
+                  enabled: true
+                  initial_choice: keycloak
+            custom_themes:
+              mirantis:
+                description: Mirantis
+                sha256summ: horizon-mirantis-theme-sha256summ
+                url: https://horizon-mirantis-theme-url/latest
+      dependencies:
+        static:
+          db_init:
+            jobs:
+            - openstack-mariadb-cluster-wait
+      endpoints:
+        cluster_domain_suffix: cluster.local
+        dashboard:
+          host_fqdn_override:
+            public:
+              host: horizon.it.just.works
+              tls:
+                ca: |
+                  TEST CA
+                  RGW CRT
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          hosts:
+            default: horizon-int
+            public:
+              host: horizon
+              tls:
+                ca: |
+                  TEST CA
+                  RGW CRT
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+        identity:
+          auth:
+            admin:
+              default_domain_id: default
+              password: ZUqTyP2XwsgEGKZ7qNhhecYyq9NLkGE6
+              project_domain_name: default
+              project_name: admin
+              region_name: RegionOne
+              user_domain_name: default
+              username: admin
+            horizon:
+              password: MNysGxHJy8xYI8LmZjS3QrJC6N10XsFZ
+              username: horizonhGcF8rA
+              region_name: 'RegionOne'
+            test:
+              password: 5Q52SdTD0ern0aJ6AMcraLqh0rbUbGJr
+              username: test5JeB
+              region_name: 'RegionOne'
+          host_fqdn_override:
+            public:
+              host: keystone.it.just.works
+          hosts:
+            default: keystone
+            internal: keystone-api
+            public:
+              host: keystone
+          port:
+            api:
+              default: 80
+              internal: 5000
+              public: 443
+          scheme:
+            default: http
+            public: https
+        oslo_cache:
+          statefulset:
+            name: openstack-memcached-memcached
+            replicas: 3
+        oslo_db:
+          auth:
+            admin:
+              password: QACDSM6FBTH2LuXjTuRQ6DXhD8bSgPbn
+              username: root
+            horizon:
+              password: rBJDRdVaBH92I8zKHuBeKvtYSq8661ZE
+              username: horizonf2AZh0J
+      images:
+        tags:
+          db_drop: db-drop:latest
+          db_init: db-init:latest
+          dep_check: dep-check:latest
+          horizon: horizon:latest
+          horizon_db_sync: horizon-db-sync:latest
+          image_repo_sync: image-repo-sync:latest
+          test: test:latest
+      manifests:
+        network_policy: false
+        secret_ca_bundle: true

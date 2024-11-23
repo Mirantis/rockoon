@@ -1,0 +1,489 @@
+#connection_recycle_time is set to 300sec in order not to hit into conntrack timeouts (PRODX-1179, PRODX-1170)
+# Optimized for the following cloud configuration
+# all-in-one
+common:
+  openstack:
+    values:
+      manifests:
+        pdb_api: false
+
+services:
+  redis:
+    redisoperator:
+      values:
+        redisfailover:
+          spec:
+            redis:
+              replicas: 1
+            sentinel:
+              replicas: 1
+  database:
+    mariadb:
+      values:
+        pod:
+          lifecycle:
+            disruption_budget:
+              mariadb:
+                min_available: 0
+          replicas:
+            server: 1
+        conf:
+          ingress_conf:
+            proxy-buffer-size: "20m"
+            proxy-connect-timeout: "600"
+          phy_backup:
+            backup_timeout: 3600
+        volume:
+          phy_backup:
+            size: "20Gi"
+        manifests:
+          pdb_server: false
+  ingress:
+    ingress:
+      values:
+        pod:
+          replicas:
+            ingress: 1
+  identity:
+    keystone:
+      values:
+        pod:
+          replicas:
+            api: 1
+        conf:
+          keystone:
+            database:
+              max_pool_size: 10
+              max_retries: -1
+              max_overflow: 30
+              connection_recycle_time: 300
+            oslo_messaging_rabbit:
+              rabbit_qos_prefetch_count: 64
+  key-manager:
+    barbican:
+      values:
+        pod:
+          replicas:
+            api: 1
+  image:
+    glance:
+      values:
+        pod:
+          replicas:
+            api: 1
+            registry: 1
+        conf:
+          glance:
+            DEFAULT:
+              workers: 4
+            database:
+              max_pool_size: 10
+              max_retries: -1
+              max_overflow: 30
+              connection_recycle_time: 300
+            oslo_messaging_rabbit:
+              rabbit_qos_prefetch_count: 64
+  compute:
+    nova:
+      values:
+        manifests:
+          pdb_metadata: false
+          pdb_placement: false
+          pdb_osapi: false
+        pod:
+          replicas:
+            api_metadata: 1
+            osapi: 1
+            conductor: 1
+            consoleauth: 1
+            scheduler: 1
+            novncproxy: 1
+            spiceproxy: 1
+            placement: 1
+            # Byggy code, give up and use 1 instance
+            compute_ironic: 1
+          lifecycle:
+            upgrades:
+              daemonsets:
+                pod_replacement_strategy: RollingUpdate
+                compute:
+                  # upgrade computes in butches with 10% of hosts from maximum
+                  max_unavailable: 10%
+        conf:
+          nova:
+            DEFAULT:
+              metadata_workers: 4
+              osapi_compute_workers: 4
+              block_device_allocate_retries: 600
+              block_device_allocate_retries_interval: 10
+              report_interval: 30
+              service_down_time: 180
+              rpc_response_timeout: 60
+            api_database:
+              max_pool_size: 10
+              max_retries: -1
+              max_overflow: 30
+              connection_recycle_time: 300
+            cell0_database:
+              max_pool_size: 10
+              max_retries: -1
+              max_overflow: 30
+              connection_recycle_time: 300
+            database:
+              max_pool_size: 10
+              max_retries: -1
+              max_overflow: 30
+              connection_recycle_time: 300
+            placement_database:
+              max_pool_size: 10
+              max_retries: -1
+              max_overflow: 30
+              connection_recycle_time: 300
+            conductor:
+              workers: 4
+            scheduler:
+              workers: 4
+            neutron:
+              timeout: 300
+            filter_scheduler:
+              host_subset_size: 3
+            oslo_messaging_rabbit:
+              rabbit_qos_prefetch_count: 64
+  networking:
+    neutron:
+      values:
+        manifests:
+          pdb_server: false
+        pod:
+          replicas:
+            server: 1
+          lifecycle:
+            upgrades:
+              daemonsets:
+                pod_replacement_strategy: RollingUpdate
+                dhcp_agent:
+                  max_unavailable: 10%
+                l3_agent:
+                  pod_replacement_strategy: OnDelete
+                lb_agent:
+                  max_unavailable: 10%
+                metadata_agent:
+                  max_unavailable: 10%
+                ovs_agent:
+                  max_unavailable: 10%
+                sriov_agent:
+                  max_unavailable: 10%
+                netns_cleanup_cron:
+                  max_unavailable: 100%
+        conf:
+          neutron:
+            DEFAULT:
+              dhcp_lease_duration: 86400
+              rpc_workers: 4
+              api_workers: 4
+              rpc_state_report_workers: 2
+              agent_down_time: 95
+              max_l3_agents_per_router: 2
+              executor_thread_pool_size: 20
+            agent:
+              report_interval: 30
+            database:
+              max_pool_size: 10
+              max_retries: -1
+              max_overflow: 10
+              connection_recycle_time: 300
+            oslo_messaging_rabbit:
+              rabbit_qos_prefetch_count: 64
+          plugins:
+            ml2_conf:
+              ml2_type_vxlan:
+                vni_ranges: 1:1000
+            openvswitch_agent:
+              ovs:
+                of_connect_timeout: 300
+                of_inactivity_probe: 30
+                of_request_timeout: 300
+                ovsdb_timeout: 30
+    openvswitch:
+      values:
+        pod:
+          lifecycle:
+            upgrades:
+              daemonsets:
+                ovn_controller:
+                  enabled: true
+                  pod_replacement_strategy: OnDelete
+                  max_unavailable: 1
+                ovs_vswitchd:
+                  enabled: true
+                  pod_replacement_strategy: OnDelete
+                  max_unavailable: 1
+  block-storage:
+    cinder:
+      values:
+        pod:
+          replicas:
+            api: 1
+            scheduler: 1
+            volume: 1
+            backup: 1
+        conf:
+          cinder:
+            DEFAULT:
+              rpc_response_timeout: 3600
+              osapi_volume_workers: 4
+              backup_workers: 1
+            database:
+              max_pool_size: 10
+              max_retries: -1
+              max_overflow: 30
+              connection_recycle_time: 300
+            oslo_messaging_rabbit:
+              rabbit_qos_prefetch_count: 64
+  shared-file-system:
+    manila:
+      values:
+        pod:
+          replicas:
+            api: 1
+            scheduler: 1
+            share: 1
+        conf:
+          manila:
+            DEFAULT:
+              rpc_response_timeout: 3600
+              osapi_share_workers: 1
+            database:
+              max_pool_size: 10
+              max_retries: -1
+              max_overflow: 30
+            oslo_messaging_rabbit:
+              rabbit_qos_prefetch_count: 64
+  orchestration:
+    heat:
+      values:
+        manifests:
+          pdb_cfn: false
+        pod:
+          replicas:
+            cfn: 1
+            api: 1
+            engine: 1
+        conf:
+          heat:
+            DEFAULT:
+              rpc_response_timeout: 600
+              num_engine_workers: 4
+              max_resources_per_stack: '20000'
+              max_template_size: '5440000'
+              max_json_body_size: '10880000'
+            heat_api:
+              workers: 4
+            heat_api_cfn:
+              workers: 1
+            heat_api_cloudwatch:
+              workers: 4
+            database:
+              max_pool_size: 10
+              max_retries: -1
+              max_overflow: 30
+              connection_recycle_time: 300
+            oslo_messaging_rabbit:
+              rabbit_qos_prefetch_count: 64
+  placement:
+    placement:
+      values:
+        pod:
+          replicas:
+            api: 1
+  load-balancer:
+    octavia:
+      values:
+        pod:
+          replicas:
+            api: 1
+            worker: 1
+            housekeeping: 1
+          lifecycle:
+            upgrades:
+              daemonsets:
+                pod_replacement_strategy: RollingUpdate
+                health_manager:
+                  max_unavailable: 10%
+        conf:
+          software:
+            apache2:
+              processes: 5
+          octavia:
+            database:
+              max_pool_size: 10
+              max_retries: -1
+              max_overflow: 30
+              connection_recycle_time: 300
+            controller_worker:
+              amp_active_retries: 100
+              amp_active_wait_sec: 4
+              workers: 4
+            haproxy_amphora:
+              connection_max_retries: 1500
+              connection_retry_interval: 1
+              rest_request_conn_timeout: 10
+              rest_request_read_timeout: 120
+            task_flow:
+              engine: parallel
+              max_workers: 4
+            house_keeping:
+              amphora_expiry_age: 3600
+              load_balancer_expiry_age: 3600
+            oslo_messaging_rabbit:
+              rabbit_qos_prefetch_count: 64
+  dns:
+    designate:
+      values:
+        manifests:
+          pdb_producer: false
+          pdb_central: false
+          pdb_worker: false
+          pdb_mdns: false
+          pdb_sink: false
+        pod:
+          replicas:
+            api: 1
+            central: 1
+            mdns: 1
+            producer: 1
+            sink: 1
+            worker: 1
+        conf:
+          apache_wsgi:
+            config:
+              processes: 2
+          designate:
+            service:api:
+              workers: 2
+            service:central:
+              workers: 2
+            service:mdns:
+              workers: 2
+            service:producer:
+              workers: 2
+            service:sink:
+              workers: 2
+            service:worker:
+              workers: 2
+  dashboard:
+    horizon:
+      values:
+        endpoints:
+          oslo_cache:
+            statefulset:
+              replicas: 1
+        pod:
+          replicas:
+            server: 1
+        conf:
+          software:
+            apache2:
+              processes: 3
+              threads: 10
+  baremetal:
+    ironic:
+      values:
+        pod:
+          replicas:
+            api: 1
+            conductor: 1
+        conf:
+          ironic:
+            database:
+              max_pool_size: 10
+              max_retries: -1
+              max_overflow: 30
+              connection_recycle_time: 300
+  alarming:
+    aodh:
+      values:
+        pod:
+          replicas:
+            api: 1
+            evaluator: 1
+            listener: 1
+            notifier: 1
+        conf:
+          aodh:
+            database:
+              connection_recycle_time: 300
+              max_overflow: 30
+              max_pool_size: 10
+  metric:
+    gnocchi:
+      values:
+        pod:
+          replicas:
+            api: 1
+        conf:
+          gnocchi:
+            database:
+              connection_recycle_time: 300
+              max_overflow: 30
+              max_pool_size: 10
+          software:
+            apache2:
+              processes: 4
+  event:
+    panko:
+      values:
+        pod:
+          replicas:
+            api: 1
+  metering:
+    ceilometer:
+      values:
+        pod:
+          replicas:
+            central: 1
+            collector: 1
+            notification: 1
+  memcached:
+    memcached:
+      values:
+        conf:
+          memcached:
+            max_connections: 8192
+        pod:
+          replicas:
+            server: 1
+  tempest:
+    tempest:
+      values:
+        conf:
+          tempest:
+            compute:
+              min_compute_nodes: 1
+  instance-ha:
+    masakari:
+      values:
+        pod:
+          replicas:
+            api: 1
+            engine: 1
+  coordination:
+    etcd:
+      values:
+        pod:
+          replicas:
+            etcd: 1
+timeouts:
+  application_readiness:
+    mariadb:
+      timeout: 1200
+      delay: 10
+    nova:
+      timeout: 600
+      delay: 10
+    neutron:
+      timeout: 600
+      delay: 10
+    openvswitch:
+      timeout: 600
+      delay: 10

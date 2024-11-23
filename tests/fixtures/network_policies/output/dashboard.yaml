@@ -1,0 +1,9 @@
+dashboard:horizon:Deployment:horizon:
+- from:
+  - podSelector:
+      matchLabels:
+        application: ingress
+        component: server
+  ports:
+  - port: 4999
+    protocol: TCP

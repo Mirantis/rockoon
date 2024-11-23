@@ -1,0 +1,267 @@
+spec:
+  releases:
+  - chart: octavia
+    name: openstack-octavia
+    values:
+      network:
+        api:
+          ingress:
+            annotations:
+              nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+        core_plugin: tungstenfabric
+        proxy:
+          enabled: true
+          env_vars:
+            HTTP_PROXY: http://127.0.0.1:3128
+            NO_PROXY: .svc.cluster.local
+      conf:
+        policy.d:
+          01-controller-default.yaml: {'load-balancer_rule1': 'load-balancer_value1'}
+          02-custom.yaml: {}
+        logging:
+          logger_octavia:
+            level: INFO
+        octavia:
+          apiserver:
+            api_server_ip: tf-config-api.tf.svc.cluster.local
+            api_server_port: 8082
+          driver_agent:
+            enabled_provider_agents: tungstenfabric-agent
+            max_process_warning_percent: 0.75
+            provider_agent_shutdown_timeout: 60
+            stats_max_processes: 50
+            stats_request_timeout: 5
+            status_max_processes: 50
+            status_request_timeout: 5
+          api_settings:
+            default_provider_driver: tungstenfabric
+            enabled_provider_drivers: tungstenfabric:Tungsten Fabric driver.
+          audit:
+            enabled: true
+            ignore_req_list: GET, HEAD
+          audit_middleware_notifications:
+            driver: noop
+          certificates:
+            endpoint_type: internalURL
+          glance:
+            endpoint_type: internalURL
+          haproxy_amphora:
+            connection_max_retries: 500
+          health_manager:
+            controller_ip_port_list: ''
+          keystone_authtoken:
+            memcache_secret_key: cAZLeChP79lxHJ1Z
+            memcache_security_strategy: ENCRYPT
+            service_type: load-balancer
+          neutron:
+            endpoint_type: internalURL
+            connect_retries: 10
+          nova:
+            endpoint_type: internalURL
+          oslo_messaging_notifications:
+            topics: notifications,stacklight_notifications
+          oslo_policy:
+            enforce_new_defaults: false
+            enforce_scope: false
+          service_auth:
+            memcache_secret_key: cAZLeChP79lxHJ1Z
+            memcache_security_strategy: ENCRYPT
+      dependencies:
+        static:
+          db_init:
+            jobs:
+            - openstack-mariadb-cluster-wait
+      endpoints:
+        cluster_domain_suffix: cluster.local
+        identity:
+          auth:
+            admin:
+              default_domain_id: default
+              password: ZUqTyP2XwsgEGKZ7qNhhecYyq9NLkGE6
+              project_domain_name: default
+              project_name: admin
+              region_name: RegionOne
+              user_domain_name: default
+              username: admin
+            octavia:
+              password: VdeaqYEJb5UWW3TCxCMBNWIlzkcy94W7
+              username: octaviafgirF49
+              region_name: 'RegionOne'
+            test:
+              password: Y6tYdn0ShRF69ZrXKeaa3sNYT8Y7AlP8
+              username: testcnVC
+              region_name: 'RegionOne'
+        load_balancer:
+          host_fqdn_override:
+            public:
+              host: octavia.it.just.works
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          hosts:
+            admin:
+              host: octavia-api
+            default: octavia
+            internal: octavia-api
+            public:
+              host: octavia
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          port:
+            api:
+              admin: 9876
+              default: 80
+              internal: 9876
+              public: 443
+          scheme:
+            default: http
+            public: https
+        oslo_cache:
+          statefulset:
+            name: openstack-memcached-memcached
+            replicas: 3
+        oslo_db:
+          auth:
+            admin:
+              password: QACDSM6FBTH2LuXjTuRQ6DXhD8bSgPbn
+              username: root
+            octavia:
+              password: jBxCDfusABmmmeBcY7ZUb6pVtTX2ip9s
+              username: octaviaFEzC0Qa
+        oslo_db_persistence:
+          auth:
+            admin:
+              password: QACDSM6FBTH2LuXjTuRQ6DXhD8bSgPbn
+              username: root
+            octavia:
+              password: jBxCDfusABmmmeBcY7ZUb6pVtTX2ip9s
+              username: octaviaFEzC0Qa
+        oslo_messaging:
+          auth:
+            admin:
+              password: 2tnAuP0j9MsgaVHErehZkC5HCK3ZxYLr
+              username: rabbitmq
+            guest:
+              password: 7TnAuP0dKMsgaVHErehZkC5HCK3ZxOi4
+              username: guest
+            octavia:
+              password: P4tAIFt2fRzEddPyPmfCmBcInbNdCI9S
+              username: octaviaGrHbrrp
+            user:
+              password: 2tnAuP0j9MsgaVHErehZkC5HCK3ZxYLr
+              username: rabbitmq
+          hosts:
+            default: rabbitmq
+          path: /octavia
+          statefulset:
+            name: openstack-rabbitmq-rabbitmq
+            replicas: 1
+        oslo_messaging_notifications:
+          auth:
+            octavia:
+              password: xcKEJVAYZflpAmEWcyzTKpvNlJycCLvc
+              username: octaviadRDTSj1
+          host_fqdn_override: {}
+          hosts:
+            default: rabbitmq
+          path: /openstack
+          port:
+            amqp:
+              default: 5672
+            http:
+              default: 15672
+          scheme: rabbit
+          statefulset:
+            name: openstack-rabbitmq-rabbitmq
+            replicas: 1
+      images:
+        tags:
+          bootstrap: bootstrap:latest
+          create_resources: create-resources:latest
+          db_drop: db-drop:latest
+          db_init: db-init:latest
+          dep_check: dep-check:latest
+          image_repo_sync: image-repo-sync:latest
+          ks_endpoints: ks-endpoints:latest
+          ks_service: ks-service:latest
+          ks_user: ks-user:latest
+          octavia_api: octavia-api:latest
+          octavia_db_sync: octavia-db-sync:latest
+          octavia_db_sync_persistence: octavia-db-sync-persistence:latest
+          octavia_driver_agent: octavia-driver-agent:latest
+          octavia_health_manager: octavia-health-manager:latest
+          octavia_health_manager_init: octavia-health-manager-init:latest
+          octavia_housekeeping: octavia-housekeeping:latest
+          octavia_worker: octavia-worker:latest
+          openvswitch_vswitchd: openvswitch-vswitchd:latest
+          rabbit_init: rabbit-init:latest
+          test: test:latest
+      jobs:
+        create_resources:
+          restartPolicy: Never
+        ks_endpoints:
+          restartPolicy: Never
+        ks_service:
+          restartPolicy: Never
+        ks_user:
+          restartPolicy: Never
+      labels:
+        health_manager:
+          node_affinity: false
+          node_selector_key: openstack-gateway
+          node_selector_value: enabled
+        housekeeping:
+          node_selector_key: openstack-gateway
+          node_selector_value: enabled
+        worker:
+          node_selector_key: openstack-gateway
+          node_selector_value: enabled
+      manifests:
+        daemonset_health_manager: False
+        deployment_housekeeping: False
+        deployment_worker: False
+        job_create_resources: False
+        job_rabbit_init: false
+        network_policy: false
+        secret_amphora_ssh_key: true
+        secret_ca_bundle: true
+        secret_octavia_certs: false
+        octavia_driver_agent: true
+      octavia:
+        settings:
+          lbmgmt_network_name: lb-mgmt-net
+          lbmgmt_subnets:
+            - pool_end: 192.168.0.254
+              pool_start: 192.168.0.1
+              range: 192.168.0.0/24
+      pod:
+        replicas:
+          health_manager: 3
+          housekeeping: 3
+          worker: 3
+        probes:
+          octavia_api:
+            octavia_api:
+              liveness:
+                enabled: true
+                params:
+                  initialDelaySeconds: 30
+                  timeoutSeconds: 5
+              readiness:
+                enabled: true
+                params:
+                  initialDelaySeconds: 5
+                  timeoutSeconds: 5
+      secrets:
+        amphora_ssh_key:
+          private: TE9BRCBCQUxBTkNFUiBURVNUIFNTSCBQUklWQVRFIEtFWQ==
+          public: TE9BRCBCQUxBTkNFUiBURVNUIFNTSCBQVUJMSUMgS0VZ

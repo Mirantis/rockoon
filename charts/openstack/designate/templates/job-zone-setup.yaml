@@ -1,0 +1,122 @@
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+{{- if .Values.manifests.job_zone_setup }}
+
+{{- $envAll := . }}
+{{- $mounts_designate_zone_setup := .Values.pod.mounts.designate_zone_setup.designate_zone_setup}}
+{{- $mounts_designate_zone_setup_init := .Values.pod.mounts.designate_zone_setup.init_container }}
+
+{{- $serviceAccountName := "designate-zone-setup" }}
+{{ tuple $envAll "zone_setup" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+
+{{- $powerdnsExternalServiceName := printf "%s-external"  ( tuple "powerdns" "internal" . | include "helm-toolkit.endpoints.hostname_short_endpoint_lookup" ) }}
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: zone-setup-role
+  namespace: {{ $envAll.Release.Namespace | quote }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: zone-setup-role
+subjects:
+  - kind: ServiceAccount
+    name: {{ $serviceAccountName | quote }}
+    namespace: {{ $envAll.Release.Namespace | quote }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: zone-setup-role
+  namespace: {{ $envAll.Release.Namespace | quote }}
+rules:
+  - apiGroups: [""]
+    verbs:
+      - create
+      - get
+      - patch
+      - update
+    resources:
+      - configmaps
+  - apiGroups: [""]
+    verbs:
+      - get
+      - list
+    resources:
+      - services
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: designate-zone-setup
+spec:
+  backoffLimit: 20
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "designate" "zone_setup" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName | quote }}
+{{ dict "envAll" $envAll "application" "zone_setup" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      restartPolicy: OnFailure
+      nodeSelector:
+        {{ .Values.labels.job.node_selector_key }}: {{ .Values.labels.job.node_selector_value }}
+      initContainers:
+{{ tuple $envAll "zone_setup" $mounts_designate_zone_setup_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container"  | indent 8 }}
+      containers:
+        - name: zone-setup
+          image: {{ .Values.images.tags.designate_zone_setup }}
+          imagePullPolicy: {{ .Values.images.pull_policy }}
+{{ dict "envAll" $envAll "application" "zone_setup" "container" "zone_setup" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.zone_setup | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          env:
+{{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" "designate" "osCloudNameSystem" "admin-system") | indent 12 }}
+          command:
+            - /tmp/zone_setup.py
+          volumeMounts:
+            - name: designate-bin
+              mountPath: /tmp/zone_setup.py
+              subPath: zone_setup.py
+              readOnly: true
+            - name: designate-etc
+              mountPath: /tmp/zones.yaml
+              subPath: zones.yaml
+              readOnly: true
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: os-clouds
+              mountPath: /etc/openstack/clouds.yaml
+              subPath: clouds.yaml
+              readOnly: true
+{{- if $mounts_designate_zone_setup.volumeMounts }}{{ toYaml $mounts_designate_zone_setup.volumeMounts | indent 10 }}{{ end }}
+      volumes:
+        - name: designate-bin
+          configMap:
+            name: designate-bin
+            defaultMode: 0650
+        - name: designate-etc
+          secret:
+            secretName: designate-etc
+            defaultMode: 416
+        - name: pod-tmp
+          emptyDir: {}
+        - name: os-clouds
+          secret:
+            secretName: "designate-os-clouds"
+            defaultMode: 416
+{{- if $mounts_designate_zone_setup.volumes }}{{ toYaml $mounts_designate_zone_setup.volumes | indent 6 }}{{ end }}
+{{- end }}

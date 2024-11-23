@@ -1,0 +1,315 @@
+admin_creds:
+  database:
+    password: QACDSM6FBTH2LuXjTuRQ6DXhD8bSgPbn
+    username: root
+  identity:
+    password: ZUqTyP2XwsgEGKZ7qNhhecYyq9NLkGE6
+    username: admin
+  messaging:
+    password: 2tnAuP0j9MsgaVHErehZkC5HCK3ZxYLr
+    username: rabbitmq
+guest_creds:
+  password: 7TnAuP0dKMsgaVHErehZkC5HCK3ZxOi4
+images:
+  aodh_db_purge: aodh-db-purge:latest
+  aodh_api: aodh-api:latest
+  aodh_db_sync: aodh-db-sync:latest
+  aodh_evaluator: aodh-evaluator:latest
+  aodh_listener: aodh-listener:latest
+  aodh_notifier: aodh-notifier:latest
+  barbican_api: barbican-api:latest
+  barbican_db_sync: barbican-db-sync:latest
+  bootstrap: bootstrap:latest
+  ceilometer_api: ceilometer-api:latest
+  ceilometer_central: ceilometer-central:latest
+  ceilometer_collector: ceilometer-collector:latest
+  ceilometer_compute: ceilometer-compute:latest
+  ceilometer_db_sync: ceilometer-db-sync:latest
+  ceilometer_ipmi: ceilometer-ipmi:latest
+  ceilometer_notification: ceilometer-notification:latest
+  ceph_config_helper: ceph-config-helper:latest
+  cinder_api: cinder-api:latest
+  cinder_backup: cinder-backup:latest
+  cinder_backup_storage_init: cinder-backup-storage-init:latest
+  cinder_db_purge: cinder-db-purge:latest
+  cinder_db_sync: cinder-db-sync:latest
+  cinder_db_sync_online: cinder-db-sync-online:latest
+  cinder_scheduler: cinder-scheduler:latest
+  cinder_storage_init: cinder-storage-init:latest
+  cinder_volume: cinder-volume:latest
+  cinder_volume_usage_audit: cinder-volume-usage-audit:latest
+  cinder_service_cleaner: cinder-service-cleaner:latest
+  cloudprober: cloudprober:latest
+  cloudprober_openstack_discovery: cloudprober-openstack-discovery:latest
+  create_resources: create-resources:latest
+  stepler_run_tests: stepler-run-tests:latest
+  db_drop: db-drop:latest
+  db_init: db-init:latest
+  dep_check: dep-check:latest
+  descheduler: descheduler:latest
+  designate_api: designate-api:latest
+  designate_central: designate-central:latest
+  designate_db_sync: designate-db-sync:latest
+  designate_mdns: designate-mdns:latest
+  designate_producer: designate-producer:latest
+  designate_sink: designate-sink:latest
+  designate_worker: designate-worker:latest
+  designate_pool_manage: designate-pool-manage:latest
+  designate_pool_manage_hash: designate-pool-manage-hash:latest
+  drb_controller: drb-controller:latest
+  entrypoint: entrypoint:latest
+  error_pages: error-pages:latest
+  etcd: etcd:latest
+  etcd_db_compact: etcd-db-compact:latest
+  glance_api: glance-api:latest
+  glance_db_contract: glance-db-contract:latest
+  glance_db_expand: glance-db-expand:latest
+  glance_db_migrate: glance-db-migrate:latest
+  glance_db_sync: glance-db-sync:latest
+  glance_metadefs_load: glance-metadefs-load:latest
+  glance_registry: glance-registry:latest
+  glance_storage_init: glance-storage-init:latest
+  gnocchi_api: gnocchi-api:latest
+  gnocchi_db_sync: gnocchi-db-sync:latest
+  gnocchi_metricd: gnocchi-metricd:latest
+  gnocchi_resources_cleaner: gnocchi-resources-cleaner:latest
+  gnocchi_statsd: gnocchi-statsd:latest
+  gnocchi_storage_init: gnocchi-storage-init:latest
+  heat_api: heat-api:latest
+  heat_cfn: heat-cfn:latest
+  heat_cloudwatch: heat-cloudwatch:latest
+  heat_db_sync: heat-db-sync:latest
+  heat_engine: heat-engine:latest
+  heat_engine_cleaner: heat-engine-cleaner:latest
+  heat_db_purge: heat-purge-deleted:latest
+  horizon: horizon:latest
+  horizon_clean_cache: horizon-clean-cache:latest
+  horizon_db_sync: horizon-db-sync:latest
+  horizon_mirantis_theme_sha256summ: horizon-mirantis-theme-sha256summ
+  horizon_mirantis_theme_url: https://horizon-mirantis-theme-url/latest
+  image_repo_sync: image-repo-sync:latest
+  ingress: ingress:latest
+  ingress_module_init: ingress-module-init:latest
+  ingress_routed_vip: ingress-routed-vip:latest
+  ironic_agent_initramfs: ironic-agent-initramfs:latest
+  ironic_agent_initramfs_checksum: md5summ
+  ironic_agent_kernel: ironic-agent-kernel:latest
+  ironic_agent_kernel_checksum: md5summ
+  ironic_api: ironic-api:latest
+  ironic_conductor: ironic-conductor:latest
+  ironic_db_sync: ironic-db-sync:latest
+  ironic_manage_networks: ironic-manage-networks:latest
+  ironic_update_nodes_metadata: ironic-update-nodes-metadata:latest
+  ironic_pxe: ironic-pxe:latest
+  ironic_pxe_init: ironic-pxe-init:latest
+  ironic_retrieve_networks: ironic-retrieve-networks:latest
+  ironic_retrieve_swift_config: ironic-retrieve-swift-config:latest
+  keystone_api: keystone-api:latest
+  keystone_client: keystone-client:latest
+  keystone_credential_cleanup: keystone-credential-cleanup:latest
+  keystone_credential_rotate: keystone-credential-rotate:latest
+  keystone_credential_setup: keystone-credential-setup:latest
+  keystone_init_secrets: keystone-init-secrets:latest
+  keystone_db_sync: keystone-db-sync:latest
+  keystone_db_sync_contract: keystone-db-sync-contract:latest
+  keystone_db_sync_expand: keystone-db-sync-expand:latest
+  keystone_db_sync_migrate: keystone-db-sync-migrate:latest
+  keystone_domain_manage: keystone-domain-manage:latest
+  keystone_federations_create: keystone-federations-create:latest
+  keystone_fernet_rotate: keystone-fernet-rotate:latest
+  keystone_fernet_setup: keystone-fernet-setup:latest
+  ks_endpoints: ks-endpoints:latest
+  ks_service: ks-service:latest
+  ks_user: ks-user:latest
+  ks_trusts: ks-trusts:latest
+  libvirt: libvirt:latest
+  manila_api: manila:latest
+  manila_db_sync: manila:latest
+  manila_db_purge: manila:latest
+  manila_scheduler: manila:latest
+  manila_share: manila:latest
+  manila_service_image: https://manila-service-image-url/latest
+  manila-uuids-init: heat:latest
+  mariadb: mariadb:latest
+  mariadb_backup: mariadb-backup:latest
+  mariadb_controller: mariadb-controller:latest
+  mariadb_phy_backup: mariadb-phy-backup:latest
+  mariadb_phy_restore: mariadb-phy-restore:latest
+  mariadb_scripted_test: mariadb-scripted-test:latest
+  memcached: memcached:latest
+  neutron_bagpipe_bgp: neutron-bagpipe-bgp:latest
+  neutron_db_sync: neutron-db-sync:latest
+  neutron_ovn_db_sync_migrate: neutron-ovn-db-sync-migrate:latest
+  neutron_dhcp: neutron-dhcp:latest
+  neutron_ironic_agent: neutron-ironic-agent:latest
+  neutron_l2gw: neutron-l2gw:latest
+  neutron_l3: neutron-l3:latest
+  neutron_linuxbridge_agent: neutron-linuxbridge-agent:latest
+  neutron_metadata: neutron-metadata:latest
+  neutron_openvswitch_agent: neutron-openvswitch-agent:latest
+  neutron_rpc_server: neutron-rpc-server:latest
+  neutron_server: neutron-server:latest
+  neutron_sriov_agent: neutron-sriov-agent:latest
+  neutron_sriov_agent_init: neutron-sriov-agent-init:latest
+  nova_api: nova-api:latest
+  nova_cell_setup: nova-cell-setup:latest
+  nova_cell_setup_init: nova-cell-setup-init:latest
+  nova_compute: nova-compute:latest
+  nova_compute_ironic: nova-compute-ironic:latest
+  nova_compute_ssh: nova-compute-ssh:latest
+  nova_conductor: nova-conductor:latest
+  nova_consoleauth: nova-consoleauth:latest
+  nova_db_sync: nova-db-sync:latest
+  nova_db_sync_api: nova-db-sync-api:latest
+  nova_db_sync_db: nova-db-sync-db:latest
+  nova_db_sync_online: nova-db-sync-online:latest
+  nova_novncproxy: nova-novncproxy:latest
+  nova_placement: nova-placement:latest
+  nova_placement_audit: nova-placement-audit:latest
+  nova_scheduler: nova-scheduler:latest
+  nova_service_cleaner: nova-service-cleaner:latest
+  nova_spiceproxy: nova-spiceproxy:latest
+  octavia_amphora: https://amphora-image-url/latest
+  octavia_amphora_checksum: md5summ
+  octavia_api: octavia-api:latest
+  octavia_db_sync: octavia-db-sync:latest
+  octavia_db_sync_persistence: octavia-db-sync-persistence:latest
+  octavia_driver_agent: octavia-driver-agent:latest
+  octavia_health_manager: octavia-health-manager:latest
+  octavia_health_manager_init: octavia-health-manager-init:latest
+  octavia_hm_port: octavia-hm-port:latest
+  octavia_housekeeping: octavia-housekeeping:latest
+  octavia_worker: octavia-worker:latest
+  openvswitch_db_server: openvswitch-db-server:latest
+  openvswitch_vswitchd: openvswitch-vswitchd:latest
+  openvswitch_vswitchd_dpdk: openvswitch-vswitchd-dpdk:latest
+  panko_api: panko-api:latest
+  panko_db_sync: panko-db-sync:latest
+  panko_events_cleaner: panko-events-cleaner:latest
+  pause: pause:latest
+  placement: placement:latest
+  placement_db_sync: placement-db-sync:latest
+  powerdns: powerdns:latest
+  powerdns_db_sync: powerdns-db-sync:latest
+  prometheus_create_mysql_user: prometheus-create-mysql-user:latest
+  prometheus_memcached_exporter: prometheus-memcached-exporter:latest
+  prometheus_mysql_exporter: prometheus-mysql-exporter:latest
+  prometheus_mysql_exporter_helm_tests: prometheus-mysql-exporter-helm-tests:latest
+  prometheus_rabbitmq_exporter: prometheus-rabbitmq-exporter:latest
+  prometheus_rabbitmq_exporter_helm_tests: prometheus-rabbitmq-exporter-helm-tests:latest
+  purge_test: purge-test:latest
+  rabbit_init: rabbit-init:latest
+  rabbitmq: rabbitmq:latest
+  rabbitmq_init: rabbitmq-init:latest
+  rabbitmq_scripted_test: rabbitmq-scripted-test:latest
+  redis-failover: redis-failover:latest
+  scripted_test: scripted-test:latest
+  tempest-uuids-init: tempest-uuids-init:latest
+  tempest_run_tests: tempest-run-tests:latest
+  test: test:latest
+  masakari_api: masakari-api:latest
+  masakari_db_sync: masakari-db-sync:latest
+  openvswitch_ovn_db_nb: openvswitch-ovn-db-nb:latest
+  openvswitch_ovn_db_sb: openvswitch-ovn-db-sb:latest
+  openvswitch_ovn_northd: openvswitch-ovn-northd:latest
+  openvswitch_ovn_vswitchd: openvswitch-ovn-vswitchd:latest
+  openvswitch_ovn_db: openvswitch-ovn-db:latest
+  openvswitch_ovn_controller: openvswitch-ovn-controller:latest
+  cirros_checksum: 050056e630cf
+  cirros_raw_checksum: 479256d697ca
+  fedora_checksum: 8bc56d70a3e2
+  ubuntu_checksum: 3fb7422b5843
+  redis-operator: redis-operator:latest
+proxy_vars:
+  HTTP_PROXY: http://127.0.0.1:3128
+  NO_PROXY: .svc.cluster.local
+proxy_settings: {}
+credentials_secret_name: keystone-credential-data
+fernet_secret_name: keystone-fernet-data
+network_policies:
+  ingress:
+    database:mariadb:StatefulSet:mariadb-server:
+      - from:
+        - default: selector
+    networking:rabbitmq:StatefulSet:openstack-neutron-rabbitmq-rabbitmq:
+      - from:
+        - default: selector
+    coordination:etcd:StatefulSet:etcd-etcd:
+      - from:
+        - default: selector
+    compute:rabbitmq:StatefulSet:openstack-nova-rabbitmq-rabbitmq:
+      - from:
+        - default: selector
+    identity:keystone:Deployment:keystone-api:
+      - from:
+        - default: selector
+    compute:nova:Deployment:nova-novncproxy:
+      - from:
+        - default: selector
+    compute:nova:Deployment:nova-spiceproxy:
+      - from:
+        - default: selector
+    compute:nova:Deployment:nova-api-metadata:
+      - from:
+        - default: selector
+    compute:nova:Deployment:nova-api-osapi:
+      - from:
+        - default: selector
+    placement:placement:Deployment:placement-api:
+      - from:
+        - default: selector
+    orchestration:heat:Deployment:heat-api:
+      - from:
+        - default: selector
+    orchestration:heat:Deployment:heat-cfn:
+      - from:
+        - default: selector
+    networking:neutron:Deployment:neutron-server:
+      - from:
+        - default: selector
+    instance-ha:masakari:Deployment:masakari-api:
+      - from:
+        - default: selector
+    messaging:rabbitmq:StatefulSet:openstack-rabbitmq-rabbitmq:
+      - from:
+        - default: selector
+    image:glance:Deployment:glance-api:
+      - from:
+        - default: selector
+    image:glance:Deployment:glance-registry:
+      - from:
+        - default: selector
+    block-storage:cinder:Deployment:cinder-api:
+      - from:
+        - default: selector
+    baremetal:ironic:Deployment:ironic-api:
+      - from:
+        - default: selector
+    shared-file-system:manila:Deployment:manila-api:
+      - from:
+        - default: selector
+    memcached:memcached:StatefulSet:openstack-memcached-memcached:
+      - from:
+        - default: selector
+    alarming:aodh:Deployment:aodh-api:
+      - from:
+        - default: selector
+    metric:gnocchi:Deployment:gnocchi-api:
+      - from:
+        - default: selector
+    dns:designate:StatefulSet:designate-api:
+      - from:
+        - default: selector
+    key-manager:barbican:Deployment:barbican-api:
+      - from:
+        - default: selector
+    cloudprober:cloudprober:Deployment:openstack-cloudprober:
+      - from:
+        - default: selector
+    load-balancer:octavia:Deployment:octavia-api:
+      - from:
+        - default: selector
+    dashboard:horizon:Deployment:horizon:
+      - from:
+        - default: selector
+  egress: {}

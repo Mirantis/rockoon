@@ -1,0 +1,1908 @@
+type: object
+additionalProperties: false
+properties:
+  draft:
+    type: boolean
+    description: |
+      trigger to process osdpl resource
+      default: false
+  artifacts:
+    type: object
+    additionalProperties: false
+    properties:
+      images_base_url:
+        type: string
+        description: |
+          "base URL for docker images"
+          default: "mirantis.azurecr.io"
+      binary_base_url:
+        type: string
+        description: |
+          "base URL for repo with helm charts & other binaries"
+          default: "https://binary.mirantis.com"
+  region_name:
+    type: string
+    description: The name of region.
+  openstack_version:
+    description: version of OpenStack to deploy
+    type: string
+    enum:
+      - queens # not supported, only for migration
+      - rocky # not supported, only for migration
+      - stein # not supported, only for migration
+      - train # not supported, only for migration
+      - ussuri # production version
+      - victoria # LTS version
+      - wallaby # not supported, only for migration
+      - xena # not supported, only for migration
+      - yoga # LTS version
+      - antelope # LTS version
+      - caracal # not supported, technical release
+      - master # not supported, only for example
+  preset:
+    description: Preset of features to deploy
+    type: string
+    enum:
+      - compute
+      - compute-tf
+      - core
+  size:
+    description: timeout and sizing parameters
+    type: string
+    enum:
+      - single
+      - tiny
+      - small
+      - medium
+  public_domain_name:
+    type: string
+    description: |
+      domain name used for public endpoints
+      default: "it.just.works"
+  internal_domain_name:
+    type: string
+    description: |
+      internal k8s domain name
+      default: "cluster.local"
+  local_volume_storage_class:
+    type: string
+    description: |
+      Default storage class with local volumes, used by services with built in clustering
+      mechanism like mariadb, etcd, redis.
+      default: "rockoon-bind-mounts"
+  persistent_volume_storage_class:
+    type: string
+    description: |
+      Default storage class with persistence, for example ceph. Used by services that require
+      persistence on filesystem level like backups for mariadb.
+  common:
+    type: object
+    additionalProperties: false
+    properties:
+      charts:
+        type: object
+        description: settings passed to every helm chart
+        properties:
+          releases:
+            type: object
+            properties:
+              values:
+                type: object
+          repositories:
+            type: array
+            description: list of helm chart repositories
+            items:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: symbolic name to reference this repo
+                url:
+                  type: string
+                  description: helm charts repo url
+              required:
+                - name
+                - url
+          values:
+            additionalProperties: true
+            type: object
+            description: JSON of values passed to all charts
+      infra:
+        type: object
+        additionalProperties: false
+        properties:
+          releases:
+            type: object
+            additionalProperties: false
+            properties:
+              version:
+                type: string
+                description: version of charts to install for infra components
+          repo:
+            type: string
+          values:
+            additionalProperties: true
+            type: object
+            description: JSON of values passed to all infra charts
+      openstack:
+        type: object
+        additionalProperties: false
+        properties:
+          releases:
+            type: object
+            additionalProperties: false
+            properties:
+              version:
+                type: string
+                description: version of charts to install for openstack components
+          repo:
+            type: string
+          values:
+            additionalProperties: true
+            type: object
+            description: JSON of values passed to all openstack charts
+  nodes:
+    type: object
+    description: Object that describes node specific overrides.
+    additionalProperties: true
+  features:
+    type: object
+    additionalProperties: false
+    required:
+      - neutron
+      - nova
+    properties:
+      network_policies:
+        type: object
+        additionalProperties: false
+        properties:
+          enabled:
+            type: boolean
+            description: |
+              Trigger network policy enforcement for OpenStack related pods.
+              Only ingress policies are applied. By default is True for OpenStack
+              Yoga or newer. For previous OpenStack versions the default value is False
+      policies:
+        type: object
+        additionalProperties: false
+        properties:
+          strict_admin:
+            type: object
+            additionalProperties: false
+            properties:
+              enabled:
+                type: boolean
+                description: |
+                  Trigger additional policies that enforce stricter global admin definition of
+                  role 'admin' in 'admin' project of 'Default' domain, or role 'service'.
+                  This option is available for OpenStack Yoga or newer.
+          aodh: &custom_policies
+            type: object
+            additionalProperties: true
+            description: Values of policies to override.
+          barbican:
+            <<: *custom_policies
+          cinder:
+            <<: *custom_policies
+          designate:
+            <<: *custom_policies
+          glance:
+            <<: *custom_policies
+          gnocchi:
+            <<: *custom_policies
+          heat:
+            <<: *custom_policies
+          ironic:
+            <<: *custom_policies
+          keystone:
+            <<: *custom_policies
+          masakari:
+            <<: *custom_policies
+          manila:
+            <<: *custom_policies
+          neutron:
+            <<: *custom_policies
+          nova:
+            <<: *custom_policies
+          octavia:
+            <<: *custom_policies
+          panko:
+            <<: *custom_policies
+          placement:
+            <<: *custom_policies
+      glance:
+        type: object
+        additionalProperties: false
+        properties:
+          backends:
+            description: |
+              Set of backeds are going to be used by glance as multi backends.
+            type: object
+            additionalProperties: false
+            properties:
+              cinder:
+                type: object
+                additionalProperties: false
+                patternProperties:
+                  ".*":
+                    description: |
+                      Section to configure cinder backends.
+                    type: object
+                    additionalProperties: true
+                    properties: &glance_common_backend_properties
+                      default:
+                        type: boolean
+                        description: Make backend default. Only one backend may be marked as default.
+              rbd:
+                type: object
+                additionalProperties: false
+                patternProperties:
+                   ".*":
+                    type: object
+                    description: |
+                      Section to configure rbd (Ceph) backends
+                    additionalProperties: true
+                    properties:
+                      <<: *glance_common_backend_properties
+              file:
+                type: object
+                additionalProperties: false
+                patternProperties:
+                  ".*":
+                    type: object
+                    required:
+                    - pvc
+                    properties:
+                      <<: *glance_common_backend_properties
+                      pvc:
+                        type: object
+                        properties:
+                          size:
+                            type: string
+                            description: Size of PVC to create.
+                          storage_class_name:
+                            type: string
+                            description: The name of storage clas to use for glance file backend. Should support multiattach.
+          signature:
+            type: object
+            additionalProperties: false
+            properties:
+              enabled:
+                type: boolean
+                description: |
+                  Enforce signature validation for images on upload. Upload of images without signature
+                  metadata is rejected. When image signature is not valid compute service will not allow
+                  to start instance and block storage service will not allow to create volumes.
+              certificate_validation:
+                type: boolean
+                description: |
+                  Enable certificate validation when verifying signatures.
+                  default: false
+      database:
+        type: object
+        additionalProperties: false
+        properties:
+          cleanup:
+            type: object
+            additionalProperties: false
+            properties:
+              barbican:
+                type: object
+                additionalProperties: false
+                properties:
+                  enabled:
+                    type: boolean
+                    description: |
+                      Enable periodic cleanup of database for Barbican.
+                      default: true
+                  schedule:
+                    type: string
+                    description: |
+                      Cron schedule for periodic cleanup.
+                      default: "1 4 * * 1"
+                  age:
+                    type: integer
+                    description: |
+                      Number of days to keep deleted entries. When set to 0 all entries from shadow tables
+                      are deleted.
+                      default: 30
+              masakari:
+                type: object
+                additionalProperties: false
+                properties:
+                  enabled:
+                    type: boolean
+                    description: |
+                      Enable periodic cleanup of database for Masakari.
+                      default: true
+                  schedule:
+                    type: string
+                    description: |
+                      Cron schedule for periodic cleanup.
+                      default: "1 3 * * 1"
+                  age:
+                    type: integer
+                    description: |
+                      Number of days to keep deleted entries. When set to 0 all entries from shadow tables
+                      are deleted.
+                      default: 30
+                  batch:
+                    type: integer
+                    description: |
+                      The batch size for each iteration.
+                      default: 1000
+              nova:
+                type: object
+                additionalProperties: false
+                properties:
+                  enabled:
+                    type: boolean
+                    description: |
+                      Enable periodic cleanup of database for Nova.
+                      default: true
+                  schedule:
+                    type: string
+                    description: |
+                      Cron schedule for periodic cleanup.
+                      default: "1 1 * * 1"
+                  age:
+                    type: integer
+                    description: |
+                      Number of days to keep deleted entries. When set to 0 all entries from shadow tables
+                      are deleted.
+                      default: 30
+                  batch:
+                    type: integer
+                    description: |
+                      The batch size for each iteration.
+                      default: 1000
+              cinder:
+                type: object
+                additionalProperties: false
+                properties:
+                  enabled:
+                    type: boolean
+                    description: |
+                      Enable periodic cleanup of database for Cinder.
+                      default: true
+                  schedule:
+                    type: string
+                    description: |
+                      Cron schedule for periodic cleanup.
+                      default: "1 0 * * 1"
+                  age:
+                    type: integer
+                    description: |
+                      Number of days to keep deleted entries. When set to 0 all entries from shadow tables
+                      are deleted.
+                      default: 30
+              glance:
+                type: object
+                additionalProperties: false
+                properties:
+                  enabled:
+                    type: boolean
+                    description: |
+                      Enable periodic cleanup of database for Glance.
+                      default: true
+                  schedule:
+                    type: string
+                    description: |
+                      Cron schedule for periodic cleanup.
+                      default: "1 2 * * 1"
+                  age:
+                    type: integer
+                    description: |
+                      Number of days to keep deleted entries. When set to 0 all entries from shadow tables
+                      are deleted.
+                      default: 30
+                  batch:
+                    type: integer
+                    description: |
+                      The batch size for each iteration.
+                      Note that setting it to non-default value will
+                      quite probably fail the DB cleanup.
+                      default: -1
+              heat:
+                type: object
+                additionalProperties: false
+                properties:
+                  enabled:
+                    type: boolean
+                    description: |
+                      Enable periodic cleanup of database for Heat.
+                      default: true
+                  schedule:
+                    type: string
+                    description: |
+                      Cron schedule for periodic cleanup.
+                      default: "1 5 * * 1"
+                  age:
+                    type: integer
+                    description: |
+                      Number of days to keep deleted entries. When set to 0 all entries from shadow tables
+                      are deleted.
+                      default: 30
+                  batch:
+                    type: integer
+                    description: |
+                      Number of stacks to delete at a time (per transaction).
+                      default: 10
+              aodh:
+                type: object
+                additionalProperties: false
+                properties:
+                  enabled:
+                    type: boolean
+                    description: |
+                      Enable periodic cleanup of expired alarm history data for Aodh
+                      default: true
+                  schedule:
+                    type: string
+                    description: |
+                      Cron schedule for periodic cleanup
+                      default: "1 6 * * 1"
+                  age:
+                    type: integer
+                    description: |
+                      Number of days that alarm histories are kept in the database for (<= 0 means forever)
+              manila:
+                type: object
+                additionalProperties: false
+                properties:
+                  enabled:
+                    type: boolean
+                    description: |
+                      Enable periodic cleanup of database for Manila.
+                      default: true
+                  schedule:
+                    type: string
+                    description: |
+                      Cron schedule for periodic cleanup.
+                      default: "1 7 * * 1"
+                  age:
+                    type: integer
+                    description: |
+                      Number of days to keep deleted entries. When set to 0 all entries from shadow tables
+                      are deleted.
+                      default: 30
+          backup:
+            type: object
+            additionalProperties: false
+            required:
+              - enabled
+            properties:
+              enabled:
+                description: |
+                  Indicates whether cron job will launch backup jobs. When set to true suspend
+                  flag in cron job will be switched to false.
+                  default: false
+                type: boolean
+              schedule_time:
+                description: |
+                  Unix style cron expression indicates how often to run backup
+                  cron job. Default is '0 1 * * *' - every day at 01:00.
+                type: string
+              backup_type:
+                description: |
+                  Type of backup. Possible values: incremental or full.
+                  incremental: If newest full backup is older then full_backup_cycle seconds,
+                  perform full backup, else perform incremental backup to the newest full.
+                  full: perform always only full backup. Default is incremental.
+                type: string
+              backups_to_keep:
+                description: |
+                  How many full backups to keep.
+                type: integer
+              full_backup_cycle:
+                description: |
+                  Number of seconds that defines a period between 2 full backups.
+                  During this period incremental backups will be performed. The parameter
+                  is taken into account only if backup_type is set to 'incremental', otherwise
+                  it is ignored. For example with full_backup_cycle set to 604800 seconds full
+                  backup will be taken every week and if cron is set to 0 0 * * *, incremental backup
+                  will be performed on daily basis.
+                type: integer
+              backend:
+                description: |
+                  Backend to perform backup to. Could be: pvc, pv_nfs, hostpath. Default is pvc.
+                type: string
+                enum:
+                  - pvc
+                  - pv_nfs
+                  - hostpath
+              pv_nfs:
+                type: object
+                additionalProperties: false
+                required:
+                  - server
+                  - path
+                properties:
+                  server:
+                    description: |
+                      Ip address or domain name of nfs server
+                    type: string
+                  path:
+                    description: |
+                      Path to the nfs share on the server.
+                    type: string
+              sync_remote:
+                type: object
+                additionalProperties: false
+                required:
+                  - enabled
+                  - remotes
+                properties:
+                  enabled:
+                    type: boolean
+                    description: Whether to enable syncing backups to/from remote.
+                  remotes:
+                    type: object
+                    additionalProperties: false
+                    description: |
+                      Dictionary with remotes configuration in format:
+                        <remote_name>:
+                          path: "<path/to/dir>"
+                          conf: <rclone opts dictionary>
+                      Currently configuration of only 1 remote is allowed.
+                    additionalProperties: true
+              encryption:
+                type: object
+                additionalProperties: false
+                properties:
+                  enabled:
+                    type: boolean
+                    description: Whether to encrypt backup content.
+
+      telemetry:
+        type: object
+        additionalProperties: false
+        required:
+         - mode
+        properties:
+          mode:
+            type: string
+            enum:
+              - autoscaling
+            description: |
+              Which telemetry mode is going to be used for telemetry.
+      designate:
+        type: object
+        additionalProperties: false
+        required:
+          - backend
+        properties:
+          backend:
+            type: object
+            additionalProperties: false
+            required:
+              - type
+              - protocol
+            properties:
+              type:
+                type: string
+                description: |
+                  Type of the backend for Designate. For example: powerdns.
+                  default: powerdns
+              protocol:
+                type: string
+                description: |
+                  Protocol for Designate backend in Kubernetes Service. Could be udp|tcp|tcp+udp.
+                  default: udp
+                enum:
+                  - udp
+                  - tcp
+                  - tcp+udp
+              external_ip:
+                description: |
+                  Optional field to define IP address for LoadBalancer service.
+                type: string
+      ssl:
+        type: object
+        additionalProperties: false
+        required:
+         - public_endpoints
+        properties:
+          tls_proxy:
+            type: object
+            additionalProperties: false
+            required:
+              - enabled
+            properties:
+              enabled:
+                type: boolean
+                description: |
+                  Enable FIPS compliant TLS proxy for public endpoints.
+                  Default: true
+          public_endpoints:
+            type: object
+            additionalProperties: false
+            required:
+              - ca_cert
+              - api_cert
+              - api_key
+            properties:
+              ca_cert:
+                description: |
+                  CA certificate
+                anyOf: &value_from_or_string
+                - type: string
+                - type: object
+                  additionalProperties: false
+                  properties: &value_from
+                    value_from:
+                      type: object
+                      additionalProperties: false
+                      properties:
+                        secret_key_ref:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                              description: The name of secret to get data from.
+                            key:
+                              type: string
+                              description: The name of secret key to get data from.
+              api_cert:
+                description: |
+                  API server certificate
+                anyOf: *value_from_or_string
+              api_key:
+                description: |
+                  API server private key
+                anyOf: *value_from_or_string
+      barbican:
+        type: object
+        additionalProperties: false
+        properties:
+          backends:
+            type: object
+            additionalProperties: false
+            properties:
+              vault:
+                type: object
+                additionalProperties: false
+                properties:
+                  enabled:
+                    description: |
+                      Indicates if simple_crypto backend is enabled
+                      default: false
+                    type: boolean
+                  approle_role_id:
+                    description: |
+                      Specifies the app role ID
+                    anyOf: *value_from_or_string
+                  approle_secret_id:
+                    description: |
+                       Specifies the secret ID created for the app role
+                    anyOf: *value_from_or_string
+                  vault_url:
+                    description: |
+                      URL of the Vault server
+                    type: string
+                  namespace:
+                    description: |
+                      Vault Namespace to use for all requests to Vault.
+                      This is available only in Vault Enterprise and
+                      is supported only since OpenStack Victoria release.
+                    type: string
+                  kv_mountpoint:
+                    description: |
+                      Mountpoint of KV store in Vault to use.
+                    type: string
+                  use_ssl:
+                    description: |
+                      Specifies whether to use SSL
+                    type: boolean
+                  ssl_ca_crt_file:
+                    description: |
+                      The path to CA cert file
+                    anyOf: *value_from_or_string
+      services:
+        type: array
+        description: List of enabled openstack and auxiliary services
+        items:
+          type: string
+          enum:
+            - block-storage
+            - cloudprober
+            - compute
+            - identity
+            - dashboard
+            - image
+            - ingress
+            - database
+            - memcached
+            - networking
+            - orchestration
+            - object-storage
+            - messaging
+            - tempest
+            - load-balancer
+            - dns
+            - key-manager
+            - placement
+            - coordination
+            - stepler
+            - baremetal
+            - redis
+            - alarming
+            - event
+            - metering
+            - metric
+            - instance-ha
+            - shared-file-system
+            - dynamic-resource-balancer
+      cloudprober:
+        type: object
+        additionalProperties: false
+        properties:
+          discovery:
+            type: object
+            additionalProperties: false
+            description: >
+              Defines parameters of openstack resources discovery
+              and targets generation for cloudprober.
+            properties:
+              interval:
+                type: number
+                description: >
+                  Default interval in seconds between runs of openstack resources discovery.
+                  default: 600.
+      nova:
+        type: object
+        additionalProperties: false
+        required:
+          - live_migration_interface
+        properties:
+          allocation_ratios:
+            type: object
+            additionalProperties: false
+            description: >
+              Defines allowed compute resource overconsumption.
+              For Queens and Rocky - these values are constantly enforced.
+              For Stein and later - these values are set once for new compute
+              nodes, further changes should be done via the Placement API.
+            properties:
+              cpu:
+                type: number
+              disk:
+                type: number
+              ram:
+                type: number
+          libvirt:
+            type: object
+            additionalProperties: false
+            properties:
+              tls:
+                type: object
+                additionalProperties: false
+                properties:
+                  enabled:
+                    type: boolean
+                    description: "Enabled libvirt to listen on tls and secure live migration with QEMU-native TLS"
+          live_migration_interface:
+            type: string
+            description: "Physical interface used for live migration."
+          vcpu_type:
+            type: string
+            description: |
+              Types of cpu to create instances with. Can be host-model, host-passthrough
+              or a coma-separated list of qemu cpu types.
+              For OpenStack Stein and older, only single value can be provided.
+              Default is "host-model" for a optimal compromise between performance
+              and live-migration support.
+          console:
+            type: object
+            additionalProperties: false
+            properties:
+              spice:
+                type: object
+                additionalProperties: false
+                properties:
+                  enabled:
+                    type: boolean
+                    description: |
+                      Enable SPICE console feature
+                      default: false
+              novnc:
+                type: object
+                additionalProperties: false
+                properties:
+                  enabled:
+                    type: boolean
+                    description: |
+                      Enable VNC console feature
+                      default: true
+                  tls:
+                    type: object
+                    additionalProperties: false
+                    properties:
+                      enabled:
+                        type: boolean
+                        description: "Enable TLS for VNC console between libvirt and VNCProxy"
+          images:
+            type: object
+            additionalProperties: false
+            properties:
+              backend:
+                description: |
+                  Backend for nova images can be:
+                    - local: qcow2 image type. Option is deprecated and will be replaced to 'qcow2'
+                    - qcow2: qcow2 image type
+                    - ceph: rbd image type
+                    - lvm: lvm image type
+                    - raw: raw image type
+                type: string
+                enum:
+                  - local
+                  - qcow2
+                  - ceph
+                  - lvm
+                  - raw
+              encryption:
+                type: object
+                additionalProperties: false
+                properties:
+                  enabled:
+                    type: boolean
+                    description: |
+                      Enable ephemeral disk encryption, only available with lvm backend.
+                      default: false
+                  cipher:
+                    type: string
+                    description: |
+                      Cipher-mode string to be used.
+                      default: "aes-xts-plain64"
+                  key_size:
+                    type: integer
+                    description: |
+                      Encryption key length in bits.
+                      default: 256
+              lvm:
+                type: object
+                additionalProperties: false
+                properties:
+                  volume_group:
+                    type: string
+                    description: |
+                      Volume group used when images backend is lvm. Default to nova-vol
+      horizon:
+        type: object
+        additionalProperties: false
+        properties:
+          default_theme:
+            type: string
+            description: |
+              The default theme name.
+              default: "default"
+          themes:
+            type: array
+            items:
+              type: object
+              additionalProperties: false
+              required:
+                - name
+                - url
+                - sha256summ
+                - description
+              properties:
+                name:
+                  type: string
+                  description: Custom theme name
+                url:
+                  type: string
+                  description: Link to archive with theme
+                sha256summ:
+                  type: string
+                  description: The sha256 checksumm of arhive with theme
+                description:
+                  type: string
+                  description: Theme description showed to user
+          motd:
+            type: object
+            description: Message of the Day files to show to users
+            additionalProperties: false
+            patternProperties:
+              ".*":
+                type: object
+                additionalProperties: false
+                required:
+                - level
+                - message
+                properties:
+                  level:
+                    type: string
+                    enum:
+                    - success
+                    - info
+                    - warning
+                    - error
+                  message:
+                    type: string
+                  beforeLogin:
+                    type: boolean
+                    default: false
+                  afterLogin:
+                    type: boolean
+                    default: true
+      keystone:
+        type: object
+        additionalProperties: false
+        properties:
+          users:
+            type: object
+            additionalProperties: false
+            properties:
+              admin:
+                type: object
+                additionalProperties: false
+                properties:
+                  project_name:
+                    description: |
+                      Project name for admin of OpenStack deployment
+                      default: "admin"
+                    type: string
+                  user_domain_name:
+                    description: |
+                      Domain name for admin of OpenStack deployment
+                      default: "default"
+                    type: string
+                  project_domain_name:
+                    description: |
+                      Project domain name for admin of OpenStack deployment
+                      default: "default"
+                    type: string
+                  default_domain_id:
+                    description: |
+                      Domain ID for admin of OpenStack deployment
+                      default: "default"
+                    type: string
+          federation:
+            type: object
+            additionalProperties: False
+            required:
+            - openid
+            properties:
+              openid:
+                type: object
+                required:
+                - providers
+                - enabled
+                properties:
+                  enabled:
+                    type: boolean
+                    description: |
+                      Trigger to enable federation providers in keystone.
+                      default: true
+                  oidc:
+                    type: object
+                    additionalProperties: True
+                  oidc_auth_type:
+                    type: string
+                    description: |
+                      Authenticaion type used by Apache to validate OAuth2.0
+                      access tokens. To configure multiple providers should be
+                      switched to oauth2. The oauth20 will be removed in next releases.
+                      default: oauth20
+                    enum:
+                    - oauth20
+                    - oauth2
+                  providers:
+                    type: object
+                    additionalProperties: False
+                    patternProperties:
+                      ".*":
+                        type: object
+                        additionalProperties: False
+                        required:
+                          - issuer
+                          - description
+                        properties:
+                          issuer:
+                            type: string
+                            description: "Provider issuer url"
+                          oidc_ca:
+                            type: string
+                            description: "CA bundle to connect to certificate"
+                          description:
+                            type: string
+                            description: |
+                              The description of provider to show on horizon web page.
+                          enabled:
+                            type: boolean
+                            description: |
+                              Trigger to enable specific provider.
+                              default: true
+                          mapping:
+                            type: array
+                            description: Keystone mapping to use for provider
+                            items:
+                              type: object
+                              additionalProperties: True
+                          oauth2:
+                            description: |
+                              Specific OAuth2 module parameters
+                            type: object
+                            additionalProperties: True
+                          metadata:
+                            type: object
+                            properties:
+                              client:
+                                type: object
+                                additionalProperties: True
+                              conf:
+                                type: object
+                                additionalProperties: True
+                              provider:
+                                type: object
+                                required:
+                                - value_from
+                                properties:
+                                  value_from:
+                                    type: object
+                                    required:
+                                    - from_url
+                                    properties:
+                                      from_url:
+                                        type: object
+                                        required:
+                                        - url
+                                        properties:
+                                          url:
+                                            type: string
+                                            description: URL to well know properties of provider
+          keycloak:
+            type: object
+            additionalProperties: false
+            properties:
+              enabled:
+                description: |
+                  Trigger to enable keycloak integration
+                  default: false
+                type: boolean
+              url:
+                type: string
+                description: Url for keycloak
+              oidc:
+                type: object
+                additionalProperties: false
+                properties:
+                  OIDCClientID:
+                    type: string
+                    description: |
+                      Client identifier used in calls to the statically configured OpenID Connect Provider
+                      default: "os"
+                  OIDCProviderMetadataURL:
+                    type: string
+                    description: Override for URL where OpenID Connect Provider metadata can be found
+                  OIDCRedirectURI:
+                    type: array
+                    description: The redirect_uri for this OpenID Connect client
+                    items:
+                      type: string
+                  OIDCSSLValidateServer:
+                    type: boolean
+                    description: Require a valid SSL server certificate when communicating with the OP
+                  OIDCOAuthSSLValidateServer:
+                    type: boolean
+                    description: Require a valid SSL server certificate when communicating with the Authorization Server
+                  OIDCRedirectURLsAllowed:
+                    type: string
+                    description: |
+                      Define one or more regular expressions that specify URLs (or domains) allowed for post logout and
+                      other redirects such as the "return_to" value on refresh token requests
+                  OIDCScope:
+                     type: string
+                     description: |
+                       Used to request specific scopes
+                       default: "openid email profile"
+                  OIDCClaimDelimiter:
+                    type: string
+                    description: |
+                      The delimiter to use when setting multi-valued claims (openid-connect or oauth20) in the HTTP
+                      headers/environment variables.
+                  OIDCSessionInactivityTimeout:
+                    type: integer
+                    description: |
+                      Interval in seconds after which the session will be invalidated when no interaction has occurred.
+                      default: 1800
+          domain_specific_configuration:
+            type: object
+            additionalProperties: false
+            properties:
+              enabled:
+                type: boolean
+                description: Enable domain specific keystone configuration
+              ks_domains:
+                type: object
+                additionalProperties: true
+                description: "Domain specific configuration"
+              domains:
+                type: array
+                description: |
+                  [Deprecated]: The list of domain specific configuration options. Use
+                  ks_domains instead.
+                items:
+                  type: object
+                  additionalProperties: false
+                  required:
+                  - enabled
+                  - name
+                  - config
+                  properties:
+                    enabled:
+                      type: boolean
+                      description: Enable domain specific keystone configuration
+                    name:
+                      type: string
+                      description: Domain name
+                    config:
+                      additionalProperties: true
+                      type: object
+                      description: Domain specific configuration options.
+      neutron:
+        type: object
+        additionalProperties: false
+        required:
+          - tunnel_interface
+        properties:
+          tunnel_interface:
+            type: string
+            description: "Physical interface used for tunnel traffic"
+          dns_servers:
+            type: array
+            description: |
+              The list with the IP addresses of DNS servers reachable from Virtual Networks
+            items:
+              type: string
+          backend:
+            type: string
+            description: |
+              Neutron backend
+              default: "ml2"
+            enum:
+              - ml2
+              - tungstenfabric
+              - ml2/ovn
+          dvr:
+            type: object
+            additionalProperties: false
+            required:
+              - enabled
+            properties:
+              enabled:
+                type: boolean
+                description: |
+                  Enable distributed routers
+                  default: false
+          tenant_network_types:
+            type: array
+            description: Ordered list of network_types to allocate as tenant networks
+            items:
+              type: string
+              enum:
+                - flat
+                - vlan
+                - vxlan
+                - geneve
+          external_networks:
+            type: array
+            items:
+              type: object
+              additionalProperties: false
+              required:
+                - physnet
+                - bridge
+                - network_types
+              properties:
+                physnet:
+                  type: string
+                  description: |
+                    Neutron physnet name
+                    default: "physnet1"
+                interface:
+                  type: string
+                  description: Physical interface mapped with physnet
+                bridge:
+                  type: string
+                  description: OVS bridge name to map with physnet.
+                network_types:
+                  type: array
+                  description: Network types allowed on particular physnet
+                  items:
+                    type: string
+                    enum:
+                      - flat
+                      - vlan
+                      - vxlan
+                      - gre
+                      - local
+                vlan_ranges:
+                  type: ["string", "null"]
+                  description: Range of vlans allowed on physnet
+                mtu:
+                  type: ["integer", "null"]
+          floating_network:
+            type: object
+            additionalProperties: false
+            properties:
+              enabled:
+                type: boolean
+                description: |
+                  enable floating network creation
+                  default: false
+              name:
+                type: string
+                description: |
+                  The name of floating network
+                  default: "public"
+              physnet:
+                type: string
+                description: |
+                  name of physical network to associate
+              network_type:
+                type: string
+                enum:
+                  - flat
+                  - vlan
+                description: network physical mechanism
+              segmentation_id:
+                type: integer
+                description: vlan id for vlan networks
+              subnet:
+                type: object
+                additionalProperties: false
+                required:
+                  - range
+                  - pool_start
+                  - pool_end
+                  - gateway
+                properties:
+                  name:
+                    type: string
+                    description: |
+                      "The name of floating subnet"
+                      default: "public-subnet"
+                  range:
+                    type: string
+                    description: "IP address range ie: 1.2.3.0/24"
+                  pool_start:
+                    type: string
+                    description: "start IP address ie: 1.2.3.100"
+                  pool_end:
+                    type: string
+                    description: "end IP address ie: 1.2.3.200"
+                  gateway:
+                    type: string
+                    description: "IP address of subnet gateway"
+              router:
+                type: object
+                additionalProperties: false
+                properties:
+                  name:
+                    type: string
+                    description: |
+                      "The name of public router"
+                      default: "r1"
+          extensions:
+            type: object
+            additionalProperties: false
+            properties:
+              vpnaas:
+                type: object
+                additionalProperties: false
+                properties:
+                  enabled:
+                    type: boolean
+                    description: |
+                        [Technology Preview] Enable VPNaaS plugin/service
+                        default: false
+              dynamic_routing:
+                type: object
+                additionalProperties: false
+                properties:
+                  enabled:
+                    type: boolean
+                    description: |
+                        [Technology Preview] Enable BGP Dynamic Routing plugin/service
+                        default: false
+              portprober:
+                type: object
+                additionalProperties: false
+                properties:
+                  enabled:
+                    type: boolean
+                    description: |
+                        [Technology Preview] Enable PortProber monitoring extension
+                        default: false
+              trunk:
+                type: object
+                additionalProperties: false
+                properties:
+                  enabled:
+                    type: boolean
+                    description: |
+                        Enable Trunk extension
+                        default: true for Antelope and newer OS releases and false for the rest
+          baremetal:
+            type: object
+            additionalProperties: false
+            properties:
+              ngs:
+                type: object
+                additionalProperties: false
+                properties:
+                  hardware:
+                    type: object
+                    additionalProperties: true
+                    # Validation performed in admission controller
+                  devices:
+                    type: array
+                    description: "[Deprecated]: Array with devices configuration. Use hardware section instead."
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required:
+                        - name
+                        - device_type
+                        - ip
+                        - username
+                      properties:
+                        name:
+                          type: string
+                          description: Switch name
+                        device_type:
+                          type: string
+                          description: Netmiko device type
+                        ip:
+                          type: string
+                          description: IP address of switch
+                        username:
+                          description: Credential username
+                          anyOf: *value_from_or_string
+                        password:
+                          description: Credential password
+                          anyOf: *value_from_or_string
+                        ssh_private_key:
+                          description:  SSH private key for switch.
+                          anyOf: *value_from_or_string
+                        secret:
+                          description: Enable secret
+                          anyOf: *value_from_or_string
+                        raw:
+                          additionalProperties: true
+                          type: object
+                          description: RAW config for device.
+          bgpvpn:
+            type: object
+            additionalProperties: false
+            required:
+              - enabled
+              - as_number
+            properties:
+              enabled:
+                type: boolean
+                description: |
+                  [Technology Preview] Enable BGPVPN plugin/service
+                  default: false
+              control_interface:
+                type: string
+                description: IP address or interface used for BGP peerings
+              dataplane_interface:
+                type: string
+                description: IP address or interface used to send VPN traffic
+              peers:
+                type: array
+                description: IP addresses of BGP peers, when not specified will be picked from secret
+                items:
+                  type: string
+              as_number:
+                type: integer
+                description: Autonomous System number
+              evpn_vxlan_port:
+                type: integer
+                description: UDP port toward which send VXLAN traffic
+              route_reflector:
+                type: object
+                additionalProperties: false
+                description: The object describes RouteReflector settings
+                properties:
+                  enabled:
+                    type: boolean
+                    description: Enable BGPVPN route reflector on controller nodes
+                  neighbor_subnets:
+                    type: array
+                    description: BGP sessions allowed from neighbors in this subnet
+                    items:
+                      type: string
+          ipsec:
+            type: object
+            additionalProperties: false
+            required:
+              - enabled
+            properties:
+              enabled:
+                type: boolean
+                description: |
+                  Enable IPsec authentication and encryption of tenant traffic
+                  default: false
+      messaging:
+        type: object
+        additionalProperties: false
+        properties:
+          components_with_dedicated_messaging:
+            type: array
+            description: "Array of components need to be set up with dedicated rabbitmq server for migration"
+            items:
+              type: string
+              enum:
+                - compute
+                - networking
+          notifications:
+            type: object
+            additionalProperties: false
+            properties:
+              external:
+                type: object
+                additionalProperties: false
+                properties:
+                  enabled:
+                    type: boolean
+                    description: |
+                      enable RabbitMQ external endpoints
+                      default: false
+                  topics:
+                    type: array
+                    description: |
+                      List of RabbitMQ external topics
+                    items:
+                      type: string
+      ironic:
+        type: object
+        additionalProperties: false
+        required:
+          - provisioning_interface
+          - baremetal_network_name
+        properties:
+          provisioning_interface:
+            type: string
+            description: |
+              name of physical interface to bind PXE services
+              default: "ironic-pxe"
+          baremetal_network_name:
+            type: string
+            description: name of baremetal provisioning/cleaning network
+          networks:
+            type: object
+            additionalProperties: false
+            properties:
+              baremetal:
+                type: object
+                additionalProperties: false
+                properties:
+                  name:
+                    type: string
+                    description: |
+                      name of baremetal network
+                      default: "baremetal"
+                  physnet:
+                    type: string
+                    description: |
+                      name of physical network to associate
+                      default: "ironic"
+                  network_type:
+                    type: string
+                    enum:
+                      - flat
+                      - vlan
+                    description: |
+                      type of provisioning/cleaning baremetal network
+                      default: "vlan"
+                  segmentation_id:
+                    type: integer
+                    description: the vlan number of cleaning network in case of VLAN segmentation is used
+                  mtu:
+                    type: integer
+                    description: the MTU for cleaning network
+                  external:
+                    type: boolean
+                    description: |
+                      default: true
+                  shared:
+                    type: boolean
+                    description: |
+                      default: true
+                  subnets:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required:
+                        - name
+                        - range
+                        - pool_start
+                        - pool_end
+                        - gateway
+                      properties:
+                        name:
+                          type: string
+                          description: baremetal subnet name
+                        range:
+                          type: string
+                          description: the cidr of baremetal network
+                        pool_start:
+                          type: string
+                          description: the start range of allocation pool for baremetal network
+                        pool_end:
+                          type: string
+                          description: the end range of allocation pool for baremetal network
+                        gateway:
+                          type: string
+                          description: the gateway for baremetal network
+          agent_images:
+            type: object
+            additionalProperties: false
+            properties:
+              base_url:
+                description: |
+                  base URL for ironic agent images
+                  default: "https://binary.mirantis.com/openstack/bin/ironic/tinyipa"
+                type: string
+              initramfs:
+                type: string
+              kernel:
+                type: string
+      octavia:
+        type: object
+        additionalProperties: false
+        properties:
+          default_provider:
+            type: string
+            description: |
+              Default provider driver used for loadbalancers.
+            enum:
+              - amphorav2
+              - ovn
+              - tungstenfabric
+          lb_network:
+            type: object
+            additionalProperties: false
+            required:
+              - subnets
+            properties:
+              name:
+                type: string
+              subnets:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  required:
+                    - range
+                    - pool_start
+                    - pool_end
+                  properties:
+                    range:
+                      type: string
+                      description: "IP address range ie: 1.2.3.0/24"
+                    pool_start:
+                      type: string
+                      description: "start IP address ie: 1.2.3.100"
+                    pool_end:
+                      type: string
+                      description: "end IP address ie: 1.2.3.200"
+      stacklight:
+        type: object
+        additionalProperties: false
+        properties:
+          enabled:
+            description: |
+              enable StackLight operations support system
+            type: boolean
+          user:
+            type: object
+            additionalProperties: false
+            properties:
+              username:
+                anyOf: *value_from_or_string
+                description: |
+                  The option is no longer handled, the username is autogenerated.
+              password:
+                anyOf: *value_from_or_string
+                description: |
+                  The option is no longer handled, the password is autogenerated.
+      cinder:
+        type: object
+        additionalProperties: false
+        properties:
+          volume:
+            type: object
+            additionalProperties: false
+            properties:
+              enabled:
+                type: boolean
+                description: |
+                  Flag to enable main cinder volume running as statefulset.
+                  When enabled rockoon will wait for ceph deployment
+                  provided by MOSK Ceph controller. Disable for cephless deployment.
+                  default true
+              backends:
+                type: object
+                description: |
+                  Custom additional Cinder backend configuration
+                additionalProperties: False
+                patternProperties:
+                  ".*":
+                    description: |
+                      Backend name
+                    additionalProperties: False
+                    type: object
+                    required:
+                      - type
+                      - values
+                    properties:
+                      enabled:
+                        type: boolean
+                        description: |
+                          Enable additional Cinder backend to deploy
+                          default: True
+                      create_volume_type:
+                        type: boolean
+                        description: |
+                          Enable automatic volume type creation for this backend
+                          default: True
+                      type:
+                        type: string
+                        enum:
+                          - statefulset
+                      values:
+                        type: object
+                        additionalProperties: False
+                        required:
+                          - conf
+                        properties:
+                          conf:
+                            type: object
+                            additionalProperties: True
+                          images:
+                            type: object
+                            additionalProperties: True
+                          labels:
+                            type: object
+                            additionalProperties: True
+                          pod:
+                            type: object
+                            additionalProperties: True
+          backup:
+            type: object
+            additionalProperties: false
+            properties:
+              enabled:
+                type: boolean
+                description: |
+                  Enable cinder backup service. Disable for cephless deployment.
+                  default: true
+              drivers:
+                type: object
+                description: |
+                  Backends to perform backup to. Could be: ceph, s3. Default is ceph.
+                additionalProperties: False
+                patternProperties:
+                  ".*":
+                    description: |
+                      Backup backend name.
+                    type: object
+                    additionalProperties: False
+                    required:
+                      - type
+                      - enabled
+                    properties:
+                      type:
+                        type: string
+                        enum:
+                          - s3
+                          - nfs
+                      enabled:
+                        type: boolean
+                      endpoint_url:
+                        type: string
+                        description: |
+                          The url where the S3 server is listening
+                      store_bucket:
+                        type: string
+                        description: |
+                          The S3 bucket to be used to store the Cinder backup data
+                      store_access_key:
+                        type: object
+                        description: |
+                          The S3 query token access key.
+                        additionalProperties: false
+                        properties:
+                          *value_from
+                      store_secret_key:
+                        type: object
+                        description: |
+                          The S3 query token secret key.
+                        additionalProperties: false
+                        properties:
+                          *value_from
+                      backup_share:
+                        type: string
+                        description: |
+                          NFS share in hostname:path, ipv4addr:path, or [ipv6addr]:path format.
+                    allOf:
+                      - if:
+                          properties:
+                            type:
+                              const: s3
+                        then:
+                          required:
+                            - endpoint_url
+                            - store_bucket
+                            - store_access_key
+                            - store_secret_key
+                      - if:
+                          properties:
+                            type:
+                              const: nfs
+                        then:
+                          required:
+                            - backup_share
+      manila:
+        type: object
+        additionalProperties: false
+        properties:
+          share:
+            type: object
+            additionalProperties: false
+            properties:
+              backends:
+                type: object
+                description: |
+                  Manila backends configuration
+                additionalProperties: False
+                patternProperties:
+                  ".*":
+                    description: |
+                      Backend name
+                    additionalProperties: False
+                    type: object
+                    required:
+                      - type
+                      - values
+                    properties:
+                      enabled:
+                        type: boolean
+                        description: |
+                          Enable Manila backend to deploy
+                          default: True
+                      type:
+                        type: string
+                        enum:
+                          - statefulset
+                      values:
+                        type: object
+                        additionalProperties: False
+                        required:
+                          - conf
+                        properties:
+                          conf:
+                            type: object
+                            additionalProperties: True
+                          images:
+                            type: object
+                            additionalProperties: True
+                          labels:
+                            type: object
+                            additionalProperties: True
+                          pod:
+                            type: object
+                            additionalProperties: True
+      logging:
+        type: object
+        additionalProperties: false
+        properties:
+          cadf:
+            type: object
+            additionalProperties: false
+            required:
+              - enabled
+            properties:
+              enabled:
+                type: boolean
+                description: |
+                  Enable CADF audit notifications
+                  default: false
+              driver:
+                type: string
+                description: |
+                  List of drivers to handle sending audit notifications
+                  default: messagingv2
+                enum:
+                  - messagingv2
+                  - log
+          cinder: &logging_level
+            type: object
+            additionalProperties: false
+            properties:
+              level:
+                type: string
+                description: |
+                  Service logging level
+                  default: "INFO"
+                enum:
+                  - DEBUG
+                  - INFO
+                  - WARNING
+                  - ERROR
+                  - CRITICAL
+          designate:
+            <<: *logging_level
+          glance:
+            <<: *logging_level
+          heat:
+            <<: *logging_level
+          ironic:
+            <<: *logging_level
+          keystone:
+            <<: *logging_level
+          neutron:
+            <<: *logging_level
+          nova:
+            <<: *logging_level
+          octavia:
+            <<: *logging_level
+          aodh:
+            <<: *logging_level
+          panko:
+            <<: *logging_level
+          gnocchi:
+            <<: *logging_level
+          ceilometer:
+            <<: *logging_level
+          manila:
+            <<: *logging_level
+          masakari:
+            <<: *logging_level
+          barbican:
+            <<: *logging_level
+          placement:
+            <<: *logging_level
+  migration:
+    additionalProperties: true
+    type: object
+    description: this is arbitrary JSON of parameters for migration
+  services:
+    additionalProperties: true
+    type: object
+    description: this is arbitrary JSON
+  timeouts:
+    type: object
+    additionalProperties: false
+    properties:
+      application_readiness:
+        type: object
+        additionalProperties: false
+        properties:
+          nova: &application_readiness
+            type: object
+            additionalProperties: false
+            properties:
+              timeout:
+                type: integer
+                description: |
+                  Number of seconds to wait for application becomes ready.
+                  default: 1200
+              delay:
+                type: integer
+                description: |
+                  Number of seconds between readiness attempts.
+                  default: 10
+          neutron:
+            <<: *application_readiness
+required:
+  - openstack_version
+  - preset
+  - size
+  - public_domain_name

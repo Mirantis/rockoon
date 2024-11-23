@@ -1,0 +1,10 @@
+resource_registry:
+  "MCP2::NetworkLCM": ../fragments/NetworkLCM.yaml
+  "MCP2::SrvInstances": ../fragments/SrvInstancesVM.yaml
+
+parameters:
+  image: jammy-server-cloudimg-amd64-20240417
+  public_net_id: public
+  k8s_controller_size: 1
+  cluster_public_key: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCp0evjOaK8c8SKYK4r2+0BN7g+8YSvQ2n8nFgOURCyvkJqOHi1qPGZmuN0CclYVdVuZiXbWw3VxRbSW3EH736VzgY1U0JmoTiSamzLHaWsXvEIW8VCi7boli539QJP0ikJiBaNAgZILyCrVPN+A6mfqtacs1KXdZ0zlMq1BPtFciR1JTCRcVs5vP2Wwz5QtY2jMIh3aiwkePjMTQPcfmh1TkOlxYu5IbQyZ3G1ahA0mNKI9a0dtF282av/F6pwB/N1R1nEZ/9VtcN2I1mf1NW/tTHEEcTzXYo1R/8K9vlqAN8QvvGLZtZduGviNVNoNWvoxaXxDt8CPv2B2NCdQFZp
+  k8s_controller_flavor: 'mosk.aio.s.ephemeral'

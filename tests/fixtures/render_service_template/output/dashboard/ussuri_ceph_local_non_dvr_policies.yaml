@@ -1,0 +1,176 @@
+spec:
+  releases:
+  - chart: horizon
+    name: openstack-horizon
+    values:
+      network:
+        proxy:
+          enabled: true
+          env_vars:
+            HTTP_PROXY: http://127.0.0.1:3128
+            NO_PROXY: .svc.cluster.local
+        dashboard:
+          ingress:
+            annotations:
+              nginx.ingress.kubernetes.io/proxy-body-size: "0"
+      conf:
+        software:
+          horizon:
+            dashboard_path: '/var/lib/openstack/lib/python3.6/site-packages/openstack_dashboard'
+        policy.d:
+          aodh:
+            01-custom.yaml: {'aodh_custom': 'value'}
+          barbican:
+            01-custom.yaml: {'barbican_custom': 'value'}
+          cinder:
+            01-custom.yaml: {'cinder_custom': 'value'}
+          designate:
+            01-custom.yaml: {'designate_custom': 'value'}
+          glance:
+            01-custom.yaml: {'glance_custom': 'value'}
+          gnocchi:
+            01-custom.yaml: {'gnocchi_custom': 'value'}
+          heat:
+            01-custom.yaml: {'heat_custom': 'value'}
+          keystone:
+            01-custom.yaml: {'keystone_custom': 'value'}
+          masakari:
+            01-custom.yaml: {'masakari_custom': 'value'}
+          neutron:
+            01-custom.yaml: {'neutron_custom': 'value'}
+          nova:
+            01-custom.yaml: {'nova_custom': 'value'}
+          octavia:
+            01-custom.yaml: {'octavia_custom': 'value'}
+          panko:
+            01-custom.yaml: {'panko_custom': 'value'}
+          placement:
+            01-custom.yaml: {'placement_custom': 'value'}
+        horizon:
+          policy:
+            aodh: {'alarming_rule1': 'alarming_value1'}
+            barbican: {'key-manager_rule1': 'key-manager_value1'}
+            cinder: {'block-storage_rule1': 'block-storage_value1'}
+            designate: {'dns_rule1': 'dns_value1'}
+            glance: {'image_rule1': 'image_value1'}
+            gnocchi: {'metric_rule1': 'metric_value1'}
+            heat: {'orchestration_rule1': 'orchestration_value1'}
+            ironic: {'baremetal_rule1': 'baremetal_value1'}
+            keystone: {'identity_rule1': 'identity_value1'}
+            masakari: {'instance-ha_rule1': 'instance-ha_value1'}
+            neutron: {'networking_rule1': 'networking_value1'}
+            nova:  {'compute_rule1': 'compute_value1'}
+            octavia: {'load-balancer_rule1': 'load-balancer_value1'}
+            panko: {'event_rule1': 'event_value1'}
+            placement: {'placement_rule1': 'placement_value1'}
+          local_settings:
+            config:
+              horizon_images_upload_mode: direct
+              horizon_secret_key: kQt7XsbPVNDABuHyngdJuppnzP5i82Mz
+              csrf_cookie_secure: "True"
+              session_cookie_secure: "True"
+              session_cookie_httponly: "True"
+              password_autocomplete: "off"
+              password_validator:
+                regex: '^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&+-_/]{8,}$'
+                help_text: 'Your password does not meet the requirements. Password must contain at least one letter, one number and be longer than eight characters.'
+              disallow_iframe_embed: "True"
+              raw:
+                DEFAULT_THEME: default
+              secure_proxy_ssl_header: true
+              tungstenfabric:
+                enabled: false
+            custom_themes:
+              mirantis:
+                description: Mirantis
+                sha256summ: horizon-mirantis-theme-sha256summ
+                url: https://horizon-mirantis-theme-url/latest
+      dependencies:
+        static:
+          db_init:
+            jobs:
+            - openstack-mariadb-cluster-wait
+      endpoints:
+        cluster_domain_suffix: cluster.local
+        dashboard:
+          host_fqdn_override:
+            public:
+              host: horizon.it.just.works
+              tls:
+                ca: |
+                  TEST CA
+                  RGW CRT
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          hosts:
+            default: horizon-int
+            public:
+              host: horizon
+              tls:
+                ca: |
+                  TEST CA
+                  RGW CRT
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+        identity:
+          auth:
+            admin:
+              default_domain_id: default
+              password: ZUqTyP2XwsgEGKZ7qNhhecYyq9NLkGE6
+              project_domain_name: default
+              project_name: admin
+              region_name: RegionOne
+              user_domain_name: default
+              username: admin
+            horizon:
+              password: MNysGxHJy8xYI8LmZjS3QrJC6N10XsFZ
+              username: horizonhGcF8rA
+              region_name: 'RegionOne'
+            test:
+              password: 5Q52SdTD0ern0aJ6AMcraLqh0rbUbGJr
+              username: test5JeB
+              region_name: 'RegionOne'
+          host_fqdn_override:
+            public:
+              host: keystone.it.just.works
+          hosts:
+            default: keystone
+            internal: keystone-api
+            public:
+              host: keystone
+          port:
+            api:
+              default: 80
+              internal: 5000
+              public: 443
+          scheme:
+            default: http
+            public: https
+        oslo_cache:
+          statefulset:
+            name: openstack-memcached-memcached
+            replicas: 3
+        oslo_db:
+          auth:
+            admin:
+              password: QACDSM6FBTH2LuXjTuRQ6DXhD8bSgPbn
+              username: root
+            horizon:
+              password: rBJDRdVaBH92I8zKHuBeKvtYSq8661ZE
+              username: horizonf2AZh0J
+      images:
+        tags:
+          db_drop: db-drop:latest
+          db_init: db-init:latest
+          dep_check: dep-check:latest
+          horizon: horizon:latest
+          horizon_db_sync: horizon-db-sync:latest
+          image_repo_sync: image-repo-sync:latest
+          test: test:latest
+      manifests:
+        network_policy: false
+        secret_ca_bundle: true

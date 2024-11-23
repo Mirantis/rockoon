@@ -1,0 +1,146 @@
+spec:
+  releases:
+  - name: openstack-panko
+    chart: panko
+    values:
+      images:
+        tags:
+          test: test:latest
+          dep_check: dep-check:latest
+          db_init: db-init:latest
+          db_drop: db-drop:latest
+          bootstrap: bootstrap:latest
+          ks_user: ks-user:latest
+          ks_service: ks-service:latest
+          ks_endpoints: ks-endpoints:latest
+          panko_api: panko-api:latest
+          panko_db_sync: panko-db-sync:latest
+          panko_events_cleaner: panko-events-cleaner:latest
+          image_repo_sync: image-repo-sync:latest
+      conf:
+        policy.d:
+          01-controller-default.yaml: {'event_rule1': 'event_value1'}
+          02-custom.yaml: {}
+        paste:
+          composite:panko+keystone:
+            use: egg:Paste#urlmap
+            /: pankoversions_pipeline
+            /v2: pankov2_keystone_pipeline
+          pipeline:pankoversions_pipeline:
+            pipeline: cors http_proxy_to_wsgi pankoversions
+          app:pankoversions:
+            paste.app_factory: panko.api.app:app_factory
+            root: panko.api.controllers.root.VersionsController
+          pipeline:pankov2_keystone_pipeline:
+            pipeline: cors http_proxy_to_wsgi request_id authtoken pankov2
+          app:pankov2:
+            paste.app_factory: panko.api.app:app_factory
+            root: panko.api.controllers.v2.root.V2Controller
+        panko:
+          keystone_authtoken:
+            memcache_security_strategy: ENCRYPT
+            memcache_secret_key: FXKXZ3Tp0KDcDCY3
+            service_type: event
+        logging:
+          logger_panko:
+            level: INFO
+      dependencies:
+        static:
+          db_init:
+            jobs:
+              - openstack-mariadb-cluster-wait
+      manifests:
+        network_policy: false
+        job_rabbit_init: false
+        secret_ca_bundle: true
+      endpoints:
+        cluster_domain_suffix: cluster.local
+        identity:
+          auth:
+            admin:
+              region_name: RegionOne
+              username: admin
+              password: ZUqTyP2XwsgEGKZ7qNhhecYyq9NLkGE6
+              project_name: admin
+              user_domain_name: default
+              project_domain_name: default
+              default_domain_id: default
+            panko:
+              username: pankoTbxwz
+              password: SIHgf22Fj2Npfpym6TmmZMqadSrI0fbH
+              region_name: 'RegionOne'
+            test:
+              username: testKfHK
+              password: ycC0TyHUHrKAk1ZmvWsKnSrAzgwBCDDA
+              region_name: 'RegionOne'
+        oslo_cache:
+          statefulset:
+            name: openstack-memcached-memcached
+            replicas: 3
+        oslo_db:
+          auth:
+            admin:
+              username: root
+              password: QACDSM6FBTH2LuXjTuRQ6DXhD8bSgPbn
+            panko:
+              username: panko3sgfP
+              password: G9bGeEQSxdWpQDgV9bpNIidBpWvpZ8V4
+        oslo_messaging_notifications:
+          auth:
+            panko:
+              password: iGTTU61SgWw1b0AM6JiRMUTnfuk68Mzn
+              username: pankoAEyfX
+          host_fqdn_override: {}
+          hosts:
+            default: rabbitmq
+          path: /openstack
+          port:
+            amqp:
+              default: 5672
+            http:
+              default: 15672
+          scheme: rabbit
+          statefulset:
+            name: openstack-rabbitmq-rabbitmq
+            replicas: 1
+        event:
+          host_fqdn_override:
+            public:
+              host: panko.it.just.works
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          hosts:
+            admin:
+              host: panko-api
+            default: panko
+            internal: panko-api
+            public:
+              host: panko
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          port:
+            api:
+              admin: 8977
+              default: 80
+              internal: 8977
+              public: 443
+          scheme:
+            default: http
+            public: https
+      jobs:
+        ks_service:
+          restartPolicy: Never
+        ks_endpoints:
+          restartPolicy: Never
+        ks_user:
+          restartPolicy: Never

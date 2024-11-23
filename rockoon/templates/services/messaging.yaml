@@ -1,0 +1,244 @@
+#apiVersion: lcm.mirantis.com/v1alpha1
+#kind: HelmBundle
+
+{%- from 'macros/messaging_service_creds.j2' import messaging_service_creds %}
+{%- set latest_openstack_versions = openstack_versions[openstack_versions.index(spec.openstack_version):openstack_versions.index(spec.openstack_version)+2] %}
+{%- if OSVer.yoga <= OSVer[spec.openstack_version] < OSVer.master %}
+  {%- set next_openstack_versions = openstack_versions[openstack_versions.index(spec.openstack_version)+1:] %}
+  {%- for next_openstack_version in next_openstack_versions %}
+    {%- if next_openstack_version in slurp_releases %}
+      {%- do latest_openstack_versions.append(next_openstack_version) if next_openstack_version not in latest_openstack_versions %}
+      {%- break %}
+    {%- endif %}
+  {%- endfor %}
+{%- endif %}
+{%- set stacklight_enabled = spec.get('features', {}).get('stacklight', {}).get('enabled', False) %}
+{%- set enabled_vhosts = [] %}
+{%- set notification_vhost = 'openstack' %}
+{%- set external_notifications_enabled = spec.get('features', {}).get('messaging', {}).get('notifications', {}).get('external', {}).get('enabled', False) %}
+{%- set external_notifications_topics = spec.get('features', {}).get('messaging', {}).get('notifications', {}).get('external', {}).get('topics', []) %}
+
+spec:
+  releases:
+  - name: openstack-rabbitmq
+    chart: rabbitmq
+    values:
+{% include 'base/_rabbitmq_images.yaml' %}
+  {%- if stacklight_enabled %}
+      monitoring:
+        prometheus:
+          enabled: true
+  {%- endif %}
+      pod:
+        replicas:
+          server: 1
+        probes:
+          server:
+            rabbitmq:
+              readiness:
+                params:
+                  periodSeconds: 60
+                  timeoutSeconds: 30
+              liveness:
+                params:
+                  periodSeconds: 60
+                  timeoutSeconds: 30
+      manifests:
+        network_policy: {{ spec.features.network_policies.enabled }}
+        job_users_create: true
+        {%- if external_notifications_enabled %}
+        service_external: true
+        {%- endif %}
+        {%- if stacklight_enabled %}
+        monitoring:
+          prometheus:
+            configmap_bin: true
+            deployment_exporter: true
+            service_exporter: true
+        {%- endif %}
+{%- if spec.features.network_policies.enabled %}
+      network_policy:
+{% include 'base/network_policies/messaging.yaml' %}
+{%- endif %}
+      volume:
+        enabled: false
+      conf:
+        enabled_plugins:
+          - rabbitmq_management
+        {%- if stacklight_enabled %}
+          - rabbitmq_prometheus
+        {%- endif %}
+        users:
+          {%- if 'identity' in services %}
+          {%- do enabled_vhosts.append('keystone') %}
+          {{ messaging_service_creds(credentials["identity"], "keystone", ["/keystone"]) }}
+          {%- endif %}
+          {%- if 'image' in services %}
+          {%- do enabled_vhosts.append('glance') %}
+          {{ messaging_service_creds(credentials["image"], "glance", ["/glance"]) }}
+          {%- endif %}
+          {%- if 'block-storage' in services %}
+          {%- do enabled_vhosts.append('cinder') %}
+          {{ messaging_service_creds(credentials["block-storage"], "cinder", ["/cinder"]) }}
+          {%- endif %}
+          {%- if 'orchestration' in services %}
+          {%- set heat_vhosts = [] %}
+          {%- for version in latest_openstack_versions %}
+            {%- do heat_vhosts.append("/heat_" + version) %}
+          {%- endfor %}
+          {{ messaging_service_creds(credentials["orchestration"], "heat", heat_vhosts) }}
+          {%- endif %}
+          {%- if 'networking' in services %}
+          {%- do enabled_vhosts.append('neutron') %}
+          {{ messaging_service_creds(credentials["networking"], "neutron", ["/neutron"]) }}
+          {%- endif %}
+          {%- if 'compute' in services %}
+          {%- do enabled_vhosts.append('nova') %}
+          {{ messaging_service_creds(credentials["compute"], "nova", ["/nova"]) }}
+          {%- endif %}
+          {%- if 'placement' in services %}
+          {%- do enabled_vhosts.append('placement') %}
+          {{ messaging_service_creds(credentials["placement"], "placement", [ "/placement" ]) }}
+          {%- endif %}
+          {%- if 'load-balancer' in services %}
+          {%- do enabled_vhosts.append('octavia') %}
+          {{ messaging_service_creds(credentials["load-balancer"], "octavia", ["/octavia"]) }}
+          {%- endif %}
+          {%- if 'dns' in services %}
+          {%- do enabled_vhosts.append('designate') %}
+          {{ messaging_service_creds(credentials["dns"], "designate", ["/designate"]) }}
+          {%- endif %}
+          {%- if 'key-manager' in services %}
+          {%- do enabled_vhosts.append('barbican') %}
+          {{ messaging_service_creds(credentials["key-manager"], "barbican", ["/barbican"]) }}
+          {%- endif %}
+          {%- if stacklight_enabled %}
+          stacklight_service_notifications:
+            auth:
+              stacklight:
+                username: {{ credentials['stacklight'].username }}
+                password: {{ credentials['stacklight'].password }}
+            path: /openstack
+          {%- endif %}
+          {%- if 'baremetal' in services %}
+          {%- do enabled_vhosts.append('ironic') %}
+          {{ messaging_service_creds(credentials["baremetal"], "ironic", ["/ironic"]) }}
+          {%- endif %}
+          {%- if 'alarming' in services %}
+          {%- do enabled_vhosts.append('aodh') %}
+          {{ messaging_service_creds(credentials["alarming"], "aodh", ["/aodh"]) }}
+          {%- endif %}
+          {%- if 'metering' in services %}
+          {%- do enabled_vhosts.append('ceilometer') %}
+          {{ messaging_service_creds(credentials["metering"], "ceilometer", ["/ceilometer"]) }}
+          {%- endif %}
+          {%- if 'instance-ha' in services %}
+          {%- do enabled_vhosts.append('masakari') %}
+          {{ messaging_service_creds(credentials["instance-ha"], "masakari", ["/masakari"]) }}
+          {%- endif %}
+          {%- if 'shared-file-system' in services %}
+          {%- do enabled_vhosts.append('manila') %}
+          {{ messaging_service_creds(credentials["shared-file-system"], "manila", ["/manila"]) }}
+          {%- endif %}
+          {%- if external_notifications_enabled %}
+          {%- for topic in external_notifications_topics %}
+          {{ topic }}_external_notifications:
+            auth:
+              {{ topic }}:
+                username: {{ notifications_creds[topic].username }}
+                password: {{ notifications_creds[topic].password }}
+            path: /openstack
+          {%- endfor %}
+          {%- endif %}
+        aux_conf:
+          policies:
+  {%- if 'orchestration' in services %}
+  {%- for version in latest_openstack_versions %}
+          - vhost: heat_{{ version }}
+            name: heat_engine_rpc_expire
+            pattern: '^heat-engine-listener\.'
+            definition:
+              expires: 600000
+            priority: 1
+          - vhost: heat_{{ version }}
+            name: heat_worker_rpc_expire
+            pattern: '^engine_worker\.'
+            definition:
+              expires: 600000
+            priority: 1
+          - vhost: heat_{{ version }}
+            name: results_expire
+            pattern: '^results\.'
+            definition:
+              expires: 600000
+            priority: 1
+          - vhost: heat_{{ version }}
+            name: tasks_expire
+            pattern: '^tasks\.'
+            definition:
+              expires: 600000
+            priority: 1
+          - vhost: heat_{{ version }}
+            name: default-policy
+            pattern: '^(?!amq\.).*'
+            definition:
+              message-ttl: 120000
+  {%- endfor %}
+  {%- endif %}
+          - vhost: {{ notification_vhost }}
+            name: default-policy-{{ notification_vhost }}
+            pattern: '.*'
+            definition:
+              message-ttl: 120000
+              # NOTE(vsaienko): for notifications set only message TTL, we assume
+              # all queues here created for a long time and shouldn't be deleted.
+  {%- for item in enabled_vhosts %}
+          - vhost: {{ item }}
+            name: default-policy-{{ item }}
+            pattern: '^(?!amq\.).*'
+            definition:
+              message-ttl: 120000
+              expires: 600000
+          - vhost: {{ item }}
+            name: results_expire_{{ item }}
+            pattern: '^results\.'
+            definition:
+              expires: 600000
+            priority: 1
+          - vhost: {{ item }}
+            name: tasks_expire_{{ item }}
+            pattern: '^tasks\.'
+            definition:
+              expires: 600000
+            priority: 1
+  {%- endfor %}
+  {%- if stacklight_enabled %}
+        prometheus_exporter:
+          rabbit_exporters: "overview,exchange,node"
+  {%- endif %}
+      endpoints:
+        cluster_domain_suffix: {{ spec.internal_domain_name }}
+        oslo_messaging:
+  {%- if external_notifications_enabled %}
+          host_fqdn_override:
+            external:
+              tls:
+                ca: |
+{{ tls_external_certs.ca_cert | indent(width=18, first=True) }}
+                crt: |
+{{ tls_external_certs.server_cert | indent(width=18, first=True) }}
+                key: |
+{{ tls_external_certs.server_key | indent(width=18, first=True) }}
+  {%- endif %}
+          auth:
+            user:
+              username: {{ admin_creds.messaging.username }}
+              password: {{ admin_creds.messaging.password }}
+            guest:
+              password: {{ guest_creds.password }}
+          statefulset:
+            replicas: 1
+            name: openstack-rabbitmq-rabbitmq
+          hosts:
+            default: rabbitmq
+          path: /openstack

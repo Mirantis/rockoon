@@ -1,0 +1,33 @@
+spec:
+  releases:
+  - name: openstack-descheduler
+    chart: descheduler
+    values:
+      images:
+        tags:
+        {%- if "descheduler" in images %}
+          descheduler: {{ images["descheduler"] }}
+        {%- endif %}
+      conf:
+        cronjob:
+          schedule: "0 */3 * * *"
+          logOptions:
+            v: 3
+          suspend: false
+        policy:
+          #Allows eviction of pods with host mounts
+          evictLocalStoragePods: true
+          strategies:
+            RemoveDuplicates:
+              enabled: true
+              params:
+                namespaces:
+                  include:
+                  - {{ openstack_namespace }}
+                removeDuplicates:
+                  excludeOwnerKinds:
+                  - "StatefulSet"
+      manifests:
+        rbac: true
+        configmap_bin: true
+        cronjob: true

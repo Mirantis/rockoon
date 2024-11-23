@@ -1,0 +1,5 @@
+parameters:
+  nova:
+    controller:
+      cache:
+        ~members: ${_param:mcp2_memcached_nova_members}

@@ -1,0 +1,29 @@
+load-balancer:octavia:Deployment:octavia-api:
+- from:
+  - podSelector:
+      matchLabels:
+        application: aodh
+        component: evaluator
+  - podSelector:
+      matchLabels:
+        application: horizon
+        component: server
+  - podSelector:
+      matchLabels:
+        application: keystone
+        component: client
+  - podSelector:
+      matchLabels:
+        application: ingress
+        component: server
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: engine
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: engine
+  ports:
+  - port: 9876
+    protocol: TCP

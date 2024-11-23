@@ -1,0 +1,142 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "ironicAgentProbeTemplate" }}
+{{- $probeType := . }}
+exec:
+  command:
+    - python
+    - /tmp/generic-health-probe.py
+    - --config-file
+    - /etc/neutron/neutron.conf
+    - --probe-type
+    - {{ $probeType }}
+    - --check
+    - rabbitmq_sockets
+    - --process-name
+    - ironic-neutron
+{{- end }}
+
+{{- if .Values.manifests.deployment_ironic_agent }}
+{{- $envAll := . }}
+
+{{- $dependencyOpts := dict "envAll" $envAll "dependencyMixinParam" $envAll.Values.network.backend "dependencyKey" "ironic_agent" -}}
+{{- $_ := include "helm-toolkit.utils.dependency_resolver" $dependencyOpts | toString | fromYaml }}
+
+{{- $mounts_neutron_ironic_agent := .Values.pod.mounts.neutron_ironic_agent.neutron_ironic_agent }}
+{{- $mounts_neutron_ironic_agent_init := .Values.pod.mounts.neutron_ironic_agent.init_container }}
+
+{{- $serviceAccountName := "neutron-ironic-agent" }}
+{{ tuple $envAll "pod_dependency" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: neutron-ironic-agent
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "neutron" "ironic-agent" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  serviceName: "neutron-ironic-agent"
+  podManagementPolicy: "Parallel"
+  replicas: {{ .Values.pod.replicas.ironic_agent }}
+  selector:
+    matchLabels:
+{{ tuple $envAll "neutron" "ironic-agent" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll | include "helm-toolkit.snippets.kubernetes_upgrades_statefulset" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "neutron" "ironic-agent" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+        endpoints-hash: {{ .Values.endpoints | include "helm-toolkit.utils.get_hash" }}
+    spec:
+{{ dict "envAll" $envAll "application" "neutron_ironic_agent" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      serviceAccountName: {{ $serviceAccountName }}
+      affinity:
+{{ tuple $envAll "neutron" "ironic_agent" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      nodeSelector:
+        {{ .Values.labels.ironic_agent.node_selector_key }}: {{ .Values.labels.ironic_agent.node_selector_value }}
+      terminationGracePeriodSeconds: {{ .Values.pod.lifecycle.termination_grace_period.ironic_agent.timeout | default "30" }}
+      initContainers:
+{{ tuple $envAll "pod_dependency" $mounts_neutron_ironic_agent_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+      containers:
+        - name: neutron-ironic-agent
+{{ tuple $envAll "neutron_ironic_agent" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.ironic_agent | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "neutron_ironic_agent" "container" "neutron_ironic_agent" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/neutron-ironic-agent.sh
+            - start
+{{ dict "envAll" $envAll "component" "ironic_agent" "container" "default" "type" "readiness" "probeTemplate" (include "ironicAgentProbeTemplate" "readiness" | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "ironic_agent" "container" "default" "type" "liveness" "probeTemplate" (include "ironicAgentProbeTemplate" "liveness" | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /tmp/neutron-ironic-agent.sh
+                  - stop
+          volumeMounts:
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "neutron" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: pod-shared
+              mountPath: /tmp/pod-shared
+            - name: pod-var-neutron
+              mountPath: {{ .Values.conf.neutron.DEFAULT.state_path }}
+            - name: neutron-bin
+              mountPath: /tmp/neutron-ironic-agent.sh
+              subPath: neutron-ironic-agent.sh
+              readOnly: true
+            - name: neutron-etc
+              mountPath: /etc/neutron/neutron.conf
+              subPath: neutron.conf
+              readOnly: true
+            - name: neutron-bin
+              mountPath: /tmp/generic-health-probe.py
+              subPath: generic-health-probe.py
+              readOnly: true
+            {{- if .Values.conf.neutron.DEFAULT.log_config_append }}
+            - name: neutron-etc
+              mountPath: {{ .Values.conf.neutron.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.neutron.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+            - name: neutron-etc
+              mountPath: /etc/neutron/plugins/ml2/ml2_conf.ini
+              subPath: ml2_conf.ini
+              readOnly: true
+{{ if $mounts_neutron_ironic_agent.volumeMounts }}{{ toYaml $mounts_neutron_ironic_agent.volumeMounts | indent 12 }}{{ end }}
+      volumes:
+{{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "neutron" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
+        - name: pod-tmp
+          emptyDir: {}
+        - name: pod-var-neutron
+          emptyDir: {}
+        - name: pod-shared
+          emptyDir: {}
+        - name: neutron-bin
+          configMap:
+            name: neutron-bin
+            defaultMode: 504
+        - name: neutron-etc
+          secret:
+            secretName: neutron-etc
+            defaultMode: 416
+{{ if $mounts_neutron_ironic_agent.volumes }}{{ toYaml $mounts_neutron_ironic_agent.volumes | indent 8 }}{{ end }}
+{{- end }}

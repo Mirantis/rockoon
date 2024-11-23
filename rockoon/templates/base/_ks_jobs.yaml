@@ -1,0 +1,6 @@
+        ks_service:
+          restartPolicy: Never
+        ks_endpoints:
+          restartPolicy: Never
+        ks_user:
+          restartPolicy: Never

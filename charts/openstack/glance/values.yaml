@@ -1,0 +1,1307 @@
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Default values for glance.
+# This is a YAML-formatted file.
+# Declare name/value pairs to be passed into your templates.
+# name: value
+
+---
+labels:
+  api:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  job:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  registry:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  test:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+
+release_group: null
+
+images:
+  tags:
+    glance_barbican_cert_init: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    glance_metadefs_load: docker.io/openstackhelm/glance:stein-ubuntu_bionic
+    db_init: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    glance_db_sync: docker.io/openstackhelm/glance:stein-ubuntu_bionic
+    glance_db_expand: docker.io/openstackhelm/glance:stein-ubuntu_xenial
+    glance_db_migrate: docker.io/openstackhelm/glance:stein-ubuntu_xenial
+    glance_db_contract: docker.io/openstackhelm/glance:stein-ubuntu_xenial
+    glance_db_purge: docker.io/openstackhelm/glance:stein-ubuntu_bionic
+    db_drop: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    ks_user: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    ks_service: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    ks_endpoints: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    glance_api: docker.io/openstackhelm/glance:stein-ubuntu_bionic
+    glance_registry: docker.io/openstackhelm/glance:stein-ubuntu_bionic
+    # Bootstrap image requires curl
+    bootstrap: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    glance_bootstrap: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
+    image_repo_sync: docker.io/docker:17.07.0
+  pull_policy: "IfNotPresent"
+  local_registry:
+    active: false
+    exclude:
+      - dep_check
+      - image_repo_sync
+
+jobs:
+  db_purge:
+    cron: "1 7 * * 1"
+    history:
+      success: 3
+      failed: 1
+    script:
+      config:
+        age: 90
+        max_rows: 1000
+        purge_images_table: true
+      template: |
+        #!/bin/bash
+        set -ex
+        age={{ .Values.jobs.db_purge.script.config.age }}
+        max_rows={{ .Values.jobs.db_purge.script.config.max_rows }}
+        glance-manage db purge --age_in_days ${age} --max_rows ${max_rows}
+        {{- if .Values.jobs.db_purge.script.config.purge_images_table }}
+        glance-manage db purge_images_table --age_in_days ${age} --max_rows ${max_rows}
+        {{- end }}
+
+bootstrap:
+  enabled: true
+  ks_user: admin
+  script: null
+  structured:
+    images:
+            #cirros:
+            #  name: "Cirros 0.3.5 64-bit"
+            #  source_url: "http://download.cirros-cloud.net/0.3.5/"
+            #  image_file: "cirros-0.3.5-x86_64-disk.img"
+            #  min_disk: 1
+            #  image_type: qcow2
+            #  container_format: bare
+            #  private: true
+            #  properties:
+            #    # NOTE: If you want to restrict hypervisor type for this image,
+            #    # uncomment this and write specific hypervisor type.
+            #    # hypervisor_type: "qemu"
+            #    os_distro: "cirros"
+            #  signature:
+            #    enabled: false
+            #    # hash_method: any of SHA-224, SHA-256, SHA-384, SHA-512
+            #    # key_type: any of RSA-PSS, DSA, ECC-CURVES. Only RSA-PSS is supported at the moment.
+            #    signature:
+            #      # The secret with private_key.pem key used to make signature for image
+            #      from_secret: glance-bootsrap-cert
+ceph_client:
+  configmap: ceph-etc
+  user_secret_name: pvc-ceph-client-key
+
+network_policy: {}
+
+conf:
+  enable_iscsi: false
+  barbican_cert:
+    secret_name: glance-barbican-cert
+    cert:
+      common_name: "OpenStackHelm"
+      organization_name: "OpenStackHelm"
+      organization_unit_name: "OpenStack Helm Internal"
+      not_valid_after: "2086-10-08"
+      key_size: "2048"
+  software:
+    rbd:
+      rbd_store_pool_app_name: glance-image
+  ceph:
+    config:
+      global:
+        mon_host: []
+      client:
+    keyrings:
+#      <name>:
+#        key:
+  paste:
+    pipeline:glance-api:
+      pipeline: cors healthcheck http_proxy_to_wsgi versionnegotiation osprofiler unauthenticated-context rootapp
+    pipeline:glance-api-caching:
+      pipeline: cors healthcheck http_proxy_to_wsgi versionnegotiation osprofiler unauthenticated-context cache rootapp
+    pipeline:glance-api-cachemanagement:
+      pipeline: cors healthcheck http_proxy_to_wsgi versionnegotiation osprofiler unauthenticated-context cache cachemanage rootapp
+    pipeline:glance-api-keystone:
+      pipeline: cors healthcheck http_proxy_to_wsgi versionnegotiation osprofiler authtoken audit context  rootapp
+    pipeline:glance-api-keystone+caching:
+      pipeline: cors healthcheck http_proxy_to_wsgi versionnegotiation osprofiler authtoken audit context cache rootapp
+    pipeline:glance-api-keystone+cachemanagement:
+      pipeline: cors healthcheck http_proxy_to_wsgi versionnegotiation osprofiler authtoken audit context cache cachemanage rootapp
+    pipeline:glance-api-trusted-auth:
+      pipeline: cors healthcheck http_proxy_to_wsgi versionnegotiation osprofiler context rootapp
+    pipeline:glance-api-trusted-auth+cachemanagement:
+      pipeline: cors healthcheck http_proxy_to_wsgi versionnegotiation osprofiler context cache cachemanage rootapp
+    composite:rootapp:
+      paste.composite_factory: glance.api:root_app_factory
+      /: apiversions
+      /v1: apiv1app
+      /v2: apiv2app
+    app:apiversions:
+      paste.app_factory: glance.api.versions:create_resource
+    app:apiv1app:
+      paste.app_factory: glance.api.v1.router:API.factory
+    app:apiv2app:
+      paste.app_factory: glance.api.v2.router:API.factory
+    filter:healthcheck:
+      paste.filter_factory: oslo_middleware:Healthcheck.factory
+      backends: disable_by_file
+      disable_by_file_path: /etc/glance/healthcheck_disable
+    filter:versionnegotiation:
+      paste.filter_factory: glance.api.middleware.version_negotiation:VersionNegotiationFilter.factory
+    filter:cache:
+      paste.filter_factory: glance.api.middleware.cache:CacheFilter.factory
+    filter:cachemanage:
+      paste.filter_factory: glance.api.middleware.cache_manage:CacheManageFilter.factory
+    filter:context:
+      paste.filter_factory: glance.api.middleware.context:ContextMiddleware.factory
+    filter:unauthenticated-context:
+      paste.filter_factory: glance.api.middleware.context:UnauthenticatedContextMiddleware.factory
+    filter:authtoken:
+      paste.filter_factory: keystonemiddleware.auth_token:filter_factory
+      delay_auth_decision: true
+    filter:audit:
+      paste.filter_factory: keystonemiddleware.audit:filter_factory
+      audit_map_file: /etc/glance/api_audit_map.conf
+    filter:gzip:
+      paste.filter_factory: glance.api.middleware.gzip:GzipMiddleware.factory
+    filter:osprofiler:
+      paste.filter_factory: osprofiler.web:WsgiMiddleware.factory
+      hmac_keys: SECRET_KEY  # DEPRECATED
+      enabled: yes  # DEPRECATED
+    filter:cors:
+      paste.filter_factory: oslo_middleware.cors:filter_factory
+      oslo_config_project: glance
+      oslo_config_program: glance-api
+    filter:http_proxy_to_wsgi:
+      paste.filter_factory: oslo_middleware:HTTPProxyToWSGI.factory
+  policy: {}
+  policy.d: {}
+  glance:
+    DEFAULT:
+      # NOTE(ohryhorov): if enabled_backends it means multibackend is enabled and
+      # all options related to single backends are ignored.
+      #enabled_backends: blockstore:cinder, reliable:rbd
+      log_config_append: /etc/glance/logging.conf
+      # NOTE(portdirect): the bind port should not be defined, and is manipulated
+      # via the endpoints section.
+      bind_port: null
+      workers: 1
+      enable_v1_api: False
+      enable_v2_registry: False
+    barbican:
+      barbican_endpoint_type: internal
+    audit_middleware_notifications:
+      publisher: glance-api
+    oslo_middleware:
+      enable_proxy_headers_parsing: true
+    keystone_authtoken:
+      auth_type: password
+      auth_version: v3
+      memcache_security_strategy: ENCRYPT
+    glance_store:
+      filesystem_store_datadir: /var/lib/glance/images
+      default_swift_reference: ref1
+      swift_store_container: glance
+      swift_store_create_container_on_put: true
+      swift_store_config_file: /etc/glance/swift-store.conf
+      swift_store_endpoint_type: internalURL
+    paste_deploy:
+      flavor: keystone
+    database:
+      max_retries: -1
+    oslo_messaging_notifications:
+      driver: messagingv2
+    oslo_messaging_rabbit:
+      rabbit_ha_queues: true
+    oslo_policy:
+      policy_file: /etc/glance/policy.yaml
+      policy_dirs: /etc/glance/policy.d/
+    oslo_concurrency:
+      lock_path: "/var/lib/openstack/lock"
+    cors: {}
+    import_filtering_opts:
+      allowed_ports: "[80,443]"
+    os_glance_tasks_store:
+      filesystem_store_datadir: /var/lib/glance/tasks_work_dir
+    os_glance_staging_store:
+      filesystem_store_datadir: /var/lib/glance/staging
+  glance_sudoers: |
+    Defaults !requiretty
+    Defaults secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin:/var/lib/openstack/bin"
+    glance ALL = (root) NOPASSWD: /var/lib/openstack/bin/glance-rootwrap /etc/glance/rootwrap.conf *
+  rootwrap: |
+    # Configuration for glance-rootwrap
+    # This file should be owned by (and only-writable by) the root user
+    [DEFAULT]
+    # List of directories to load filter definitions from (separated by ',').
+    # These directories MUST all be only writeable by root !
+    filters_path=/etc/glance/rootwrap.d,/usr/share/glance/rootwrap
+    # List of directories to search executables in, in case filters do not
+    # explicitely specify a full path (separated by ',')
+    # If not specified, defaults to system PATH environment variable.
+    # These directories MUST all be only writeable by root !
+    exec_dirs=/sbin,/usr/sbin,/bin,/usr/bin,/usr/local/bin,/usr/local/sbin,/var/lib/openstack/bin
+    # Enable logging to syslog
+    # Default value is False
+    use_syslog=False
+    # Which syslog facility to use.
+    # Valid values include auth, authpriv, syslog, local0, local1...
+    # Default value is 'syslog'
+    syslog_log_facility=syslog
+    # Which messages to log.
+    # INFO means log all usage
+    # ERROR means only log unsuccessful attempts
+    syslog_log_level=ERROR
+  rootwrap_filters: |
+    # glance-rootwrap command filters for glance cinder store
+    # This file should be owned by (and only-writable by) the root user
+    [Filters]
+    # cinder store driver
+    disk_chown: RegExpFilter, chown, root, chown, \d+, /dev/(?!.*/\.\.).*
+    # os-brick library commands
+    # os_brick.privileged.run_as_root oslo.privsep context
+    # This line ties the superuser privs with the config files, context name,
+    # and (implicitly) the actual python code invoked.
+    privsep-rootwrap: RegExpFilter, privsep-helper, root, privsep-helper, --config-file, /etc/(?!\.\.).*, --privsep_context, os_brick.privileged.default, --privsep_sock_path, /tmp/.*
+    # glance_store privsep
+    privsep-rootwrap-sys_admin: RegExpFilter, privsep-helper, root, privsep-helper, --config-file, /etc/(?!\.\.).*, --privsep_context, glance_store.privsep.sys_admin_pctxt, --privsep_sock_path, /tmp/.*
+    # cinder/volume/driver.py: 'iscsiadm', '-m', 'discovery', '-t',...
+    # cinder/volume/driver.py: 'iscsiadm', '-m', 'node', '-T', ...
+    iscsiadm: CommandFilter, iscsiadm, root
+     # cinder/brick/initiator/connector.py:
+    multipath: CommandFilter, multipath, root
+    multipathd: CommandFilter, multipathd, root
+    # cinder/volume/drivers/block_device.py
+    blockdev: CommandFilter, blockdev, root
+    # cinder/volume/utils.py: utils.temporary_chown(path, 0)
+    tee: CommandFilter, tee, root
+    chown: CommandFilter, chown, root
+    mount: CommandFilter, mount, root
+    umount: CommandFilter, umount, root
+  logging:
+    loggers:
+      keys:
+        - root
+        - glance
+        - oslo_notification_audit
+        - oslo_concurrency
+        - os_brick
+        - eventletwsgi
+    handlers:
+      keys:
+        - stdout
+        - stderr
+        - "null"
+    formatters:
+      keys:
+        - context
+        - default
+    logger_root:
+      level: WARNING
+      handlers: stdout
+    logger_glance:
+      level: INFO
+      handlers: ""
+      qualname: glance
+    logger_oslo_notification_audit:
+      level: INFO
+      handlers: ""
+      qualname: oslo.messaging.notification.audit
+    logger_amqp:
+      level: WARNING
+      handlers: ""
+      qualname: amqp
+    logger_amqplib:
+      level: WARNING
+      handlers: ""
+      qualname: amqplib
+    logger_eventletwsgi:
+      level: INFO
+      handlers: ""
+      qualname: eventlet.wsgi.server
+    logger_sqlalchemy:
+      level: WARNING
+      handlers: ""
+      qualname: sqlalchemy
+    logger_boto:
+      level: WARNING
+      handlers: ""
+      qualname: boto
+    logger_os_brick:
+      handlers: ""
+      level: WARNING
+      qualname: os_brick
+    logger_oslo_concurrency:
+      handlers: ""
+      level: WARNING
+      qualname: oslo.concurrency
+    handler_null:
+      class: logging.NullHandler
+      formatter: default
+      args: ()
+    handler_stdout:
+      class: StreamHandler
+      args: (sys.stdout,)
+      formatter: context
+    handler_stderr:
+      class: StreamHandler
+      args: (sys.stderr,)
+      formatter: context
+    formatter_context:
+      class: oslo_log.formatters.ContextFormatter
+      datefmt: "%Y-%m-%d %H:%M:%S"
+    formatter_default:
+      format: "%(message)s"
+      datefmt: "%Y-%m-%d %H:%M:%S"
+  api_audit_map:
+    DEFAULT:
+      target_endpoint_type: image
+    path_keywords:
+      detail: None
+      file: None
+      images: image
+      members: member
+      tags: tag
+    service_endpoints:
+      image: 'service/storage/image'
+  paste_registry:
+    pipeline:glance-registry:
+      pipeline: healthcheck osprofiler unauthenticated-context registryapp
+    pipeline:glance-registry-keystone:
+      pipeline: healthcheck osprofiler authtoken audit context registryapp
+    pipeline:glance-registry-trusted-auth:
+      pipeline: healthcheck osprofiler context registryapp
+    app:registryapp:
+      paste.app_factory: glance.registry.api:API.factory
+    filter:healthcheck:
+      paste.filter_factory: oslo_middleware:Healthcheck.factory
+      backends: disable_by_file
+      disable_by_file_path: /etc/glance/healthcheck_disable
+    filter:context:
+      paste.filter_factory: glance.api.middleware.context:ContextMiddleware.factory
+    filter:unauthenticated-context:
+      paste.filter_factory: glance.api.middleware.context:UnauthenticatedContextMiddleware.factory
+    filter:authtoken:
+      paste.filter_factory: keystonemiddleware.auth_token:filter_factory
+    filter:osprofiler:
+      paste.filter_factory: osprofiler.web:WsgiMiddleware.factory
+      hmac_keys: SECRET_KEY  # DEPRECATED
+      enabled: yes  # DEPRECATED
+    filter:audit:
+      paste.filter_factory: keystonemiddleware.audit:filter_factory
+      audit_map_file: /etc/glance/api_audit_map.conf
+  glance_registry:
+    DEFAULT:
+      # NOTE(portdirect): the bind port should not be defined, and is manipulated
+      # via the endpoints section.
+      bind_port: null
+      workers: 1
+    keystone_authtoken:
+      auth_type: password
+      auth_version: v3
+      memcache_security_strategy: ENCRYPT
+    paste_deploy:
+      flavor: keystone
+    database:
+      max_retries: -1
+    oslo_messaging_notifications:
+      driver: messagingv2
+  swift_store: |
+    [{{ .Values.conf.glance.glance_store.default_swift_reference }}]
+    {{- if has "radosgw" (tuple . | include "glance.utils.get_storages" | fromJsonArray) }}
+    auth_version = 1
+    auth_address = {{ tuple "ceph_object_store" "public" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" }}
+    user = {{ .Values.endpoints.ceph_object_store.auth.glance.username }}:swift
+    key = {{ .Values.endpoints.ceph_object_store.auth.glance.password }}
+    {{- else }}
+    user = {{ .Values.endpoints.identity.auth.glance.project_name }}:{{ .Values.endpoints.identity.auth.glance.username }}
+    key = {{ .Values.endpoints.identity.auth.glance.password }}
+    auth_address = {{ tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" }}
+    user_domain_name = {{ .Values.endpoints.identity.auth.glance.user_domain_name }}
+    project_domain_name = {{ .Values.endpoints.identity.auth.glance.project_domain_name }}
+    auth_version = 3
+    # NOTE(portdirect): https://bugs.launchpad.net/glance-store/+bug/1620999
+    project_domain_id =
+    user_domain_id =
+    {{- end -}}
+  rabbitmq:
+    # NOTE(rk760n): adding rmq policy to mirror messages from notification queues and set expiration time for the ones
+    policies:
+      - vhost: "glance"
+        name: "ha_ttl_glance"
+        definition:
+          # mirror messges to other nodes in rmq cluster
+          ha-mode: "all"
+          ha-sync-mode: "automatic"
+          # 70s
+          message-ttl: 70000
+        priority: 0
+        apply-to: all
+        pattern: '^(?!(amq\.|reply_)).*'
+
+network:
+  api:
+    ingress:
+      public: true
+      classes:
+        namespace: "nginx"
+        cluster: "nginx-cluster"
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /
+        nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    external_policy_local: false
+    node_port:
+      enabled: false
+      port: 30092
+  registry:
+    ingress:
+      public: true
+      classes:
+        namespace: "nginx"
+        cluster: "nginx-cluster"
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /
+    external_policy_local: false
+    node_port:
+      enabled: false
+      port: 30091
+
+volume:
+  class_name: general
+  size: 2Gi
+
+dependencies:
+  dynamic:
+    common:
+      local_image_registry:
+        jobs:
+          - glance-image-repo-sync
+        services:
+          - endpoint: node
+            service: local_image_registry
+    job_ks_endpoints:
+      api:
+        jobs:
+          - glance-ks-endpoints
+      registry:
+        jobs:
+          - glance-ks-endpoints
+    job_barbican_cert_init:
+      bootstrap:
+        jobs:
+          - glance-barbican-cert-init
+  static:
+    api:
+      jobs:
+        - glance-db-sync
+        - glance-ks-user
+      services:
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: oslo_messaging
+    bootstrap:
+      jobs: null
+      services:
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: image
+    db_drop:
+      services:
+        - endpoint: internal
+          service: oslo_db
+    db_init:
+      services:
+        - endpoint: internal
+          service: oslo_db
+    db_sync:
+      jobs:
+        - glance-db-init
+      services:
+        - endpoint: internal
+          service: oslo_db
+    db_expand:
+      jobs:
+        - glance-db-sync
+      services:
+        - endpoint: internal
+          service: oslo_db
+    db_migrate:
+      jobs:
+        - glance-db-sync
+      services:
+        - endpoint: internal
+          service: oslo_db
+    db_contract:
+      jobs:
+        - glance-db-sync
+      services:
+        - endpoint: internal
+          service: oslo_db
+    db_purge:
+      jobs:
+        - glance-db-sync
+      services:
+        - endpoint: internal
+          service: oslo_db
+    ks_endpoints:
+      jobs:
+        - glance-ks-service
+      services:
+        - endpoint: internal
+          service: identity
+    ks_service:
+      services:
+        - endpoint: internal
+          service: identity
+    ks_user:
+      services:
+        - endpoint: internal
+          service: identity
+    registry:
+      jobs:
+        - glance-db-sync
+        - glance-ks-user
+      services:
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: image
+    metadefs_load:
+      jobs:
+        - glance-db-sync
+      services: null
+    image_repo_sync:
+      services:
+        - endpoint: internal
+          service: local_image_registry
+    barbican_cert_init:
+      services:
+        - endpoint: internal
+          service: key_manager
+
+# Names of secrets used by bootstrap and environmental checks
+secrets:
+  identity:
+    admin: glance-keystone-admin
+    glance: glance-keystone-user
+    test: glance-keystone-test
+  oslo_db:
+    admin: glance-db-admin
+    glance: glance-db-user
+  oslo_messaging:
+    admin: glance-rabbitmq-admin
+    glance: glance-rabbitmq-user
+  tls:
+    image:
+      api:
+        public: glance-tls-public
+        internal: glance-tls-api
+    image_registry:
+      api:
+        public: glance-tls-reg-public
+        internal: glance-tls-reg
+
+# typically overridden by environmental
+# values, but should include all endpoints
+# required by this chart
+endpoints:
+  cluster_domain_suffix: cluster.local
+  local_image_registry:
+    name: docker-registry
+    namespace: docker-registry
+    hosts:
+      default: localhost
+      internal: docker-registry
+      node: localhost
+    host_fqdn_override:
+      default: null
+    port:
+      registry:
+        node: 5000
+  identity:
+    name: keystone
+    auth:
+      admin:
+        region_name: RegionOne
+        username: admin
+        password: password
+        project_name: admin
+        user_domain_name: default
+        project_domain_name: default
+      glance:
+        role: admin,service
+        region_name: RegionOne
+        username: glance
+        password: password
+        project_name: service
+        user_domain_name: service
+        project_domain_name: service
+      test:
+        region_name: RegionOne
+        username: glance-test
+        password: password
+        project_name: test
+        user_domain_name: service
+        project_domain_name: service
+    hosts:
+      default: keystone
+      internal: keystone-api
+    host_fqdn_override:
+      default: null
+    path:
+      default: /v3
+    scheme:
+      default: http
+    port:
+      api:
+        default: 80
+        internal: 5000
+  image:
+    name: glance
+    hosts:
+      default: glance-api
+      public: glance
+    host_fqdn_override:
+      default: null
+      # NOTE(portdirect): this chart supports TLS for fqdn over-ridden public
+      # endpoints using the following format:
+      # public:
+      #   host: null
+      #   tls:
+      #     crt: null
+      #     key: null
+    path:
+      default: null
+    scheme:
+      default: http
+    port:
+      api:
+        default: 9292
+        public: 80
+  image_registry:
+    name: glance-registry
+    hosts:
+      default: glance-registry
+      public: glance-reg
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    scheme:
+      default: 'http'
+    port:
+      api:
+        default: 9191
+        public: 80
+  key_manager:
+    name: barbican
+    hosts:
+      default: barbican-api
+      public: barbican
+    host_fqdn_override:
+      default: null
+    path:
+      default: /
+    scheme:
+      default: http
+    port:
+      api:
+        default: 9311
+        public: 80
+  oslo_db:
+    auth:
+      admin:
+        username: root
+        password: password
+        secret:
+          tls:
+            internal: mariadb-tls-direct
+      glance:
+        username: glance
+        password: password
+    hosts:
+      default: mariadb
+    host_fqdn_override:
+      default: null
+    path: /glance
+    scheme: mysql+pymysql
+    port:
+      mysql:
+        default: 3306
+  oslo_cache:
+    auth:
+      # NOTE(portdirect): this is used to define the value for keystone
+      # authtoken cache encryption key, if not set it will be populated
+      # automatically with a random value, but to take advantage of
+      # this feature all services should be set to use the same key,
+      # and memcache service.
+      memcache_secret_key: null
+    hosts:
+      default: memcached
+    host_fqdn_override:
+      default: null
+    port:
+      memcache:
+        default: 11211
+  oslo_messaging:
+    auth:
+      admin:
+        username: rabbitmq
+        password: password
+      glance:
+        username: glance
+        password: password
+    statefulset:
+      replicas: 2
+      name: rabbitmq-rabbitmq
+    hosts:
+      default: rabbitmq
+    host_fqdn_override:
+      default: null
+    path: /glance
+    scheme: rabbit
+    port:
+      amqp:
+        default: 5672
+      http:
+        default: 15672
+  object_store:
+    name: swift
+    namespace: ceph
+    auth:
+      glance:
+        tmpurlkey: supersecret
+    hosts:
+      default: ceph-rgw
+      public: radosgw
+    host_fqdn_override:
+      default: null
+    path:
+      default: /swift/v1/KEY_$(tenant_id)s
+    scheme:
+      default: http
+    port:
+      api:
+        default: 8088
+        public: 80
+  ceph_object_store:
+    name: radosgw
+    namespace: ceph
+    auth:
+      glance:
+        username: glance
+        password: password
+        tmpurlkey: supersecret
+    hosts:
+      default: ceph-rgw
+      public: radosgw
+    host_fqdn_override:
+      default: null
+    path:
+      default: /auth/v1.0
+    scheme:
+      default: http
+    port:
+      api:
+        default: 8088
+        public: 80
+  fluentd:
+    namespace: null
+    name: fluentd
+    hosts:
+      default: fluentd-logging
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    scheme: 'http'
+    port:
+      service:
+        default: 24224
+      metrics:
+        default: 24220
+  dashboard:
+    name: horizon
+    hosts:
+      default: horizon-int
+      public: horizon
+    host_fqdn_override:
+      default: null
+      # NOTE(portdirect): this chart supports TLS for fqdn over-ridden public
+      # endpoints using the following format:
+      # public:
+      #   host: null
+      #   tls:
+      #     crt: null
+      #     key: null
+    path:
+      default: null
+    scheme:
+      default: http
+      public: https
+    port:
+      web:
+        default: 80
+        public: 443
+  # NOTE(tp6510): these endpoints allow for things like DNS lookups and ingress
+  # They are using to enable the Egress K8s network policy.
+  kube_dns:
+    namespace: kube-system
+    name: kubernetes-dns
+    hosts:
+      default: kube-dns
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    scheme: http
+    port:
+      dns:
+        default: 53
+        protocol: UDP
+  ingress:
+    namespace: null
+    name: ingress
+    hosts:
+      default: ingress
+    port:
+      ingress:
+        default: 80
+  volumev3:
+    name: cinderv3
+    hosts:
+      default: cinder-api
+      public: cinder
+    host_fqdn_override:
+      default: null
+      # NOTE(portdirect): this chart supports TLS for fqdn over-ridden public
+      # endpoints using the following format:
+      # public:
+      #   host: null
+      #   tls:
+      #     crt: null
+      #     key: null
+    path:
+      default: '/v3/%(tenant_id)s'
+    scheme:
+      default: 'http'
+    port:
+      api:
+        default: 8776
+        public: 80
+
+pod:
+  probes:
+    api:
+      api:
+        readiness:
+          enabled: true
+          params:
+            periodSeconds: 15
+            timeoutSeconds: 5
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            timeoutSeconds: 5
+  security_context:
+    glance:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+      container:
+        glance_perms:
+          readOnlyRootFilesystem: true
+          runAsUser: 0
+          runAsNonRoot: false
+          capabilities:
+            drop:
+              - ALL
+            add:
+              - CHOWN
+              - DAC_READ_SEARCH
+        glance_api:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          privileged: false
+          capabilities:
+            drop:
+              - ALL
+        glance_registry:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+        lock_perms:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          runAsUser: 0
+          runAsNonRoot: false
+          capabilities:
+            drop:
+              - ALL
+            add:
+              - CHOWN
+              - DAC_READ_SEARCH
+        update_config:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    bootstrap:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+      container:
+        bootstrap:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    metadefs_load:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+      container:
+        glance_metadefs_load:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    barbican_cert_init:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+      container:
+        barbican_cert_init:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    db_init:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+      container:
+        db_init:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    db_purge:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+      container:
+        db_purge:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    db_sync:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+      container:
+        db_sync:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    db_contract:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+      container:
+        db_contract:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    db_expand:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+      container:
+        db_expand:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    db_migrate:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+      container:
+        db_migrate:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    ks_user:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+      container:
+        ks_user:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    ks_endpoints:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+      container:
+        ks_endpoints:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    ks_service:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+      container:
+        ks_service:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+  affinity:
+    anti:
+      type:
+        default: preferredDuringSchedulingIgnoredDuringExecution
+      topologyKey:
+        default: kubernetes.io/hostname
+      weight:
+        default: 10
+  mounts:
+    glance_api:
+      init_container: null
+      glance_api:
+        volumeMounts:
+        volumes:
+    glance_registry:
+      init_container: null
+      glance_registry:
+        volumeMounts:
+        volumes:
+    glance_db_sync:
+      glance_db_sync:
+        volumeMounts:
+        volumes:
+  replicas:
+    api: 1
+    registry: 1
+  lifecycle:
+    upgrades:
+      deployments:
+        revision_history: 3
+        pod_replacement_strategy: RollingUpdate
+        rolling_update:
+          max_unavailable: 1
+          max_surge: 3
+    disruption_budget:
+      api:
+        min_available: 0
+      registry:
+        min_available: 0
+    termination_grace_period:
+      api:
+        timeout: 600
+      registry:
+        timeout: 600
+  resources:
+    enabled: false
+    api:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    registry:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    jobs:
+      barbican_cert_init:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      metadefs_load:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      db_sync:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      db_init:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      db_drop:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      db_general:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      db_purge:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      ks_user:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      ks_service:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      ks_endpoints:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      bootstrap:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      image_repo_sync:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+
+manifests:
+  secret_ca_bundle: false
+  certificates: false
+  configmap_bin: true
+  configmap_etc: true
+  configmap_bin_aux: true
+  configmap_oslo_policy: true
+  cron_job_db_purge: false
+  deployment_api: true
+  deployment_registry: false
+  ingress_api: true
+  ingress_registry: false
+  job_bootstrap: true
+  job_db_init: true
+  job_db_sync: true
+  job_db_drop: false
+  job_db_expand: false
+  job_db_migrate: false
+  job_db_contract: false
+  job_image_repo_sync: true
+  job_ks_endpoints: true
+  job_ks_service: true
+  job_ks_user: true
+  job_metadefs_load: true
+  job_barbican_cert_init: false
+  pdb_api: true
+  pdb_registry: false
+  pvc_images: true
+  network_policy: false
+  secret_db: true
+  secret_ingress_tls: true
+  secret_keystone: true
+  secret_rabbitmq: true
+  service_ingress_api: true
+  service_ingress_registry: false
+  service_api: true
+  service_registry: false
+  ceph_conf: false
+...

@@ -1,0 +1,5 @@
+parameters:
+  ironic:
+    api:
+      cache:
+        ~members: ${_param:mcp2_memcached_ironic_members}

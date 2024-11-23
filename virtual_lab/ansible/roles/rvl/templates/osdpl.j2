@@ -1,0 +1,88 @@
+apiVersion: lcm.mirantis.com/v1alpha1
+kind: OpenStackDeployment
+metadata:
+  name: osh-dev
+  namespace: openstack
+  labels: {}
+  annotations: {}
+spec:
+  artifacts:
+    binary_base_url: {{ rockoon.osdpl.binary_base_url }}
+    images_base_url: {{ rockoon.osdpl.images_base_url }}
+  local_volume_storage_class: lvp-fake-root
+  persistent_volume_storage_class: lvp-fake-root
+  openstack_version: {{ rvl_osdpl_openstack_version }}
+  preset: core
+  size: single
+  public_domain_name: it.just.works
+  features:
+    network_policies:
+      enabled: false
+    ssl:
+      public_endpoints:
+        api_cert:
+          value_from:
+            secret_key_ref:
+              key: api_cert
+              name: osh-dev-hidden
+        api_key:
+          value_from:
+            secret_key_ref:
+              key: api_key
+              name: osh-dev-hidden
+        ca_cert:
+          value_from:
+            secret_key_ref:
+              key: ca_cert
+              name: osh-dev-hidden
+    neutron:
+      tunnel_interface: {{ rvl_osdpl_tunnel_interface }}
+      external_networks:
+        - physnet: physnet1
+          interface: veth-phy
+          bridge: br-ex
+          network_types:
+           - flat
+          vlan_ranges: null
+          mtu: null
+      floating_network: {{ rvl_osdpl_floating_network }}
+    nova:
+      console:
+        spice:
+          enabled: true
+      live_migration_interface: {{ rvl_osdpl_live_migration_interface }}
+      images:
+        backend: local
+    glance:
+      backends:
+        file:
+          pvcstore:
+            default: true
+            pvc:
+              size: 10Gi
+              storage_class_name: lvp-fake-root
+  # enabled services and their specific configuration
+  services:
+    networking:
+      openvswitch:
+        values:
+          conf:
+            neutron:
+              DEFAULT:
+                support_sync_ovs_info: false
+      neutron:
+        values:
+          conf:
+            neutron:
+              DEFAULT:
+                global_physnet_mtu: 1480
+                support_sync_ha_routers_info: false
+                support_sync_ovs_info: false
+    compute:
+      nova:
+        values:
+          conf:
+            nova:
+              filter_scheduler:
+                enabled_filters:
+                  - "~AvailabilityZoneFilter"

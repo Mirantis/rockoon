@@ -1,0 +1,12 @@
+      images:
+        tags:
+{%- for image in [
+    'prometheus_rabbitmq_exporter',
+    'prometheus_rabbitmq_exporter_helm_tests',
+    'rabbitmq_init',
+    'rabbitmq',
+    'dep_check',
+    'rabbitmq_scripted_test',
+    'image_repo_sync'] %}
+          {{ image }}: {{ images[image] }}
+{%- endfor %}

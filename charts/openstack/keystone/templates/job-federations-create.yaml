@@ -1,0 +1,134 @@
+{{/*
+Copyright 2019 Mirantis inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.job_federations_create }}
+{{- $envAll := . }}
+
+{{- $mounts_keystone_federations_create := .Values.pod.mounts.keystone_federations_create.keystone_federations_create }}
+{{- $mounts_keystone_federations_create_init := .Values.pod.mounts.keystone_federations_create.init_container }}
+
+{{- $serviceAccountName := "keystone-federations-create" }}
+{{ tuple $envAll "federations_create" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: keystone-federations-create
+spec:
+  backoffLimit: 20
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "keystone" "federations-create" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "federations_create" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      restartPolicy: OnFailure
+      nodeSelector:
+        {{ .Values.labels.job.node_selector_key }}: {{ .Values.labels.job.node_selector_value }}
+      initContainers:
+{{ tuple $envAll "federations_create" $mounts_keystone_federations_create_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container"  | indent 8 }}
+        - name: keystone-federations-create-init
+{{ tuple $envAll "bootstrap" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.federations_create | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "federations_create" "container" "keystone_federations_create_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+{{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" "admin" ) | indent 12 }}
+          command:
+            - /tmp/keystone-federations-create-init.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: keystone-bin
+              mountPath: /tmp/keystone-federations-create-init.sh
+              subPath: keystone-federations-create-init.sh
+              readOnly: true
+            - name: os-clouds
+              mountPath: /etc/openstack/clouds.yaml
+              subPath: clouds.yaml
+              readOnly: true
+      containers:
+        - name: keystone-federations-create
+{{ tuple $envAll "keystone_federations_create" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.federations_create | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "federations_create" "container" "keystone_federations_create" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+{{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" "admin" ) | indent 12 }}
+          command:
+            - /tmp/keystone-federations-create.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: etckeystone
+              mountPath: /etc/keystone
+            - name: keystone-bin
+              mountPath: /tmp/keystone-federations-create.sh
+              subPath: keystone-federations-create.sh
+              readOnly: true
+            - name: keystone-etc
+              mountPath: /etc/keystone/keystone.conf
+              subPath: keystone.conf
+              readOnly: true
+            - name: os-clouds
+              mountPath: /etc/openstack/clouds.yaml
+              subPath: clouds.yaml
+              readOnly: true
+            {{- if .Values.conf.keystone.DEFAULT.log_config_append }}
+            - name: keystone-etc
+              mountPath: {{ .Values.conf.keystone.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.keystone.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+{{- range $k, $v := .Values.conf.ks_federations }}
+            - name: keystone-etc
+              mountPath: {{ $envAll.Values.conf.keystone.identity.domain_config_dir | default "/etc/keystonedomains" }}/keystone-federations-mapping.{{ $k }}.json
+              subPath: keystone-federations-mapping.{{ $k }}.json
+              readOnly: true
+{{- end }}
+{{- if eq .Values.conf.keystone.token.provider "fernet" }}
+            - name: keystone-fernet-keys
+              mountPath: {{ .Values.conf.keystone.fernet_tokens.key_repository }}
+{{- end }}
+            - name: keystone-credential-keys
+              mountPath: {{ .Values.conf.keystone.credential.key_repository }}
+{{ if $mounts_keystone_federations_create.volumeMounts }}{{ toYaml $mounts_keystone_federations_create.volumeMounts | indent 12 }}{{ end }}
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: etckeystone
+          emptyDir: {}
+        - name: keystone-etc
+          secret:
+            secretName: keystone-etc
+            defaultMode: 416
+        - name: os-clouds
+          secret:
+            secretName: {{ .Chart.Name }}-os-clouds
+            defaultMode: 416
+        - name: keystone-bin
+          configMap:
+            name: keystone-bin
+            defaultMode: 504
+{{- if eq .Values.conf.keystone.token.provider "fernet" }}
+        - name: keystone-fernet-keys
+          secret:
+            secretName: {{ .Values.objects.secret_fernet_keys.secret }}
+{{- end }}
+        - name: keystone-credential-keys
+          secret:
+            secretName: {{ .Values.objects.secret_credentials_keys.secret }}
+{{ if $mounts_keystone_federations_create.volumes }}{{ toYaml $mounts_keystone_federations_create.volumes | indent 9 }}{{ end }}
+{{- end }}

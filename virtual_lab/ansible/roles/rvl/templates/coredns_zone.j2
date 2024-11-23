@@ -1,0 +1,7 @@
+it.just.works.            IN      SOA     ns.it.just.works. username.it.just.works. {{ 4294967295 | random }} 7200 3600 1209600 3600
+it.just.works.            IN      NS      ns
+it.just.works.            IN      A       {{ rvl_dns_resolver_ip_address }}
+{% if rvl_dns_discover_ingress_ip %}
+*.it.just.works.           IN      A      {{ ingress_service_ip }}
+{% endif %}
+registry.it.just.works.    IN      A       {{ rvl_registry_ip_address }}

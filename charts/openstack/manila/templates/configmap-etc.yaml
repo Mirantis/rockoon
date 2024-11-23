@@ -1,0 +1,237 @@
+{{/*
+Copyright 2022 Mirantis Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "manila.configmap.etc" }}
+{{- $configMapName := index . 0 }}
+{{- $envAll := index . 1 }}
+{{- with $envAll }}
+
+{{- if empty .Values.conf.manila.DEFAULT.osapi_share_listen_port -}}
+{{- $_ := tuple "sharev2" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | set .Values.conf.manila.DEFAULT "osapi_share_listen_port" -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.DEFAULT.transport_url -}}
+{{- $_ := tuple "oslo_messaging" "internal" "manila" "amqp" . | include "helm-toolkit.endpoints.authenticated_transport_endpoint_uri_lookup" | set .Values.conf.manila.DEFAULT "transport_url" -}}
+{{- end -}}
+
+{{/* Cinder Auth */}}
+{{- if empty .Values.conf.manila.cinder.auth_url -}}
+{{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.manila.cinder "auth_url" -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.cinder.region_name -}}
+{{- $_ := set .Values.conf.manila.cinder "region_name" .Values.endpoints.identity.auth.cinder.region_name -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.cinder.project_name -}}
+{{- $_ := set .Values.conf.manila.cinder "project_name" .Values.endpoints.identity.auth.cinder.project_name -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.cinder.project_domain_name -}}
+{{- $_ := set .Values.conf.manila.cinder "project_domain_name" .Values.endpoints.identity.auth.cinder.project_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.cinder.user_domain_name -}}
+{{- $_ := set .Values.conf.manila.cinder "user_domain_name" .Values.endpoints.identity.auth.cinder.user_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.cinder.username -}}
+{{- $_ := set .Values.conf.manila.cinder "username" .Values.endpoints.identity.auth.cinder.username -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.cinder.password -}}
+{{- $_ := set .Values.conf.manila.cinder "password" .Values.endpoints.identity.auth.cinder.password -}}
+{{- end -}}
+
+
+{{/* Glance Auth */}}
+{{- if empty .Values.conf.manila.glance.auth_url -}}
+{{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.manila.glance "auth_url" -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.glance.region_name -}}
+{{- $_ := set .Values.conf.manila.glance "region_name" .Values.endpoints.identity.auth.glance.region_name -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.glance.project_name -}}
+{{- $_ := set .Values.conf.manila.glance "project_name" .Values.endpoints.identity.auth.glance.project_name -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.glance.project_domain_name -}}
+{{- $_ := set .Values.conf.manila.glance "project_domain_name" .Values.endpoints.identity.auth.glance.project_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.glance.user_domain_name -}}
+{{- $_ := set .Values.conf.manila.glance "user_domain_name" .Values.endpoints.identity.auth.glance.user_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.glance.username -}}
+{{- $_ := set .Values.conf.manila.glance "username" .Values.endpoints.identity.auth.glance.username -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.glance.password -}}
+{{- $_ := set .Values.conf.manila.glance "password" .Values.endpoints.identity.auth.glance.password -}}
+{{- end -}}
+
+{{/* MySQL connection */}}
+{{- if empty .Values.conf.manila.database.connection -}}
+{{- $connection := tuple "oslo_db" "internal" "manila" "mysql" . | include "helm-toolkit.endpoints.authenticated_endpoint_uri_lookup" -}}
+{{- if .Values.manifests.certificates -}}
+{{- $_ := (printf "%s?charset=utf8&ssl_ca=/etc/mysql/certs/ca.crt&ssl_key=/etc/mysql/certs/tls.key&ssl_cert=/etc/mysql/certs/tls.crt&ssl_verify_cert" $connection ) | set .Values.conf.manila.database "connection" -}}
+{{- else -}}
+{{- $_ := set .Values.conf.manila.database "connection" $connection -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Keystone Auth */}}
+{{- if empty .Values.conf.manila.keystone_authtoken.www_authenticate_uri -}}
+{{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.manila.keystone_authtoken "www_authenticate_uri" -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.keystone_authtoken.auth_url -}}
+{{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.manila.keystone_authtoken "auth_url" -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.keystone_authtoken.region_name -}}
+{{- $_ := set .Values.conf.manila.keystone_authtoken "region_name" .Values.endpoints.identity.auth.manila.region_name -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.keystone_authtoken.project_name -}}
+{{- $_ := set .Values.conf.manila.keystone_authtoken "project_name" .Values.endpoints.identity.auth.manila.project_name -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.keystone_authtoken.project_domain_name -}}
+{{- $_ := set .Values.conf.manila.keystone_authtoken "project_domain_name" .Values.endpoints.identity.auth.manila.project_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.keystone_authtoken.user_domain_name -}}
+{{- $_ := set .Values.conf.manila.keystone_authtoken "user_domain_name" .Values.endpoints.identity.auth.manila.user_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.keystone_authtoken.username -}}
+{{- $_ := set .Values.conf.manila.keystone_authtoken "username" .Values.endpoints.identity.auth.manila.username -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.keystone_authtoken.password -}}
+{{- $_ := set .Values.conf.manila.keystone_authtoken "password" .Values.endpoints.identity.auth.manila.password -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.keystone_authtoken.memcached_servers -}}
+{{- $_ := tuple "oslo_cache" "internal" "memcache" . | include "helm-toolkit.endpoints.host_and_port_endpoint_uri_lookup" | set .Values.conf.manila.keystone_authtoken "memcached_servers" -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.keystone_authtoken.memcache_secret_key -}}
+{{- $_ := set .Values.conf.manila.keystone_authtoken "memcache_secret_key" ( default ( randAlphaNum 64 ) .Values.endpoints.oslo_cache.auth.memcache_secret_key ) -}}
+{{- end -}}
+
+{{- if not (empty .Values.conf.manila.oslo_messaging_notifications) -}}
+{{- if empty .Values.conf.manila.oslo_messaging_notifications.transport_url -}}
+{{- if .Values.endpoints.oslo_messaging_notifications -}}
+{{- $_ := tuple "oslo_messaging_notifications" "internal" "manila" "amqp" . | include "helm-toolkit.endpoints.authenticated_transport_endpoint_uri_lookup" | set .Values.conf.manila.oslo_messaging_notifications "transport_url" -}}
+{{- else -}}
+{{- $_ := tuple "oslo_messaging" "internal" "manila" "amqp" . | include "helm-toolkit.endpoints.authenticated_transport_endpoint_uri_lookup" | set .Values.conf.manila.oslo_messaging_notifications "transport_url" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Neutron Auth */}}
+{{- if empty .Values.conf.manila.neutron.auth_url -}}
+{{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.manila.neutron "auth_url" -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.neutron.region_name -}}
+{{- $_ := set .Values.conf.manila.neutron "region_name" .Values.endpoints.identity.auth.neutron.region_name -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.neutron.project_name -}}
+{{- $_ := set .Values.conf.manila.neutron "project_name" .Values.endpoints.identity.auth.neutron.project_name -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.neutron.project_domain_name -}}
+{{- $_ := set .Values.conf.manila.neutron "project_domain_name" .Values.endpoints.identity.auth.neutron.project_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.neutron.user_domain_name -}}
+{{- $_ := set .Values.conf.manila.neutron "user_domain_name" .Values.endpoints.identity.auth.neutron.user_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.neutron.username -}}
+{{- $_ := set .Values.conf.manila.neutron "username" .Values.endpoints.identity.auth.neutron.username -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.neutron.password -}}
+{{- $_ := set .Values.conf.manila.neutron "password" .Values.endpoints.identity.auth.neutron.password -}}
+{{- end -}}
+
+{{/* Nova Auth */}}
+{{- if empty .Values.conf.manila.nova.auth_url -}}
+{{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.manila.nova "auth_url" -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.nova.region_name -}}
+{{- $_ := set .Values.conf.manila.nova "region_name" .Values.endpoints.identity.auth.nova.region_name -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.nova.project_name -}}
+{{- $_ := set .Values.conf.manila.nova "project_name" .Values.endpoints.identity.auth.nova.project_name -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.nova.project_domain_name -}}
+{{- $_ := set .Values.conf.manila.nova "project_domain_name" .Values.endpoints.identity.auth.nova.project_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.nova.user_domain_name -}}
+{{- $_ := set .Values.conf.manila.nova "user_domain_name" .Values.endpoints.identity.auth.nova.user_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.nova.username -}}
+{{- $_ := set .Values.conf.manila.nova "username" .Values.endpoints.identity.auth.nova.username -}}
+{{- end -}}
+{{- if empty .Values.conf.manila.nova.password -}}
+{{- $_ := set .Values.conf.manila.nova "password" .Values.endpoints.identity.auth.nova.password -}}
+{{- end -}}
+
+
+{{- if and (empty .Values.conf.logging.handler_fluent) (has "fluent" .Values.conf.logging.handlers.keys) -}}
+{{- $fluentd_host := tuple "fluentd" "internal" $envAll | include "helm-toolkit.endpoints.hostname_namespaced_endpoint_lookup" }}
+{{- $fluentd_port := tuple "fluentd" "internal" "service" $envAll | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- $fluent_args := printf "('%s.%s', '%s', %s)" .Release.Namespace .Release.Name $fluentd_host $fluentd_port }}
+{{- $handler_fluent := dict "class" "fluent.handler.FluentHandler" "formatter" "fluent" "args" $fluent_args -}}
+{{- $_ := set .Values.conf.logging "handler_fluent" $handler_fluent -}}
+{{- end -}}
+{{- if and (empty .Values.conf.logging.formatter_fluent) (has "fluent" .Values.conf.logging.formatters.keys) -}}
+{{- $formatter_fluent := dict "class" "oslo_log.formatters.FluentFormatter" -}}
+{{- $_ := set .Values.conf.logging "formatter_fluent" $formatter_fluent -}}
+{{- end -}}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $configMapName }}
+type: Opaque
+data:
+{{- if .Values.manifests.pod_rally_test }}
+  rally_tests.yaml: {{ toYaml .Values.conf.rally_tests.tests | b64enc }}
+{{- end }}
+  manila.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.manila | b64enc }}
+  logging.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.logging | b64enc }}
+  api-paste.ini: {{ include "helm-toolkit.utils.to_ini" .Values.conf.paste | b64enc }}
+  manila_sudoers: {{ $envAll.Values.conf.manila_sudoers | b64enc }}
+  rootwrap.conf: {{ $envAll.Values.conf.rootwrap | b64enc }}
+  api_audit_map.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.api_audit_map | b64enc }}
+{{- if .Values.conf.security }}
+{{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.security "key" "security.conf" "format" "Secret" ) | indent 2 }}
+{{- end }}
+{{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.wsgi_manila "key" "wsgi-manila.conf" "format" "Secret" ) | indent 2 }}
+{{- if .Values.conf.standalone_backends }}
+{{- $standalone_conf := "" }}
+{{- if hasKey .Values.conf.standalone_backends "statefulsets" }}
+    {{- range $name, $standalone_backend := .Values.conf.standalone_backends.statefulsets }}
+        {{- $standalone_conf = $standalone_backend.conf }}
+  backend_{{ $name }}_sts.conf: {{ include "helm-toolkit.utils.to_ini" $standalone_conf | b64enc -}}
+    {{- end }}
+{{- end }}
+{{- if hasKey .Values.conf.standalone_backends "daemonset" }}
+  backend_ds.conf: {{ include "helm-toolkit.utils.to_ini" .Values.conf.standalone_backends.daemonset.conf | b64enc -}}
+  {{- end }}
+{{ end }}
+{{- if .Values.manifests.ceph_conf }}
+  ceph.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.ceph.config | b64enc }}
+{{- dict "envAll" $envAll "objectType" "secret_entry" | include "helm-toolkit.snippets.kubernetes_ceph_keyring_objects" | indent 2 }}
+{{- end }}
+  api-paste.ini: {{ include "helm-toolkit.utils.to_ini" .Values.conf.paste | b64enc }}
+{{- if .Values.manifests.certificates }}
+{{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.mpm_event "key" "mpm_event.conf" "format" "Secret" ) | indent 2 }}
+{{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.wsgi_manila "key" "wsgi-manila.conf" "format" "Secret" ) | indent 2 }}
+{{- end }}
+  ports.conf: ""
+{{- range $key, $value := $envAll.Values.conf.rootwrap_filters }}
+{{- $filePrefix := replace "_" "-"  $key }}
+  {{ printf "%s.filters" $filePrefix }}: {{ $value.content | b64enc }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- if .Values.manifests.configmap_etc }}
+{{- list "manila-etc" . | include "manila.configmap.etc" }}
+{{- end }}

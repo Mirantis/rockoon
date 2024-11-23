@@ -1,0 +1,28 @@
+- name: Create a directory if it does not exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0750'
+  loop:
+    - "{{ rvl_k8s_objects_path }}"
+    - "{{ rvl_ca_certs_path }}"
+
+- name: Install helm if not exists
+  unarchive:
+    src: "https://get.helm.sh/helm-{{ rvl_clients_helm_release }}-linux-amd64.tar.gz"
+    dest: /usr/local/bin
+    extra_opts: "--strip-components=1"
+    owner: root
+    group: root
+    mode: 0755
+    remote_src: true
+  args:
+    creates: /usr/local/bin/helm
+
+- name: Install kubectl if not exists
+  ansible.builtin.get_url:
+    url: "https://dl.k8s.io/release/{{ rvl_clients_kubectl_release }}/bin/linux/amd64/kubectl"
+    dest: /usr/local/bin/kubectl
+    owner: root
+    group: root
+    mode: 0755

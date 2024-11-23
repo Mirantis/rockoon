@@ -1,0 +1,223 @@
+apiVersion: lcm.mirantis.com/v1alpha1
+kind: OpenStackDeployment
+metadata:
+  name: osh-dev
+  namespace: openstack
+spec:
+  artifacts:
+    binary_base_url: https://artifactory.mcp.mirantis.net/binary-dev-kaas-local
+    images_base_url: docker-dev-kaas-local.docker.mirantis.net
+  common:
+    infra:
+      values:
+        manifests:
+          service_external: true
+        network:
+          mariadb_master:
+            service:
+              type: LoadBalancer
+    openstack:
+      values:
+        endpoints:
+          identity:
+            auth:
+              admin:
+                password: D7JTwxfGJkh1kUM0d5Kr3DXhTjtdjrIp
+        network:
+          api:
+            service:
+              type: LoadBalancer
+          osapi:
+            service:
+              type: LoadBalancer
+          placement:
+            service:
+              type: LoadBalancer
+          server:
+            service:
+              type: LoadBalancer
+  draft: false
+  features:
+    barbican:
+      backends:
+        vault:
+          approle_role_id: 60f86651-f7b4-aa5d-4910-05e57af3731d
+          approle_secret_id: fcbde22d-61ba-9705-2f53-c763aaf060d8
+          enabled: true
+          use_ssl: false
+          vault_url: http://vault.openstack-vault.svc:8200
+    logging:
+      designate:
+        level: DEBUG
+    messaging:
+      components_with_dedicated_messaging:
+      - load-balancer
+      - dns
+      - key-manager
+      - block-storage
+      - orchestration
+      - compute
+      - image
+    neutron:
+      dns_servers:
+      - 10.172.1.100
+      external_networks:
+      - bridge: br-ex
+        interface: veth-phy
+        mtu: null
+        network_types:
+        - flat
+        physnet: physnet1
+        vlan_ranges: null
+      floating_network:
+        enabled: true
+        physnet: physnet1
+        subnet:
+          gateway: 10.13.0.31
+          pool_end: 10.13.0.200
+          pool_start: 10.13.0.100
+          range: 10.13.0.0/16
+      tunnel_interface: ens3
+    nova:
+      images:
+        backend: local
+      live_migration_interface: ens3
+    services:
+    - key-manager
+    ssl:
+      public_endpoints:
+        api_cert: |-
+          -----BEGIN CERTIFICATE-----
+          MIIDmDCCAoCgAwIBAgIUYoKiOvR1MqjP+r+600B758pV9ckwDQYJKoZIhvcNAQEL
+          BQAwFTETMBEGA1UEAxMKa3ViZXJuZXRlczAeFw0yMDA3MjIxMTQyMDBaFw0yMTA3
+          MjIxMTQyMDBaMFoxCzAJBgNVBAYTAlVTMRYwFAYDVQQIEw1TYW4gRnJhbmNpc2Nv
+          MQswCQYDVQQHEwJDQTEmMCQGA1UEAxMdKi5vcGVuc3RhY2suc3ZjLmNsdXN0ZXIu
+          bG9jYWwwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDfilJwpxkHFSIh
+          pZyUdRt/BIZNVo+SM+1x7pYqIBL+n3LEDxO71duuAnR0nyon5ZaRHFmRnnJIKOfr
+          vsCoXC8aZpeYDGxjyvAJPxiVTy/7Fp+HwhDg79dlETKRQXAzjCVBkC4TRaMmvgGa
+          rhxuF/0rPv6mIiNF2HpSc/4Tk5eTF1FV8E49Ud5bqZKwkG1vuRxd6VeO2b6eRp1x
+          ymIjScETDp+6Z2SF5Csc0zrdNoC3slDoGQ2D9zKieFWJJ1658StIV1cKO6GPS2Bh
+          ICsjLeuDTVfJtt4fv/GOj/o2gsgWSQtJg2S6Zbb6i8mPCeFdkk/ugiWkLSFQ8pwY
+          sU3fZrPTAgMBAAGjgZowgZcwDgYDVR0PAQH/BAQDAgWgMB0GA1UdJQQWMBQGCCsG
+          AQUFBwMBBggrBgEFBQcDAjAMBgNVHRMBAf8EAjAAMB0GA1UdDgQWBBQio3znyKrO
+          ISf5/+eiqPV04wBaXDA5BgNVHREEMjAwgg8qLml0Lmp1c3Qud29ya3OCHSoub3Bl
+          bnN0YWNrLnN2Yy5jbHVzdGVyLmxvY2FsMA0GCSqGSIb3DQEBCwUAA4IBAQByQj2c
+          xZQ3cQRJWcynun2/0ix/uBK7QZpImvt9eC0yzY1Uq4M3ZqJyzDw7IVYeSQBCHXDb
+          6Iz+GBrSvQF0Fk1IyJQJLblVGVGoKiiR/vwMSHv0DXALwFPGh1HBAoAxLEKwEgT0
+          bMa/+sV3cLDFYjDzJOxjh8qIZRN00ntV5aQAO3IjF/YJvO2qFAKWUMyWNOMDzQh7
+          bAM2CCdEdsD8Yp3xT6fmiBuDJe7KYsiJiuEUoZ3Y405lBVyh+WwDsSyXL96dK5A9
+          JgIPqdfrRqx7AQ7W+6Z/q6g3L7xHMkNYz4v/3NO/LfWBOjN1ZwIysVHAsHAiRgw9
+          qSY9gfrTbreLCIUC
+          -----END CERTIFICATE-----
+        api_key: |-
+          -----BEGIN RSA PRIVATE KEY-----
+          MIIEowIBAAKCAQEA34pScKcZBxUiIaWclHUbfwSGTVaPkjPtce6WKiAS/p9yxA8T
+          u9XbrgJ0dJ8qJ+WWkRxZkZ5ySCjn677AqFwvGmaXmAxsY8rwCT8YlU8v+xafh8IQ
+          4O/XZREykUFwM4wlQZAuE0WjJr4Bmq4cbhf9Kz7+piIjRdh6UnP+E5OXkxdRVfBO
+          PVHeW6mSsJBtb7kcXelXjtm+nkadccpiI0nBEw6fumdkheQrHNM63TaAt7JQ6BkN
+          g/cyonhViSdeufErSFdXCjuhj0tgYSArIy3rg01XybbeH7/xjo/6NoLIFkkLSYNk
+          umW2+ovJjwnhXZJP7oIlpC0hUPKcGLFN32az0wIDAQABAoIBAQCit5RE7k1Yi3iZ
+          12x/4DLQpaGBQEYn3Wa07UAfj9NjxvsKXhM2QnizVJQipA1Sl1ufa2yDhDuZ7TTM
+          tMCWjOu4ov8sLbbkeT9665Pgc5Dwi8o6TvhsVAmNRxRxCZo724LvE52GZ8VYGS0f
+          xCdruEiQJz3D/suANxDrXgWPiHroFM/ZL7oLzASiIuDr45dI39MIIdtf9wWxjhO4
+          fmXw+fHZh1gFggTLkXiuV1s31Xd9cd6l8SxHWSnhHi3w5+C1GlRkH0RFmPuCWOcf
+          mIskm/QMGjnTFiqW0NJUwfj1f9EBMRlYlu2dWhISoiXkrnZL4VzIr0e8oLZGiUeQ
+          7Z0kd5jpAoGBAPCXhFPXsz/Yj8Wp0AIbjc2uUkHNA8qypATFjYyuF4uj3IkgohDG
+          AOrQMXCpoXPLZxLLeevpVzyuSYZnslI1At6JISIp3Sl9FW0OQDCQK29KJWIXgULW
+          cAJvvaT5giDefG3w3wvUMMerqHDQ4/YjI2qpztGqZN6w/vrlUYh4t+e/AoGBAO3b
+          Px1OsGJ+kwEPNMluEmBABQ3b4be1ElqPXcD6WeCgwgVGDPy+C6384Ky3yzYArFnX
+          LrYPble0gX+Ru3I/oqzP710dIWOaLMFl8tZiDWQ1bi8IlIyVMJEyMT+cCSq1bfMx
+          Xqzha/VtZlXmR+diVsPbgRo5U+cqVy9bzC5VZNjtAoGAfWWbdM+h/47yMIX3goG2
+          ARPwj5c5eLZvQoVs53v9jayUT2yQy8lHxRtKCXyASAgl6ufe3hS6gUgdzk3R5YL3
+          weEbQeEsAmnNdw/MaQNbgB/XKC80EhAORVbUM15Qcq1DkVHQDyxDWG6h1lsp1aou
+          1XM39pOnC2KZI0/OlSDGSaUCgYBbiwE8f1eFYN+lDbwsNi/eWWVYkyLJOGhK8FiN
+          +Ax1Vom1y+Mdtur52JSEBOyx6QpsPVQd/8xg9vjMJ0N0UieCyTh/psF9+w10lY8j
+          kXND+QhiE7RQcu7RQvcPWzdv94nMili8wrlxKNy0/L75v7BTCv0iIaQ4GOSbNoJb
+          5sO8dQKBgAqCy9qwTYpD/aOVPxMJ6LrD7iqY02Rbjw0ED1qme02hT00TGqzSgfG0
+          +iAy1jeDpju28MerjGtI+cEJzZcQM0UqwgLEN8vN9ZewqtnmG/T6p4RIVbEZOgKM
+          X8MDNjcZ1HPJuefCqjQWLJhK+6urINhb/i003WwfK2cUR4krxMzT
+          -----END RSA PRIVATE KEY-----
+        ca_cert: |-
+          -----BEGIN CERTIFICATE-----
+          MIICyDCCAbCgAwIBAgIBADANBgkqhkiG9w0BAQsFADAVMRMwEQYDVQQDEwprdWJl
+          cm5ldGVzMB4XDTE5MDcxNTEyMTczMFoXDTI5MDcxMjEyMTczMFowFTETMBEGA1UE
+          AxMKa3ViZXJuZXRlczCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAMKs
+          3cxUNr7uIvIpnYAu9hM03zIgycdzar1deSIU2EZkEv20QOa6+w/yUxRhQK1pFhok
+          ceqVuOnGnSUW3Uf+mvAd0IgCkCUIWnDOkZE83MhKTa7FXZpEYSBpjNwziLyAffQB
+          IXdXs0Zf4RHoSmm2msJy2iL6tKzPWrUI8iJINKY687RubX7WTxvFUd/By6VMg1H/
+          F3UEi/WGBCrYbWeZhjk222N/5T1PNkhZjLM4l7ukedUaK2b9bKsRU7N/p2f9hhDJ
+          +x2arKmGqGkKkRQnS/19Nlwom2cSU8z36nOghJHv6hWIMbY/dUT8sGLlL/nSa2d0
+          38rhFhOpB/tu3Wu50NECAwEAAaMjMCEwDgYDVR0PAQH/BAQDAgKkMA8GA1UdEwEB
+          /wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBACpTF3CTDaRUOUnIKo2p7x/HzJGM
+          DwrQqzKOJ1I4WzeuGVLJ4OUn9wU7jce2oMYZmOw+2opG7CvqM2xx6AQa2OxqJt8E
+          KoqviidpTgXqWhAaRbRGsF1IxEwEgbiI9sH0f0pQRZBVPKv+LnNlQoip9ZMgoHJ8
+          f25YSPKBHhMLEvCdsWy6ZRqSx7lk0NK+NiFeL3ZDlkiVveNmejM2OSzsov2wkUu3
+          Hvo/ugw5tNhtX7Q1iEyE2aFvsmqE1PTOE3zly7xRALAX8WYD5lNc0qGFvoh3x+79
+          uKVi5MUP48Voc72rJ0n7iaK8dr/byL6S5Qz2PuG9slbDQrDoacBeyjO6hiQ=
+          -----END CERTIFICATE-----
+    stacklight:
+      user:
+        password: stacklight
+  internal_domain_name: cluster.local
+  migration:
+    barbican:
+      deploy_main_service: false
+    cinder:
+      deploy_main_service: false
+    designate:
+      deploy_main_service: false
+    glance:
+      deploy_main_service: false
+    heat:
+      deploy_main_service: false
+    neutron:
+      deploy_main_service: false
+    nova:
+      deploy_main_service: false
+    octavia:
+      deploy_main_service: false
+  openstack_version: queens
+  preset: compute
+  public_domain_name: it.just.works
+  services:
+    dns:
+      designate:
+        values:
+          conf:
+            logging:
+              logger_amqp:
+                level: DEBUG
+              logger_amqplib:
+                level: DEBUG
+              logger_boto:
+                level: DEBUG
+              logger_designate:
+                level: DEBUG
+              logger_eventletwsgi:
+                level: DEBUG
+              logger_root:
+                level: DEBUG
+              logger_sqlalchemy:
+                level: DEBUG
+    identity:
+      keystone:
+        values:
+          manifests:
+            cron_credential_rotate: false
+            cron_fernet_rotate: false
+            job_db_sync: false
+    networking:
+      neutron:
+        values:
+          conf:
+            neutron:
+              DEFAULT:
+                global_physnet_mtu: 1480
+    orchestration:
+      heat:
+        values:
+          conf:
+            heat:
+              clients_heat:
+                insecure: true
+  size: tiny

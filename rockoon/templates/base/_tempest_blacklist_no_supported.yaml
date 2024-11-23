@@ -1,0 +1,116 @@
+            - (?:tempest\.fake\.test)
+
+            # NEUTRON
+            # Skip neutron tempest plugin tests that are already contains in tempest
+            - (?:neutron_tempest_plugin.api.admin.test_agent_management)
+            - (?:neutron_tempest_plugin.api.admin.test_dhcp_agent_scheduler.DHCPAgentSchedulersTestJSON.test_add_remove_network_from_dhcp_agent)
+            - (?:neutron_tempest_plugin.api.admin.test_dhcp_agent_scheduler.DHCPAgentSchedulersTestJSON.test_list_dhcp_agent_hosting_network)
+            - (?:neutron_tempest_plugin.api.admin.test_dhcp_agent_scheduler.DHCPAgentSchedulersTestJSON.test_list_networks_hosted_by_one_dhcp)
+            - (?:neutron_tempest_plugin.api.admin.test_quotas.QuotasTest.test_quotas)
+            - (?:neutron_tempest_plugin.api.admin.test_routers_dvr)
+            - (?:neutron_tempest_plugin.api.test_dhcp_ipv6)
+            - (?:neutron_tempest_plugin.api.test_metering_extensions)
+            - (?:neutron_tempest_plugin.api.test_networks.NetworksTestJSON.test_show_network)
+            - (?:neutron_tempest_plugin.api.test_security_groups.SecGroupTest.test_create_list_update_show_delete_security_group)
+            - (?:neutron_tempest_plugin.api.test_service_type_management.ServiceTypeManagementTest.test_service_provider_list)
+            - (?:neutron_tempest_plugin.api.test_flavors_extensions.TestFlavorsIpV6TestJSON.test_list_service_profiles)
+            - (?:neutron_tempest_plugin.api.test_flavors_extensions.TestFlavorsJson.test_list_service_profiles)
+            - (?:neutron_tempest_plugin.api.test_flavors_extensions.TestFlavorsIpV6TestJSON.test_show_service_profile)
+            - (?:neutron_tempest_plugin.api.test_flavors_extensions.TestFlavorsJson.test_show_service_profile)
+            - (?:neutron_tempest_plugin.api.test_routers)
+            - (?:neutron_tempest_plugin.api.test_allowed_address_pair.AllowedAddressPairIpV6TestJSON)
+            - (?:neutron_tempest_plugin.api.test_allowed_address_pair.AllowedAddressPairTestJSON)
+            - (?:neutron_tempest_plugin.api.test_extra_dhcp_options.ExtraDHCPOptionsIpV6TestJSON)
+            - (?:neutron_tempest_plugin.api.test_extra_dhcp_options.ExtraDHCPOptionsTestJSON)
+            # Neutron TAG Extension
+            - (?:tempest.api.network.test_tags.TagsTest)
+            # Neutron Metering Extension
+            - (?:tempest.api.network.admin.test_metering_extensions)
+            # Neutron Subnetpool Extenstion
+            - (?:neutron_tempest_plugin.api.test_subnetpool_prefix_ops)
+            - (?:neutron_tempest_plugin.api.test_subnetpools_negative)
+            # Neutron dvr_snat (only works when all nodes have same config)
+            - (?:neutron_tempest_plugin.scenario.test_dvr.NetworkDvrTest.test_vm_reachable_through_compute)
+            - (?:neutron_tempest_plugin.scenario.test_migration.NetworkMigrationFromDVR.test_from_dvr_to_dvr_ha)
+            - (?:neutron_tempest_plugin.scenario.test_migration.NetworkMigrationFromDVR.test_from_dvr_to_ha)
+            - (?:neutron_tempest_plugin.scenario.test_migration.NetworkMigrationFromDVR.test_from_dvr_to_legacy)
+            - (?:neutron_tempest_plugin.scenario.test_migration.NetworkMigrationFromLegacy.test_from_legacy_to_dvr)
+            - (?:neutron_tempest_plugin.scenario.test_migration.NetworkMigrationFromLegacy.test_from_legacy_to_dvr_ha)
+            - (?:neutron_tempest_plugin.scenario.test_migration.NetworkMigrationFromDVRHA.test_from_dvr_ha_to_dvr)
+            - (?:neutron_tempest_plugin.scenario.test_migration.NetworkMigrationFromDVRHA.test_from_dvr_ha_to_ha)
+            - (?:neutron_tempest_plugin.scenario.test_migration.NetworkMigrationFromDVRHA.test_from_dvr_ha_to_legacy)
+            - (?:neutron_tempest_plugin.scenario.test_migration.NetworkMigrationFromHA.test_from_ha_to_dvr)
+            - (?:neutron_tempest_plugin.scenario.test_migration.NetworkMigrationFromHA.test_from_ha_to_dvr_ha)
+            # Neutron requires both vxlan and gre encaps
+            - (?:neutron_tempest_plugin.scenario.test_mtu.NetworkWritableMtuTest)
+            # Neutron FIP64 Only supported for Midonet
+            - (?:neutron_tempest_plugin.scenario.test_fip64.Fip64)
+            # Neutron other
+            - (?:neutron_tempest_plugin.scenario.test_basic.NetworkBasicTest.test_ping_global_ip_from_vm_with_fip)
+            - (?:neutron_tempest_plugin.api.test_timestamp.TestTimeStamp.test_segment_with_timestamp)
+
+            # Skip patrole tempest plugin tests until PRODX-5954 will be resolved
+            - (?:patrole_tempest_plugin)
+
+            # HEAT
+            # SKIPPED: messaging service is not supported in MOSK currently
+            - (?:heat_tempest_plugin.tests.functional.test_event_sinks.ZaqarEventSinkTest)
+            - (?:heat_tempest_plugin.tests.functional.test_software_config.ZaqarSignalTransportTest)
+            - (?:heat_tempest_plugin.tests.functional.test_waitcondition.ZaqarWaitConditionTest)
+            # SKIPPED: LBaasv2 extension is deprecated and is not supported
+            - (?:heat_tempest_plugin.tests.scenario.test_autoscaling_lbv2.AutoscalingLoadBalancerv2Test)
+
+            # COMPUTE
+            # os-agents API in nova is deprecated and removed
+            - (?:tempest.api.compute.admin.test_agents.AgentsAdminTestJSON)
+            # nova-network is deprecated and removed
+            - (?:tempest.api.compute.admin.test_fixed_ips.FixedIPsTestJson)
+            - (?:tempest.api.compute.admin.test_fixed_ips_negative.FixedIPsNegativeTestJson)
+            - (?:tempest.api.compute.admin.test_floating_ips_bulk.FloatingIPsBulkAdminTestJSON)
+            - (?:tempest.api.compute.security_groups.test_security_groups_negative.SecurityGroupsNegativeTestJSON.test_security_group_create_with_duplicate_name)
+            - (?:tempest.api.compute.security_groups.test_security_groups_negative.SecurityGroupsNegativeTestJSON.test_update_security_group_with_invalid_sg_des)
+            - (?:tempest.api.compute.security_groups.test_security_groups_negative.SecurityGroupsNegativeTestJSON.test_update_security_group_with_invalid_sg_id)
+            - (?:tempest.api.compute.security_groups.test_security_groups_negative.SecurityGroupsNegativeTestJSON.test_update_security_group_with_invalid_sg_name)
+            - (?:tempest.api.compute.servers.test_virtual_interfaces.VirtualInterfacesTestJSON)
+            - (?:tempest.api.compute.servers.test_virtual_interfaces_negative.VirtualInterfacesNegativeTestJSON)
+            - (?:tempest.api.compute.test_networks.ComputeNetworksTest)
+            # trunk extension is not enabled/supported
+            - (?:tempest.api.compute.admin.test_live_migration.LiveMigrationTest.test_live_migration_with_trunk)
+            - (?:tempest.api.compute.admin.test_live_migration.LiveAutoBlockMigrationV225Test.test_live_migration_with_trunk)
+            # serialproxy not supported
+            - (?:tempest.api.compute.admin.test_live_migration.LiveMigrationRemoteConsolesV26Test.test_live_migration_serial_console)
+            # deprecated and was supported only on xen
+            - (?:tempest.api.compute.admin.test_servers.ServersAdminTestJSON.test_reset_network_inject_network_info)
+            - (?:tempest.api.compute.servers.test_server_metadata_negative.ServerMetadataNegativeTestJSON.test_delete_metadata_non_existent_server)
+            - (?:tempest.api.compute.servers.test_server_metadata_negative.ServerMetadataNegativeTestJSON.test_metadata_items_limit)
+            - (?:tempest.api.compute.servers.test_server_metadata_negative.ServerMetadataNegativeTestJSON.test_set_metadata_invalid_key)
+            - (?:tempest.api.compute.servers.test_server_metadata_negative.ServerMetadataNegativeTestJSON.test_set_metadata_non_existent_server)
+            - (?:tempest.api.compute.servers.test_server_metadata_negative.ServerMetadataNegativeTestJSON.test_set_server_metadata_blank_key)
+            - (?:tempest.api.compute.servers.test_server_metadata_negative.ServerMetadataNegativeTestJSON.test_set_server_metadata_missing_metadata)
+            - (?:tempest.api.compute.servers.test_server_metadata_negative.ServerMetadataNegativeTestJSON.test_update_metadata_non_existent_server)
+            - (?:tempest.api.compute.servers.test_server_metadata_negative.ServerMetadataNegativeTestJSON.test_update_metadata_with_blank_key)
+            - (?:tempest.api.compute.servers.test_server_metadata.ServerMetadataTestJSON)
+            # deprecated and removed in Pike
+            - (?:tempest.api.compute.certificates.test_certificates.CertificatesV2TestJSON)
+            # deprecated
+            - (?:tempest.api.compute.servers.test_server_personality.ServerPersonalityTestJSON)
+            - (?:tempest.api.compute.servers.test_server_actions.ServerActionsTestJSON.test_change_server_password)
+            - (?:tempest.api.compute.servers.test_servers_negative.ServersNegativeTestJSON.test_personality_file_contents_not_encoded)
+            # Certificate trusts not supported
+            - (?:tempest.api.compute.servers.test_servers.ServerShowV263Test.test_show_update_rebuild_list_server)
+
+            # IRONIC
+            # Skip schedule to all nodes, as in case of concurrent tests, this will highly likely to fail
+            - (?:tempest.scenario.test_server_multinode.TestServerMultinode.test_schedule_to_all_nodes)
+            # Skip ironic boot from volume
+            - (?:ironic_tempest_plugin.tests.scenario.test_baremetal_boot_from_volume.BaremetalBFV.test_baremetal_boot_from_volume)
+            # Skip node introspection tests, MOSK does not support Ironic Inspector
+            - (?:ironic_tempest_plugin.tests.scenario.test_introspection_basic.InspectorBasicTest)
+            - (?:ironic_tempest_plugin.tests.scenario.test_introspection_basic.InspectorDiscoveryTest)
+            # Skip ironic rescue mode tests, rescue mode is not configured in MOSK properly as of now
+            # TODO: PRODX-28092 - support configuration of rescue mode in Ironic
+            - (?:ironic_tempest_plugin.tests.scenario.test_baremetal_basic_ops.BaremetalBasicOpsAndRescue)
+            # Skip multi-tenancy tests, they are partially covered by test_network_basic_ops in smoke
+            # TODO: PRODX-28093 run full multi-tenancy tests for Ironic to fully cover network isolation tests
+            - (?:ironic_tempest_plugin.tests.scenario.test_baremetal_single_tenant.BaremetalSingleTenant)
+            - (?:ironic_tempest_plugin.tests.scenario.test_baremetal_multitenancy.BaremetalMultitenancy)

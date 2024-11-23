@@ -1,0 +1,86 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.job_static_accounts }}
+
+{{- $envAll := . }}
+
+{{- $serviceAccountName := "tempest-static-accounts" }}
+{{ tuple $envAll "static_accounts" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tempest-static-accounts
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+spec:
+  backoffLimit: {{ .Values.jobs.static_accounts.backoffLimit }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "tempest" "static-accounts" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+      restartPolicy: {{ .Values.jobs.static_accounts.restartPolicy }}
+      nodeSelector:
+        {{ .Values.labels.job.node_selector_key }}: {{ .Values.labels.job.node_selector_value }}
+      initContainers:
+{{ tuple $envAll "static_accounts" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+      containers:
+        - name: tempest-static-accounts
+{{ tuple $envAll "tempest_static_accounts" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.static_accounts | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          command:
+            - /tmp/static-accounts.sh
+          env:
+            - name: TEMPEST_DOMAIN_NAME
+              value: {{ .Values.conf.static_accounts.domain_name }}
+            - name: GLANCE_BARBICAN_SECRET_UUID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.conf.barbican_cert.secret_name }}
+                  key: barbican_secret_uuid
+{{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" "tempest-internal" "osCloudNameSystem" "tempest-system-internal" ) | indent 12 }}
+          volumeMounts:
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "tempest" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: tempest-bin
+              mountPath: /tmp/static-accounts.sh
+              subPath: static-accounts.sh
+              readOnly: false
+            - name: tempest-bin
+              mountPath: /tmp/static-accounts-heat-template.yaml
+              subPath: static-accounts-heat-template.yaml
+              readOnly: false
+            - name: os-clouds
+              mountPath: /etc/openstack/clouds.yaml
+              subPath: clouds.yaml
+              readOnly: true
+      volumes:
+{{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "tempest" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
+        - name: pod-tmp
+          emptyDir: {}
+        - name: etctempest
+          emptyDir: {}
+        - name: tempest-bin
+          configMap:
+            name: tempest-bin
+            defaultMode: 504
+        - name: os-clouds
+          secret:
+            secretName: "tempest-os-clouds"
+            defaultMode: 416
+{{- end }}

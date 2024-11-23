@@ -1,0 +1,131 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "ovn.northd.ProbeTemplate" }}
+{{- $envAll := . }}
+{{- $sbPort := tuple "ovn_db" "internal" "sb" $envAll | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- $nbPort := tuple "ovn_db" "internal" "nb" $envAll | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+exec:
+  command:
+    - /tmp/ovn-northd-health-probe.sh
+    - {{ $sbPort | quote }}
+    - {{ $nbPort | quote }}
+{{- end }}
+
+{{- if .Values.manifests.statefulset_ovn_northd }}
+
+{{- $serviceAccountName := "openvswitch-ovn-northd" }}
+{{- $envAll := . }}
+
+{{ tuple $envAll "ovn_northd" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: openvswitch-ovn-northd
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "openvswitch_ovn" "northd" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  serviceName: ovn-northd
+  replicas: {{ .Values.pod.replicas.ovn_northd }}
+  selector:
+    matchLabels:
+{{ tuple $envAll "openvswitch_ovn" "northd" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll | include "helm-toolkit.snippets.kubernetes_upgrades_statefulset" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "openvswitch_ovn" "northd" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+{{ dict "envAll" $envAll "podName" "openvswitch-ovn-northd" "containerNames" (list "northd" "perms" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "openvswitch_ovn_northd" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      affinity:
+{{ tuple $envAll "openvswitch_ovn" "northd" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      nodeSelector:
+        {{ .Values.labels.ovn_northd.node_selector_key }}: {{ .Values.labels.ovn_northd.node_selector_value }}
+      initContainers:
+{{ tuple $envAll "northd" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+        - name: perms
+{{ tuple $envAll "openvswitch_ovn_northd" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "openvswitch_ovn_northd" "container" "perms" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.ovn_northd.northd | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          command:
+            - chown
+            - -R
+            - {{ $envAll.Values.pod.security_context.openvswitch_ovn_northd.pod.runAsUser | quote }}
+            - /run/openvswitch
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: run
+              mountPath: /run/openvswitch/
+      containers:
+        - name: northd
+{{ tuple $envAll "openvswitch_ovn_northd" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "openvswitch_ovn_northd" "container" "northd" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.ovn_northd.northd | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "component" "ovn" "container" "northd" "type" "liveness" "probeTemplate" (include "ovn.northd.ProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "ovn" "container" "northd" "type" "readiness" "probeTemplate" (include "ovn.northd.ProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          command:
+            - /tmp/ovn-northd.sh
+            - start
+          env:
+            - name: OVNNB_DB_PROTO
+              value: {{ tuple "ovn_db" "internal" "nb" $envAll | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" }}
+            - name: OVNNB_DB_HOST
+              value: {{ tuple "ovn_db" "internal" $envAll | include "helm-toolkit.endpoints.endpoint_host_lookup" }}
+            - name: OVNNB_DB_PORT
+              value: {{ tuple "ovn_db" "internal" "nb" $envAll | include "helm-toolkit.endpoints.endpoint_port_lookup" | quote }}
+            - name: OVNSB_DB_PROTO
+              value: {{ tuple "ovn_db" "internal" "sb" $envAll | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" }}
+            - name: OVNSB_DB_HOST
+              value: {{ tuple "ovn_db" "internal" $envAll | include "helm-toolkit.endpoints.endpoint_host_lookup" }}
+            - name: OVNSB_DB_PORT
+              value: {{ tuple "ovn_db" "internal" "sb" $envAll | include "helm-toolkit.endpoints.endpoint_port_lookup" | quote }}
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /tmp/ovn-northd.sh
+                  - stop
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: openvswitch-bin
+              mountPath: /tmp/ovn-northd.sh
+              subPath: ovn-northd.sh
+              readOnly: true
+            - name: openvswitch-bin
+              mountPath: /tmp/ovn-northd-health-probe.sh
+              subPath: ovn-northd-health-probe.sh
+              readOnly: true
+            - name: run
+              mountPath: /run/openvswitch
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: openvswitch-bin
+          configMap:
+            name: openvswitch-bin
+            defaultMode: 365
+        - name: run
+          hostPath:
+            path: /run/ovn
+{{- end }}

@@ -1,0 +1,501 @@
+{%- from 'macros/connections.j2' import to_child_object %}
+{%- set neutron_server_deployment_type = "Deployment"%}
+{%- if spec.get("features", {}).get("neutron", {}).get("backend") == "ml2/ovn" %}
+{%- set neutron_server_deployment_type = "DaemonSet"%}
+{%- endif %}
+libvirt:
+  DaemonSet:
+    libvirt:
+      hash_fields: []
+      images:
+      - libvirt
+      - ceph_config_helper
+      manifest: daemonset_libvirt
+      pod_labels:
+        application: libvirt
+        component: libvirt
+      type: dynamic
+nova:
+  CronJob:
+    nova-cell-setup:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - nova_cell_setup
+      manifest: cron_job_cell_setup
+      pod_labels:
+        application: nova
+        component: cell-setup
+    nova-db-purge:
+      hash_fields: []
+      images:
+      - nova_db_purge
+      manifest: cron_job_db_purge
+      pod_labels:
+        application: nova
+        component: db-purge
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    nova-service-cleaner:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - nova_service_cleaner
+      manifest: cron_job_service_cleaner
+      pod_labels:
+        application: nova
+        component: service-cleaner
+    nova-placement-audit:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("placement", "placement", "Deployment", "placement-api", ["p-api"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - nova_placement_audit
+      manifest: cron_job_placement_audit
+      pod_labels:
+        application: nova
+        component: placement-audit
+  DaemonSet:
+    nova-compute:
+      connections:
+        egress:
+          - {{ to_child_object("compute", "rabbitmq", "StatefulSet", "openstack-nova-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("placement", "placement", "Deployment", "placement-api", ["p-api"]) | indent(12)}}
+          - {{ to_child_object("networking", "neutron", neutron_server_deployment_type, "neutron-server", ["q-api"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("image", "glance", "Deployment", "glance-api", ["g-api"]) | indent(12)}}
+          - {{ to_child_object("block-storage", "cinder", "Deployment", "cinder-api", ["c-api"]) | indent(12)}}
+          - {{ to_child_object("baremetal", "ironic", "Deployment", "ironic-api", ["m-api"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+          - {{ to_child_object("key-manager", "barbican", "Deployment", "barbican-api", ["b-api"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - nova_compute
+      - nova_compute_ssh
+      manifest: daemonset_compute
+      pod_labels:
+        application: nova
+        component: compute
+      type: dynamic
+  Deployment:
+    nova-api-metadata:
+      connections:
+        egress:
+          - {{ to_child_object("compute", "rabbitmq", "StatefulSet", "openstack-nova-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("networking", "neutron", neutron_server_deployment_type, "neutron-server", ["q-api"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - nova_api
+      manifest: deployment_api_metadata
+      pod_labels:
+        application: nova
+        component: metadata
+      ports:
+      - port: 8775
+        name: n-metadata
+        protocol: TCP
+    nova-api-osapi:
+      connections:
+        egress:
+          - {{ to_child_object("compute", "rabbitmq", "StatefulSet", "openstack-nova-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("placement", "placement", "Deployment", "placement-api", ["p-api"]) | indent(12)}}
+          - {{ to_child_object("networking", "neutron", neutron_server_deployment_type, "neutron-server", ["q-api"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("image", "glance", "Deployment", "glance-api", ["g-api"]) | indent(12)}}
+          - {{ to_child_object("block-storage", "cinder", "Deployment", "cinder-api", ["c-api"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+          - {{ to_child_object("key-manager", "barbican", "Deployment", "barbican-api", ["b-api"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - nova_api
+      manifest: deployment_api_osapi
+      pod_labels:
+        application: nova
+        component: os-api
+      ports:
+      - port: 8774
+        name: n-api
+        protocol: TCP
+    nova-consoleauth:
+      connections:
+        egress:
+          - {{ to_child_object("compute", "rabbitmq", "StatefulSet", "openstack-nova-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - nova_consoleauth
+      manifest: deployment_consoleauth
+      pod_labels:
+        application: nova
+        component: consoleauth
+    nova-novncproxy:
+      connections:
+        egress:
+          - {{ to_child_object("compute", "rabbitmq", "StatefulSet", "openstack-nova-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - nova_novncproxy
+      manifest: deployment_novncproxy
+      pod_labels:
+        application: nova
+        component: novnc-proxy
+      ports:
+      - port: 6080
+        name: n-novnc
+        protocol: TCP
+    nova-spiceproxy:
+      connections:
+        egress:
+          - {{ to_child_object("compute", "rabbitmq", "StatefulSet", "openstack-nova-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - nova_spiceproxy
+      manifest: deployment_spiceproxy
+      pod_labels:
+        application: nova
+        component: spice-proxy
+      ports:
+      - port: 6082
+        name: n-spice
+        protocol: TCP
+{%- if OSVer[spec.openstack_version] <= OSVer.stein %}
+    nova-placement-api:
+      connections:
+        egress:
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("compute", "rabbitmq", "StatefulSet", "openstack-nova-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - nova_placement
+      manifest: deployment_placement
+      pod_labels:
+        application: nova
+        component: placement
+      ports:
+        - port: 8778
+          name: p-api
+          protocol: TCP
+{%- endif %}
+  Job:
+    nova-bootstrap:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("compute", "nova", "Deployment", "nova-api-osapi", ["n-api"]) | indent(12)}}
+      hash_fields:
+      - network.proxy.*
+      - bootstrap.*
+      images:
+      - bootstrap
+      manifest: job_bootstrap
+      pod_labels:
+        application: nova
+        component: bootstrap
+    nova-cell-setup:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("compute", "nova", "Deployment", "nova-api-osapi", ["n-api"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - nova_cell_setup
+      - nova_cell_setup_init
+      manifest: job_cell_setup
+      pod_labels:
+        application: nova
+        component: cell-setup
+    nova-db-init:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - db_init
+      manifest: job_db_init
+      pod_labels:
+        application: nova
+        component: db-init
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    nova-db-sync:
+      hash_fields:
+      - endpoints.oslo_db.*
+      - endpoints.oslo_messaging.*
+      images:
+      - nova_db_sync
+      manifest: job_db_sync
+      pod_labels:
+        application: nova
+        component: db-sync
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    nova-db-sync-api:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - nova_db_sync_api
+      manifest: job_db_sync_api
+      pod_labels:
+        application: nova
+        component: db-sync-api
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    nova-db-sync-db:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - nova_db_sync_db
+      manifest: job_db_sync_db
+      pod_labels:
+        application: nova
+        component: db-sync-db
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    nova-db-sync-online:
+      hash_fields: []
+      images:
+      - nova_db_sync_online
+      manifest: job_db_sync_online
+      pod_labels:
+        application: nova
+        component: db-sync-online
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    nova-ks-endpoints:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_endpoints
+      manifest: job_ks_endpoints
+      pod_labels:
+        application: nova
+        component: ks-endpoints
+    nova-ks-service:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_service
+      manifest: job_ks_service
+      pod_labels:
+        application: nova
+        component: ks-service
+    nova-ks-user:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields:
+      - endpoints.*
+      images:
+      - ks_user
+      manifest: job_ks_user
+      pod_labels:
+        application: nova
+        component: ks-user
+{%- if OSVer[spec.openstack_version] <= OSVer.stein %}
+    placement-ks-endpoints:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_endpoints
+      manifest: job_ks_placement_endpoints
+      pod_labels:
+        application: placement
+        component: ks-endpoints
+    placement-ks-service:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_service
+      manifest: job_ks_placement_service
+      pod_labels:
+        application: placement
+        component: ks-service
+    placement-ks-user:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields:
+      - endpoints.*
+      images:
+      - ks_user
+      manifest: job_ks_placement_user
+      pod_labels:
+        application: placement
+        component: ks-user
+  Ingress:
+    placement:
+      hash_fields: []
+      images: []
+      manifest: ingress_placement
+  Secret:
+    placement-tls-public:
+      hash_fields: []
+      images: []
+      manifest: ingress_placement
+  Service:
+    placement:
+      hash_fields: []
+      images: []
+      manifest: service_ingress_placement
+    placement-api:
+      hash_fields: []
+      images: []
+      manifest: service_placement
+{%- endif %}
+  StatefulSet:
+    nova-compute-ironic:
+      connections:
+        egress:
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("placement", "placement", "Deployment", "placement-api", ["p-api"]) | indent(12)}}
+          - {{ to_child_object("networking", "neutron", neutron_server_deployment_type, "neutron-server", ["q-api"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("image", "glance", "Deployment", "glance-api", ["g-api"]) | indent(12)}}
+          - {{ to_child_object("block-storage", "cinder", "Deployment", "cinder-api", ["c-api"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - nova_compute_ironic
+      manifest: statefulset_compute_ironic
+      pod_labels:
+        application: nova
+        component: compute
+    nova-conductor:
+      connections:
+        egress:
+          - {{ to_child_object("compute", "rabbitmq", "StatefulSet", "openstack-nova-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - nova_conductor
+      manifest: statefulset_conductor
+      pod_labels:
+        application: nova
+        component: conductor
+    nova-scheduler:
+      connections:
+        egress:
+          - {{ to_child_object("compute", "rabbitmq", "StatefulSet", "openstack-nova-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("placement", "placement", "Deployment", "placement-api", ["p-api"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - nova_scheduler
+      manifest: statefulset_scheduler
+      pod_labels:
+        application: nova
+        component: scheduler
+rabbitmq:
+  Deployment:
+    openstack-nova-rabbitmq-rabbitmq-exporter:
+      connections:
+        egress:
+          - {{ to_child_object("compute", "rabbitmq", "StatefulSet", "openstack-nova-rabbitmq-rabbitmq", ["http"]) | indent(12)}}
+      images:
+      - prometheus_rabbitmq_exporter
+      manifest: ''
+      hash_fields: []
+      pod_labels:
+        application: prometheus_rabbitmq_exporter
+        component: exporter
+        release_group: openstack-nova-rabbitmq
+      ports:
+      - port: 9095
+        name: metrics
+        protocol: TCP
+  StatefulSet:
+    openstack-nova-rabbitmq-rabbitmq:
+      images:
+      - rabbitmq_init
+      - rabbitmq
+      manifest: ''
+      hash_fields: []
+      pod_labels:
+        application: rabbitmq
+        component: server
+        release_group: openstack-nova-rabbitmq
+      ports:
+      - port: 15672
+        name: http
+        protocol: TCP
+      - port: 5672
+        name: amqp
+        protocol: TCP
+      - port: 25672
+        name: clustering
+        protocol: TCP
+      - port: 15692
+        name: metrics
+        protocol: TCP
+  Job:
+    openstack-nova-rabbitmq-cluster-wait:
+      hash_fields:
+      - endpoints.oslo_messaging.*
+      images:
+      - rabbitmq_scripted_test
+      manifest: job_cluster_wait
+      pod_labels:
+        application: rabbitmq
+        component: cluster-wait
+        release_group: openstack-nova-rabbitmq
+      connections:
+        egress:
+          - {{ to_child_object("compute", "rabbitmq", "StatefulSet", "openstack-nova-rabbitmq-rabbitmq", ["http"]) | indent(12)}}

@@ -1,0 +1,85 @@
+{{/*
+Copyright 2019 The Openstack-Helm Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.job_run_tests }}
+
+{{- $envAll := . }}
+
+{{- $serviceAccountName := "stepler-run-tests" }}
+{{ tuple $envAll "run_tests" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-run-tests
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+spec:
+  backoffLimit: {{ .Values.jobs.run_tests.backoffLimit }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "stepler" "run-tests" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+      restartPolicy: {{ .Values.jobs.run_tests.restartPolicy }}
+      nodeSelector:
+        {{ .Values.labels.job.node_selector_key }}: {{ .Values.labels.job.node_selector_value }}
+      initContainers:
+        {{ tuple $envAll "run_tests" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+      containers:
+        - name: stepler-run-tests
+{{ tuple $envAll "stepler_run_tests" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.run_tests | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          command:
+            - /tmp/run-tests.sh
+          env:
+          volumeMounts:
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "stepler" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: stepler-bin
+              mountPath: /tmp/run-tests.sh
+              subPath: run-tests.sh
+              readOnly: true
+            - name: stepler-etc
+              mountPath: /etc/stepler/stepler-env.conf
+              subPath: stepler-env.conf
+            - name: stepler-bin
+              mountPath: /etc/stepler/skiplist.yaml
+              subPath: skiplist.yaml
+            - name: stepler-reports
+              mountPath: /opt/stepler/test_reports
+      volumes:
+{{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "stepler" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
+        - name: pod-tmp
+          emptyDir: {}
+        - name: stepler-etc
+          secret:
+            secretName: stepler-etc
+            defaultMode: 416
+        - name: stepler-bin
+          configMap:
+            name: stepler-bin
+            defaultMode: 504
+        - name: stepler-reports
+        {{- if not .Values.pvc.enabled }}
+          emptyDir: {}
+        {{- else }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.pvc.name }}
+        {{- end }}
+{{- end }}

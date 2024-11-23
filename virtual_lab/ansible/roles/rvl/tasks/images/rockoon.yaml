@@ -1,0 +1,17 @@
+- name: Install the docker client
+  ansible.builtin.package:
+    name:
+      - docker.io
+    state: latest
+
+- name: Build oc image
+  community.docker.docker_image:
+    build:
+      path: "{{ rvl_directory }}"
+      args:
+        FROM: "{{ rvl_images_ubuntu_base }}"
+    name: "{{ rvl_images_rockoon }}"
+    tag: "{{ rvl_images_build_tag }}"
+    push: true
+    source: build
+  when: rvl_images_build_rockoon

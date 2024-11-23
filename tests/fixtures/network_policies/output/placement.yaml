@@ -1,0 +1,73 @@
+placement:placement:Deployment:placement-api:
+- from:
+  - podSelector:
+      matchLabels:
+        application: ironic
+        component: api
+  - podSelector:
+      matchLabels:
+        application: ironic
+        component: conductor
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: placement-audit
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: compute
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: os-api
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: compute
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: scheduler
+  - podSelector:
+      matchLabels:
+        application: keystone
+        component: client
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: dhcp-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: dr-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: l2gw-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: l3-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: metadata-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: neutron-ovs-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: neutron-sriov-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: server
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: ironic-agent
+  ports:
+  - port: 8778
+    protocol: TCP

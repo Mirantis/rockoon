@@ -1,0 +1,9 @@
+parameters:
+  octavia:
+    manager:
+      message_queue:
+        ~members:
+        - host: ${_param:mcp2_rabbitmq_octavia_address}
+        password: ${_param:mcp2_rabbitmq_octavia_password}
+        user: ${_param:mcp2_rabbitmq_octavia_username}
+        virtual_host: 'octavia'

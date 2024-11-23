@@ -1,0 +1,108 @@
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Default values for iscsi
+# This is a YAML-formatted file.
+# Declare name/value pairs to be passed into your templates.
+# name: value
+
+---
+release_group: null
+
+labels:
+  iscsi:
+    node_selector_key: openstack-compute-node
+    node_selector_value: enabled
+  tgt:
+    node_selector_key: openstack-compute-node
+    node_selector_value: enabled
+
+images:
+  tags:
+    iscsi_iscsi: docker-dev-kaas-local.docker.mirantis.net/openstack/cinder:ussuri-bionic-20210405180643
+    iscsi_tgt: docker-dev-kaas-local.docker.mirantis.net/openstack/cinder:ussuri-bionic-20210405180643
+    dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
+  pull_policy: "IfNotPresent"
+  local_registry:
+    active: false
+    exclude:
+      - dep_check
+      - image_repo_sync
+
+conf:
+  targets: |
+    include /etc/tgt/conf.d/*.conf
+    include /var/lib/cinder/volumes/*
+pod:
+  security_context:
+    tgt:
+      container:
+        tgtd:
+          runAsUser: 0
+          readOnlyRootFilesystem: true
+          privileged: true
+    iscsi:
+      container:
+        iscsid:
+          runAsUser: 0
+          readOnlyRootFilesystem: true
+          privileged: true
+  lifecycle:
+    upgrades:
+      daemonsets:
+        pod_replacement_strategy: RollingUpdate
+        tgt:
+          enabled: true
+          min_ready_seconds: 0
+          max_unavailable: 1
+        iscsi:
+          enabled: true
+          min_ready_seconds: 0
+          max_unavailable: 1
+  resources:
+    enabled: false
+    tgt:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    iscsi:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+
+dependencies:
+  dynamic:
+    common: {}
+  static:
+    tgt:
+      services: null
+    iscsi:
+      services: null
+
+manifests:
+  configmap_bin_tgt: true
+  configmap_etc_tgt: true
+  configmap_bin_iscsi: false
+  configmap_etc_iscsi: false
+  daemonset_tgt: true
+  # NOTE(vsaienko): use host based iscsi for now
+  # https://www.docker.com/blog/road-to-containing-iscsi/
+  daemonset_iscsi: false
+  network_policy_iscsi: false
+  network_policy_tgt: false
+...

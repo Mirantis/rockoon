@@ -1,0 +1,9 @@
+parameters:
+  designate:
+    server:
+      message_queue:
+        ~members:
+        - host: ${_param:mcp2_rabbitmq_designate_address}
+        password: ${_param:mcp2_rabbitmq_designate_password}
+        user: ${_param:mcp2_rabbitmq_designate_username}
+        virtual_host: 'designate'

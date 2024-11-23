@@ -1,0 +1,354 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "conductorProbeTemplate" }}
+{{- $probeType := . }}
+exec:
+  command:
+    - python
+    - /tmp/health-probe.py
+    - --config-file
+    - /etc/ironic/ironic.conf
+    - --process-name
+    - ironic-conductor
+    - --probe-type
+    - {{ $probeType }}
+    - --check
+    - database_sockets
+{{- end }}
+
+{{- define "conductorHttpProbeTemplate" }}
+exec:
+  command:
+    - "true"
+{{- end }}
+
+{{- define "conductorPxeProbeTemplate" }}
+exec:
+  command:
+    - /tmp/pxe-health-probe.sh
+{{- end }}
+
+{{- if .Values.manifests.statefulset_conductor }}
+{{- $envAll := . }}
+
+{{- $mounts_ironic_conductor := .Values.pod.mounts.ironic_conductor.ironic_conductor }}
+{{- $mounts_ironic_conductor_init := .Values.pod.mounts.ironic_conductor.init_container }}
+
+{{- $serviceAccountName := "ironic-conductor" }}
+{{ tuple $envAll "conductor" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ironic-conductor
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "ironic" "conductor" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  serviceName: ironic-conductor
+  replicas: {{ .Values.pod.replicas.conductor }}
+  selector:
+    matchLabels:
+{{ tuple $envAll "ironic" "conductor" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "ironic" "conductor" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+        endpoints-hash: {{ .Values.endpoints | include "helm-toolkit.utils.get_hash" }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+      affinity:
+{{ tuple $envAll "ironic" "conductor" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      nodeSelector:
+        {{ .Values.labels.conductor.node_selector_key }}: {{ .Values.labels.conductor.node_selector_value }}
+{{ dict "envAll" $envAll "application" "ironic_conductor" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      hostNetwork: True
+      hostIPC: True
+      dnsPolicy: ClusterFirstWithHostNet
+      initContainers:
+{{ tuple $envAll "conductor" $mounts_ironic_conductor_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+        - name: ironic-conductor-pxe-init
+{{ tuple $envAll "ironic_pxe_init" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.conductor | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "ironic_conductor" "container" "ironic_conductor_pxe_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/ironic-conductor-pxe-init.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: ironic-bin
+              mountPath: /tmp/ironic-conductor-pxe-init.sh
+              subPath: ironic-conductor-pxe-init.sh
+              readOnly: true
+            - name: pod-data
+              mountPath: /var/lib/openstack-helm
+        - name: ironic-conductor-init
+{{ tuple $envAll "ironic_conductor" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.conductor | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "ironic_conductor" "container" "ironic_conductor_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+            - name: PROVISIONER_INTERFACE
+              value: {{ .Values.network.pxe.device }}
+          command:
+            - /tmp/ironic-conductor-init.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: ironic-bin
+              mountPath: /tmp/ironic-conductor-init.sh
+              subPath: ironic-conductor-init.sh
+              readOnly: true
+            - name: pod-shared
+              mountPath: /tmp/pod-shared
+        - name: ironic-conductor-http-init
+{{ tuple $envAll "ironic_conductor" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.conductor | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "ironic_conductor" "container" "ironic_conductor_http_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+            - name: PROVISIONER_INTERFACE
+              value: {{ .Values.network.pxe.device }}
+          command:
+            - /tmp/ironic-conductor-http-init.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: ironic-bin
+              mountPath: /tmp/ironic-conductor-http-init.sh
+              subPath: ironic-conductor-http-init.sh
+              readOnly: true
+            - name: ironic-etc
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+              readOnly: true
+            - name: pod-shared
+              mountPath: /tmp/pod-shared
+            - name: pod-data
+              mountPath: /var/lib/openstack-helm
+            - name: host-var-lib-ironic
+              mountPath: /var/lib/ironic
+{{ tuple $envAll "ironic" "ironic_conductor" | include "helm-toolkit.snippets.kubernetes_cacert_init_container" | indent 8 }}
+{{- if and (.Values.bootstrap.object_store.enabled) (.Values.bootstrap.object_store.openstack.enabled) }}
+        - name: ironic-retrieve-swift-config
+{{ tuple $envAll "ironic_retrieve_swift_config" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.conductor | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "ironic_conductor" "container" "ironic_retrieve_swift_config" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+            - name: OS_SWIFT_API_VERSION
+              value: {{ .Values.conf.ironic.glance.swift_api_version | quote }}
+{{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" "glance" ) | indent 12 }}
+          command:
+            - /tmp/retrieve-swift-config.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: ironic-bin
+              mountPath: /tmp/retrieve-swift-config.sh
+              subPath: retrieve-swift-config.sh
+              readOnly: true
+            - name: pod-shared
+              mountPath: /tmp/pod-shared
+            - name: os-clouds
+              mountPath: /etc/openstack/clouds.yaml
+              subPath: clouds.yaml
+              readOnly: true
+{{- end }}
+{{- if and (.Values.bootstrap.network.enabled) (.Values.bootstrap.network.openstack.enabled) }}
+        - name: ironic-retrieve-nets
+{{ tuple $envAll "ironic_retrieve_networks" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.conductor | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "ironic_conductor" "container" "ironic_retrieve_nets" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+{{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" "ironic" ) | indent 12 }}
+          command:
+            - /tmp/retrieve-networks.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: ironic-bin
+              mountPath: /tmp/retrieve-networks.sh
+              subPath: retrieve-networks.sh
+              readOnly: true
+            - name: pod-shared
+              mountPath: /tmp/pod-shared
+            - name: os-clouds
+              mountPath: /etc/openstack/clouds.yaml
+              subPath: clouds.yaml
+              readOnly: true
+{{- end }}
+      containers:
+        - name: ironic-conductor
+{{ tuple $envAll "ironic_conductor" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.conductor | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "ironic_conductor" "container" "ironic_conductor" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ dict "envAll" $envAll "component" "conductor" "container" "conductor" "type" "liveness" "probeTemplate" (include "conductorProbeTemplate" "liveness" | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "conductor" "container" "conductor" "type" "readiness" "probeTemplate" (include "conductorProbeTemplate" "readiness" | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          env:
+            - name: REQUESTS_CA_BUNDLE
+              value: /certs/ca-bundle.pem
+          command:
+            - /tmp/ironic-conductor.sh
+          volumeMounts:
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "ironic" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: ironic-bin
+              mountPath: /tmp/ironic-conductor.sh
+              subPath: ironic-conductor.sh
+              readOnly: true
+            - name: pod-shared
+              mountPath: /tmp/pod-shared
+            - name: pod-var-cache-ironic
+              mountPath: /var/cache/ironic
+            - name: ironic-etc
+              mountPath: /etc/ironic/ironic.conf
+              subPath: ironic.conf
+              readOnly: true
+            {{- if .Values.conf.ironic.DEFAULT.log_config_append }}
+            - name: ironic-etc
+              mountPath: {{ .Values.conf.ironic.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.ironic.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+            - name: ironic-oslo-policy
+              mountPath: /etc/ironic/policy.d/
+            - name: host-var-lib-ironic
+              mountPath: /var/lib/ironic
+            - name: host-run
+              mountPath: /var/run
+            - name: host-dev
+              mountPath: /dev
+              mountPropagation: HostToContainer
+            - name: host-sys
+              mountPath: /sys
+            - name: pod-data
+              mountPath: /var/lib/openstack-helm
+            - name: ironic-bin
+              mountPath: /tmp/health-probe.py
+              subPath: health-probe.py
+              readOnly: true
+{{ if $mounts_ironic_conductor.volumeMounts }}{{ toYaml $mounts_ironic_conductor.volumeMounts | indent 12 }}{{ end }}
+        - name: ironic-conductor-pxe
+{{ tuple $envAll "ironic_pxe" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.conductor | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "ironic_conductor" "container" "ironic_conductor_pxe" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ dict "envAll" $envAll "component" "conductor" "container" "conductor_pxe" "type" "liveness" "probeTemplate" (include "conductorPxeProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "conductor" "container" "conductor_pxe" "type" "readiness" "probeTemplate" (include "conductorPxeProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          env:
+            - name: REQUESTS_CA_BUNDLE
+              value: /certs/ca-bundle.pem
+            - name: PROVISIONER_INTERFACE
+              value: {{ .Values.network.pxe.device }}
+          command:
+            - /tmp/ironic-conductor-pxe.sh
+          volumeMounts:
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "ironic" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: ironic-bin
+              mountPath: /tmp/ironic-conductor-pxe.sh
+              subPath: ironic-conductor-pxe.sh
+              readOnly: true
+            - name: ironic-etc
+              mountPath: /tftp-map-file
+              subPath: tftp-map-file
+              readOnly: true
+            - name: pod-data
+              mountPath: /var/lib/openstack-helm
+        - name: ironic-conductor-http
+{{ tuple $envAll "ironic_pxe_http" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.conductor | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "ironic_conductor" "container" "ironic_conductor_http" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ dict "envAll" $envAll "component" "conductor" "container" "conductor_http" "type" "liveness" "probeTemplate" (include "conductorHttpProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "conductor" "container" "conductor_http" "type" "readiness" "probeTemplate" (include "conductorHttpProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          env:
+            - name: REQUESTS_CA_BUNDLE
+              value: /certs/ca-bundle.pem
+          command:
+            - /tmp/ironic-conductor-http.sh
+          volumeMounts:
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "ironic" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: ironic-bin
+              mountPath: /tmp/ironic-conductor-http.sh
+              subPath: ironic-conductor-http.sh
+              readOnly: true
+            - name: pod-shared
+              mountPath: /tmp/pod-shared
+              readOnly: true
+            - name: pod-data
+              mountPath: /var/lib/openstack-helm
+            - mountPath: /etc/nginx/nginx.conf
+              name: pod-shared
+              readOnly: true
+              subPath: nginx.conf
+            - mountPath: /var/cache/nginx
+              name: var-cache-nginx
+            - mountPath: /var/log/nginx
+              name: var-log-nginx
+            - mountPath: /run/nginx
+              name: run-nginx
+{{ if $mounts_ironic_conductor.volumeMounts }}{{ toYaml $mounts_ironic_conductor.volumeMounts | indent 12 }}{{ end }}
+      volumes:
+{{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "ironic" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
+        - name: pod-tmp
+          emptyDir: {}
+        - name: pod-shared
+          emptyDir: {}
+        - name: pod-var-cache-ironic
+          emptyDir: {}
+        - emptyDir: {}
+          name: var-cache-nginx
+        - emptyDir: {}
+          name: var-log-nginx
+        - emptyDir: {}
+          name: run-nginx
+        - name: ironic-bin
+          configMap:
+            name: ironic-bin
+            defaultMode: 504
+        - name: os-clouds
+          secret:
+            secretName: {{ .Chart.Name }}-os-clouds
+            defaultMode: 416
+        - name: ironic-etc
+          secret:
+            secretName: ironic-etc
+            defaultMode: 416
+        - name: ironic-oslo-policy
+          secret:
+            secretName: ironic-oslo-policy
+            defaultMode: 416
+        - name: host-var-lib-ironic
+          hostPath:
+            path: /var/lib/ironic
+        - name: host-run
+          hostPath:
+            path: /var/run
+        - name: host-dev
+          hostPath:
+            path: /dev
+        - name: host-sys
+          hostPath:
+            path: /sys
+        - name: pod-data
+          emptyDir: {}
+{{ if $mounts_ironic_conductor.volumes }}{{ toYaml $mounts_ironic_conductor.volumes | indent 8 }}{{ end }}
+{{- end }}

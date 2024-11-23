@@ -1,0 +1,21 @@
+- name: label OS controllers
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      apiVersion: v1
+      kind: Node
+      metadata:
+        name: "{{ item }}"
+        labels: "{{ rvl_k8s_node_labels['controller'] }}"
+  loop: "{{ groups.controllers }}"
+
+- name: label OS computes
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      apiVersion: v1
+      kind: Node
+      metadata:
+        name: "{{ item }}"
+        labels: "{{ rvl_k8s_node_labels['compute'] }}"
+  loop: "{{ groups.computes }}"

@@ -1,0 +1,4 @@
+        oslo_cache:
+          statefulset:
+            name: openstack-memcached-memcached
+            replicas: 3

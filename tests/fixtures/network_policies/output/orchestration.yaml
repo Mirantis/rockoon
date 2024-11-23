@@ -1,0 +1,32 @@
+orchestration:heat:Deployment:heat-api:
+- from:
+  - podSelector:
+      matchLabels: &id001
+        application: horizon
+        component: server
+  - podSelector:
+      matchLabels: &id002
+        application: keystone
+        component: client
+  - podSelector:
+      matchLabels: &id003
+        application: ingress
+        component: server
+  - podSelector:
+      matchLabels:
+        application: tempest
+        component: static-accounts
+  ports:
+  - port: 8004
+    protocol: TCP
+orchestration:heat:Deployment:heat-cfn:
+- from:
+  - podSelector:
+      matchLabels: *id001
+  - podSelector:
+      matchLabels: *id002
+  - podSelector:
+      matchLabels: *id003
+  ports:
+  - port: 8000
+    protocol: TCP

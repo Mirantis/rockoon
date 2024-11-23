@@ -1,0 +1,39 @@
+{{/*
+Copyright 2017 The Openstack-Helm Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.service_powerdns_external }}
+{{- $serviceName := tuple "powerdns" "internal" . | include "helm-toolkit.endpoints.hostname_short_endpoint_lookup" }}
+{{- $envAll := . }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ printf "%s-external" $serviceName }}
+  annotations:
+{{- if .Values.manifests.service_powerdns_external_tcp }}
+    metallb.universe.tf/allow-shared-ip: {{ printf "%s-external-tcp" $serviceName }}
+{{- end }}
+{{ tuple $envAll "powerdns_external" | include "helm-toolkit.snippets.kubernetes_metadata_annotations" | indent 4 }}
+spec:
+  type: LoadBalancer
+  ports:
+    - port: {{ tuple "powerdns" "internal" "powerdns" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+      name: pdns-udp
+      protocol: UDP
+  selector:
+{{ tuple $envAll "designate" "mdns" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+{{ .Values.network.powerdns.external | include "helm-toolkit.snippets.service_params" | indent 2 }}
+{{ end }}

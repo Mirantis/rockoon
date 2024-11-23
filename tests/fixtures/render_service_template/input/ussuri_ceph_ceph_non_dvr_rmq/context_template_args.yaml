@@ -1,0 +1,468 @@
+block-storage:
+  is_ceph_enabled: true
+  ceph:
+    cinder:
+      keyring: 'AQDLZLJfNPtTOxAAQm248Q9AyoirvELaSyPz5w==
+
+        '
+      pools:
+        backup-hdd:
+          name: backup-hdd
+          role: backup
+        volumes-hdd:
+          name: volumes-hdd
+          role: volumes
+      secrets: cinder-rbd-keyring
+      username: cinder
+    mon_host:
+      - "10.10.10.1:6789"
+      - "10.10.10.2:6789"
+      - "10.10.10.3:6789"
+  credentials: &credentials_block-storage
+  - database:
+      user:
+        password: 8xckAGB149FBiBsPfawjSqRNNF7lvXmM
+        username: cinder1rKIan
+    memcached: 76HsSsABaJvTQU6I
+    messaging:
+      user:
+        password: KgjY6ghlVbGSKJL6DH2jQXH50EtBVsiC
+        username: cinder0Jhxmf
+    notifications:
+      user:
+        password: ptehSf4lZxF0TAs16INhV9XmuVXHbL6R
+        username: cinderU5dqXt
+    identity:
+      cinder:
+        password: 7SJvTD3HZ4gm3eU2UDGdjrcZC4wyj2zA
+        username: cinderJCh8Iz
+      test:
+        password: 55Y1R3QdGFvuntBCtD2iNZQcZiQUnsTJ
+        username: testtFQE
+  keystone_creds: {}
+compute:
+  is_ceph_enabled: true
+  ceph:
+    nova:
+      keyring: AQDNZLJf8S+fORAA6hg50Jo+vBq07kxtBXB9PQ==
+      pools:
+        vms-hdd:
+          name: vms-hdd
+          role: vms
+      secrets: nova-rbd-keyring
+      username: nova
+    cinder:
+      keyring: AQDLZLJfNPtTOxAAQm248Q9AyoirvELaSyPz5w==
+      pools:
+        volumes-hdd:
+          name: volumes-hdd
+          role: volumes
+      secrets: cinder-rbd-keyring
+      username: cinder
+    mon_host:
+      - "10.10.10.1:6789"
+      - "10.10.10.2:6789"
+      - "10.10.10.3:6789"
+  credentials: &credentials_compute
+  - database:
+      user:
+        password: sZ43nXhtf9PEV0UaNBk5VITz0FTwDAM8
+        username: novaQvW6
+    memcached: JinzIdQzLdIslgxu
+    messaging:
+      user:
+        password: tuzgvismPceyDLXGeq1cpQcDIQDwIyhr
+        username: nova27zb
+    notifications:
+      user:
+        password: 55HghKuwQUTPlVFt8UKM6JhIGQ8egSLP
+        username: novauvhH
+    identity:
+      nova:
+        password: BLFKrb8JhAMBb1v9BnRGDckMaYY7XUbq
+        username: novaZzHG
+      test:
+        password: YJh7cWqBdT8R5ylm3LD0aKw4V3DtlS8p
+        username: testb2yA
+  metadata_secret: mN0aLDTcg1AVqyLWNDjCd2Jz6DA61cZJ
+  keystone_creds:
+    neutron:
+      password: 9d4CIP5ismqTa7l5N5FdD8MAuFMXx9EV
+      username: neutronnmAhFsr
+    placement:
+      password: AEYVXR3LFUbLcePQlkxSFvbQ1WyWtaiY
+      username: placementR3AqaC4te
+  ssh_credentials:
+    private: COMPUTE TEST SSH PRIVATE KEY
+    public: COMPUTE TEST SSH PUBLIC KEY
+coordination:
+  credentials: null
+  keystone_creds: {}
+dashboard:
+  os_policy_services: ['cinder', 'nova', 'designate', 'keystone', 'glance', 'neutron', 'heat', 'octavia', 'barbican', 'placement', 'ironic', 'aodh', 'panko', 'gnocchi', 'masakari']
+  rgw_internal_cacert: "RGW CRT"
+  credentials: &credentials_dashboard
+  - database:
+      user:
+        password: rBJDRdVaBH92I8zKHuBeKvtYSq8661ZE
+        username: horizonf2AZh0J
+    memcached: KsksRIzFV8aQzEcL
+    messaging:
+      user:
+        password: RcRa3Te0yKZEUlAemKhHEbe6fUNYqDgB
+        username: horizonqddV2Jv
+    notifications:
+      user:
+        password: yaZ2s3GLtcuT7rKHenxFUMCr3ZNumHvA
+        username: horizonJnVdJYu
+    secret_key: kQt7XsbPVNDABuHyngdJuppnzP5i82Mz
+    identity:
+      horizon:
+        password: MNysGxHJy8xYI8LmZjS3QrJC6N10XsFZ
+        username: horizonhGcF8rA
+      test:
+        password: 5Q52SdTD0ern0aJ6AMcraLqh0rbUbGJr
+        username: test5JeB
+  keystone_creds: {}
+database:
+  galera_creds:
+    audit:
+      password: FLrW91FwKgBvunCRdbvLAHYGJ5zTC6tk
+      username: auditfHeBI
+    backup:
+      password: HxPZlfzlEkk4GKUNFyDs4JeNa8gtlPFn
+      username: backup0LlWwe
+    exporter:
+      password: 7STInCAmfXhY01JfYd293nhewuQxG10m
+      username: exportergr8suIPh
+    sst:
+      password: RbLblzhS7yNE8WQ4nY829uRQpvTegI87
+      username: sstybw
+    openssl_kek: opensslkek
+dns:
+  credentials: &credentials_dns
+  - database:
+      user:
+        password: UYBLfmPtWfLqWw3rgcR0Jf4NTqzWtTIG
+        username: designate9fbxYXW1E
+    memcached: zdLlg6VAsGH6E7tX
+    messaging:
+      user:
+        password: tBFq4j3X2PdA5Jh9x2kkR0Hgs7FZhdFE
+        username: designatePLbJrH4JP
+    notifications:
+      user:
+        password: nzsKJHIGHIwsildBgpfmZQDan7Cexzc1
+        username: designateUMq5w6Q7G
+    identity:
+      designate:
+        password: KBecvsPZsWBFzDqYnevHWArm7tFycZKr
+        username: designateLeRjiDsyT
+      test:
+        password: YspSgibZuHb2lFBxM8kzDDtstsrEqbWM
+        username: testQuxr
+  powerdns:
+    api_key: '"YiXHHuH21qlTtdv7"'
+    database:
+      password: EMG3I4EUNat5buHSUW9kmzFIdiCMSZRZ
+      username: powerdns4TuEzVpk
+  keystone_creds: {}
+identity:
+  rgw_internal_cacert: "RGW CRT"
+  credentials: &credentials_identity
+  - database:
+      user:
+        password: GW4MBjKLshsGdLI38kKUpR2gm3SQiHFp
+        username: keystonemzhwDmzj
+    memcached: x2CRuwvJytT5kAv7
+    messaging:
+      user:
+        password: i1LUJuYCIEeUdpKbztpemVvIQhmJ56cn
+        username: keystoneeYwYK03G
+    notifications:
+      user:
+        password: TzLbvAXVJKzX4klDdVWEuYnWf35hVBTf
+        username: keystonefz7wkYYH
+    identity:
+      keystone:
+        password: CZTF3XgNSfbahGGcx0EnjzqTQspr9aPi
+        username: keystonesCHMyIkz
+      test:
+        password: lIaVpAA3RiymRzerAWbNYFj5XfSitjcL
+        username: testQALi
+  keystone_creds: {}
+  credentials_secret_name: keystone-credential-data
+  fernet_secret_name: keystone-fernet-data
+image:
+  is_ceph_enabled: true
+  ceph:
+    glance:
+      keyring: 'AQDKZLJfoTtgAhAA7f9e8GriyIpFbj8Ez88l2A==
+
+        '
+      pools:
+        images-hdd:
+          name: images-hdd
+          role: images
+      secrets: glance-rbd-keyring
+      username: glance
+    mon_host:
+      - "10.10.10.1:6789"
+      - "10.10.10.2:6789"
+      - "10.10.10.3:6789"
+  credentials: &credentials_image
+  - database:
+      user:
+        password: vwAUndcvyeKBi455lrWGkB8NAUXEeWVn
+        username: glanceFEVFCm
+    memcached: yXjj5J8Ad1hHdCCh
+    messaging:
+      user:
+        password: a1tgZk2bR7f5WyweUt2a4PuFYEty6Igv
+        username: glanceFjTBUv
+    notifications:
+      user:
+        password: uYRL35JdXg39DumFdDG8xdJeqvL0cswM
+        username: glancejdih0V
+    identity:
+      glance:
+        password: tAXKyhKBuNVBHlbRPvC1C24f3U4wqbhm
+        username: glancefVB5ZF
+      test:
+        password: UBCA8WZMUg3PDSAD5ppiLNNZrNjWAEBI
+        username: test5RyH
+  keystone_creds: {}
+ingress:
+  credentials: null
+  keystone_creds: {}
+key-manager:
+  credentials: &credentials_key-manager
+  - database:
+      user:
+        password: R441HIJxfNF8iAfAfwxASnndFXqSBfVn
+        username: barbicanteW3kGBC
+    kek: SDJTR0lEQVFXeFhkMjdyS05WVGxnR3MxbHkxWlNIaWg=
+    memcached: 3vySYJq0rDZ32KGG
+    messaging:
+      user:
+        password: iHMN1WsAMxAi8G4d0r64iggSdedSRR1p
+        username: barbicanVuqCvFid
+    notifications:
+      user:
+        password: acH2p6deh90bDJWlRDzFE7wptqgQgVc7
+        username: barbicanyfHtXhiq
+    identity:
+      barbican:
+        password: fUPlF2xntwICHH8KDYEjuc4Seb1TNQ8d
+        username: barbican8Xfl6MhP
+      test:
+        password: KI40mJVQ9fZP3MBZLpgrFSf2nqZIbbqg
+        username: testC7BY
+  keystone_creds: {}
+load-balancer:
+  credentials: &credentials_load-balancer
+  - database:
+      user:
+        password: jBxCDfusABmmmeBcY7ZUb6pVtTX2ip9s
+        username: octaviaFEzC0Qa
+    memcached: cAZLeChP79lxHJ1Z
+    messaging:
+      user:
+        password: P4tAIFt2fRzEddPyPmfCmBcInbNdCI9S
+        username: octaviaGrHbrrp
+    notifications:
+      user:
+        password: xcKEJVAYZflpAmEWcyzTKpvNlJycCLvc
+        username: octaviadRDTSj1
+    identity:
+      octavia:
+        password: VdeaqYEJb5UWW3TCxCMBNWIlzkcy94W7
+        username: octaviafgirF49
+      test:
+        password: Y6tYdn0ShRF69ZrXKeaa3sNYT8Y7AlP8
+        username: testcnVC
+  redis_namespace: openstack-redis
+  redis_secret: cfLDYSsNbuCywa6VmBvZ8h2sJXuZnvqW
+  keystone_creds: {}
+  ssh_credentials:
+    private: "LOAD BALANCER TEST SSH PRIVATE KEY"
+    public: "LOAD BALANCER TEST SSH PUBLIC KEY"
+memcached:
+  credentials: null
+  keystone_creds: {}
+networking:
+  credentials: &credentials_networking
+  - database:
+      user:
+        password: knwFGHdZ6KCqcKqBidXXEqiEpZhBD7h4
+        username: neutrondrGjrFm
+    memcached: 4zDhycwch09UPx4j
+    messaging:
+      user:
+        password: TRRhbnUMsepnqSzyJngJtgZD9gRu0Fwy
+        username: neutronx7uHpit
+    metadata_secret: mN0aLDTcg1AVqyLWNDjCd2Jz6DA61cZJ
+    notifications:
+      user:
+        password: hL3STFyPBLCdR2qUCdaGEUeRB5jRIFPf
+        username: neutrontvAcFA3
+    identity:
+      neutron:
+        password: 9d4CIP5ismqTa7l5N5FdD8MAuFMXx9EV
+        username: neutronnmAhFsr
+      test:
+        password: q38BqVBqRH8mwfvI3uZeTmwe7JhKm3q1
+        username: testLJtA
+  keystone_creds:
+    nova:
+      password: BLFKrb8JhAMBb1v9BnRGDckMaYY7XUbq
+      username: novaZzHG
+    designate:
+      password: KBecvsPZsWBFzDqYnevHWArm7tFycZKr
+      username: designateLeRjiDsyT
+orchestration:
+  credentials: &credentials_orchestration
+  - database:
+      user:
+        password: nCaJwL99CRHY0gPNfEmihxtVAbrNGgCD
+        username: heatuQjt
+    memcached: 7JNLzlMydG5nxe80
+    messaging:
+      user:
+        password: BY5CvE9aGG3jUkQghTCACvcDZbp6VcUI
+        username: heatekEb
+    notifications:
+      user:
+        password: GPQzkiL39fEDGEWn6DIZGBxkjXBuDpQe
+        username: heatKQF7
+    identity:
+      heat_trustee:
+        password: Y2Lue7K2AP7MSqZBcFDlsaCbdBMaW612
+        username: heat_trustee2Z9xQdWPIsCJ
+      heat_stack_user:
+        password: NcS3SPS193Kzn6thbf3z4NgaQhnQJvd0
+        username: heat_stack_useraPNg9FUFALHAHdG
+      heat:
+        password: u21jJUD1Gfy1aJ0aLmP9vZCHwc6KP1Ct
+        username: heatJAfw
+      test:
+        password: nDsJytWemY6VcFv0jxqsg7QHBRgetQF7
+        username: testyRGH
+  keystone_creds: {}
+placement:
+  credentials: &credentials_placement
+  - database:
+      user:
+        password: FdmszFTEuCvADMYGShqdBqLzuczyZf4c
+        username: placementEqEMt8aUc
+    memcached: 0NZmrV1NcBFwzDmv
+    messaging:
+      user:
+        password: fHqGcwsr7qzdy0taDQliyRMzA7S6xgYg
+        username: placementwB77qXfl0
+    notifications:
+      user:
+        password: UBrmnWdChvZA5gEFum07AM7Ba6nExCc2
+        username: placement9lrJ9dNfe
+    identity:
+      placement:
+        password: AEYVXR3LFUbLcePQlkxSFvbQ1WyWtaiY
+        username: placementR3AqaC4te
+      test:
+        password: b1szm2wvF9n2tdCvDQQZEZM5GzpVtQkP
+        username: testXByW
+  keystone_creds:
+redis:
+  redis_creds:
+    password: |
+      Y2ZMRFlTc05idUN5d2E2Vm1Cdlo4aDJzSlh1Wm52cVc=
+instance-ha:
+  credentials: &credentials_instance-ha
+  - database:
+      user:
+        password: R441HIJxfNF8iAfAfwxASnndFXqSBfVn
+        username: masakariteW3kGBC
+    memcached: 3vySYJq0rDZ32KGG
+    messaging:
+      user:
+        password: iHMN1WsAMxAi8G4d0r64iggSdedSRR1p
+        username: masakariVuqCvFid
+    notifications:
+      user:
+        password: acH2p6deh90bDJWlRDzFE7wptqgQgVc7
+        username: masakariyfHtXhiq
+    identity:
+      masakari:
+        password: fUPlF2xntwICHH8KDYEjuc4Seb1TNQ8d
+        username: masakari8Xfl6MhP
+      test:
+        password: KI40mJVQ9fZP3MBZLpgrFSf2nqZIbbqg
+        username: testC7BY
+  keystone_creds:
+baremetal:
+  credentials: &credentials_baremetal
+  - database:
+      user:
+        password: knwFGHdZ6KCqcKqBidXXEqiEpZhBD7h4
+        username: ironicdrGjrFm
+    memcached: 4zDhycwch09UPx4j
+    messaging:
+      user:
+        password: TRRhbnUMsepnqSzyJngJtgZD9gRu0Fwy
+        username: ironicx7uHpit
+    metadata_secret: mN0aLDTcg1AVqyLWNDjCd2Jz6DA61cZJ
+    notifications:
+      user:
+        password: hL3STFyPBLCdR2qUCdaGEUeRB5jRIFPf
+        username: ironictvAcFA3
+    identity:
+      ironic:
+        password: 9d4CIP5ismqTa7l5N5FdD8MAuFMXx9EV
+        username: ironicAhFsr
+      test:
+        password: q38BqVBqRH8mwfvI3uZeTmwe7JhKm3q1
+        username: testLJtA
+  keystone_creds:
+    nova:
+      password: BLFKrb8JhAMBb1v9BnRGDckMaYY7XUbq
+      username: novaZzHG
+    neutron:
+      password: KBecvsPZsWBFzDqYnevHWArm7tFycZKr
+      username: neutronLeRjiDsyT
+messaging:
+  credentials:
+    block-storage: *credentials_block-storage
+    compute: *credentials_compute
+    dashboard: *credentials_dashboard
+    dns: *credentials_dns
+    identity: *credentials_identity
+    image: *credentials_image
+    key-manager: *credentials_key-manager
+    load-balancer: *credentials_load-balancer
+    networking: *credentials_networking
+    orchestration: *credentials_orchestration
+    placement: *credentials_placement
+    instance-ha: *credentials_instance-ha
+    barmetal: *credentials_baremetal
+    stacklight:
+      username: stacklight123456
+      password: ptehSf4lZxF0TAs16INhV9XmuVXHbL6R
+  services:
+    block-storage: null
+    compute: null
+    coordination: null
+    dashboard: null
+    database: null
+    dns: null
+    identity: null
+    image: null
+    ingress: null
+    key-manager: null
+    load-balancer: null
+    memcached: null
+    messaging: null
+    networking: null
+    orchestration: null
+    placement: null
+    redis: null
+    instance-ha: null

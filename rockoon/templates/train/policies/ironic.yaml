@@ -1,0 +1,3 @@
+# Policy copied from openstack-helm
+# Use static policy unless bootstrap procedure
+# is fixed to work with system scope tokens PRODX-15152

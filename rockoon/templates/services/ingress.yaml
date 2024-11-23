@@ -1,0 +1,97 @@
+#apiVersion: lcm.mirantis.com/v1alpha1
+#kind: HelmBundle
+{%- set is_tls_proxy_enabled = spec.get('features', {}).get('ssl', {}).get('tls_proxy', {}).get('enabled', True) %}
+
+spec:
+  releases:
+  - name: ingress-openstack
+    chart: ingress
+    values:
+      deployment:
+        type: DaemonSet
+      labels:
+        server:
+          node_selector_key: kubernetes.io/os
+          node_selector_value: linux
+      network:
+        service:
+          type: LoadBalancer
+          externalTrafficPolicy: Local
+      images:
+        tags:
+{%- for image in [
+    "ingress",
+    "ingress_routed_vip",
+    "error_pages",
+    "image_repo_sync",
+    "keepalived",
+    "ingress_module_init",
+    "entrypoint",
+    "dep_check",
+    "ingress_init_config",
+    "ingress_tls_proxy",] %}
+        {%- if image in images %}
+          {{ image }}: {{ images[image] }}
+        {%- endif %}
+{%- endfor %}
+      conf:
+        ingress:
+          # TODO: allow only stacklight pods
+          nginx-status-ipv4-whitelist: "0.0.0.0/0"
+          # NOTE(vsaienko) jwt tokens might be too big
+          client-header-buffer-size: 10k
+          large-client-header-buffers: 4 16k
+          bind-address: "0.0.0.0"
+{%- if is_tls_proxy_enabled %}
+          ssl-redirect: "false"
+          use-proxy-protocol: "true"
+{%- endif %}
+{%- if 'dns' in spec.features.services %}
+        services:
+          tcp:
+            "53": openstack/designate-powerdns:53
+          udp:
+            "53": openstack/designate-powerdns:53
+{%- endif %}
+      pod:
+        probes:
+          server:
+            ingress:
+              readiness:
+                enabled: true
+                params: {}
+              liveness:
+                enabled: true
+                params:
+                  initialDelaySeconds: 10
+                  timeoutSeconds: 5
+      manifests:
+        network_policy: {{ spec.features.network_policies.enabled }}
+{%- if is_tls_proxy_enabled %}
+        tls_proxy: true
+{%- endif %}
+      endpoints:
+        cluster_domain_suffix: {{ spec.internal_domain_name }}
+{%- if is_tls_proxy_enabled %}
+        ingress:
+          port:
+            https:
+              default: 5443
+        tls_proxy:
+          host_fqdn_override:
+            public:
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          port:
+            proxy:
+              default: 443
+{%- endif %}
+{%- if spec.features.network_policies.enabled %}
+      network_policy:
+{% include 'base/network_policies/ingress.yaml' %}
+{%- endif %}

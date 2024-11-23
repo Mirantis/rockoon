@@ -1,0 +1,17 @@
+{%- from 'macros/connections.j2' import from_pod_networks %}
+{%- from 'macros/connections.j2' import from_namespaces %}
+{%- set lma_ns_list = ["lma_deployment"] | namespaces  %}
+{%- set memcache_server = "memcached:memcached:StatefulSet:openstack-memcached-memcached" %}
+        server:
+          spec:
+            podSelector:
+              matchLabels:
+{{ service_childs[memcache_server].get_pod_labels() | toyaml | indent(16, first=True) }}
+            policyTypes:
+            - Ingress
+            ingress:
+{{ network_policies["ingress"][memcache_server] | toyaml | indent(14, first=True) }}
+              - from:
+{{ from_pod_networks(pod_networks, service_childs[memcache_server].get_np_ports(["memcached"])) | indent(16) }}
+              - from:
+{{ from_namespaces(lma_ns_list, service_childs[memcache_server].get_np_ports(["metrics"])) | indent(16) }}

@@ -1,0 +1,9 @@
+parameters:
+  heat:
+    server:
+      message_queue:
+        ~members:
+        - host: ${_param:mcp2_rabbitmq_heat_address}
+        password: ${_param:mcp2_rabbitmq_heat_password}
+        user: ${_param:mcp2_rabbitmq_heat_username}
+        virtual_host: 'heat_queens'

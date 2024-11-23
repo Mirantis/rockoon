@@ -1,0 +1,9 @@
+parameters:
+  nova:
+    compute:
+      libvirt:
+        live_migration_inbound_addr: ${_param:single_address}
+      libvirt:
+        uri: qemu+tcp://${linux:system:name}.${_param:cluster_domain}/system
+        tls:
+          enabled: false

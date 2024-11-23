@@ -1,0 +1,128 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "tgt.daemonset" }}
+{{- $daemonset := index . 0 }}
+{{- $configMapName := index . 1 }}
+{{- $serviceAccountName := index . 2 }}
+{{- $envAll := index . 3 }}
+{{- $ssl_enabled := false }}
+{{- with $envAll }}
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: tgt
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll .Chart.Name $daemonset | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+{{ tuple $envAll .Chart.Name $daemonset | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll $daemonset | include "helm-toolkit.snippets.kubernetes_upgrades_daemonset" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll .Chart.Name $daemonset | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{- dict "envAll" $envAll "podName" "tgt-default" "containerNames" (list "tgt") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin-tgt.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc-tgt.yaml" . | include "helm-toolkit.utils.hash" }}
+    spec:
+{{ dict "envAll" $envAll "application" "tgt" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      serviceAccountName: {{ $serviceAccountName }}
+      nodeSelector:
+        {{ .Values.labels.tgt.node_selector_key }}: {{ .Values.labels.tgt.node_selector_value }}
+      hostNetwork: true
+      hostPID: true
+      hostIPC: true
+      dnsPolicy: ClusterFirstWithHostNet
+      initContainers:
+{{ dict "envAll" $envAll | include "helm-toolkit.snippets.kubernetes_apparmor_loader_init_container" | indent 8 }}
+      containers:
+        - name: tgt
+{{ tuple $envAll "iscsi_tgt" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.tgt | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "tgt" "container" "tgtd" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/tgtd.sh
+          terminationMessagePath: /var/log/termination-log
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: tgt-bin
+              mountPath: /tmp/tgtd.sh
+              subPath: tgtd.sh
+              readOnly: true
+            - name: etciscsi
+              mountPath: /etc/iscsi
+              mountPropagation: Bidirectional
+            - name: etctgt
+              mountPath: /etc/tgt
+              mountPropagation: Bidirectional
+            - name: tgt-etc
+              mountPath: /etc/tgt/targets.conf
+              subPath: targets.conf
+            - name: run
+              mountPath: /run
+            - name: dev
+              mountPath: /dev
+              mountPropagation: HostToContainer
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: tgt-bin
+          configMap:
+            name: tgt-bin
+            defaultMode: 0555
+        - name: tgt-etc
+          secret:
+            secretName: {{ $configMapName }}
+            defaultMode: 0444
+        - name: run
+          hostPath:
+            path: /run
+        - name: etciscsi
+          hostPath:
+            path: /etc/iscsi
+        - name: etctgt
+          hostPath:
+            path: /etc/tgt
+        - name: dev
+          hostPath:
+            path: /dev
+{{ dict "envAll" $envAll "component" "tgt" "requireSys" true | include "helm-toolkit.snippets.kubernetes_apparmor_volumes" | indent 8 }}
+{{- end }}
+{{- end }}
+
+{{- if .Values.manifests.daemonset_tgt }}
+
+{{- $envAll := . }}
+{{- $daemonset := "tgt" }}
+{{- $configMapName := "tgt-etc" }}
+{{- $serviceAccountName := "tgt" }}
+
+{{- $dependencyOpts := dict "envAll" $envAll "dependencyMixinParam" "" "dependencyKey" "tgt" -}}
+{{- $_ := include "helm-toolkit.utils.dependency_resolver" $dependencyOpts | toString | fromYaml }}
+
+{{ tuple $envAll "pod_dependency" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+{{- $daemonset_yaml := list $daemonset $configMapName $serviceAccountName . | include "tgt.daemonset" | toString | fromYaml }}
+{{- $configmap_yaml := "tgt.configmap.etc" }}
+{{- list $daemonset "tgt.daemonset" $serviceAccountName $configmap_yaml $configMapName "tgt.configmap.bin" "tgt-bin" . | include "helm-toolkit.utils.daemonset_overrides_root" }}
+
+{{- end }}

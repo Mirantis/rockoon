@@ -1,0 +1,5 @@
+- name: Deploy infrastructure
+  import_playbook: k0s-install.yaml
+
+- name: Deploy Openstack
+  import_playbook: oc-install.yaml

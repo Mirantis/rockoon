@@ -1,0 +1,504 @@
+{{ if eq .Values.osdpl.namespace .Values.osdpl.settings.raw.OSCTL_REDIS_NAMESPACE }}
+  {{ fail "Osdpl namespace and Redis namespace should be different!" }}
+{{ end }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: rockoon-account
+# The rockoon-account requires cluster wide role to use privileged
+# attributes (host bind mounts, host network, kernel capabilities) mostly on
+# daemonsets.apps by way of helm operations.
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+  name: rockoon-account:cluster-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: rockoon-account
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "rockoon.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "rockoon.name" . }}
+    helm.sh/chart: {{ include "rockoon.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  annotations:
+    rockoon-etc-hash: {{ tuple "rockoon-configmap-etc.yaml" . | include "rockoon.utils.hash" }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  # Make sure old operator gone to prevent that old version start
+  # handling resume event.
+  strategy:
+   type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "rockoon.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "rockoon.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      serviceAccountName: rockoon-account
+      securityContext:
+        {{- toYaml .Values.osdpl.pod.controller.security_context | nindent 8 }}
+      initContainers:
+        - name: convert-credential-secrets
+          command:
+          - osctl-convert-credential-secrets
+          env:
+{{ tuple . | include "rockoon.common_env" | indent 12 }}
+          image: {{ tuple . .Values.image | include "getImageUrl" }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.osdpl.pod.controller.convert_credentials.security_context | nindent 12 }}
+        - name: check-osdplsecrets
+          command:
+          - osctl-check-osdplsecrets
+          env:
+{{ tuple . | include "rockoon.common_env" | indent 12 }}
+          image: {{ tuple . .Values.image | include "getImageUrl" }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.osdpl.pod.controller.check_osdplsecrets.security_context | nindent 12 }}
+      containers:
+        - name: osdpl
+          image: {{ tuple . .Values.image | include "getImageUrl" }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - kopf
+            - run
+            - '-n'
+            - {{ .Values.osdpl.namespace }}
+            - '--standalone'
+            - '-m'
+            - rockoon.controllers.openstackdeployment
+            - '-m'
+            - rockoon.controllers.probe
+            - '-L'
+            - 'http://0.0.0.0:32768/healthz'
+          env:
+            - name: OSCTL_HEARTBEAT_PEERING_OBJECT_NAME
+              value: rockoon.osdpl
+            {{- range $optionName, $optionValue := .Values.osdpl.settings.raw }}
+            - name: {{ $optionName }}
+              value: "{{ $optionValue }}"
+            {{- end }}
+            {{- range $optionName, $optionValue := .Values.osdpl.settings.osdpl.raw }}
+            - name: {{ $optionName }}
+              value: "{{ $optionValue }}"
+            {{- end }}
+            - name: OSDPL_IAM_DATA
+              value: '{{ toJson .Values.iam }}'
+            - name: OSCTL_PROXY_DATA
+              value: '{{ toJson .Values.global.proxy }}'
+            - name: OSCTL_POD_NETWORKS_DATA
+              value: '{{ toJson .Values.global.podNetworks }}'
+{{ tuple . | include "rockoon.common_env" | indent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - curl
+                - http://127.0.0.1:32768/healthz
+            {{- toYaml .Values.osdpl.pod.controller.osdpl.liveness.params | nindent 12}}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.osdpl.pod.controller.osdpl.security_context | nindent 12 }}
+          volumeMounts:
+            - name: os-clouds
+              mountPath: /etc/openstack/
+            - name: rockoon-config
+              mountPath: /etc/rockoon/conf.d/
+            - name: rockoon-etc
+              mountPath: /etc/rockoon/logging.conf
+              subPath: logging.conf
+        - name: secrets
+          image: {{ tuple . .Values.image | include "getImageUrl" }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - kopf
+            - run
+            - '-n'
+            - {{ .Values.osdpl.namespace }}
+            - '--standalone'
+            - '-m'
+            - rockoon.controllers.secrets
+            - '-m'
+            - rockoon.controllers.probe
+            - '-L'
+            - 'http://0.0.0.0:32770/healthz'
+          env:
+            - name: OSCTL_HEARTBEAT_PEERING_OBJECT_NAME
+              value: rockoon.secrets
+            {{- range $optionName, $optionValue := .Values.osdpl.settings.raw }}
+            - name: {{ $optionName }}
+              value: "{{ $optionValue }}"
+            {{- end }}
+            {{- range $optionName, $optionValue := .Values.osdpl.settings.secrets.raw }}
+            - name: {{ $optionName }}
+              value: "{{ $optionValue }}"
+            {{- end }}
+{{ tuple . | include "rockoon.common_env" | indent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - curl
+                - http://127.0.0.1:32770/healthz
+            {{- toYaml .Values.osdpl.pod.controller.secrets.liveness.params | nindent 12}}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.osdpl.pod.controller.secrets.security_context | nindent 12 }}
+          volumeMounts:
+            - name: os-clouds
+              mountPath: /etc/openstack/
+            - name: rockoon-config
+              mountPath: /etc/rockoon/conf.d/
+            - name: rockoon-etc
+              mountPath: /etc/rockoon/logging.conf
+              subPath: logging.conf
+        - name: health
+          image: {{ tuple . .Values.image | include "getImageUrl" }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - kopf
+            - run
+            - '-n'
+            - {{ .Values.osdpl.namespace }}
+            - '--standalone'
+            - '-m'
+            - rockoon.controllers.health
+            - '-m'
+            - rockoon.controllers.probe
+            - '-L'
+            - 'http://0.0.0.0:32771/healthz'
+          env:
+            - name: OSCTL_HEARTBEAT_PEERING_OBJECT_NAME
+              value: rockoon.health
+            {{- range $optionName, $optionValue := .Values.osdpl.settings.raw }}
+            - name: {{ $optionName }}
+              value: "{{ $optionValue }}"
+            {{- end }}
+            {{- range $optionName, $optionValue := .Values.osdpl.settings.health.raw }}
+            - name: {{ $optionName }}
+              value: "{{ $optionValue }}"
+            {{- end }}
+{{ tuple . | include "rockoon.common_env" | indent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - curl
+                - http://127.0.0.1:32771/healthz
+            {{- toYaml .Values.osdpl.pod.controller.health.liveness.params | nindent 12}}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.osdpl.pod.controller.health.security_context | nindent 12 }}
+          volumeMounts:
+            - name: os-clouds
+              mountPath: /etc/openstack/
+            - name: rockoon-config
+              mountPath: /etc/rockoon/conf.d/
+            - name: rockoon-etc
+              mountPath: /etc/rockoon/logging.conf
+              subPath: logging.conf
+        - name: node
+          image: {{ tuple . .Values.image | include "getImageUrl" }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - kopf
+            - run
+            - '-n'
+            - {{ .Values.osdpl.namespace }}
+            - '--standalone'
+            - '-m'
+            - rockoon.controllers.node
+            - '-m'
+            - rockoon.controllers.probe
+            - '-L'
+            - 'http://0.0.0.0:32772/healthz'
+          env:
+            - name: OSCTL_HEARTBEAT_PEERING_OBJECT_NAME
+              value: rockoon.node
+            {{- range $optionName, $optionValue := .Values.osdpl.settings.raw }}
+            - name: {{ $optionName }}
+              value: "{{ $optionValue }}"
+            {{- end }}
+            {{- range $optionName, $optionValue := .Values.osdpl.settings.node.raw }}
+            - name: {{ $optionName }}
+              value: "{{ $optionValue }}"
+            {{- end }}
+{{ tuple . | include "rockoon.common_env" | indent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - curl
+                - http://127.0.0.1:32772/healthz
+            {{- toYaml .Values.osdpl.pod.controller.node.liveness.params | nindent 12}}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.osdpl.pod.controller.node.security_context | nindent 12 }}
+          volumeMounts:
+            - name: os-clouds
+              mountPath: /etc/openstack/
+            - name: rockoon-config
+              mountPath: /etc/rockoon/conf.d/
+            - name: rockoon-etc
+              mountPath: /etc/rockoon/logging.conf
+              subPath: logging.conf
+{{ if .Values.node_maintenance.enabled }}
+        - name: nodemaintenancerequest
+          image: {{ tuple . .Values.image | include "getImageUrl" }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - kopf
+            - run
+            - '-n'
+            - {{ .Values.osdpl.namespace }}
+            - '--standalone'
+            - '-m'
+            - rockoon.controllers.maintenance
+            - '-m'
+            - rockoon.controllers.probe
+            - '-L'
+            - 'http://0.0.0.0:32773/healthz'
+          env:
+            - name: OSCTL_HEARTBEAT_PEERING_OBJECT_NAME
+              value: rockoon.nodemaintenancerequest
+            {{- range $optionName, $optionValue := .Values.osdpl.settings.raw }}
+            - name: {{ $optionName }}
+              value: "{{ $optionValue }}"
+            {{- end }}
+            {{- range $optionName, $optionValue := .Values.osdpl.settings.node_maintenance_request.raw }}
+            - name: {{ $optionName }}
+              value: "{{ $optionValue }}"
+            {{- end }}
+{{ tuple . | include "rockoon.common_env" | indent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - curl
+                - http://127.0.0.1:32773/healthz
+            {{- toYaml .Values.osdpl.pod.controller.node_maintenance_request.liveness.params | nindent 12}}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.osdpl.pod.controller.node_maintenance_request.security_context | nindent 12 }}
+          volumeMounts:
+            - name: os-clouds
+              mountPath: /etc/openstack/
+            - name: rockoon-config
+              mountPath: /etc/rockoon/conf.d/
+            - name: rockoon-etc
+              mountPath: /etc/rockoon/logging.conf
+              subPath: logging.conf
+{{ end }}
+        - name: ceph-secrets
+          image: {{ tuple . .Values.image | include "getImageUrl" }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - kopf
+            - run
+            - '-n'
+            - {{ .Values.ceph.cephSharedNamespace}}
+            - '--standalone'
+            - '-m'
+            - rockoon.controllers.ceph.secrets
+            - '-m'
+            - rockoon.controllers.probe
+            - '-L'
+            - 'http://0.0.0.0:32774/healthz'
+          env:
+            - name: OSCTL_HEARTBEAT_PEERING_OBJECT_NAME
+              value: rockoon.ceph.secrets
+            {{- range $optionName, $optionValue := .Values.osdpl.settings.raw }}
+            - name: {{ $optionName }}
+              value: "{{ $optionValue }}"
+            {{- end }}
+{{ tuple . | include "rockoon.common_env" | indent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - curl
+                - http://127.0.0.1:32774/healthz
+            {{- toYaml .Values.osdpl.pod.controller.ceph_secrets.liveness.params | nindent 12}}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.osdpl.pod.controller.ceph_secrets.security_context | nindent 12 }}
+          volumeMounts:
+            - name: os-clouds
+              mountPath: /etc/openstack/
+            - name: rockoon-config
+              mountPath: /etc/rockoon/conf.d/
+            - name: rockoon-etc
+              mountPath: /etc/rockoon/logging.conf
+              subPath: logging.conf
+        - name: osdplstatus
+          image: {{ tuple . .Values.image | include "getImageUrl" }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - kopf
+            - run
+            - '-n'
+            - {{ .Values.osdpl.namespace }}
+            - '--standalone'
+            - '-m'
+            - rockoon.controllers.openstackdeploymentstatus
+            - '-m'
+            - rockoon.controllers.probe
+            - '-L'
+            - 'http://0.0.0.0:32775/healthz'
+          env:
+            - name: OSCTL_HEARTBEAT_PEERING_OBJECT_NAME
+              value: rockoon.osdplstatus
+            {{- range $optionName, $optionValue := .Values.osdpl.settings.raw }}
+            - name: {{ $optionName }}
+              value: "{{ $optionValue }}"
+            {{- end }}
+            {{- range $optionName, $optionValue := .Values.osdpl.settings.osdplstatus.raw }}
+            - name: {{ $optionName }}
+              value: "{{ $optionValue }}"
+            {{- end }}
+{{ tuple . | include "rockoon.common_env" | indent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - curl
+                - http://127.0.0.1:32775/healthz
+            {{- toYaml .Values.osdpl.pod.controller.osdplstatus.liveness.params | nindent 12}}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.osdpl.pod.controller.osdplstatus.security_context | nindent 12 }}
+          volumeMounts:
+            - name: os-clouds
+              mountPath: /etc/openstack/
+            - name: rockoon-config
+              mountPath: /etc/rockoon/conf.d/
+            - name: rockoon-etc
+              mountPath: /etc/rockoon/logging.conf
+              subPath: logging.conf
+        - name: tf-secrets
+          image: {{ tuple . .Values.image | include "getImageUrl" }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - kopf
+            - run
+            - '-n'
+            - {{ .Values.tf.sharedNamespace }}
+            - '--standalone'
+            - '-m'
+            - rockoon.controllers.tf.secrets
+            - '-m'
+            - rockoon.controllers.probe
+            - '-L'
+            - 'http://0.0.0.0:32777/healthz'
+          env:
+            - name: OSCTL_HEARTBEAT_PEERING_OBJECT_NAME
+              value: rockoon.tf.secrets
+            {{- range $optionName, $optionValue := .Values.osdpl.settings.raw }}
+            - name: {{ $optionName }}
+              value: "{{ $optionValue }}"
+            {{- end }}
+{{ tuple . | include "rockoon.common_env" | indent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - curl
+                - http://127.0.0.1:32777/healthz
+            {{- toYaml .Values.osdpl.pod.controller.tf_secrets.liveness.params | nindent 12}}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.osdpl.pod.controller.tf_secrets.security_context | nindent 12 }}
+          volumeMounts:
+            - name: os-clouds
+              mountPath: /etc/openstack/
+            - name: rockoon-config
+              mountPath: /etc/rockoon/conf.d/
+            - name: rockoon-etc
+              mountPath: /etc/rockoon/logging.conf
+              subPath: logging.conf
+        - name: configmaps
+          image: {{ tuple . .Values.image | include "getImageUrl" }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - kopf
+            - run
+            - '-n'
+            - {{ .Values.osdpl.namespace }}
+            - '--standalone'
+            - '-m'
+            - rockoon.controllers.configmaps
+            - '-m'
+            - rockoon.controllers.probe
+            - '-L'
+            - 'http://0.0.0.0:32778/healthz'
+          env:
+            - name: OSCTL_HEARTBEAT_PEERING_OBJECT_NAME
+              value: rockoon.configmaps
+            {{- range $optionName, $optionValue := .Values.osdpl.settings.raw }}
+            - name: {{ $optionName }}
+              value: "{{ $optionValue }}"
+            {{- end }}
+{{ tuple . | include "rockoon.common_env" | indent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - curl
+                - http://127.0.0.1:32778/healthz
+            {{- toYaml .Values.osdpl.pod.controller.configmaps.liveness.params | nindent 12}}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.osdpl.pod.controller.configmaps.security_context | nindent 12 }}
+          volumeMounts:
+            - name: os-clouds
+              mountPath: /etc/openstack/
+            - name: rockoon-config
+              mountPath: /etc/rockoon/conf.d/
+            - name: rockoon-etc
+              mountPath: /etc/rockoon/logging.conf
+              subPath: logging.conf
+      volumes:
+        - name: rockoon-config
+          configMap:
+            name: rockoon-config
+            defaultMode: 0555
+        - name: os-clouds
+          secret:
+            secretName: keystone-os-clouds
+            defaultMode: 365
+        - name: rockoon-etc
+          configMap:
+            name: rockoon-etc
+            defaultMode: 0555
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

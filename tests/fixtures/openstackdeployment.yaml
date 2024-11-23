@@ -1,0 +1,182 @@
+apiVersion: lcm.mirantis.com/v1alpha1
+kind: OpenStackDeployment
+metadata:
+  annotations: {}
+  labels: {}
+  name: osh-dev
+  namespace: openstack
+  generation: 123
+spec:
+  internal_domain_name: kaas-kubernetes-3af5ae538cf411e9a6c7fa163e5a4837
+  public_domain_name: it.just.works
+  artifacts:
+    images_base_url: docker-dev-kaas-local.docker.mirantis.net
+    binary_base_url: https://artifactory.mcp.mirantis.net/binary-dev-kaas-local
+  features:
+    barbican:
+      backend:
+        simple_crypto:
+          enabled: true
+    cinder:
+      backup:
+        backend: ceph
+      volume:
+        backend: ceph
+    database:
+      local_volumes:
+        enabled: true
+    glance:
+      backend: ceph
+    keystone:
+      keycloak:
+        oidc:
+          OIDCSSLValidateServer: false
+    neutron:
+      backend: ml2
+      tenant_network_types:
+      - vlan
+      - vxlan
+      external_networks:
+      - bridge: br-ex
+        interface: veth-phy
+        mtu: null
+        network_types:
+        - flat
+        physnet: physnet1
+        vlan_ranges: null
+    nova:
+      images:
+        backend: local
+    messaging:
+      components_with_dedicated_messaging:
+        - compute
+        - networking
+    services:
+    - block-storage
+    - compute
+    - identity
+    - dashboard
+    - stepler
+    - image
+    - ingress
+    - database
+    - memcached
+    - networking
+    - orchestration
+    - messaging
+    - load-balancer
+    - dns
+    - key-manager
+    ssl:
+      public_endpoints:
+        api_cert: |-
+          # Update server certificate content
+        api_key: |-
+          # Update server private key content
+        ca_cert: |-
+          # Update CA certificate content
+    stacklight:
+      enabled: true
+  openstack_version: stein
+  preset: compute
+  size: small
+  services:
+    compute:
+      nova:
+        values:
+          bootstrap:
+            structured:
+              flavors:
+                options:
+                  m1.extra_tiny_test:
+                    disk: 5
+                    name: m1.extra_tiny_test
+                    ram: 256
+                    vcpus: 1
+                  m1.tiny_test:
+                    disk: 5
+                    name: m1.tiny_test
+                    ram: 512
+                    vcpus: 1
+    identity:
+      keystone:
+        values:
+          conf:
+            keystone:
+              DEFAULT:
+                mykey: myvalue
+    image:
+      glance:
+        values:
+          bootstrap:
+            enabled: true
+            ks_user: admin
+            structured:
+              images:
+                cirros:
+                  container_format: bare
+                  image_file: cirros-0.5.1-x86_64-disk.img
+                  image_type: qcow2
+                  min_disk: 1
+                  name: Cirros-5.1
+                  private: false
+                  properties:
+                    os_distro: cirros
+                  source_url: https://binary.mirantis.com/openstack/bin/cirros/0.5.1/
+                fedora:
+                  container_format: bare
+                  image_file: Fedora-Cloud-Base-27-1.6.x86_64.qcow2
+                  image_type: qcow2
+                  min_disk: 1
+                  name: Fedora-27-1.6
+                  private: false
+                  properties:
+                    os_distro: fedora
+                  source_url: https://binary.mirantis.com/openstack/bin/Fedora/27/
+    load-balancer:
+      octavia:
+        values:
+          octavia:
+            settings:
+              amphora_image_url: http://images.mcp.mirantis.net/octavia/amphora-x64-haproxy-stein-testing.qcow2
+              amphora_image_checksum: f6970d836e2261a01c780a1d6a79d239
+    networking:
+      neutron:
+        values:
+          bootstrap:
+            enabled: true
+            script: "openstack network create \\\n  --provider-network-type flat \\\
+              \n  --provider-physical-network external \\\n  --external \\\n  public\n\
+              openstack subnet create public-subnet \\\n  --no-dhcp --subnet-range\
+              \ 10.11.12.0/24 \\\n  --allocation-pool start=10.11.12.100,end=10.11.12.200\
+              \ \\\n  --gateway 10.11.12.10 \\\n  --network public\nopenstack router\
+              \ create r1\nopenstack router set --external-gateway public r1\n"
+    tempest:
+      tempest:
+        values:
+          conf:
+            blacklist:
+            - (?:tempest\.fake\.test)
+            - (?:heat_tempest_plugin\.)
+            - (?:designate_tempest_plugin\.)
+            convert_to_uuid:
+              compute:
+                flavor_ref: m1.extra_tiny_test
+                flavor_ref_alt: m1.tiny_test
+                image_ref: Cirros-5.1
+                image_ref_alt: Cirros-5.1.alt
+              network:
+                public_network_id: public
+            script: 'tempest run --config-file /etc/tempest/tempest.conf -w 4 --smoke
+              --blacklist-file  /etc/tempest/test-blacklist'
+
+            tempest:
+              dashboard:
+                disable_ssl_certificate_validation: true
+              network:
+                floating_network_name: public
+                shared_physical_network: false
+              validation:
+                image_ssh_password: gocubsgo
+                image_ssh_user: cirros
+

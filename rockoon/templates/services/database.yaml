@@ -1,0 +1,172 @@
+#apiVersion: lcm.mirantis.com/v1alpha1
+#kind: HelmBundle
+
+{%- set stacklight_enabled = spec.get('features', {}).get('stacklight', {}).get('enabled', False) %}
+{%- set backup_params = spec.get('features', {}).get('database', {}).get('backup', {}) %}
+{%- set backup_sync = backup_params.get('sync_remote', {'enabled': False}) %}
+{%- set backup_backend = backup_params.get('backend', 'pvc') %}
+
+spec:
+  releases:
+  - name: openstack-mariadb
+    chart: mariadb
+    values:
+      conf:
+        database_conf:
+          mysqld:
+            wsrep_provider_options:
+              # Controls parallel applying of slave actions.
+              # When enabled allows full range of parallelization as determined by certification algorithm.
+              # When disabled limits parallel applying window to not exceed that seen on master.
+              # In other words, the action starts applying no sooner than all actions it has seen on the master are committed.
+              # The default value is YES, and it causes the issue described - here https://jira.mariadb.org/browse/MDEV-22766
+              # Once the issue is fixed, this can be removed. Option can be set only starting galera 3.25.
+              cert.optimistic_pa: "NO"
+        database:
+          config_override: |
+            [mysqld]
+            innodb_io_capacity=2000
+            innodb_io_capacity_max=5000
+        {%- if backup_sync['enabled'] %}
+        rclone:
+          {%- for remote, remote_val in backup_sync['remotes'].items() %}
+          {{ remote }}:
+            {%- for opt, val in remote_val['conf'].items() %}
+            {{ opt }}: {{ val }}
+            {%- endfor %}
+          {%- endfor %}
+        {%- endif %}
+        phy_backup:
+          backup_type: {{ backup_params.get('backup_type', 'incremental') }}
+          {%- if backup_params.get('full_backup_cycle') %}
+          full_backup_cycle: "{{ backup_params['full_backup_cycle'] }}"
+          {%- endif %}
+          {%- if backup_params.get('backups_to_keep') %}
+          backups_to_keep: {{ backup_params['backups_to_keep'] }}
+          {%- endif %}
+          backend: {{ backup_backend }}
+          {%- if backup_sync['enabled'] %}
+          {%- set remotes = backup_sync['remotes'].keys() | list %}
+          sync_remote:
+            enabled: true
+            remote: {{ remotes[0] }}
+            path: {{ backup_sync['remotes'][remotes[0]]['path'] }}
+          {%- endif %}
+          openssl_encryption: {{ backup_params.get("encryption", {}).get("enabled", False) }}
+          openssl_kek: {{ galera_creds.openssl_kek }}
+      images:
+        tags:
+{%- for image in [
+    "ingress",
+    "prometheus_create_mysql_user",
+    "image_repo_sync",
+    "error_pages",
+    "mariadb_backup",
+    "mariadb_phy_backup",
+    "mariadb_phy_restore",
+    "prometheus_mysql_exporter",
+    "prometheus_mysql_exporter_helm_tests",
+    "dep_check",
+    "mariadb",
+    "mariadb_scripted_test",
+    "mariadb_controller",] %}
+        {%- if image in images %}
+          {{ image }}: {{ images[image] }}
+        {%- endif %}
+{%- endfor %}
+{%- if stacklight_enabled %}
+      monitoring:
+        prometheus:
+          enabled: true
+{%- endif %}
+      manifests:
+        job_cluster_wait: true
+        cron_job_mariadb_phy_backup: true
+        # Disable ingress controller in favor of mariadb-controller
+        configmap_ingress_conf: false
+        configmap_ingress_etc: false
+        deployment_ingress: false
+        deployment_error: false
+        service_ingress: false
+        deployment_controller: true
+        service_master: true
+        secret_ca_bundle: true
+        network_policy: {{ spec.features.network_policies.enabled }}
+      network:
+        proxy:
+{% include 'base/_proxy_vars.yaml' %}
+      endpoints:
+        cluster_domain_suffix: {{ spec.internal_domain_name }}
+        oslo_db:
+          namespace: null
+          host_fqdn_override:
+            public:
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+{%- if proxy_settings is defined %}
+{%- if proxy_settings.get("proxy_ca_certificate") %}
+{{ proxy_settings["proxy_ca_certificate"] | indent( width=18, first=True) }}
+{%- endif %}
+{%- endif %}
+          auth:
+            admin:
+              username: {{ admin_creds.database.username }}
+              password: {{ admin_creds.database.password }}
+            sst:
+              username: {{ galera_creds.sst.username }}
+              password: {{ galera_creds.sst.password }}
+            exporter:
+              username: {{ galera_creds.exporter.username }}
+              password: {{ galera_creds.exporter.password }}
+            audit:
+              username: {{ galera_creds.audit.username }}
+              password: {{ galera_creds.audit.password }}
+            mariabackup:
+              username: {{ galera_creds.backup.username }}
+              password: {{ galera_creds.backup.password }}
+      jobs:
+        phy_backup_mariadb:
+          cron: "{{ backup_params.get('schedule_time', '0 1 * * *') }}"
+          suspend: {{ not backup_params.get('enabled', false) }}
+      pod:
+        probes:
+          server:
+            mariadb:
+              readiness:
+                enabled: true
+                disk_usage_percent: 99
+                params:
+                  initialDelaySeconds: 30
+                  # NOTE(vsaienko): ensure we able to recover in powerdns cache time to avoid
+                  # downtimes on powerdns side.
+                  periodSeconds: 5
+                  timeoutSeconds: 5
+        replicas:
+          server: 3
+{%- if spec.get('features', {}).get('database', {}).get('local_volumes', {}).get('enabled', False) %}
+        # To have higher level of data redundency in case of local volumes - ensure pods are spread
+        # across volumes placed on different nodes
+        affinity:
+          anti:
+            type:
+              default: requiredDuringSchedulingIgnoredDuringExecution
+{%- endif %}
+      volume:
+{%- if spec.get('features', {}).get('database', {}).get('local_volumes', {}).get('enabled', False) %}
+        class_name: {{ spec.get('local_volume_storage_class', 'rockoon-bind-mounts') }}
+{%- else %}
+        class_name: {{ spec.get('persistent_volume_storage_class', 'default') }}
+{%- endif %}
+        phy_backup:
+          class_name: {{ spec.get('persistent_volume_storage_class', 'default') }}
+          enabled: true
+          {%- if backup_backend == 'pv_nfs' %}
+          nfs:
+            server: {{ backup_params['pv_nfs']['server'] }}
+            path: {{ backup_params['pv_nfs']['path'] }}
+          {%- endif %}
+{%- if spec.features.network_policies.enabled %}
+      network_policy:
+{% include 'base/network_policies/database.yaml' %}
+{%- endif %}

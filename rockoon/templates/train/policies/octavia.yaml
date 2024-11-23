@@ -1,0 +1,4 @@
+# Policy copied from openstack-helm
+# Use static policy unless bootstrap procedure
+# is fixed to work with system scope tokens PRODX-15152
+load-balancer:member_and_owner: (role:load-balancer_member or role:member) and rule:load-balancer:owner

@@ -1,0 +1,73 @@
+#apiVersion: lcm.mirantis.com/v1alpha1
+#kind: HelmBundle
+
+{%- set service = 'ceph-rgw' %}
+
+spec:
+  releases:
+  - name: openstack-ceph-rgw
+    chart: ceph-rgw
+    values:
+      images:
+        tags:
+{%- for image in [
+    "ks_service",
+    "image_repo_sync",
+    "rgw_s3_admin",
+    "ceph_config_helper",
+    "ks_endpoints",
+    "dep_check",
+    "ceph_rgw",
+    "ks_user",] %}
+        {%- if image in images %}
+          {{ image }}: {{ images[image] }}
+        {%- endif %}
+{%- endfor %}
+      conf:
+        rgw_ks:
+          enabled: true
+      # We setup rgw by rook, this is needed only to create resources in keystone
+      manifests:
+        configmap_ceph_templates: true
+        configmap_bin: false
+        configmap_bin_ks: true
+        configmap_test_bin: false
+        configmap_etc: false
+        deployment_rgw: false
+        ingress_rgw: false
+        job_ceph_rgw_storage_init: false
+        job_image_repo_sync: false
+        job_ks_endpoints: true
+        job_ks_service: true
+        job_ks_user: true
+        job_s3_admin: true
+        secret_s3_rgw: false
+        secret_keystone_rgw: true
+        secret_ingress_tls: false
+        secret_keystone: true
+        service_ingress_rgw: false
+        service_rgw: false
+        helm_tests: false
+        network_policy: false
+      endpoints:
+        cluster_domain_suffix: {{ spec.internal_domain_name }}
+{% include 'base/_admin_identity.yaml' %}
+        object_store:
+          host_fqdn_override:
+            public:
+              host: {{ rgw_external.host }}
+            admin:
+              host: {{ rgw_internal.host }}
+            internal:
+              host: {{ rgw_internal.host }}
+          port:
+            api:
+              default: {{ rgw_internal.port }}
+              public: {{ rgw_external.port }}
+          scheme:
+            default: {{ rgw_internal.scheme }}
+            public: {{ rgw_external.scheme }}
+          path:
+            default: /swift/v1/AUTH_$(project_id)s
+      jobs:
+{% include 'base/_ks_jobs.yaml' %}

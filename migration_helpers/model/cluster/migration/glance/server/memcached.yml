@@ -1,0 +1,5 @@
+parameters:
+  glance:
+    server:
+      cache:
+        ~members: ${_param:mcp2_memcached_glance_members}

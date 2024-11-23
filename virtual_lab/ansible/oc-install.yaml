@@ -1,0 +1,40 @@
+---
+- name: Deploy initial controllers
+  hosts: k8s_controllers[0]
+  become: true
+  become_user: root
+  pre_tasks:
+    - name: Set node role fact
+      set_fact:
+        rvl_controller_node: "{%- if ansible_hostname in groups.controllers %}True{%- endif %}"
+        rvl_compute_node: "{%- if ansible_hostname in groups.computes %}True{%- endif %}"
+        rvl_resolved_ip_address: "{{ hostvars[groups.k8s_controllers[0]]['ansible_default_ipv4']['address'] }}"
+      tags:
+        - all
+  tasks:
+  - name: Setup openstack controller
+    include_role:
+      name: rvl
+      tasks_from: rockoon
+  - name: Setup osdpl
+    include_role:
+      name: rvl
+      tasks_from: osdpl
+    tags:
+      - wait
+  - name: Prepare coredns configs
+    include_role:
+      name: rvl
+      tasks_from: dns/coredns
+    tags:
+      - dns
+  - name: Setup coredns
+    include_role:
+      name: cloudalchemy.coredns
+    vars:
+      coredns_dns_port: 53
+      coredns_zone_files_paths:
+        - /src/coredns/it.just.works.db
+      coredns_config_file: /src/coredns/Corefile
+    tags:
+      - dns

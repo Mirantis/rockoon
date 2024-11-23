@@ -1,0 +1,15 @@
+aodh: {'alarming_rule1': 'alarming_value1'}
+barbican: {'key-manager_rule1': 'key-manager_value1'}
+cinder: {'block-storage_rule1': 'block-storage_value1'}
+designate: {'dns_rule1': 'dns_value1'}
+glance: {'image_rule1': 'image_value1'}
+gnocchi: {'metric_rule1': 'metric_value1'}
+heat: {'orchestration_rule1': 'orchestration_value1'}
+ironic: {'baremetal_rule1': 'baremetal_value1'}
+keystone: {'identity_rule1': 'identity_value1'}
+masakari: {'instance-ha_rule1': 'instance-ha_value1'}
+neutron: {'networking_rule1': 'networking_value1'}
+nova:  {'compute_rule1': 'compute_value1'}
+octavia: {'load-balancer_rule1': 'load-balancer_value1'}
+panko: {'event_rule1': 'event_value1'}
+placement: {'placement_rule1': 'placement_value1'}

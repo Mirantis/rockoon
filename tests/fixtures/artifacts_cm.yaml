@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: osh-dev-artifacts
+  namespace: openstack
+data:
+  caracal: |
+    libvirt: docker-dev-kaas-virtual.mcp.mirantis.com/general/libvirt:6.0.0-focal-20221028120749

@@ -1,0 +1,16 @@
+{%- from 'macros/connections.j2' import from_all %}
+{%- from 'macros/connections.j2' import from_namespaces %}
+{%- set lma_ns_list = ["lma_deployment"] | namespaces  %}
+{%- set ingress_server = "ingress:ingress:DaemonSet:ingress" %}
+        server:
+          spec:
+            podSelector:
+              matchLabels:
+{{ service_childs[ingress_server].get_pod_labels() | toyaml | indent(16, first=True) }}
+            policyTypes:
+            - Ingress
+            ingress:
+              - from:
+{{ from_all(service_childs[ingress_server].get_np_ports(["http","https","pdns-tcp", "pdns-udp", "tls-proxy"])) | indent(16) }}
+              - from:
+{{ from_namespaces(lma_ns_list, service_childs[ingress_server].get_np_ports(["healthz"])) | indent(16) }}

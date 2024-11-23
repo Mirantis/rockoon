@@ -1,0 +1,249 @@
+spec:
+  releases:
+  - chart: ironic
+    name: openstack-ironic
+    values:
+      bootstrap:
+        image:
+          enabled: false
+        object_store:
+          enabled: false
+      conf:
+        ironic:
+          DEFAULT:
+            enabled_bios_interfaces: fake,no-bios
+            enabled_boot_interfaces: ipxe,pxe,fake
+            enabled_console_interfaces: fake,no-console
+            enabled_deploy_interfaces: fake,direct
+            enabled_hardware_types: ipmi,fake-hardware
+            enabled_inspect_interfaces: fake,no-inspect
+            enabled_management_interfaces: fake,ipmitool,noop
+            enabled_network_interfaces: flat,neutron,noop
+            enabled_power_interfaces: fake,ipmitool
+            enabled_raid_interfaces: fake,agent,no-raid
+            enabled_rescue_interfaces: fake,no-rescue
+            enabled_storage_interfaces: fake,cinder,noop
+            enabled_vendor_interfaces: fake,ipmitool,no-vendor
+          agent:
+            image_download_source: http
+          audit:
+            enabled: true
+            ignore_req_list: GET, HEAD
+          audit_middleware_notifications:
+            driver: noop
+          conductor:
+            automated_clean: true
+          deploy:
+            default_boot_option: local
+            erase_devices_metadata_priority: 1
+            erase_devices_priority: 0
+            fast_track: false
+            shred_final_overwrite_with_zeros: false
+          keystone_authtoken:
+            memcache_security_strategy: ENCRYPT
+            memcache_secret_key: 4zDhycwch09UPx4j
+            service_type: baremetal
+          neutron:
+            cleaning_network: ironic-provisioning
+            port_setup_delay: 30
+            provisioning_network: ironic-provisioning
+          oslo_messaging_notifications:
+            topics: notifications,stacklight_notifications
+          oslo_policy:
+            enforce_new_defaults: false
+            enforce_scope: false
+          pxe:
+            pxe_append_params: nofb nomodeset vga=normal ipa-insecure=1 ipa-debug=1
+            ipxe_timeout: 120
+          service_catalog:
+            valid_interfaces: public,internal
+        logging:
+          logger_ironic:
+            level: INFO
+        policy.d:
+          01-controller-default.yaml: {'baremetal_rule1': 'baremetal_value1'}
+          02-custom.yaml: {}
+        nodes:
+          deploy_kernel_image: 'ironic-agent-kernel:latest'
+          deploy_ramdisk_image: 'ironic-agent-initramfs:latest'
+      dependencies:
+        static:
+          db_init:
+            jobs:
+            - openstack-mariadb-cluster-wait
+      endpoints:
+        baremetal:
+          host_fqdn_override:
+            public:
+              host: ironic.it.just.works
+              tls:
+                ca: 'TEST CA
+
+                  '
+                crt: 'TEST CRT
+
+                  '
+                key: 'TEST KEY
+
+                  '
+          hosts:
+            admin:
+              host: ironic-api
+            default: ironic
+            internal: ironic-api
+            public:
+              host: ironic
+              tls:
+                ca: 'TEST CA
+
+                  '
+                crt: 'TEST CRT
+
+                  '
+                key: 'TEST KEY
+
+                  '
+          port:
+            api:
+              admin: 6385
+              default: 80
+              internal: 6385
+              public: 443
+          scheme:
+            default: http
+            public: https
+        cluster_domain_suffix: cluster.local
+        identity:
+          auth:
+            admin:
+              default_domain_id: default
+              password: ZUqTyP2XwsgEGKZ7qNhhecYyq9NLkGE6
+              project_domain_name: default
+              project_name: admin
+              region_name: RegionOne
+              user_domain_name: default
+              username: admin
+            ironic:
+              password: 9d4CIP5ismqTa7l5N5FdD8MAuFMXx9EV
+              username: ironicAhFsr
+              region_name: 'RegionOne'
+            neutron:
+              password: KBecvsPZsWBFzDqYnevHWArm7tFycZKr
+              username: neutronLeRjiDsyT
+              region_name: 'RegionOne'
+            nova:
+              password: BLFKrb8JhAMBb1v9BnRGDckMaYY7XUbq
+              username: novaZzHG
+              region_name: 'RegionOne'
+            test:
+              password: q38BqVBqRH8mwfvI3uZeTmwe7JhKm3q1
+              username: testLJtA
+              region_name: 'RegionOne'
+        oslo_cache:
+          statefulset:
+            name: openstack-memcached-memcached
+            replicas: 3
+        oslo_db:
+          auth:
+            admin:
+              password: QACDSM6FBTH2LuXjTuRQ6DXhD8bSgPbn
+              username: root
+            ironic:
+              password: knwFGHdZ6KCqcKqBidXXEqiEpZhBD7h4
+              username: ironicdrGjrFm
+        oslo_messaging:
+          auth:
+            admin:
+              password: 2tnAuP0j9MsgaVHErehZkC5HCK3ZxYLr
+              username: rabbitmq
+            guest:
+              password: 7TnAuP0dKMsgaVHErehZkC5HCK3ZxOi4
+              username: guest
+            ironic:
+              password: TRRhbnUMsepnqSzyJngJtgZD9gRu0Fwy
+              username: ironicx7uHpit
+            user:
+              password: 2tnAuP0j9MsgaVHErehZkC5HCK3ZxYLr
+              username: rabbitmq
+          hosts:
+            default: rabbitmq
+          path: /ironic
+          statefulset:
+            name: openstack-rabbitmq-rabbitmq
+            replicas: 1
+        oslo_messaging_notifications:
+          auth:
+            ironic:
+              password: hL3STFyPBLCdR2qUCdaGEUeRB5jRIFPf
+              username: ironictvAcFA3
+          host_fqdn_override: {}
+          hosts:
+            default: rabbitmq
+          path: /openstack
+          port:
+            amqp:
+              default: 5672
+            http:
+              default: 15672
+          scheme: rabbit
+          statefulset:
+            name: openstack-rabbitmq-rabbitmq
+            replicas: 1
+      images:
+        tags:
+          bootstrap: bootstrap:latest
+          db_drop: db-drop:latest
+          db_init: db-init:latest
+          dep_check: dep-check:latest
+          image_repo_sync: image-repo-sync:latest
+          ironic_api: ironic-api:latest
+          ironic_conductor: ironic-conductor:latest
+          ironic_db_sync: ironic-db-sync:latest
+          ironic_manage_networks: ironic-manage-networks:latest
+          ironic_update_nodes_metadata: ironic-update-nodes-metadata:latest
+          ironic_pxe: ironic-pxe:latest
+          ironic_pxe_init: ironic-pxe-init:latest
+          ironic_retrieve_networks: ironic-retrieve-networks:latest
+          ironic_retrieve_swift_config: ironic-retrieve-swift-config:latest
+          ks_endpoints: ks-endpoints:latest
+          ks_service: ks-service:latest
+          ks_user: ks-user:latest
+          rabbit_init: rabbit-init:latest
+      jobs:
+        ks_endpoints:
+          restartPolicy: Never
+        ks_service:
+          restartPolicy: Never
+        ks_user:
+          restartPolicy: Never
+      manifests:
+        job_rabbit_init: false
+        network_policy: false
+        secret_ca_bundle: true
+        job_update_nodes_metadata: true
+      network:
+        cleaning: &id001
+          external: true
+          name: ironic-provisioning
+          network_type: flat
+          physnet: ironic
+          shared: true
+          subnets:
+            baremetal-subnet:
+              gateway: 10.13.0.11
+              ip_version: 4
+              name: baremetal-subnet
+              nameservers:
+              - 10.172.1.100
+              pool_end: 10.13.0.254
+              pool_start: 10.13.0.100
+              range: 10.13.0.0/24
+        provisioning: *id001
+        proxy:
+          enabled: true
+          env_vars:
+            HTTP_PROXY: http://127.0.0.1:3128
+            NO_PROXY: .svc.cluster.local
+        pxe:
+          convert_cleaning_network_name_to_uuid: false
+          device: ens7

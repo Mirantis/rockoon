@@ -1,0 +1,176 @@
+networking:neutron:Deployment:neutron-server:
+- from:
+  - podSelector:
+      matchLabels:
+        application: ironic
+        component: api
+  - podSelector:
+      matchLabels:
+        application: ironic
+        component: manage-networks
+  - podSelector:
+      matchLabels:
+        application: ironic
+        component: conductor
+  - podSelector:
+      matchLabels:
+        application: cloudprober
+        component: prober
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: compute
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: metadata
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: os-api
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: compute
+  - podSelector:
+      matchLabels:
+        application: horizon
+        component: server
+  - podSelector:
+      matchLabels:
+        application: designate
+        component: api
+  - podSelector:
+      matchLabels:
+        application: designate
+        component: central
+  - podSelector:
+      matchLabels:
+        application: designate
+        component: mdns
+  - podSelector:
+      matchLabels:
+        application: designate
+        component: producer
+  - podSelector:
+      matchLabels:
+        application: keystone
+        component: client
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: api
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: worker
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: compute
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: ipmi
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: central
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: notification
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: engine
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: engine
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: share_daemonset
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: api
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: share
+  - podSelector:
+      matchLabels:
+        application: tempest
+        component: run-tests
+  - podSelector:
+      matchLabels:
+        application: tempest
+        component: bootstrap
+  ports:
+  - port: 9696
+    protocol: TCP
+networking:rabbitmq:StatefulSet:openstack-neutron-rabbitmq-rabbitmq:
+- from:
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: bagpipe-bgp
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: dhcp-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: dr-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: l2gw-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: l3-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: metadata-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: neutron-ovs-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: neutron-sriov-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: neutron-portprober-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: server
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: ironic-agent
+  ports:
+  - port: 5672
+    protocol: TCP
+- from:
+  - podSelector:
+      matchLabels:
+        application: prometheus_rabbitmq_exporter
+        component: exporter
+        release_group: openstack-neutron-rabbitmq
+  - podSelector:
+      matchLabels:
+        application: rabbitmq
+        component: cluster-wait
+        release_group: openstack-neutron-rabbitmq
+  ports:
+  - port: 15672
+    protocol: TCP

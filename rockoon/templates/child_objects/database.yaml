@@ -1,0 +1,86 @@
+{%- from 'macros/connections.j2' import to_child_object %}
+mariadb:
+  CronJob:
+    mariadb-phy-backup:
+      hash_fields: []
+      images:
+      - mariadb_phy_backup
+      manifest: cron_job_mariadb_phy_backup
+      pod_labels:
+        application: mariadb
+        component: backup
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+  Deployment:
+    mariadb-controller:
+      hash_fields: []
+      images:
+      - mariadb_controller
+      manifest: deployment_controller
+      pod_labels:
+        application: mariadb
+        component: controller
+  Job:
+    mariadb-exporter-create-sql-user:
+      hash_fields: []
+      images:
+      - prometheus_create_mysql_user
+      manifest: ''
+      pod_labels:
+        application: prometheus-mysql-exporter
+        component: create-sql-user
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    mariadb-phy-restore:
+      hash_fields: []
+      images:
+      - mariadb_phy_restore
+      manifest: job_mariadb_phy_restore
+      pod_labels:
+        application: mariadb
+        component: restore
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    openstack-mariadb-cluster-wait:
+      hash_fields: []
+      images:
+      - mariadb_scripted_test
+      manifest: job_cluster_wait
+      pod_labels:
+        application: mariadb
+        component: cluster-wait
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+  StatefulSet:
+    mariadb-server:
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql", "wsrep", "ist", "sst"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - mariadb
+      - prometheus_mysql_exporter
+      manifest: statefulset
+      pod_labels:
+        application: mariadb
+        component: server
+      ports:
+        - protocol: TCP
+          port: 3306
+          name: mysql
+        - protocol: TCP
+          port: 9104
+          name: metrics
+        - protocol: TCP
+          port: 4567
+          name: wsrep
+        - protocol: TCP
+          port: 4568
+          name: ist
+        - protocol: TCP
+          port: 4444
+          name: sst

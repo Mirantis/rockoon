@@ -1,0 +1,214 @@
+{%- from 'macros/connections.j2' import to_child_object %}
+{%- set neutron_server_deployment_type = "Deployment"%}
+{%- if spec.get("features", {}).get("neutron", {}).get("backend") == "ml2/ovn" %}
+{%- set neutron_server_deployment_type = "DaemonSet"%}
+{%- endif %}
+designate:
+  Job:
+    designate-bootstrap:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields:
+      - network.proxy.*
+      - bootstrap.*
+      images:
+      - bootstrap
+      manifest: job_bootstrap
+      pod_labels:
+        application: designate
+        component: bootstrap
+    designate-db-init:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - db_init
+      manifest: job_db_init
+      pod_labels:
+        application: designate
+        component: db-init
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    designate-db-sync:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - designate_db_sync
+      manifest: job_db_sync
+      pod_labels:
+        application: designate
+        component: db-sync
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    designate-ks-endpoints:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_endpoints
+      manifest: job_ks_endpoints
+      pod_labels:
+        application: designate
+        component: ks-endpoints
+    designate-ks-service:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_service
+      manifest: job_ks_service
+      pod_labels:
+        application: designate
+        component: ks-service
+    designate-ks-user:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields:
+      - endpoints.*
+      images:
+      - ks_user
+      manifest: job_ks_user
+      pod_labels:
+        application: designate
+        component: ks-user
+    designate-pool-manage:
+      hash_fields:
+      - endpoints.oslo_db_powerdns.*
+      images:
+      - designate_pool_manage
+      - designate_pool_manage_hash
+      manifest: job_pool_manage
+      pod_labels:
+        application: designate
+        component: pool-manage
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    designate-powerdns-db-init:
+      hash_fields:
+      - endpoints.oslo_db_powerdns.*
+      images:
+      - db_init
+      manifest: job_powerdns_db_init
+      pod_labels:
+        application: designate
+        component: powerdns-db-init
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    designate-powerdns-db-sync:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - powerdns_db_sync
+      manifest: job_powerdns_db_sync
+      pod_labels:
+        application: designate
+        component: powerdns-db-sync
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    designate-zone-setup:
+      hash_fields: []
+      images:
+      - designate_zone_setup
+      manifest: job_zone_setup
+      pod_labels:
+        application: designate
+        component: zone_setup
+      connections:
+        egress:
+          - {{ to_child_object("dns", "designate", "StatefulSet", "designate-api", ["dns-api"]) | indent(12)}}
+  StatefulSet:
+    designate-api:
+      connections:
+        egress:
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("networking", "neutron", neutron_server_deployment_type, "neutron-server", ["q-api"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - designate_api
+      manifest: statefulset_api
+      pod_labels:
+        application: designate
+        component: api
+      ports:
+      - name: dns-api
+        port: 9001
+        protocol: TCP
+    designate-central:
+      connections:
+        egress:
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("networking", "neutron", neutron_server_deployment_type, "neutron-server", ["q-api"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_user
+      - designate_central
+      manifest: statefulset_central
+      pod_labels:
+        application: designate
+        component: central
+    designate-mdns:
+      connections:
+        egress:
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("networking", "neutron", neutron_server_deployment_type, "neutron-server", ["q-api"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - designate_mdns
+      - designate_worker
+      - powerdns
+      manifest: statefulset_mdns
+      pod_labels:
+        application: designate
+        component: mdns
+      ports:
+        - name: d-mdns
+          port: 5354
+          protocol: TCP
+        - name: d-mdns-udp
+          port: 5354
+          protocol: UDP
+        - port: 53
+          name: pdns-tcp
+          protocol: TCP
+        - port: 53
+          name: pdns-udp
+          protocol: UDP
+        - name: pdns-api
+          port: 8081
+          protocol: TCP
+    designate-producer:
+      connections:
+        egress:
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("networking", "neutron", neutron_server_deployment_type, "neutron-server", ["q-api"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - designate_producer
+      manifest: statefulset_producer
+      pod_labels:
+        application: designate
+        component: producer
+

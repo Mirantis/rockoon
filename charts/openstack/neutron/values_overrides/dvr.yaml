@@ -1,0 +1,68 @@
+# Provide distributed virtual router (DVR) specific overrides
+# for Neutron configuration
+
+labels:
+  agent:
+    l3:
+      node_affinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: openvswitch
+              operator: In
+              values:
+              - enabled
+          - matchExpressions:
+            - key: linuxbridge
+              operator: In
+              values:
+              - enabled
+    metadata:
+      node_affinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: openvswitch
+              operator: In
+              values:
+              - enabled
+          - matchExpressions:
+            - key: linuxbridge
+              operator: In
+              values:
+              - enabled
+conf:
+  neutron:
+    DEFAULT:
+      router_distributed: True
+  plugins:
+    openvswitch_agent:
+      agent:
+        enable_distributed_routing: True
+  overrides:
+    neutron_l3-agent:
+      labels:
+      - label:
+          key: openstack-compute-node
+          values:
+          - "enabled"
+        conf:
+          l3_agent:
+            DEFAULT:
+              agent_mode: dvr
+      - label:
+          key: openstack-control-plane
+          values:
+          - "enabled"
+        conf:
+          l3_agent:
+            DEFAULT:
+              agent_mode: dvr_snat
+      - label:
+          key: openstack-gateway
+          values:
+          - "enabled"
+        conf:
+          l3_agent:
+            DEFAULT:
+              agent_mode: dvr_snat

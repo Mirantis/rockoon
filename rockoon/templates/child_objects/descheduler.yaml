@@ -1,0 +1,10 @@
+descheduler:
+  CronJob:
+    descheduler:
+      hash_fields: []
+      images:
+      - descheduler
+      manifest: cronjob
+      pod_labels:
+        application: descheduler
+        component: descheduler

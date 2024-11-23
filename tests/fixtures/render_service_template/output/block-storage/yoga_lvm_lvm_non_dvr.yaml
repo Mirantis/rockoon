@@ -1,0 +1,325 @@
+spec:
+  releases:
+  - chart: cinder
+    name: openstack-cinder
+    values:
+      overrides:
+        cinder_volume_ds:
+          labels:
+            lvm::node:
+              values:
+                conf:
+                  standalone_backends:
+                    daemonset:
+                      conf:
+                        lvm_fast:
+                          image_upload_use_cinder_backend: True
+                          image_upload_use_internal_tenant: True
+                          volume_driver: cinder.volume.drivers.lvm.LVMVolumeDriver
+                          volume_backend_name: lvm_fast
+                          volume_group: fast-vol
+                          volumes_dir: /var/lib/cinder/volumes
+                          target_helper: lioadm
+                        lvm_slow:
+                          volume_group: slow-vol
+                          volume_driver: cinder.volume.drivers.lvm.LVMVolumeDriver
+                          volume_backend_name: lvm_slow
+                          volumes_dir: /var/lib/cinder/volumes
+                          target_helper: lioadm
+                        DEFAULT:
+                          allowed_direct_url_schemes: cinder
+                          enabled_backends: lvm_fast,lvm_slow
+      bootstrap:
+        bootstrap_conf_backends: false
+        volume_types:
+          lvm_fast:
+            volume_backend_name: lvm_fast
+          lvm_fast_multiattach:
+            multiattach: '"<is> True"'
+            volume_backend_name: lvm_fast
+          lvm_slow:
+            volume_backend_name: lvm_slow
+          lvm_slow_multiattach:
+            multiattach: '"<is> True"'
+            volume_backend_name: lvm_slow
+      conf:
+        policy.d:
+          01-controller-default.yaml: {'block-storage_rule1': 'block-storage_value1'}
+          02-custom.yaml: {}
+        standalone_backends:
+          daemonset:
+            conf:
+              DEFAULT:
+                cluster: ""
+        backends: null
+        cinder:
+          DEFAULT:
+            backup_driver: cinder.backup.drivers.s3.S3BackupDriver
+            backup_s3_endpoint_url: https://openstack-store.it.just.works/
+            backup_s3_store_access_key: ac5n2R3kzf5cy4rcMSWu
+            backup_s3_store_bucket: cinder-backup
+            backup_s3_store_secret_key: snJdDvibofDLi4KMVZJd
+            control_exchange: cinder
+            host: <None>
+            scheduler_default_filters: AvailabilityZoneFilter,CapacityFilter,CapabilitiesFilter,InstanceLocalityFilter
+          coordination:
+            backend_url: etcd3+http://etcd:2379?api_version=auto
+          keystone_authtoken:
+            memcache_secret_key: 76HsSsABaJvTQU6I
+            memcache_security_strategy: ENCRYPT
+            service_type: volumev3
+          audit_middleware_notifications:
+            driver: noop
+          oslo_messaging_notifications:
+            topics: notifications,stacklight_notifications
+          oslo_policy:
+            enforce_new_defaults: false
+            enforce_scope: false
+          oslo_middleware:
+            max_request_body_size: 114688
+          service_user:
+            send_service_user_token: true
+          backend_defaults:
+            rbd_exclusive_cinder_pool: true
+            rbd_secret_uuid: c9543a17-411c-45e1-8a25-3f03e0090dc2
+            report_dynamic_total_capacity: false
+          nova:
+            interface: internal
+            auth_section: keystone_authtoken
+            auth_type: password
+        enable_iscsi: true
+        logging:
+          logger_cinder:
+            level: INFO
+          logger_os.brick:
+            level: INFO
+      dependencies:
+        static:
+          db_init:
+            jobs:
+            - openstack-mariadb-cluster-wait
+      network:
+        api:
+          ingress:
+            annotations:
+              nginx.ingress.kubernetes.io/proxy-body-size: "114688"
+      endpoints:
+        cluster_domain_suffix: cluster.local
+        identity:
+          auth:
+            admin:
+              default_domain_id: default
+              password: ZUqTyP2XwsgEGKZ7qNhhecYyq9NLkGE6
+              project_domain_name: default
+              project_name: admin
+              region_name: RegionOne
+              user_domain_name: default
+              username: admin
+            cinder:
+              password: 7SJvTD3HZ4gm3eU2UDGdjrcZC4wyj2zA
+              username: cinderJCh8Iz
+              region_name: 'RegionOne'
+            test:
+              password: 55Y1R3QdGFvuntBCtD2iNZQcZiQUnsTJ
+              username: testtFQE
+              region_name: 'RegionOne'
+        oslo_cache:
+          statefulset:
+            name: openstack-memcached-memcached
+            replicas: 3
+        oslo_db:
+          auth:
+            admin:
+              password: QACDSM6FBTH2LuXjTuRQ6DXhD8bSgPbn
+              username: root
+            cinder:
+              password: 8xckAGB149FBiBsPfawjSqRNNF7lvXmM
+              username: cinder1rKIan
+        oslo_messaging:
+          auth:
+            admin:
+              password: 2tnAuP0j9MsgaVHErehZkC5HCK3ZxYLr
+              username: rabbitmq
+            guest:
+              password: 7TnAuP0dKMsgaVHErehZkC5HCK3ZxOi4
+              username: guest
+            cinder:
+              password: KgjY6ghlVbGSKJL6DH2jQXH50EtBVsiC
+              username: cinder0Jhxmf
+            user:
+              password: 2tnAuP0j9MsgaVHErehZkC5HCK3ZxYLr
+              username: rabbitmq
+          hosts:
+            default: rabbitmq
+          path: /cinder
+          statefulset:
+            name: openstack-rabbitmq-rabbitmq
+            replicas: 1
+        oslo_messaging_notifications:
+          auth:
+            cinder:
+              password: ptehSf4lZxF0TAs16INhV9XmuVXHbL6R
+              username: cinderU5dqXt
+          host_fqdn_override: {}
+          hosts:
+            default: rabbitmq
+          path: /openstack
+          port:
+            amqp:
+              default: 5672
+            http:
+              default: 15672
+          scheme: rabbit
+          statefulset:
+            name: openstack-rabbitmq-rabbitmq
+            replicas: 1
+        volume:
+          enabled: false
+        volumev2:
+          host_fqdn_override:
+            public:
+              host: cinder.it.just.works
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          hosts:
+            admin:
+              host: cinder-api
+            default: cinder
+            internal: cinder-api
+            public:
+              host: cinder
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          port:
+            api:
+              admin: 8776
+              default: 80
+              internal: 8776
+              public: 443
+          scheme:
+            default: http
+            public: https
+          state: absent
+        volumev3:
+          host_fqdn_override:
+            public:
+              host: cinder.it.just.works
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          hosts:
+            admin:
+              host: cinder-api
+            default: cinder
+            internal: cinder-api
+            public:
+              host: cinder
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          port:
+            api:
+              admin: 8776
+              default: 80
+              internal: 8776
+              public: 443
+          scheme:
+            default: http
+            public: https
+      images:
+        tags:
+          bootstrap: bootstrap:latest
+          cinder_api: cinder-api:latest
+          cinder_backup: cinder-backup:latest
+          cinder_backup_storage_init: cinder-backup-storage-init:latest
+          cinder_db_purge: cinder-db-purge:latest
+          cinder_db_sync: cinder-db-sync:latest
+          cinder_db_sync_online: cinder-db-sync-online:latest
+          cinder_scheduler: cinder-scheduler:latest
+          cinder_storage_init: cinder-storage-init:latest
+          cinder_volume: cinder-volume:latest
+          cinder_volume_usage_audit: cinder-volume-usage-audit:latest
+          cinder_service_cleaner: cinder-service-cleaner:latest
+          db_drop: db-drop:latest
+          db_init: db-init:latest
+          dep_check: dep-check:latest
+          image_repo_sync: image-repo-sync:latest
+          ks_endpoints: ks-endpoints:latest
+          ks_service: ks-service:latest
+          ks_user: ks-user:latest
+          rabbit_init: rabbit-init:latest
+          test: test:latest
+      jobs:
+        ks_endpoints:
+          restartPolicy: Never
+        ks_service:
+          restartPolicy: Never
+        ks_user:
+          restartPolicy: Never
+        db_purge:
+          enabled: true
+          cron: "1 0 * * 1"
+          script:
+            config:
+              age: 30
+      manifests:
+        cron_job_db_purge: true
+        job_backup_storage_init: false
+        job_rabbit_init: false
+        job_storage_init: false
+        network_policy: false
+        secret_ca_bundle: true
+        cron_service_cleaner: true
+        job_drop_default_volume_type: true
+        cron_volume_usage_audit: false
+        statefulset_backup: true
+        statefulset_volume: false
+        ceph_conf: false
+        job_clean: false
+      pod:
+        affinity:
+          anti:
+            type:
+              backup: "requiredDuringSchedulingIgnoredDuringExecution"
+        replicas:
+          api: 1
+          registry: 1
+        security_context:
+          cinder_backup:
+            pod:
+              runAsUser: 42424
+            container:
+              cinder_backup:
+                privileged: true
+          cinder_volume:
+            pod:
+              runAsUser: 42424
+            container:
+              cinder_volume:
+                privileged: true
+          cinder_volume_daemonset:
+            pod:
+              runAsUser: 42424
+            container:
+              cinder_volume:
+                privileged: true
+        useHostNetwork:
+          volume: true

@@ -1,0 +1,255 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "update_backends_map" }}
+  {{- $backends := index . 0 }}
+  {{- $conf := index . 1 }}
+  {{- $default_host := index . 2 }}
+  {{- $default_enabled_backends := index . 3 }}
+  {{- $conf_default := index $conf "DEFAULT" | default dict }}
+  {{- $host := index $conf_default  "host" | default $default_host }}
+  {{- $enabled_backends := splitList "," (index $conf_default "enabled_backends" | default $default_enabled_backends) }}
+  {{- if hasKey $backends $host }}
+    {{- $_ := set $backends $host ((concat (index $backends $host) $enabled_backends) | uniq ) }}
+  {{- else }}
+    {{- $_ := set $backends $host $enabled_backends }}
+  {{- end }}
+{{- end }}
+
+
+{{- if .Values.manifests.cron_service_cleaner }}
+{{- $envAll := . }}
+
+{{- $mounts_cinder_service_cleaner := .Values.pod.mounts.cinder_service_cleaner.cinder_service_cleaner }}
+{{- $mounts_cinder_service_cleaner_init := .Values.pod.mounts.cinder_service_cleaner.init_container }}
+
+{{- $serviceAccountName := "cinder-service-cleaner" }}
+{{ tuple $envAll "service_cleaner" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+{{/*
+abstract: |
+  Configmap contains mapping between cinder hosts and enabled backends on this hosts.
+  Calculation of the mapping takes into account host and enabled_backends options
+  from conf.cinder.DEFAULT, conf.standalone_backends and overrides.<ds_name>.labels.<label>.values.conf.cinder.DEFAULT
+examples:
+  - values: |
+      conf:
+        cinder:
+          DEFAULT:
+            enabled_backends: volumes-hdd
+            host: <None>
+        standalone_backends:
+          statefulsets:
+            netapp:
+              conf:
+                DEFAULT:
+                  cluster: ""
+                  host: "test-netapp"
+                  enabled_backends: netapp
+          daemonset:
+            conf:
+              DEFAULT:
+                cluster: ""
+                enabled_backends: test,test2
+                volumes_dir: /var/lib/cinder/volumes
+      overrides:
+        cinder_volume_ds:
+          labels:
+            kubernetes.io/hostname::mk-rs-qkunv6ywjeyv-4-b3yv6z3gz27z-server-pg2s553dcibc:
+              values:
+                conf:
+                  standalone_backends:
+                    daemonset:
+                      conf:
+                        test3:
+                          volume_group: test3-group
+                        DEFAULT:
+                          cluster: ""
+                          enabled_backends: test3
+                          host: override
+        cinder_volume_sts:
+          purestore:
+            values:
+              conf:
+                cinder:
+                  purestore:
+                    volume_driver: cinder.volume.drivers.dell_emc.powerstore.driver.PowerStoreDriver
+                  DEFAULT:
+                    enabled_backends: purestore
+                    host: override2
+    return: |
+      <None>:
+       - volumes-hdd
+       - test
+       - test2
+      override:
+       - test3
+      override2:
+       - purestore
+      test-netapp:
+       - netapp
+*/}}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cinder-service-cleaner
+data:
+  hosts_mapping.yaml: |
+{{- $default_host := $envAll.Values.conf.cinder.DEFAULT.host }}
+{{- $default_enabled_backends := $envAll.Values.conf.cinder.DEFAULT.enabled_backends }}
+{{- $backends := dict $default_host (splitList "," $default_enabled_backends) }}
+{{- $standalone_backends := index $envAll.Values.conf "standalone_backends" | default dict }}
+{{- $statefulsets_standalone := index $standalone_backends "statefulsets" | default dict }}
+{{- range $name, $standalone_backend := $statefulsets_standalone }}
+    {{- tuple $backends $standalone_backend.conf $default_host $default_enabled_backends | include "update_backends_map" }}
+{{- end }}
+{{- $sts_overrides := index (index $envAll.Values "overrides" |default dict ) "cinder_volume_sts" }}
+{{- if $sts_overrides }}
+{{-   range $name, $value := $sts_overrides }}
+{{-     tuple $backends $value.values.conf.cinder $default_host $default_enabled_backends | include "update_backends_map" }}
+{{-   end }}
+{{- end }}
+
+{{- if index $standalone_backends "daemonset" }}
+    {{- $daemonset_conf := index ( index $standalone_backends "daemonset" ) "conf" | default dict }}
+    {{- $daemonset_conf_default := index $daemonset_conf "DEFAULT" | default dict }}
+    {{- $daemonset_default_host := index $daemonset_conf_default  "host" | default $default_host }}
+    {{- $daemonset_default_backends := splitList ","  (index $daemonset_conf_default  "enabled_backends" | default $default_enabled_backends) }}
+    {{- tuple $backends $daemonset_conf $default_host $default_enabled_backends | include "update_backends_map" }}
+    {{- $override_name := "cinder_volume_ds" }}
+    {{- if index (index $envAll.Values "overrides" |default dict ) $override_name }}
+        {{- range $label, $value := index ( index $envAll.Values.overrides $override_name ) "labels" }}
+            {{- $label_conf := $value.values.conf.standalone_backends.daemonset.conf }}
+            {{- tuple $backends $label_conf $daemonset_default_host $daemonset_default_backends | include "update_backends_map" }}
+        {{- end }}
+    {{- end }}
+{{- end }}
+{{ $backends | toYaml | indent 4 }}
+
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cinder-service-cleaner
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+spec:
+  schedule: {{ .Values.jobs.service_cleaner.cron | quote }}
+  successfulJobsHistoryLimit: {{ .Values.jobs.service_cleaner.history.success }}
+  failedJobsHistoryLimit: {{ .Values.jobs.service_cleaner.history.failed }}
+  {{- if .Values.jobs.service_cleaner.starting_deadline }}
+  startingDeadlineSeconds: {{ .Values.jobs.service_cleaner.starting_deadline }}
+  {{- end }}
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    metadata:
+      labels:
+{{ tuple $envAll "cinder" "service-cleaner" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+    spec:
+      backoffLimit: 0
+      completions: 1
+      parallelism: 1
+      template:
+        metadata:
+          labels:
+{{ tuple $envAll "cinder" "service-cleaner" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 12 }}
+          annotations:
+{{ dict "envAll" $envAll "podName" $serviceAccountName "containerNames" (list "cinder-service-cleaner" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 12 }}
+        spec:
+{{ dict "envAll" $envAll "application" "service_cleaner" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 10 }}
+          serviceAccountName: {{ $serviceAccountName }}
+          restartPolicy: Never
+          nodeSelector:
+            {{ .Values.labels.job.node_selector_key }}: {{ .Values.labels.job.node_selector_value }}
+          initContainers:
+{{ tuple $envAll "service_cleaner" $mounts_cinder_service_cleaner_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 12 }}
+            - name: service-clean-init
+{{ tuple $envAll "ks_endpoints" | include "helm-toolkit.snippets.image" | indent 14 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.service_cleaner | include "helm-toolkit.snippets.kubernetes_resources" | indent 14 }}
+{{ dict "envAll" $envAll "application" "service_cleaner" "container" "cinder_service_cleaner_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 14 }}
+              command:
+                - /tmp/service-clean-init.py
+              env:
+{{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" "admin" ) | indent 16 }}
+                - name: EXCLUDED_CINDER_HOSTS
+                  value: {{ $envAll.Values.jobs.service_cleaner.excluded_cinder_hosts | quote }}
+              volumeMounts:
+                - name: pod-tmp
+                  mountPath: /tmp
+                - name: cinder-bin
+                  mountPath: /tmp/service-clean-init.py
+                  subPath: service-clean-init.py
+                  readOnly: true
+                - name: cinder-service-cleaner
+                  mountPath: /tmp/hosts_mapping.yaml
+                  subPath: hosts_mapping.yaml
+                  readOnly: true
+                - name: os-clouds
+                  mountPath: /etc/openstack/clouds.yaml
+                  subPath: clouds.yaml
+                  readOnly: true
+          containers:
+            - name: cinder-service-cleaner
+{{ tuple $envAll "cinder_service_cleaner" | include "helm-toolkit.snippets.image" | indent 14 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.service_cleaner | include "helm-toolkit.snippets.kubernetes_resources" | indent 14 }}
+{{ dict "envAll" $envAll "application" "service_cleaner" "container" "cinder_service_cleaner" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 14 }}
+              command:
+                - /tmp/service-cleaner.sh
+              volumeMounts:
+                - name: pod-tmp
+                  mountPath: /tmp
+                - name: etccinder
+                  mountPath: /etc/cinder
+                - name: cinder-etc
+                  mountPath: /etc/cinder/cinder.conf
+                  subPath: cinder.conf
+                  readOnly: true
+                {{- if .Values.conf.cinder.DEFAULT.log_config_append }}
+                - name: cinder-etc
+                  mountPath: {{ .Values.conf.cinder.DEFAULT.log_config_append }}
+                  subPath: {{ base .Values.conf.cinder.DEFAULT.log_config_append }}
+                  readOnly: true
+                {{- end }}
+                - name: cinder-bin
+                  mountPath: /tmp/service-cleaner.sh
+                  subPath: service-cleaner.sh
+                  readOnly: true
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 16 }}
+{{ if $mounts_cinder_service_cleaner.volumeMounts }}{{ toYaml $mounts_cinder_service_cleaner.volumeMounts | indent 16 }}{{ end }}
+          volumes:
+            - name: pod-tmp
+              emptyDir: {}
+            - name: etccinder
+              emptyDir: {}
+            - name: cinder-service-cleaner
+              configMap:
+                name: cinder-service-cleaner
+                defaultMode: 416
+            - name: cinder-etc
+              secret:
+                secretName: cinder-etc
+                defaultMode: 416
+            - name: os-clouds
+              secret:
+                secretName: "cinder-os-clouds"
+                defaultMode: 416
+            - name: cinder-bin
+              configMap:
+                name: cinder-bin
+                defaultMode: 504
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 12 }}
+{{ if $mounts_cinder_service_cleaner.volumes }}{{ toYaml $mounts_cinder_service_cleaner.volumes | indent 12 }}{{ end }}
+{{- end }}

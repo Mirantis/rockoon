@@ -1,0 +1,61 @@
+spec:
+  releases:
+  - name: openstack-cloudprober
+    chart: cloudprober
+    values:
+      images:
+        tags:
+          cloudprober: cloudprober:latest
+          cloudprober_openstack_discovery: cloudprober-openstack-discovery:latest
+          dep_check: dep-check:latest
+      endpoints:
+        cluster_domain_suffix: cluster.local
+        identity:
+          auth:
+            cloudprober:
+              default_domain_id: default
+              password: QXH50EtBVsiCptehSf4l55Y1R3QdGFv8xc
+              username: osctlQECh8
+              project_domain_name: default
+              project_name: admin
+              region_name: RegionOne
+              user_domain_name: default
+          hosts:
+            admin:
+              host: keystone-api
+            default: keystone
+            internal: keystone-api
+          port:
+            api:
+              admin: 5000
+              default: 80
+              internal: 5000
+              public: 443
+          scheme:
+            default: http
+            public: https
+      conf:
+        openstack_discovery:
+          os_cloud: cloudprober
+          interval: 900
+      network_policy:
+        prober:
+          spec:
+            ingress:
+              - from:
+                - default: selector
+              - from:
+                - namespaceSelector:
+                    matchLabels:
+                      kubernetes.io/metadata.name: stacklight
+                ports:
+                - port: 9313
+                  protocol: TCP
+            podSelector:
+              matchLabels:
+                application: cloudprober
+                component: prober
+            policyTypes:
+            - Ingress
+      manifests:
+        network_policy: true

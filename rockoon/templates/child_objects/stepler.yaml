@@ -1,0 +1,34 @@
+{%- from 'macros/connections.j2' import to_child_object %}
+stepler:
+  Job:
+    openstack-stepler-run-tests:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - stepler_run_tests
+      manifest: job_run_tests
+      pod_labels:
+        application: stepler
+        component: run-tests
+    stepler-bootstrap:
+      hash_fields: []
+      images:
+      - bootstrap
+      manifest: job_bootstrap
+      pod_labels:
+        application: stepler
+        component: bootstrap
+    stepler-ks-user:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields:
+      - endpoints.*
+      images:
+      - ks_user
+      manifest: job_ks_user
+      pod_labels:
+        application: stepler
+        component: ks-user

@@ -1,0 +1,29 @@
+instance-ha:masakari:Deployment:masakari-api:
+- from:
+  - podSelector:
+      matchLabels:
+        application: horizon
+        component: server
+  - podSelector:
+      matchLabels:
+        application: keystone
+        component: client
+  - podSelector:
+      matchLabels:
+        application: ingress
+        component: server
+  - podSelector:
+      matchLabels:
+        application: masakari
+        component: monitors
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: engine
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: engine
+  ports:
+  - port: 15868
+    protocol: TCP

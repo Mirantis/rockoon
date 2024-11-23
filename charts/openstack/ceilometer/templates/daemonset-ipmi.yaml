@@ -1,0 +1,149 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "ceilometer.ceilometer-ipmi.daemonset" }}
+{{- $daemonset := index . 0 }}
+{{- $configMapName := index . 1 }}
+{{- $serviceAccountName := index . 2 }}
+{{- $envAll := index . 3 }}
+{{- with $envAll }}
+
+{{- $mounts_ceilometer_ipmi := .Values.pod.mounts.ceilometer_ipmi.ceilometer_ipmi }}
+{{- $mounts_ceilometer_ipmi_init := .Values.pod.mounts.ceilometer_ipmi.init_container }}
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ $daemonset }}
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "ceilometer" "ipmi" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+{{ tuple $envAll "ceilometer" "ipmi" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll "ipmi" | include "helm-toolkit.snippets.kubernetes_upgrades_daemonset" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "ceilometer" "ipmi" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+        endpoints-hash: {{ .Values.endpoints | include "helm-toolkit.utils.get_hash" }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+      affinity:
+{{ tuple $envAll "ceilometer" "ipmi" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      hostNetwork: true
+      hostPID: false
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        {{ .Values.labels.ipmi.node_selector_key }}: {{ .Values.labels.ipmi.node_selector_value }}
+      initContainers:
+{{ tuple $envAll "ipmi" $mounts_ceilometer_ipmi_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+      containers:
+        - name: ceilometer-ipmi
+{{ tuple $envAll "ceilometer_ipmi" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.ipmi | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          securityContext:
+            privileged: true
+          command:
+            - /tmp/ceilometer-ipmi.sh
+          volumeMounts:
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "ceilometer" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: pod-etc-ceilometer
+              mountPath: /etc/ceilometer
+            - name: ceilometer-etc
+              mountPath: /etc/ceilometer/ceilometer.conf
+              subPath: ceilometer.conf
+              readOnly: true
+            - name: ceilometer-etc
+              mountPath: /etc/ceilometer/api_paste.ini
+              subPath: api_paste.ini
+              readOnly: true
+            - name: ceilometer-etc
+              mountPath: /etc/ceilometer/event_definitions.yaml
+              subPath: event_definitions.yaml
+              readOnly: true
+            - name: ceilometer-etc
+              mountPath: /etc/ceilometer/event_pipeline.yaml
+              subPath: event_pipeline.yaml
+              readOnly: true
+            - name: ceilometer-etc
+              mountPath: /etc/ceilometer/pipeline.yaml
+              subPath: pipeline.yaml
+              readOnly: true
+            - name: ceilometer-etc
+              mountPath: /etc/ceilometer/gnocchi_resources.yaml
+              subPath: gnocchi_resources.yaml
+              readOnly: true
+            - name: ceilometer-etc
+              mountPath: /etc/ceilometer/polling.yaml
+              subPath: polling.yaml
+              readOnly: true
+            - name: ceilometer-bin
+              mountPath: /tmp/ceilometer-ipmi.sh
+              subPath: ceilometer-ipmi.sh
+              readOnly: true
+            - name: ipmi-device
+              mountPath: {{ .Values.ipmi_device }}
+              readOnly: true
+            {{- if .Values.conf.ceilometer.DEFAULT.log_config_append }}
+            - name: ceilometer-etc
+              mountPath: {{ .Values.conf.ceilometer.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.ceilometer.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+{{ if $mounts_ceilometer_ipmi.volumeMounts }}{{ toYaml $mounts_ceilometer_ipmi.volumeMounts | indent 12 }}{{ end }}
+      volumes:
+{{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "ceilometer" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
+        - name: pod-tmp
+          emptyDir: {}
+        - name: pod-etc-ceilometer
+          emptyDir: {}
+        - name: ceilometer-etc
+          secret:
+            secretName: ceilometer-etc
+            defaultMode: 416
+        - name: ceilometer-bin
+          configMap:
+            name: ceilometer-bin
+            defaultMode: 504
+        - name: ipmi-device
+          hostPath:
+            path: {{ .Values.ipmi_device }}
+{{ if $mounts_ceilometer_ipmi.volumes }}{{ toYaml $mounts_ceilometer_ipmi.volumes | indent 8 }}{{ end }}
+{{- end }}
+{{- end }}
+{{- if .Values.manifests.daemonset_ipmi }}
+{{- $envAll := . }}
+{{- $daemonset := "ceilometer-ipmi" }}
+{{- $configMapName := "ceilometer-etc" }}
+{{- $serviceAccountName := "ceilometer-ipmi" }}
+{{ tuple $envAll "ipmi" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+{{- $configmap_yaml := "ceilometer.configmap.etc" }}
+{{/* Prefer using .Values.overrides rather than .Values.conf.overrides */}}
+{{- if index (index .Values "overrides" |default dict ) "ceilometer_ceilometer-ipmi" }}
+{{- list $daemonset "ceilometer.ceilometer-ipmi.daemonset" $serviceAccountName $configmap_yaml $configMapName "ceilometer.configmap.bin" "ceilometer-bin" . | include "helm-toolkit.utils.daemonset_overrides_root" }}
+{{- else }}
+{{- $daemonset_yaml := list $daemonset $configMapName $serviceAccountName . | include "ceilometer.ceilometer-ipmi.daemonset" | toString | fromYaml }}
+{{- list $daemonset $daemonset_yaml $configmap_yaml $configMapName . | include "helm-toolkit.utils.daemonset_overrides" }}
+{{- end }}
+{{- end }}

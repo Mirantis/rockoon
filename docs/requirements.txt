@@ -1,0 +1,6 @@
+mkdocs
+mkdocs-callouts
+mkdocs-get-deps
+mkdocs-material
+mkdocs-material-extensions
+mkdocs-mermaid2-plugin

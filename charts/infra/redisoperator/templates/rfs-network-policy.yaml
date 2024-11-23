@@ -1,0 +1,28 @@
+{{- if .Values.network_policy.rfs.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: rfs-netpol
+spec:
+  ingress:
+  - from:
+      {{- range $podNet := .Values.global.podNetworks }}
+      - ipBlock:
+          cidr: {{ $podNet.cidr }}
+      {{- end }}
+      - namespaceSelector:
+          matchLabels:
+             kubernetes.io/metadata.name: {{ .Values.osdpl_namespace }}
+    ports:
+    - port: 26379
+      protocol: TCP
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: sentinel
+      app.kubernetes.io/managed-by: redis-operator
+      app.kubernetes.io/part-of: redis-failover
+  policyTypes:
+  - Ingress
+{{- end }}

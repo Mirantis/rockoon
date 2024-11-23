@@ -1,0 +1,68 @@
+heat_template_version: queens
+parameters:
+  image:
+    type: string
+    description: Name of image to use for servers
+  public_net_id:
+    type: string
+    default: ''
+    description: >
+      ID of public network for which floating IP addresses will be allocated/
+      for baremetal case flat provision network for nodes
+  dns_nameservers:
+    type: json
+    default: ['172.18.224.6', '172.18.176.6']
+  lcm_network_cidr:
+    type: string
+    description: The CIDR of control network, used to detect control interface.
+    default: '10.10.0.0/24'
+  k8s_controller_size:
+    type: number
+    description: Number of masters instances to deploy
+    default: 1
+  cluster_public_key:
+    type: string
+  additional_public_key:
+    type: string
+    default: ""
+  k8s_controller_flavor:
+    type: string
+    default: 'mosk.s.ucp'
+resources:
+  keypair_name:
+    type: OS::Heat::RandomString
+    properties:
+      character_classes: [{"class": "hexdigits", "min": 1}]
+      length: 128
+      salt: constant
+  key_pair:
+    type: OS::Nova::KeyPair
+    properties:
+      name: { get_attr: [keypair_name, value] }
+      public_key: { get_param: cluster_public_key }
+      save_private_key: false
+  lcm_network:
+    type: MCP2::NetworkLCM
+    properties:
+      public_net_id: { get_param: public_net_id }
+      lcm_network_cidr: { get_param: lcm_network_cidr }
+      dns_nameservers: { get_param: dns_nameservers }
+  k8s_controllers:
+    depends_on:
+     - lcm_network
+    type: MCP2::SrvInstances
+    properties:
+      image: { get_param: image }
+      flavor: { get_param: k8s_controller_flavor }
+      lcm_network: { get_attr: [lcm_network, public_network] }
+      lcm_subnet_id: { get_attr: [lcm_network, lcm_subnet_id]}
+      public_net_id: { get_param: public_net_id }
+      key_name: { get_attr: [keypair_name, value] }
+      additional_public_key: { get_param: additional_public_key }
+outputs:
+  k8s_controller_ips:
+    description: Private IP addresses of the deployed k8s controllers instances
+    value: { get_attr: [k8s_controllers, server_public_ip] }
+  dns_nameservers:
+    description: List of configured DNS nameservers
+    value: { get_param: dns_nameservers}

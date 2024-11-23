@@ -1,0 +1,141 @@
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+{{- if .Values.manifests.job_pool_manage }}
+
+{{- $envAll := . }}
+{{- $mounts_designate_pool_manage := .Values.pod.mounts.designate_pool_manage.designate_pool_manage}}
+{{- $mounts_designate_pool_manage_init := .Values.pod.mounts.designate_pool_manage.init_container }}
+
+{{- $serviceAccountName := "designate-pool-update" }}
+{{ tuple $envAll "pool_manage" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+
+{{- $powerdnsExternalServiceName := printf "%s-external"  ( tuple "powerdns" "internal" . | include "helm-toolkit.endpoints.hostname_short_endpoint_lookup" ) }}
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pool-manage-role
+  namespace: {{ $envAll.Release.Namespace | quote }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pool-manage-role
+subjects:
+  - kind: ServiceAccount
+    name: {{ $serviceAccountName | quote }}
+    namespace: {{ $envAll.Release.Namespace | quote }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pool-manage-role
+  namespace: {{ $envAll.Release.Namespace | quote }}
+rules:
+  - apiGroups: [""]
+    verbs:
+      - create
+      - get
+      - patch
+      - update
+    resources:
+      - configmaps
+  - apiGroups: [""]
+    verbs:
+      - get
+      - list
+    resources:
+      - services
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: designate-pool-manage
+spec:
+  backoffLimit: 20
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "designate" "pool_manage" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName | quote }}
+{{ dict "envAll" $envAll "application" "pool_manage" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      restartPolicy: OnFailure
+      nodeSelector:
+        {{ .Values.labels.job.node_selector_key }}: {{ .Values.labels.job.node_selector_value }}
+      initContainers:
+{{ tuple $envAll "pool_manage" $mounts_designate_pool_manage_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container"  | indent 8 }}
+        - name:  check-hash
+          image: {{ .Values.images.tags.designate_pool_manage_hash }}
+          imagePullPolicy: {{ .Values.images.pull_policy }}
+{{ dict "envAll" $envAll "application" "pool_manage" "container" "check_hash" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+            - name: DESIGNATE_NAMESPACE
+              value:  {{ $envAll.Release.Namespace | quote }}
+            - name: DESIGNATE_POWERDNS_EXTERNAL_SERVICE
+              value: {{ $powerdnsExternalServiceName | quote }}
+          command:
+            - /tmp/pool_manage.py
+          volumeMounts:
+            - name: designate-bin
+              mountPath: /tmp/pool_manage.py
+              subPath: pool_manage.py
+              readOnly: true
+            - name: designate-etc
+              mountPath: /tmp/pools.yaml.template
+              subPath: pools.yaml
+              readOnly: true
+            - name: pod-tmp
+              mountPath: /tmp
+      containers:
+        - name: designate-pool-update
+          image: {{ .Values.images.tags.designate_pool_manage }}
+          imagePullPolicy: {{ .Values.images.pull_policy }}
+{{ dict "envAll" $envAll "application" "pool_manage" "container" "pool_update" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.pool_manage | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          env:
+          command:
+            - /tmp/pool_manage.sh
+          volumeMounts:
+            - name: designate-bin
+              mountPath: /tmp/pool_manage.sh
+              subPath: pool_manage.sh
+              readOnly: true
+            - name: designate-etc
+              mountPath: /etc/designate/designate.conf
+              subPath: designate.conf
+              readOnly: true
+            {{- if .Values.conf.designate.DEFAULT.log_config_append }}
+            - name: designate-etc
+              mountPath: {{ .Values.conf.designate.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.designate.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+            - name: pod-tmp
+              mountPath: /tmp
+{{- if $mounts_designate_pool_manage.volumeMounts }}{{ toYaml $mounts_designate_pool_manage.volumeMounts | indent 10 }}{{ end }}
+      volumes:
+        - name: designate-bin
+          configMap:
+            name: designate-bin
+            defaultMode: 504
+        - name: designate-etc
+          secret:
+            secretName: designate-etc
+            defaultMode: 416
+        - name: pod-tmp
+          emptyDir: {}
+{{- if $mounts_designate_pool_manage.volumes }}{{ toYaml $mounts_designate_pool_manage.volumes | indent 6 }}{{ end }}
+{{- end }}

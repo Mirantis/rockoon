@@ -1,0 +1,457 @@
+# IMPORTANT: list items specified here is not possible to override as they
+# appended during merging
+{%- set ironic_enabled = 'baremetal' in services %}
+{%- set nginx_ingress_namespace_class = "openstack-ingress-nginx" %}
+{%- if OSVer[openstack_version] >= OSVer.yoga %}
+  {%- set cirros_image_name = "Cirros-6.0" %}
+  {%- set dhcp_client = "dhcpcd" %}
+{%- else %}
+  {%- set cirros_image_name = "Cirros-5.1" %}
+{%- endif %}
+internal_domain_name: cluster.local
+common:
+  charts:
+    releases:
+      namespace: {{ openstack_namespace }}
+  openstack:
+    values:
+      network:
+        api:
+          ingress:
+            classes:
+              namespace: {{ nginx_ingress_namespace_class }}
+features:
+  logging:
+    cadf:
+      enabled: false
+      driver: messagingv2
+    cinder:
+      level: DEBUG
+    neutron:
+      level: DEBUG
+    nova:
+      level: DEBUG
+    octavia:
+      level: DEBUG
+  services:
+    - block-storage
+    - compute
+    - dns
+    - identity
+    - dashboard
+    - image
+    - ingress
+    - database
+    - memcached
+    - networking
+    - orchestration
+    - messaging
+    - load-balancer
+{%- if OSVer[openstack_version] >= OSVer.stein %}
+    - placement
+{%- endif %}
+    - coordination
+    - key-manager
+    - redis
+    - descheduler
+    - dynamic-resource-balancer
+  network_policies:
+{%- if OSVer[openstack_version] >= OSVer.yoga %}
+    enabled: true
+{%- else %}
+    enabled: false
+{%- endif %}
+  neutron:
+    backend: ml2
+  database:
+    local_volumes:
+      enabled: true
+  ssl:
+    public_endpoints:
+      enabled: true
+  stacklight:
+    enabled: true
+    user:
+      username: stacklight
+services:
+  ingress:
+    ingress:
+      values:
+        deployment:
+          # NOTE(vsaienko): deploy in cluster mode to allow handle ingress'es
+          # from TF namespace
+          mode: "cluster"
+          cluster:
+            class: {{ nginx_ingress_namespace_class }}
+  database:
+    mariadb:
+      values:
+        conf:
+          database_conf:
+            mysqld:
+              wsrep_provider_options:
+                gcache.size: 1024M
+  dashboard:
+    horizon:
+      values:
+        {%- if OSVer[openstack_version] >= OSVer.antelope %}
+        conf:
+          policy.d:
+            nova:
+              01-controller-default.yaml:
+                "os_compute_api:os-migrate-server:migrate": "rule:project_member_or_admin"
+                "os_compute_api:os-migrate-server:migrate_live": "rule:project_member_or_admin"
+        {%- endif %}
+        network:
+          dashboard:
+            ingress:
+              classes:
+                namespace: {{ nginx_ingress_namespace_class }}
+  networking:
+    neutron:
+      values:
+        network:
+          server:
+            ingress:
+              classes:
+                namespace: {{ nginx_ingress_namespace_class }}
+  orchestration:
+    heat:
+      values:
+        network:
+          cfn:
+            ingress:
+              classes:
+                namespace: {{ nginx_ingress_namespace_class }}
+          cloudwatch:
+            ingress:
+              classes:
+                namespace: {{ nginx_ingress_namespace_class }}
+  compute:
+    nova:
+      values:
+        conf:
+          {%- if OSVer[openstack_version] >= OSVer.antelope %}
+          policy.d:
+            01-controller-default.yaml:
+              "os_compute_api:os-migrate-server:migrate": "rule:project_member_or_admin"
+              "os_compute_api:os-migrate-server:migrate_live": "rule:project_member_or_admin"
+          {%- endif %}
+          nova:
+            filter_scheduler:
+              enabled_filters:
+              - AggregateInstanceExtraSpecsFilter
+              # - AggregateImagePropertiesIsolation
+              # - AggregateIoOpsFilter
+              # - AggregateMultiTenancyIsolation
+              # - AggregateNumInstancesFilter
+              - AggregateTypeAffinityFilter
+              # - AllHostsFilter
+              {%- if OSVer[openstack_version] <= OSVer.caracal %}
+              - AvailabilityZoneFilter
+              {%- endif %}
+              - ComputeFilter
+              - ComputeCapabilitiesFilter
+              - DifferentHostFilter
+              - ImagePropertiesFilter
+              - IsolatedHostsFilter
+              # - IoOpsFilter
+              # - MetricsFilter
+              - SameHostFilter
+              - ServerGroupAntiAffinityFilter
+              - ServerGroupAffinityFilter
+              - SimpleCIDRAffinityFilter
+              - NUMATopologyFilter
+              # - NumInstancesFilter
+              - PciPassthroughFilter
+            libvirt:
+            {%- if OSVer[openstack_version] <= OSVer.ussuri %}
+              live_migration_use_ip_to_scp_configdrive: true
+            {%- else %}
+              migrations_use_ip_to_scp: true
+            {%- endif %}
+          enable_iscsi: true
+        network:
+          api:
+            ingress:
+              classes:
+                namespace: {{ nginx_ingress_namespace_class }}
+          metadata:
+            ingress:
+              classes:
+                namespace: {{ nginx_ingress_namespace_class }}
+          osapi:
+            ingress:
+              classes:
+                namespace: {{ nginx_ingress_namespace_class }}
+          placement:
+            ingress:
+              classes:
+                namespace: {{ nginx_ingress_namespace_class }}
+          novncproxy:
+            ingress:
+              classes:
+                namespace: {{ nginx_ingress_namespace_class }}
+          spiceproxy:
+            ingress:
+              classes:
+                namespace: {{ nginx_ingress_namespace_class }}
+        bootstrap:
+          structured:
+            flavors:
+              options:
+                m1.extra_tiny_test:
+                  disk: 5
+                  name: m1.extra_tiny_test
+                  ram: 256
+                  vcpus: 1
+                m1.tiny_test:
+                  disk: 5
+                  name: m1.tiny_test
+                  ram: 512
+                  vcpus: 1
+  metric:
+    gnocchi:
+      values:
+        network:
+          api:
+            ingress:
+              classes:
+                namespace: {{ nginx_ingress_namespace_class }}
+  tempest:
+    tempest:
+      values:
+        conf:
+          # NOTE(vsaienko): disable cleanup explicitly to avoid production data loss.
+          # DANGER: do not enable this on production environment.
+          cleanup:
+            enabled: False
+          convert_to_uuid:
+            compute:
+              image_ref: {{ cirros_image_name }}
+              image_ref_alt: {{ cirros_image_name ~ '.alt' }}
+              image_raw_ref: {{ cirros_image_name ~ '.raw' }}
+            {%- if ironic_enabled %}
+              # TODO(vsaienko): change name to more generic
+              flavor_ref:  baremetal-ram1024-cpus2-disk10
+              flavor_ref_alt: baremetal-ram1024-cpus2-disk10
+            {%- else %}
+              flavor_ref:  m1.extra_tiny_test
+              flavor_ref_alt: m1.tiny_test
+            {%- endif %}
+          blacklist:
+            # test_ipv6_vip_mixed_ipv4_ipv6_members_traffic test is added to the list because the test requires IPv4 IPv6 dual stack mode in
+            # Kubernetes but the modes is supported from 1.16 version of Kubernetes. The test will be removed from the list once Kubernetes server
+            # will be at or later than version v1.16. The bug is described more comprehensively in PRODX-2330
+            - (?:octavia_tempest_plugin.tests.scenario.v2.test_ipv6_traffic_ops.IPv6TrafficOperationsScenarioTest)
+           {%- if ovn_enabled  %}
+            # Use HTTP scheme that is not supported by OVN
+            - (?:heat_tempest_plugin.tests.scenario.test_octavia_lbaas.LoadBalancerTest)
+           {%- endif %}
+            # Skip SoftwareConfigIntegrationTest because it requires a custom image
+            # https://github.com/openstack/heat/blob/stable/train/heat_integrationtests/prepare_test_env.sh
+            - (?:heat_tempest_plugin.tests.scenario.test_server_software_config.SoftwareConfigIntegrationTest)
+          {%- if ironic_enabled %}
+            # Skip schedule to all nodes, as in case of concurrent tests, this will highly likely to fail
+            - (?:tempest.scenario.test_server_multinode.TestServerMultinode.test_schedule_to_all_nodes)
+            # Skip ironic boot from volume
+            - (?:ironic_tempest_plugin.tests.scenario.test_baremetal_boot_from_volume.BaremetalBFV.test_baremetal_boot_from_volume)
+          {%- endif %}
+            # The test below is skipped while upstream bug (https://bugs.launchpad.net/tempest/+bug/1317133) is not fixed.
+            - (?:tempest.api.object_storage.test_container_sync_middleware.ContainerSyncMiddlewareTest.test_container_synchronization)
+            # Skip bgpvpn tempest tests until PRODX-34492 will be resolved
+            - (?:neutron_tempest_plugin.bgpvpn.scenario.test_bgpvpn_basic.TestBGPVPNBasic.test_bgpvpn_negative_delete_bgpvpn)
+            - (?:neutron_tempest_plugin.bgpvpn.scenario.test_bgpvpn_basic.TestBGPVPNBasic.test_bgpvpn_negative_delete_net_association)
+            # Skip bgpvpn tempest tests until PRODX-34493 will be resolved
+            - (?:neutron_tempest_plugin.bgpvpn.scenario.test_bgpvpn_basic.TestBGPVPNBasic.test_bgpvpn_port_association_local_pref)
+          {%- if OSVer[openstack_version] <= OSVer.ussuri %}
+            # Skip because of PRODX-9184 has won't fix resolution. Should be executed only for victoria and upper environments.
+            - (?:octavia_tempest_plugin.tests.scenario.v2.test_traffic_ops.TrafficOperationsScenarioTest.test_basic_traffic)
+          {%- endif %}
+          {%- if nova_img_encrypt_enabled %}
+            # Skip because of PRODX-25762. Should be executed only without nova images encryption.
+            - (?:tempest.api.compute.admin.test_servers.ServersAdmin275Test.test_rebuild_update_server_275)
+          {%- endif %}
+          {%- if signature_enabled %}
+            # Skip TEST failed, that doesn't work with static accounts correctly
+            # TODO(vsaienko): remove when PRODX-18761 is fixed
+            - (?:tempest.api.compute.servers.test_server_actions.ServerActionsTestJSON.test_shelve_unshelve_server)
+            - (?:tempest.api.compute.servers.test_servers_negative.ServersNegativeTestJSON.test_shelve_shelved_server)
+            - (?:tempest.scenario.test_shelve_instance.TestShelveInstance.test_shelve_instance)
+            # Skip TESTs failed, that don't work with signature verification enabled
+            - (?:tempest.scenario.test_minimum_basic.TestMinimumBasicScenario.test_minimum_basic_scenario)
+            - (?:tempest.scenario.test_minimum_basic.TestMinimumBasicScenario.test_minimum_basic_instance_hard_reboot_after_vol_snap_deletion)
+            - (?:tempest.scenario.test_snapshot_pattern.TestSnapshotPattern.test_snapshot_pattern)
+            - (?:tempest.scenario.test_stamp_pattern.TestStampPattern.test_stamp_pattern)
+            # SKIPPED: multi-cloud feature is not configured in our CI
+            # TODO: enable this test, needs a barbican secret with clouds.yaml for 'another cloud', can reuse ourselves, may be with different account.
+            - (?:heat_tempest_plugin.tests.functional.test_remote_stack.RemoteStackTest.test_stack_create_with_cloud_credential)
+            # SKIPPED: tempest provides user and admin accounts for test from different projects (bug PRODX-28267)
+            # can be unskipped when both accounts will be provided from the same project
+            - (?:tempest.api.compute.admin.test_live_migration.LiveAutoBlockMigrationV225Test.test_volume_backed_live_migration)
+            - (?:tempest.api.compute.admin.test_live_migration.LiveMigrationTest.test_volume_backed_live_migration)
+          {%- endif %}
+          {%- if neutron_dvr_enabled %}
+            # PRODX-28571 - ipv6 metadata doesn't work in DVR case
+            - (?:neutron_tempest_plugin.scenario.test_metadata.MetadataTest.test_metadata_routed)
+          {%- endif %}
+            # Tests NOT supported by product
+{% include 'base/_tempest_blacklist_no_supported.yaml' %}
+          script: |
+            tempest run --config-file /etc/tempest/tempest.conf -w 4 --smoke --blacklist-file  /etc/tempest/test-blacklist
+          tempest:
+            DEFAULT:
+              production: true
+          {%- if ironic_enabled and not ironic_mt_enabled %}
+            auth:
+              create_isolated_networks: false
+          {%- endif %}
+            dns:
+              tld_suffix: test
+              build_timeout: 600
+            heat_plugin:
+              image_ref: Fedora-27-1.6
+              instance_type: m1.tiny_test
+              minimal_image_ref: {{ cirros_image_name }}
+              minimal_instance_type: m1.extra_tiny_test
+            identity:
+              ca_certificates_file: /certs/ca-bundle.pem
+            volume:
+              build_timeout: 600
+            {%- if ironic_enabled %}
+            baremetal:
+              active_timeout: 2700
+              adjusted_root_disk_size_gb: 4
+              available_nodes: 2
+              boot_mode: bios
+              default_rescue_interface: ''
+              deploywait_timeout: 2700
+              driver: fake-hardware
+              power_timeout: 2700
+              rescue_timeout: 2700
+              unprovision_timeout: 2700
+              unrescue_timeout: 2700
+            baremetal_feature_enabled:
+              adoption: true
+            {%- endif %}
+            # TODO (mshalamov): Will be removed during process of completing PRODX-1192
+            compute:
+            {%- if ironic_enabled and not ironic_mt_enabled %}
+              fixed_network_name: ironic-provisioning
+            {%- endif %}
+              build_timeout: 600
+            # NOTE(vsaienko): let nova scheduler pick destination host
+            compute-feature-enabled:
+              can_migrate_between_any_hosts: false
+            {%- if OSVer[openstack_version] >= OSVer.antelope %}
+              cold_migration_nonadmins: true
+              live_migration_nonadmins: true
+            {%- endif %}
+            image:
+              build_timeout: 600
+            load_balancer:
+              lb_build_timeout: 1500
+            {%- if ironic_enabled %}
+              build_timeout: 900
+            {%- else %}
+              build_timeout: 600
+            {%- endif %}
+              listener_conn_limit: 50000
+            {%- if ironic_enabled and not ironic_mt_enabled %}
+              test_with_ipv6: false
+            {%- endif %}
+            validation:
+              image_ssh_password: gocubsgo
+              image_ssh_user: cirros
+              image_alt_ssh_password: gocubsgo
+              image_alt_ssh_user: cirros
+            {%- if ironic_enabled %}
+              ssh_timeout: 420
+              connect_timeout: 90
+            {%- endif %}
+            network:
+            {%- if ironic_enabled and not ironic_mt_enabled %}
+              shared_physical_network: true
+            {%- else %}
+              shared_physical_network: false
+            {%- endif %}
+              floating_network_name: public
+            volume-feature-enabled:
+              api_v1: false
+              api_v2: false
+              api_v3: true
+              cluster_active_active: true
+            telemetry:
+              disable_ssl_certificate_validation: true
+            image-feature-enabled:
+              enabled_import_methods: 'web-download,glance-direct,copy-image'
+            service-clients:
+              http_timeout: 120
+            {%- if dhcp_client is defined %}
+            scenario:
+              dhcp_client: {{ dhcp_client }}
+            {%- endif %}
+          tempest_logging:
+            handler_file:
+              args: ('/var/lib/tempest/data/tempest.log',)
+              class: FileHandler
+              formatter: tests
+              level: DEBUG
+            handler_stdout:
+              level: WARN
+            handlers:
+              keys: file,stdout
+            logger_root:
+              handlers: stdout,file
+              level: DEBUG
+            logger_tempest:
+              handlers: stdout,file
+              level: DEBUG
+
+        manifests:
+          job_bootstrap: true
+  identity:
+    keystone:
+      values:
+        endpoints:
+          identity:
+            auth:
+              osctl:
+                role: admin,global-secret-decoder
+  key-manager:
+    barbican:
+      values:
+        conf:
+          policy.d:
+            01-controller-default.yaml:
+            {%- if OSVer[openstack_version] >= OSVer.stein %}
+              # TODO(vsaienko): drop policy settings in upstream values.yaml to ensure in-code policy
+              # defaults are used.
+              secret_project_match: project_id:%(target.secret.project_id)s
+              secret_creator_user: user_id:%(target.secret.creator_id)s
+              container_project_match: project_id:%(target.container.project_id)s
+              container_creator_user: user_id:%(target.container.creator_id)s
+            {%- else %}
+              secret_project_match: project:%(target.secret.project_id)s
+              secret_creator_user: user:%(target.secret.creator_id)s
+              container_project_match: project:%(target.container.project_id)s
+              container_creator_user: user:%(target.container.creator_id)s
+            {%- endif %}
+              'secret:get': >-
+                rule:secret_non_private_read or rule:secret_project_creator or
+                rule:secret_project_admin or rule:secret_acl_read or
+                role:global-secret-decoder
+              'secret:decrypt': >-
+                rule:secret_decrypt_non_private_read or rule:secret_project_creator or
+                rule:secret_project_admin or rule:secret_acl_read or
+                role:global-secret-decoder
+            {%- if OSVer[openstack_version] <= OSVer.stein %}
+              'order:delete': rule:admin_or_creator
+            {%- elif OSVer[openstack_version] <= OSVer.victoria %}
+              'order:delete': rule:admin_or_creator and project_id:%(target.order.project_id)s
+            {%- else %}
+              # TODO(pas-ha): re-check validity for 2023.1
+              'order:delete': >-
+                rule:admin_or_creator and rule:order_project_match or
+                True:%(enforce_new_defaults)s and rule:order_project_member
+            {%- endif %}

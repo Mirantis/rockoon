@@ -1,0 +1,21 @@
+        pipeline: |
+          sources:
+            - name: meter_source
+              meters:
+                - "*"
+              sinks:
+                - meter_sink
+            - name: hardware_source
+              meters:
+                - "hardware.*"
+            #  resources:
+            #    - snmp://10.10.0.10
+            #  discovery:
+            #    - 10.10.0.10
+              sinks:
+                - meter_sink
+          sinks:
+            - name: meter_sink
+              transformers:
+              publishers:
+                - gnocchi://?filter_project=service&filter_domain=service

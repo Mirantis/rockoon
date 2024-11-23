@@ -1,0 +1,260 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "horizonProbeTemplate" }}
+{{ dict "probe_type" "httpGet" "scheme" (tuple "dashboard" "internal" "web" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" | upper) "port" (tuple "dashboard" "internal" "web" . | include "helm-toolkit.endpoints.endpoint_port_lookup") | include "helm-toolkit.snippets.probe_template" }}
+{{- end }}
+
+{{- if .Values.manifests.deployment }}
+{{- $envAll := . }}
+
+{{- $ca_bundle_path := "/certs/ca-bundle.pem" }}
+{{- $mounts_horizon := .Values.pod.mounts.horizon.horizon }}
+{{- $mounts_horizon_init := .Values.pod.mounts.horizon.init_container }}
+
+{{- $serviceAccountName := "horizon" }}
+{{ tuple $envAll "dashboard" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: horizon
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "horizon" "server" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  replicas: {{ .Values.pod.replicas.server }}
+  selector:
+    matchLabels:
+{{ tuple $envAll "horizon" "server" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll | include "helm-toolkit.snippets.kubernetes_upgrades_deployment" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "horizon" "server" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+        endpoints-hash: {{ .Values.endpoints | include "helm-toolkit.utils.get_hash" }}
+{{ dict "envAll" $envAll "podName" "horizon" "containerNames" (list "horizon" "init" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "horizon" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      affinity:
+{{ tuple $envAll "horizon" "server" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      nodeSelector:
+        {{ .Values.labels.dashboard.node_selector_key }}: {{ .Values.labels.dashboard.node_selector_value }}
+      terminationGracePeriodSeconds: {{ .Values.pod.lifecycle.termination_grace_period.horizon.timeout | default "30" }}
+      initContainers:
+{{ tuple $envAll "dashboard" $mounts_horizon_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+{{ tuple $envAll "horizon" "horizon" | include "helm-toolkit.snippets.kubernetes_cacert_init_container" | indent 8 }}
+        - name: horizon-perms
+{{ tuple $envAll "horizon" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "horizon" "container" "perms" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+          - chown
+          - -R
+          - horizon:horizon
+          - /var/lib/horizon
+          volumeMounts:
+          - mountPath: /var/lib/horizon
+            name: varlibhorizon
+{{- if hasKey .Values.conf.horizon.local_settings "custom_themes" }}
+        - name: init-themes
+{{ tuple $envAll "horizon" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "horizon" "container" "init_themes" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+            - name: NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: CURL_CA_BUNDLE
+              value: {{ $ca_bundle_path }}
+{{ dict "envAll" $envAll | include "helm-toolkit.snippets.kubernetes_proxy_env_vars" | indent 12 }}
+          command:
+            - /tmp/horizon-init-themes.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: horizon-bin
+              mountPath: /tmp/horizon-init-themes.sh
+              subPath: horizon-init-themes.sh
+              readOnly: true
+            - name: varlibhorizon
+              mountPath: /var/lib/horizon
+            - name: horizon-themes
+              mountPath: {{ .Values.conf.software.horizon.dashboard_path }}/custom_themes
+              readOnly: false
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "horizon" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+{{- end }}
+      containers:
+        - name: horizon
+{{ tuple $envAll "horizon" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "horizon" "container" "horizon" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/horizon.sh
+            - start
+          env:
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: REQUESTS_CA_BUNDLE
+              value: {{ $ca_bundle_path }}
+{{ dict "envAll" $envAll | include "helm-toolkit.snippets.kubernetes_proxy_env_vars" | indent 12 }}
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /tmp/horizon.sh
+                  - stop
+          ports:
+            - name: web
+              containerPort: {{ tuple "dashboard" "internal" "web" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{ dict "envAll" $envAll "component" "horizon" "container" "default" "type" "readiness" "probeTemplate" (include "horizonProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | trim | indent 10 }}
+{{ dict "envAll" $envAll "component" "horizon" "container" "default" "type" "liveness" "probeTemplate" (include "horizonProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | trim | indent 10 }}
+          volumeMounts:
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "horizon" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: log-apache
+              mountPath: /var/log/apache2
+            - name: run-apache
+              mountPath: /var/run/apache2
+            - name: horizon-bin
+              mountPath: /tmp/horizon.sh
+              subPath: horizon.sh
+              readOnly: true
+            - name: horizon-bin
+              mountPath: /tmp/manage.py
+              subPath: manage.py
+              readOnly: true
+            - name: horizon-etc
+              mountPath: {{ .Values.conf.software.apache2.site_dir }}/000-default.conf
+              subPath: horizon.conf
+              readOnly: true
+            - name: horizon-etc
+              mountPath: /etc/apache2/ports.conf
+              subPath: ports.conf
+              readOnly: true
+            - name: horizon-etc
+              mountPath: {{ .Values.conf.software.apache2.mods_enabled_dir }}/modules.conf
+              subPath: apache2_modules.conf
+            {{- if .Values.conf.software.apache2.a2dismod }}
+              {{- range .Values.conf.software.apache2.a2dismod }}
+            - name: horizon-etc
+              mountPath: {{ $envAll.Values.conf.software.apache2.mods_enabled_dir }}/{{ . }}.load
+              subPath: module.disabled
+              readOnly: true
+              {{- end }}
+            {{- end }}
+            {{- if .Values.conf.horizon.security }}
+            - name: horizon-etc
+              mountPath: {{ .Values.conf.software.apache2.conf_dir }}/security.conf
+              subPath: security.conf
+              readOnly: true
+            {{- end }}
+            - name: horizon-bin
+              mountPath: /var/www/cgi-bin/horizon/django.wsgi
+              subPath: django.wsgi
+              readOnly: true
+            - name: horizon-etc
+              mountPath: {{ .Values.conf.software.horizon.dashboard_path }}/local/local_settings.py
+              subPath: local_settings
+              readOnly: true
+            {{- if hasKey .Values.conf.horizon.local_settings "custom_themes" }}
+              # NOTE: we collect static on start only when custom themes are defined,
+              # if themes not defined static will be dropped by empty volume on start.
+            - name: horizon-static
+              mountPath: /var/www/html/horizon
+            {{- end }}
+            {{- range $key, $value := $envAll.Values.conf.horizon.policy }}
+            {{- $policyFile := printf "/etc/openstack-dashboard/%s_policy.yaml" $key }}
+            - name: horizon-etc
+              mountPath: {{ $policyFile }}
+              subPath: {{ base $policyFile }}
+              readOnly: true
+            {{- end }}
+            {{- range $s, $value := index $envAll.Values.conf "policy.d" }}
+            - name: {{ printf "horizon-%s-oslo-policy" $s }}
+              mountPath: {{ printf "/etc/openstack-dashboard/%s_policy.d" $s }}
+              readOnly: true
+            {{- end }}
+            {{- if hasKey .Values.conf.horizon "openstack_clouds_yaml_custom_template" }}
+            - name: horizon-etc
+              mountPath: /etc/openstack-dashboard/templates/openstack_clouds_yaml_custom_template
+              subPath: openstack_clouds_yaml_custom_template
+              readOnly: true
+            {{- end }}
+            {{- if hasKey .Values.conf.horizon "openrc_custom_template" }}
+            - name: horizon-etc
+              mountPath: /etc/openstack-dashboard/templates/openrc_custom_template
+              subPath: openrc_custom_template
+              readOnly: true
+            {{- end }}
+            - name: horizon-motd
+              mountPath: /etc/openstack-dashboard/motd/
+            - name: varlibhorizon
+              mountPath: /var/lib/horizon
+            - name: horizon-themes
+              mountPath: {{ .Values.conf.software.horizon.dashboard_path }}/custom_themes
+              readOnly: false
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.secrets.tls.dashboard.dashboard.internal "path" "/etc/openstack-dashboard/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{ if $mounts_horizon.volumeMounts }}{{ toYaml $mounts_horizon.volumeMounts | indent 12 }}{{ end }}
+      volumes:
+{{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "horizon" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
+        - name: pod-tmp
+          emptyDir: {}
+        - name: log-apache
+          emptyDir: {}
+        - name: run-apache
+          emptyDir: {}
+        - name: horizon-static
+          emptyDir: {}
+        - name: horizon-themes
+          emptyDir: {}
+        - name: wsgi-horizon
+          emptyDir: {}
+        - name: horizon-bin
+          configMap:
+            name: horizon-bin
+            defaultMode: 504
+        - name: horizon-etc
+          secret:
+            secretName: horizon-etc
+            defaultMode: 416
+        {{- range $s, $value := index $envAll.Values.conf "policy.d" }}
+            {{- $secretName := printf "horizon-%s-oslo-policy" $s }}
+        - name: {{ $secretName }}
+          secret:
+            secretName: {{ $secretName }}
+            defaultMode: 416
+        {{- end }}
+        - name: horizon-motd
+          configMap:
+            name: horizon-motd
+            defaultMode: 504
+        - name: varlibhorizon
+          hostPath:
+            path: /var/lib/horizon
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.secrets.tls.dashboard.dashboard.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{ if $mounts_horizon.volumes }}{{ toYaml $mounts_horizon.volumes | indent 8 }}{{ end }}
+{{- end }}

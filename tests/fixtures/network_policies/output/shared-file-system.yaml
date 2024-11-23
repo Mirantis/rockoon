@@ -1,0 +1,33 @@
+shared-file-system:manila:Deployment:manila-api:
+- from:
+  - podSelector:
+      matchLabels:
+        application: horizon
+        component: server
+  - podSelector:
+      matchLabels:
+        application: keystone
+        component: client
+  - podSelector:
+      matchLabels:
+        application: ingress
+        component: server
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: engine
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: engine
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: bootstrap
+  - podSelector:
+      matchLabels:
+        application: tempest
+        component: run-tests
+  ports:
+  - port: 8786
+    protocol: TCP

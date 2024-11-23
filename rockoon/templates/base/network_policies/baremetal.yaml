@@ -1,0 +1,14 @@
+{%- from 'macros/connections.j2' import from_namespaces %}
+{%- set ns_list = ["os_controller", "lma_deployment"] | namespaces  %}
+{%- set ironic_api = "baremetal:ironic:Deployment:ironic-api" %}
+        api:
+          spec:
+            podSelector:
+              matchLabels:
+{{ service_childs[ironic_api].get_pod_labels() | toyaml | indent(16, first=True) }}
+            policyTypes:
+            - Ingress
+            ingress:
+{{ network_policies["ingress"][ironic_api] | toyaml | indent(14, first=True) }}
+              - from:
+{{ from_namespaces(ns_list, service_childs[ironic_api].get_np_ports(["m-api"])) | indent(16) }}

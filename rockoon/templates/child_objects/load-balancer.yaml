@@ -1,0 +1,182 @@
+{%- from 'macros/connections.j2' import to_child_object %}
+{%- set neutron_server_deployment_type = "Deployment"%}
+{%- if spec.get("features", {}).get("neutron", {}).get("backend") == "ml2/ovn" %}
+{%- set neutron_server_deployment_type = "DaemonSet"%}
+{%- endif %}
+octavia:
+  DaemonSet:
+    octavia-health-manager:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+          - {{ to_child_object("key-manager", "barbican", "Deployment", "barbican-api", ["b-api"]) | indent(12)}}
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - openvswitch_vswitchd
+      - octavia_health_manager
+      manifest: daemonset_health_manager
+      pod_labels:
+        application: octavia
+        component: health_manager
+      type: dynamic
+  Deployment:
+    octavia-api:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("networking", "neutron", neutron_server_deployment_type, "neutron-server", ["q-api"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+          - {{ to_child_object("key-manager", "barbican", "Deployment", "barbican-api", ["b-api"]) | indent(12)}}
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - octavia_api
+      - octavia_driver_agent
+      manifest: deployment_api
+      pod_labels:
+        application: octavia
+        component: api
+      ports:
+      - port: 9876
+        name: o-api
+        protocol: TCP
+    octavia-housekeeping:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+          - {{ to_child_object("key-manager", "barbican", "Deployment", "barbican-api", ["b-api"]) | indent(12)}}
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - octavia_housekeeping
+      manifest: deployment_housekeeping
+      pod_labels:
+        application: octavia
+        component: housekeeping
+    octavia-worker:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("compute", "nova", "Deployment", "nova-api-osapi", ["n-api"]) | indent(12)}}
+          - {{ to_child_object("networking", "neutron", neutron_server_deployment_type, "neutron-server", ["q-api"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("image", "glance", "Deployment", "glance-api", ["g-api"]) | indent(12)}}
+          - {{ to_child_object("block-storage", "cinder", "Deployment", "cinder-api", ["c-api"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+          - {{ to_child_object("key-manager", "barbican", "Deployment", "barbican-api", ["b-api"]) | indent(12)}}
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - octavia_worker
+      manifest: deployment_worker
+      pod_labels:
+        application: octavia
+        component: worker
+  Job:
+    octavia-bootstrap:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields:
+      - network.proxy.*
+      - bootstrap.*
+      images:
+      - bootstrap
+      manifest: job_bootstrap
+      pod_labels:
+        application: octavia
+        component: bootstrap
+    octavia-create-resources:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields:
+      - octavia.settings.amphora_image_url
+      - network.proxy.*
+      - endpoints.*
+      images:
+      - create_resources
+      manifest: job_create_resources
+      pod_labels:
+        application: octavia
+        component: create_resources
+    octavia-db-init:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - db_init
+      manifest: job_db_init
+      pod_labels:
+        application: octavia
+        component: db-init
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    octavia-db-sync:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - octavia_db_sync
+      manifest: job_db_sync
+      pod_labels:
+        application: octavia
+        component: db-sync
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    octavia-db-sync-persistence:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - octavia_db_sync_persistence
+      manifest: job_db_sync_persistence
+      pod_labels:
+        application: octavia
+        component: db-sync-persistence
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    octavia-ks-endpoints:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_endpoints
+      manifest: job_ks_endpoints
+      pod_labels:
+        application: octavia
+        component: ks-endpoints
+    octavia-ks-service:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_service
+      manifest: job_ks_service
+      pod_labels:
+        application: octavia
+        component: ks-service
+    octavia-ks-user:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields:
+      - endpoints.*
+      images:
+      - ks_user
+      manifest: job_ks_user
+      pod_labels:
+        application: octavia
+        component: ks-user

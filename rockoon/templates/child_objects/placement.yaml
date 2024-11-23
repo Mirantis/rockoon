@@ -1,0 +1,104 @@
+{%- from 'macros/connections.j2' import to_child_object %}
+placement:
+  Deployment:
+    placement-api:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - placement
+      manifest: deployment
+      pod_labels:
+        application: placement
+        component: api
+      ports:
+        - port: 8778
+          name: p-api
+          protocol: TCP
+  Job:
+    placement-db-init:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - db_init
+      manifest: job_db_init
+      pod_labels:
+        application: placement
+        component: db-init
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+{%- if OSVer[spec.openstack_version] == OSVer.stein %}
+    placement-db-migrate:
+      hash_fields: []
+      images:
+      - placement
+      manifest: job_db_migrate
+      pod_labels:
+        application: placement
+        component: db_migrate
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    placement-db-nova-migrate-placement:
+      hash_fields: []
+      images:
+      - placement_db_nova_migrate_placement
+      manifest: job_db_nova_migrate_placement
+      pod_labels:
+        application: placement
+        component: db-nova-migrate-placement
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+{%- endif %}
+    placement-db-sync:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - placement_db_sync
+      manifest: job_db_sync
+      pod_labels:
+        application: placement
+        component: db-sync
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    placement-ks-endpoints:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_endpoints
+      manifest: job_ks_endpoints
+      pod_labels:
+        application: placement
+        component: ks-endpoints
+    placement-ks-service:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_service
+      manifest: job_ks_service
+      pod_labels:
+        application: placement
+        component: ks-service
+    placement-ks-user:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields:
+      - endpoints.*
+      images:
+      - ks_user
+      manifest: job_ks_user
+      pod_labels:
+        application: placement
+        component: ks-user

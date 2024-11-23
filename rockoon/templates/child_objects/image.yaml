@@ -1,0 +1,204 @@
+{%- from 'macros/connections.j2' import to_child_object %}
+glance:
+  CronJob:
+    glance-db-purge:
+      hash_fields: []
+      images:
+      - glance_db_purge
+      manifest: cron_job_db_purge
+      pod_labels:
+        application: glance
+        component: db-purge
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+  Deployment:
+    glance-api:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("block-storage", "cinder", "Deployment", "cinder-api", ["c-api"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+          - {{ to_child_object("key-manager", "barbican", "Deployment", "barbican-api", ["b-api"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - glance_api
+      manifest: deployment_api
+      pod_labels:
+        application: glance
+        component: api
+      ports:
+      - name: g-api
+        port: 9292
+        protocol: TCP
+    glance-registry:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - glance_registry
+      manifest: deployment_registry
+      pod_labels:
+        application: glance
+        component: registry
+      ports:
+      - name: g-reg
+        port: 9191
+        protocol: TCP
+  Job:
+    glance-barbican-cert-init:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("key-manager", "barbican", "Deployment", "barbican-api", ["b-api"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - glance_barbican_cert_init
+      manifest: job_barbican_cert_init
+      pod_labels:
+        application: glance
+        component: barbican-cert-init
+    glance-bootstrap:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("image", "glance", "Deployment", "glance-api", ["g-api"]) | indent(12)}}
+      hash_fields:
+      - network.proxy.*
+      - bootstrap.*
+      images:
+      - bootstrap
+      manifest: job_bootstrap
+      pod_labels:
+        application: glance
+        component: bootstrap
+    glance-clean:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("image", "glance", "Deployment", "glance-api", ["g-api"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - glance_storage_init
+      - bootstrap
+      manifest: job_clean
+      pod_labels:
+        application: glance
+        component: clean
+    glance-db-contract:
+      hash_fields: []
+      images:
+      - glance_db_contract
+      manifest: job_db_contract
+      pod_labels:
+        application: glance
+        component: db-contract
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    glance-db-expand:
+      hash_fields: []
+      images:
+      - glance_db_expand
+      manifest: job_db_expand
+      pod_labels:
+        application: glance
+        component: db-expand
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    glance-db-init:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - db_init
+      manifest: job_db_init
+      pod_labels:
+        application: glance
+        component: db-init
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    glance-db-migrate:
+      hash_fields: []
+      images:
+      - glance_db_migrate
+      manifest: job_db_migrate
+      pod_labels:
+        application: glance
+        component: db-migrate
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    glance-db-sync:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - glance_db_sync
+      manifest: job_db_sync
+      pod_labels:
+        application: glance
+        component: db-sync
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    glance-ks-endpoints:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_endpoints
+      manifest: job_ks_endpoints
+      pod_labels:
+        application: glance
+        component: ks-endpoints
+    glance-ks-service:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_service
+      manifest: job_ks_service
+      pod_labels:
+        application: glance
+        component: ks-service
+    glance-ks-user:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields:
+      - endpoints.*
+      images:
+      - ks_user
+      manifest: job_ks_user
+      pod_labels:
+        application: glance
+        component: ks-user
+    glance-metadefs-load:
+      hash_fields: []
+      images:
+      - glance_metadefs_load
+      manifest: job_metadefs_load
+      pod_labels:
+        application: glance
+        component: metadefs_load
+    glance-storage-init:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - glance_api
+      - glance_storage_init
+      manifest: job_storage_init
+      pod_labels:
+        application: glance
+        component: storage-init

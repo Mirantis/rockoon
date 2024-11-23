@@ -1,0 +1,99 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ runner_pod_name_prefix }}-phy-{{ operation }}-runner-{{ timestamp }}
+  namespace: {{ namespace }}
+  labels:
+    {%- for k, v in runner_pod_selector.items() %}
+    {{ k }}: {{ v }}
+    {%- endfor %}
+spec:
+  serviceAccountName: mariadb-phy-{{ operation }}-runner
+  securityContext:
+    runAsUser: 999
+    runAsGroup: 999
+    runAsNonRoot: true
+  nodeSelector:
+    {%- for k, v in runner_node_selector.items() %}
+    {{ k }}: {{ v }}
+    {%- endfor %}
+  initContainers:
+    # fsGroup directive is applied to all volumes mounted,
+    # and is ignored with NFS static PV mounts. Even if it
+    # will be fixed, it will require additional permissions
+    # on NFS backend side. So use chown and run it only on
+    # mysql data directory.
+    - name: mariadb-perms
+      command:
+        - chown
+        - -R
+        - mysql:mysql
+        - /var/lib/mysql
+      image: {{ runner_image }}
+      imagePullPolicy: IfNotPresent
+      securityContext:
+        readOnlyRootFilesystem: true
+        runAsUser: 0
+        runAsNonRoot: false
+        capabilities:
+          # adding specific capabilities will require
+          # restore job to have privileged service account,
+          # so dropping only NET_RAW for now
+          drop:
+            - NET_RAW
+      volumeMounts:
+      - mountPath: /tmp
+        name: pod-tmp
+      - mountPath: /var/lib/mysql
+        name: mysql-data
+  containers:
+    - name: run-{{ operation }}
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+      command:
+        - /tmp/run_mariadb_resque.sh
+        - {{ operation }}
+        {%- for arg in cmd_args %}
+        - {{ arg }}
+        {%- endfor %}
+      image: {{ runner_image }}
+      imagePullPolicy: IfNotPresent
+      volumeMounts:
+        - name: pod-tmp
+          mountPath: /tmp
+        - mountPath: /tmp/run_mariadb_resque.sh
+          name: mariadb-bin
+          subPath: run_mariadb_resque.sh
+        - name: mariadb-secrets
+          mountPath: /etc/mysql/mariabackup_user.cnf
+          subPath: mariabackup_user.cnf
+          readOnly: true
+        - mountPath: /var/lib/mysql
+          name: mysql-data
+        - mountPath: /etc/mysql/backup-kek
+          name: mariadb-secrets
+          subPath: openssl_kek
+          readOnly: true
+  restartPolicy: Never
+  serviceAccount: {{ runner_service_account }}
+  serviceAccountName: {{ runner_service_account }}
+  volumes:
+    - name: pod-tmp
+      emptyDir: {}
+    - name: mariadb-secrets
+      secret:
+        secretName: mariadb-secrets
+        defaultMode: 0444
+    - name: mariadb-bin
+      configMap:
+        name: mariadb-bin
+        defaultMode: 0555
+      name: mariadb-bin
+    - name: mysql-data
+      persistentVolumeClaim:
+        claimName: {{ pvc_name }}

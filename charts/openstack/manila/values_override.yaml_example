@@ -1,0 +1,547 @@
+# Copyright 2022 Mirantis Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Default values for manila.
+# This is a YAML-formatted file.
+# Declare name/value pairs to be passed into your templates.
+# name: value
+
+storage: lvm
+
+images:
+  tags:
+    test: mirantis.azurecr.io/openstack/extra/xrally-openstack:2.1.0-20211116035447
+    db_init: mirantis.azurecr.io/openstack/heat:victoria-bionic-20220119123458
+    bootstrap: mirantis.azurecr.io/openstack/heat:victoria-bionic-20220119123458
+    db_drop: mirantis.azurecr.io/openstack/heat:victoria-bionic-20220119123458
+    rabbit_init: mirantis.azurecr.io/general/rabbitmq:3.9.8-management
+    ks_user: mirantis.azurecr.io/openstack/openstack-tools:ussuri-bionic-20220113100346
+    ks_service: mirantis.azurecr.io/openstack/openstack-tools:ussuri-bionic-20220113100346
+    ks_endpoints: mirantis.azurecr.io/openstack/openstack-tools:ussuri-bionic-20220113100346
+    dep_check: mirantis.azurecr.io/openstack/extra/kubernetes-entrypoint:v1.0.0-20200311160233
+    image_repo_sync: mirantis.azurecr.io/openstack/extra/docker:17.07.0
+    manila_db_sync: docker.io/reddydodda/ubuntu-source-manila-api:13.0.1
+    manila_api: docker.io/reddydodda/ubuntu-source-manila-api:13.0.1
+    manila_scheduler: docker.io/reddydodda/ubuntu-source-manila-scheduler:13.0.1
+    manila_share: docker.io/reddydodda/ubuntu-source-manila-share:13.0.1
+    manila_storage_init: mirantis.azurecr.io/openstack/extra/ceph-config-helper:nautilus-bionic-20211025114106
+  pull_policy: "IfNotPresent"
+  local_registry:
+    active: false
+    exclude:
+      - dep_check
+      - image_repo_sync
+
+bootstrap:
+  enabled: true
+  ks_user: admin
+  bootstrap_conf_backends: true
+  share_types:
+    default_share_type:
+      driver_handles_share_servers: False
+      ## LVM, GENERIC, CEPHFS , NETAPP
+      share_backend_name: LVM
+
+#ceph_client:
+#  configmap: rook-ceph-config
+#  user_secret_name: rook-csi-cephfs-node
+dependencies:
+  static:
+    db_init:
+      jobs:
+      - openstack-mariadb-cluster-wait
+jobs:
+  db_purge:
+    cron: 1 0 * * 1
+    enabled: true
+    script:
+      config:
+        age: 30
+  ks_endpoints:
+    restartPolicy: Never
+  ks_service:
+    restartPolicy: Never
+  ks_user:
+    restartPolicy: Never
+
+network:
+  api:
+    ingress:
+      classes:
+        namespace: openstack-ingress-nginx
+#pod:
+#  lifecycle:
+#    disruption_budget:
+#      api:
+#        min_available: 2
+#    upgrades:
+#      deployments:
+#        pod_replacement_strategy: RollingUpdate
+#        rolling_update:
+#          max_surge: 10%
+#          max_unavailable: 10%
+#  replicas:
+#    api: 3
+#    scheduler: 3
+#    share: 3
+conf:
+  #ceph:
+  #  admin_keyring: "AQCPG11iJUQ1FxAAVtFctzIbFWftGqafPVa9kA=="
+  manila:
+    DEFAULT:
+      use_syslog: true
+      use_stderr: true
+      default_share_type: default_share_type
+      share_name_template: "share-%s"
+      osapi_share_listen_port: null
+      enabled_share_protocols: "NFS"
+      enabled_share_backends: "lvm"
+      #enabled_share_backends: "generic"
+    keystone_authtoken:
+      auth_version: v3
+      auth_type: password
+      memcache_security_strategy: ENCRYPT
+    neutron:
+      auth_type: password
+      auth_version: v3
+      endpoint_type: internal
+    nova:
+      auth_type: password
+      auth_version: v3
+      endpoint_type: internal
+    cinder:
+      auth_type: password
+      auth_version: v3
+      endpoint_type: internal
+    glance:
+      auth_type: password
+      auth_version: v3
+      endpoint_type: internal
+    database:
+      connection_recycle_time: 300
+      max_overflow: 30
+      max_pool_size: 10
+    oslo_messaging_notifications:
+      topics: notifications,stacklight_notifications
+  rabbitmq:
+    policies:
+      - vhost: "manila"
+        name: "ha_ttl_manila"
+        definition:
+          #mirror messges to other nodes in rmq cluster
+          ha-mode: "all"
+          ha-sync-mode: "automatic"
+          #70s
+          message-ttl: 70000
+        priority: 0
+        apply-to: all
+        pattern: '(notifications)\.'
+
+  backends:
+    # Those options will be written to backends.conf as-is.
+    lvm:
+      driver_handles_share_servers: False
+      share_backend_name: LVM
+      share_driver: manila.share.drivers.lvm.LVMShareDriver
+      lvm_share_volume_group: manila-volumes
+      lvm_share_export_ips: 172.16.98.16
+    #generic:
+    #  driver_handles_share_servers: True
+    #  share_backend_name: GENERIC
+    #  share_driver: manila.share.drivers.generic.GenericShareDriver
+    #  service_instance_flavor_id: 60473f34-e9f2-4ab9-bb36-2f4ac12cbc32
+    #  service_image_name: manila-service-image
+    #  service_instance_user: manila
+    #  service_instance_password: password
+    #  interface_driver: manila.network.linux.interface.OVSInterfaceDriver
+    #  service_network_name: manila_service_network
+    #  service_network_cidr: 10.10.10.0/24
+      ## test
+    #  cinder_volume_type: volumes-hdd
+    #  container_volume_group: manila-volumes
+    #cephfs1:
+    #  driver_handles_share_servers: False
+    #  share_backend_name: CEPHFS1
+    #  share_driver: manila.share.drivers.cephfs.driver.CephFSDriver
+    #  cephfs_conf_path: /etc/ceph/ceph.conf
+    #  cephfs_protocol_helper_type: CEPHFS
+    #  cephfs_auth_id: manila
+    #  cephfs_cluster_name: ceph
+    #  cephfs_enable_snapshots: False
+    
+    #cdotSingleSVM:
+    #  share_backend_name: cdotSingleSVM
+    #  share_driver: manila.share.drivers.netapp.common.NetAppDriver
+    #  network_api_class: manila.network.neutron.neutron_network_plugin.NeutronNetworkPlugin
+    #  driver_handles_share_servers: False
+    #  netapp_storage_family: ontap_cluster
+    #  netapp_server_hostname: hostname
+    #  netapp_server_port: 80
+    #  netapp_login: admin_username
+    #  netapp_password: admin_password
+    #  netapp_vserver: svm_name
+    #  netapp_transport_type: https
+    #  netapp_aggregate_name_search_pattern: ^((?!aggr0).)*$
+    
+  rally_tests:
+    run_tempest: false
+    tests:
+      ManilaShares.create_and_delete_share:
+        - args:
+            share_proto: "cephfs"
+            size: 1
+            new_size: 2
+            share_type: "cephfs1"
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+
+# Names of secrets used by bootstrap and environmental checks
+secrets:
+  identity:
+    admin: manila-keystone-admin
+    manila: manila-keystone-user
+    test: manila-keystone-test
+  oslo_db:
+    admin: manila-db-admin
+    manila: manila-db-user
+  cephfs:
+    share: rook-ceph-admin-keyring
+  oslo_messaging:
+    admin: manila-rabbitmq-admin
+    manila: manila-rabbitmq-user
+  tls:
+    share:
+      api:
+        public: manila-tls-public
+        internal: manila-tls-api
+
+# We use a different layout of the endpoints here to account for versioning
+# this swaps the service name and type, and should be rolled out to other
+# services.
+endpoints:
+  cluster_domain_suffix: cluster.local
+  identity:
+    auth:
+      admin:
+        default_domain_id: default
+        region_name: RegionOne
+        username: admin
+        password: d7GPSxejMjcsbAXu0aUEMBT6kCbsaKn6
+        project_name: admin
+        user_domain_name: default
+        project_domain_name: default
+      manila:
+        role: admin
+        region_name: RegionOne
+        username: manila
+        password: password
+        project_name: service
+        user_domain_name: service
+        project_domain_name: service
+      neutron:
+        role: admin
+        region_name: RegionOne
+        username: neutronBH6IJxt
+        password: sSHgqemudY3I0WNYCJGuH7qTxn6hnnCy
+        project_name: service
+        user_domain_name: service
+        project_domain_name: service
+      nova:
+        region_name: RegionOne
+        project_name: service
+        username: novaKKmQ
+        password: PzKrVs4dp2lELDv5EpbjPEbSDBKFb3fV
+        user_domain_name: service
+        project_domain_name: service
+      cinder:
+        role: admin
+        region_name: RegionOne
+        username: cinderZ7Hya4
+        password: E8EaQgi9TfXmF2Lfhp2YWMFxXWv9t9D8
+        project_name: service
+        user_domain_name: service
+        project_domain_name: service
+      glance:
+        region_name: RegionOne
+        project_name: service
+        username: glance9AQMuL
+        password: WAWEFvumpyGyhimH7wN0ChZbYwRXCXI5
+        user_domain_name: service
+        project_domain_name: service
+  share:
+    name: manila
+    hosts:
+      default: manila-api
+      public: manila
+    host_fqdn_override:
+      public:
+        host: manila.it.just.works
+        tls:
+          ca: |
+            -----BEGIN CERTIFICATE-----
+            MIID2DCCAsCgAwIBAgIUcl2BhMSTQXuUvpG96toTCtVsia8wDQYJKoZIhvcNAQEL
+            BQAwgYMxEjAQBgNVBAYMCTxjb3VudHJ5PjEQMA4GA1UECAwHPHN0YXRlPjEPMA0G
+            A1UEBwwGPGNpdHk+MRcwFQYDVQQKDA48b3JnYW5pemF0aW9uPjEcMBoGA1UECwwT
+            PG9yZ2FuaXphdGlvbiB1bml0PjETMBEGA1UEAxMKa3ViZXJuZXRlczAeFw0yMjAz
+            MTQwNzU1MDBaFw0yNzAzMTMwNzU1MDBaMIGDMRIwEAYDVQQGDAk8Y291bnRyeT4x
+            EDAOBgNVBAgMBzxzdGF0ZT4xDzANBgNVBAcMBjxjaXR5PjEXMBUGA1UECgwOPG9y
+            Z2FuaXphdGlvbj4xHDAaBgNVBAsMEzxvcmdhbml6YXRpb24gdW5pdD4xEzARBgNV
+            BAMTCmt1YmVybmV0ZXMwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDJ
+            KTvfyH9ZaqXEgRASpw/KyfDqyTHORocnH6fDMLKrwcKjfVnqmc3RWLyq5U9CMRzu
+            CsHrj4vGZBJBF8H22hPfZXYWYqRPAx/xrrMa44rQcCIuwqrrNvZp8tSMSCiuyDYf
+            E6I0GrRshzKWGb8GpqN6Zv92bzPN3K/nZYqKIGGNjooFuDL+BKy7bkLOq6zBOVY/
+            yfTwEsIuft4wngD+1errA50PLAbUW7VjGFfZM8gkgyhLEiiR4RU9at1drT6ou+8i
+            0XmTlbsm1WUpe5oCpGPOxm3aHHYG4WeUz9l0omBnfvn01v35yp5mIUAcfMREyQeN
+            AMc/kaDr2RbB70pn9R9/AgMBAAGjQjBAMA4GA1UdDwEB/wQEAwIBBjAPBgNVHRMB
+            Af8EBTADAQH/MB0GA1UdDgQWBBTtulKQTmZU60InVxcNL7sVLSpq5jANBgkqhkiG
+            9w0BAQsFAAOCAQEAvN88wfP+MIZkORJVarU2ejKZFT5ZQHEimJ4Zwk8RVyQXOCnI
+            xVSdt5IiQavoowmEkI8d/pRhnAeSkj5eqVPKQdbNbuBu+jEgKh6wq9joGbaw1wl0
+            rFqlvu+ZvPjv+1RwDrdfdnqBYb+LY7+hZh5dNIfA2e3HvlVRoWfTcqovxZlMiG8E
+            SQe2DSepXKgbNz/Rc+ga1oPBWryDC/uDRf55Svw5Y24ocqiQ7wp2ulogN5xxuomL
+            ETf3Dn54GXKoJqIB8+tcT6LFOQidKtSd/RTOdTfIqihX22ZDpAqssqecUy+/fzwc
+            rtLC4q83QOMXiw3x5klNnY1fm1JEDl/Y0cLy2A==
+            -----END CERTIFICATE-----
+          crt: |
+            -----BEGIN CERTIFICATE-----
+            MIID+zCCAuOgAwIBAgIUTftdWfOhuGokjNgSAUMiXzy+ukowDQYJKoZIhvcNAQEL
+            BQAwgYMxEjAQBgNVBAYMCTxjb3VudHJ5PjEQMA4GA1UECAwHPHN0YXRlPjEPMA0G
+            A1UEBwwGPGNpdHk+MRcwFQYDVQQKDA48b3JnYW5pemF0aW9uPjEcMBoGA1UECwwT
+            PG9yZ2FuaXphdGlvbiB1bml0PjETMBEGA1UEAxMKa3ViZXJuZXRlczAeFw0yMjAz
+            MTQwNzU1MDBaFw0yMzAzMTQwNzU1MDBaMEwxCzAJBgNVBAYTAlVTMRYwFAYDVQQI
+            Ew1TYW4gRnJhbmNpc2NvMQswCQYDVQQHEwJDQTEYMBYGA1UEAxMPKi5pdC5qdXN0
+            LndvcmtzMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4tHYlk/jR7U2
+            RKJYny6ODTqBdbGswsKd85sFuP4VTSA0ZW8aHT+NTyZDYGVgQNyz8dg2teLT/gm2
+            vbPanpHrXCguibeWrlCRJAH0zcCksLD1T0kRZmxz76WBnfUlkWq7qi6VJhwB7iOG
+            uvOcKq+nvVS+wQXVgCt0eXxzJ6KquWccipmyQwlq+B7rbDXcZxAyIAEeCV8MHtgn
+            sKRFCofxa5ZhGgok2J+nP5V6vmLWJQNKhbxCbTgMc6doeqwAe0HlphR3ywPrgsOu
+            Ij/a/DUtBrXXasSFAEy/QBNS/asvhuM2rl4EHVOgo7VvYI/8sU9lUI5MMaomp3Z8
+            CMDE1hWwvwIDAQABo4GcMIGZMA4GA1UdDwEB/wQEAwIFoDAdBgNVHSUEFjAUBggr
+            BgEFBQcDAQYIKwYBBQUHAwIwDAYDVR0TAQH/BAIwADAdBgNVHQ4EFgQUc1GGGMrC
+            Zm6TVAqzGEgCAKA42DEwHwYDVR0jBBgwFoAU7bpSkE5mVOtCJ1cXDS+7FS0qauYw
+            GgYDVR0RBBMwEYIPKi5pdC5qdXN0LndvcmtzMA0GCSqGSIb3DQEBCwUAA4IBAQAF
+            2cEdeWiqTscfIdt8vQIzrgaQJCZTGQvluC81iR9236y63/KVXKOA2nloWckNgI0x
+            XHXZfvOefE3e/oOv1N4YMqso0dtCA9iihOdjg8lESrV9TMISqqXoUl4elFxfywzT
+            x0yIfH8+J1mBDjqBSjiThKKZEfigl5dwvR7GO++wkSGZd5b3pa0bN++1Rm5GpYxZ
+            cRRJBu1UwryU7eVYtT4mo4nX01c35aW9YhRl5Du7XvAt4eGleYWmQK7BKE8Sby/g
+            3Vr1MHRHZOcjWDYR5FIP6IPhr0cyB6wbu8nUJZDomfkZ6dDylItbu/ICo357RTLU
+            0Y/NyBuHgoTCpSFYqaNz
+            -----END CERTIFICATE-----
+          key: |
+            -----BEGIN RSA PRIVATE KEY-----
+            MIIEpAIBAAKCAQEA4tHYlk/jR7U2RKJYny6ODTqBdbGswsKd85sFuP4VTSA0ZW8a
+            HT+NTyZDYGVgQNyz8dg2teLT/gm2vbPanpHrXCguibeWrlCRJAH0zcCksLD1T0kR
+            Zmxz76WBnfUlkWq7qi6VJhwB7iOGuvOcKq+nvVS+wQXVgCt0eXxzJ6KquWccipmy
+            Qwlq+B7rbDXcZxAyIAEeCV8MHtgnsKRFCofxa5ZhGgok2J+nP5V6vmLWJQNKhbxC
+            bTgMc6doeqwAe0HlphR3ywPrgsOuIj/a/DUtBrXXasSFAEy/QBNS/asvhuM2rl4E
+            HVOgo7VvYI/8sU9lUI5MMaomp3Z8CMDE1hWwvwIDAQABAoIBAQC23aI1xWCi/nkr
+            KowyghEqnyGipsV3G/rGXRRnCgpYbP9xS/qM3CDsUBgADptkj8tPzxaE28Q4StKW
+            7Prz3wcW/JpQk8Aa93+cvSsF+yuL/I86BdnObt+ltRTkKbHJJHj6gqXi3K+9s8y6
+            yw775zRgU4ObET4JIH++NlSM/vuPjwnkYi0kdkg9pYDqF8Px5OPz8CzVC2e68dVv
+            Z3WGuSgbXw4KENo8RJYcm/0nCRL5rszvAdAHFM3WyuIqDv9hTahYcqRbPLw+t26Y
+            80fhvnI02NA4sxLtguKq3M6lKzELqxaODAkpmdfpwgmhmHrX8sLBXThPrG727GLs
+            Zd9WjXLRAoGBAON5zOlfABCogm3z8fBFvcN6y3j7dM0Sjex001qIIGyWVXff7LLx
+            mTFZ1aKU2ISvsCU+Kh8xW3VrBQWBj+S6YRzykxk/viPPCqUg1h2HXHaky3ib33A9
+            lIB7fVRIeQKR8p4XA3Js27TW+07rhSAPHcpdwJk59Te99EO+rQ3w5+ZXAoGBAP9C
+            /CwIYeD8RasRoiKNRrevl4p34X4HEuw/c03uA+3LY19G6843IUV7//6ZJpO+wg+v
+            mdsOmsFaSjr8oaMPj+gXjndvEGPD2UwPSP4vzC2tRqPQdpX2OBT+qWWmytaoIAiD
+            G68Etv8v1Wca8BD+DIR9qLfVJKS1NsNg3op1d3fZAoGATjpy98bN9OyefkWobGLv
+            kaxHEUIYtvWsjSbYEIhD7lP87I67jgZ8Ena8e38IvwjUYNpyDewhcc3uGiimXZij
+            ERty7vn238Wx+XvDZsBIUhz2RHIGc0kaKt1NCpEp3HJop2lurAk3vYc5QbjJPW81
+            ZYS8WXWPGS5gNHP8e5Dfj10CgYBJsCWp9HWFBG58NufuP4hlqGv/ziGrRxGAX8TC
+            f25k7CzwqUGTUzjonSZGciG/zvaonpG0uh+Up6L8KkfjEbACWSKIeehqVHRbT6JL
+            trKjkPzud1R0cBK6hNWUAbVWiExPCMIqIRtOyZk6XX1l+mDUso3NG9urLKD1f/Ze
+            VBC76QKBgQCGx37XBnD7W5F94QFuNtzjnJjA4qddWfCErmYocuWiOzyblwabpu0i
+            uVfWYIxihYGDdT92/xh+1DLv75FF0bQnYSiiK6tXiIdZyBL1SMzWpo5E1wRR1xuC
+            uwPAhRfwMGT9sxIHyE2pFMyde7KLrEg7lSc2CfTMIyyJgLjwf3p0vA==
+            -----END RSA PRIVATE KEY-----
+    path:
+      default: '/v1/%(tenant_id)s'
+    scheme:
+      default: http
+      public: https
+    port:
+      api:
+        admin: 8786
+        default: 80
+        internal: 8786
+        public: 443
+  sharev2:
+    name: manilav2
+    hosts:
+      default: manila-api
+      public: manila
+    host_fqdn_override:
+      public:
+        host: manila.it.just.works
+        tls:
+          ca: |
+            -----BEGIN CERTIFICATE-----
+            MIID2DCCAsCgAwIBAgIUcl2BhMSTQXuUvpG96toTCtVsia8wDQYJKoZIhvcNAQEL
+            BQAwgYMxEjAQBgNVBAYMCTxjb3VudHJ5PjEQMA4GA1UECAwHPHN0YXRlPjEPMA0G
+            A1UEBwwGPGNpdHk+MRcwFQYDVQQKDA48b3JnYW5pemF0aW9uPjEcMBoGA1UECwwT
+            PG9yZ2FuaXphdGlvbiB1bml0PjETMBEGA1UEAxMKa3ViZXJuZXRlczAeFw0yMjAz
+            MTQwNzU1MDBaFw0yNzAzMTMwNzU1MDBaMIGDMRIwEAYDVQQGDAk8Y291bnRyeT4x
+            EDAOBgNVBAgMBzxzdGF0ZT4xDzANBgNVBAcMBjxjaXR5PjEXMBUGA1UECgwOPG9y
+            Z2FuaXphdGlvbj4xHDAaBgNVBAsMEzxvcmdhbml6YXRpb24gdW5pdD4xEzARBgNV
+            BAMTCmt1YmVybmV0ZXMwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDJ
+            KTvfyH9ZaqXEgRASpw/KyfDqyTHORocnH6fDMLKrwcKjfVnqmc3RWLyq5U9CMRzu
+            CsHrj4vGZBJBF8H22hPfZXYWYqRPAx/xrrMa44rQcCIuwqrrNvZp8tSMSCiuyDYf
+            E6I0GrRshzKWGb8GpqN6Zv92bzPN3K/nZYqKIGGNjooFuDL+BKy7bkLOq6zBOVY/
+            yfTwEsIuft4wngD+1errA50PLAbUW7VjGFfZM8gkgyhLEiiR4RU9at1drT6ou+8i
+            0XmTlbsm1WUpe5oCpGPOxm3aHHYG4WeUz9l0omBnfvn01v35yp5mIUAcfMREyQeN
+            AMc/kaDr2RbB70pn9R9/AgMBAAGjQjBAMA4GA1UdDwEB/wQEAwIBBjAPBgNVHRMB
+            Af8EBTADAQH/MB0GA1UdDgQWBBTtulKQTmZU60InVxcNL7sVLSpq5jANBgkqhkiG
+            9w0BAQsFAAOCAQEAvN88wfP+MIZkORJVarU2ejKZFT5ZQHEimJ4Zwk8RVyQXOCnI
+            xVSdt5IiQavoowmEkI8d/pRhnAeSkj5eqVPKQdbNbuBu+jEgKh6wq9joGbaw1wl0
+            rFqlvu+ZvPjv+1RwDrdfdnqBYb+LY7+hZh5dNIfA2e3HvlVRoWfTcqovxZlMiG8E
+            SQe2DSepXKgbNz/Rc+ga1oPBWryDC/uDRf55Svw5Y24ocqiQ7wp2ulogN5xxuomL
+            ETf3Dn54GXKoJqIB8+tcT6LFOQidKtSd/RTOdTfIqihX22ZDpAqssqecUy+/fzwc
+            rtLC4q83QOMXiw3x5klNnY1fm1JEDl/Y0cLy2A==
+            -----END CERTIFICATE-----
+          crt: |
+            -----BEGIN CERTIFICATE-----
+            MIID+zCCAuOgAwIBAgIUTftdWfOhuGokjNgSAUMiXzy+ukowDQYJKoZIhvcNAQEL
+            BQAwgYMxEjAQBgNVBAYMCTxjb3VudHJ5PjEQMA4GA1UECAwHPHN0YXRlPjEPMA0G
+            A1UEBwwGPGNpdHk+MRcwFQYDVQQKDA48b3JnYW5pemF0aW9uPjEcMBoGA1UECwwT
+            PG9yZ2FuaXphdGlvbiB1bml0PjETMBEGA1UEAxMKa3ViZXJuZXRlczAeFw0yMjAz
+            MTQwNzU1MDBaFw0yMzAzMTQwNzU1MDBaMEwxCzAJBgNVBAYTAlVTMRYwFAYDVQQI
+            Ew1TYW4gRnJhbmNpc2NvMQswCQYDVQQHEwJDQTEYMBYGA1UEAxMPKi5pdC5qdXN0
+            LndvcmtzMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4tHYlk/jR7U2
+            RKJYny6ODTqBdbGswsKd85sFuP4VTSA0ZW8aHT+NTyZDYGVgQNyz8dg2teLT/gm2
+            vbPanpHrXCguibeWrlCRJAH0zcCksLD1T0kRZmxz76WBnfUlkWq7qi6VJhwB7iOG
+            uvOcKq+nvVS+wQXVgCt0eXxzJ6KquWccipmyQwlq+B7rbDXcZxAyIAEeCV8MHtgn
+            sKRFCofxa5ZhGgok2J+nP5V6vmLWJQNKhbxCbTgMc6doeqwAe0HlphR3ywPrgsOu
+            Ij/a/DUtBrXXasSFAEy/QBNS/asvhuM2rl4EHVOgo7VvYI/8sU9lUI5MMaomp3Z8
+            CMDE1hWwvwIDAQABo4GcMIGZMA4GA1UdDwEB/wQEAwIFoDAdBgNVHSUEFjAUBggr
+            BgEFBQcDAQYIKwYBBQUHAwIwDAYDVR0TAQH/BAIwADAdBgNVHQ4EFgQUc1GGGMrC
+            Zm6TVAqzGEgCAKA42DEwHwYDVR0jBBgwFoAU7bpSkE5mVOtCJ1cXDS+7FS0qauYw
+            GgYDVR0RBBMwEYIPKi5pdC5qdXN0LndvcmtzMA0GCSqGSIb3DQEBCwUAA4IBAQAF
+            2cEdeWiqTscfIdt8vQIzrgaQJCZTGQvluC81iR9236y63/KVXKOA2nloWckNgI0x
+            XHXZfvOefE3e/oOv1N4YMqso0dtCA9iihOdjg8lESrV9TMISqqXoUl4elFxfywzT
+            x0yIfH8+J1mBDjqBSjiThKKZEfigl5dwvR7GO++wkSGZd5b3pa0bN++1Rm5GpYxZ
+            cRRJBu1UwryU7eVYtT4mo4nX01c35aW9YhRl5Du7XvAt4eGleYWmQK7BKE8Sby/g
+            3Vr1MHRHZOcjWDYR5FIP6IPhr0cyB6wbu8nUJZDomfkZ6dDylItbu/ICo357RTLU
+            0Y/NyBuHgoTCpSFYqaNz
+            -----END CERTIFICATE-----
+          key: |
+            -----BEGIN RSA PRIVATE KEY-----
+            MIIEpAIBAAKCAQEA4tHYlk/jR7U2RKJYny6ODTqBdbGswsKd85sFuP4VTSA0ZW8a
+            HT+NTyZDYGVgQNyz8dg2teLT/gm2vbPanpHrXCguibeWrlCRJAH0zcCksLD1T0kR
+            Zmxz76WBnfUlkWq7qi6VJhwB7iOGuvOcKq+nvVS+wQXVgCt0eXxzJ6KquWccipmy
+            Qwlq+B7rbDXcZxAyIAEeCV8MHtgnsKRFCofxa5ZhGgok2J+nP5V6vmLWJQNKhbxC
+            bTgMc6doeqwAe0HlphR3ywPrgsOuIj/a/DUtBrXXasSFAEy/QBNS/asvhuM2rl4E
+            HVOgo7VvYI/8sU9lUI5MMaomp3Z8CMDE1hWwvwIDAQABAoIBAQC23aI1xWCi/nkr
+            KowyghEqnyGipsV3G/rGXRRnCgpYbP9xS/qM3CDsUBgADptkj8tPzxaE28Q4StKW
+            7Prz3wcW/JpQk8Aa93+cvSsF+yuL/I86BdnObt+ltRTkKbHJJHj6gqXi3K+9s8y6
+            yw775zRgU4ObET4JIH++NlSM/vuPjwnkYi0kdkg9pYDqF8Px5OPz8CzVC2e68dVv
+            Z3WGuSgbXw4KENo8RJYcm/0nCRL5rszvAdAHFM3WyuIqDv9hTahYcqRbPLw+t26Y
+            80fhvnI02NA4sxLtguKq3M6lKzELqxaODAkpmdfpwgmhmHrX8sLBXThPrG727GLs
+            Zd9WjXLRAoGBAON5zOlfABCogm3z8fBFvcN6y3j7dM0Sjex001qIIGyWVXff7LLx
+            mTFZ1aKU2ISvsCU+Kh8xW3VrBQWBj+S6YRzykxk/viPPCqUg1h2HXHaky3ib33A9
+            lIB7fVRIeQKR8p4XA3Js27TW+07rhSAPHcpdwJk59Te99EO+rQ3w5+ZXAoGBAP9C
+            /CwIYeD8RasRoiKNRrevl4p34X4HEuw/c03uA+3LY19G6843IUV7//6ZJpO+wg+v
+            mdsOmsFaSjr8oaMPj+gXjndvEGPD2UwPSP4vzC2tRqPQdpX2OBT+qWWmytaoIAiD
+            G68Etv8v1Wca8BD+DIR9qLfVJKS1NsNg3op1d3fZAoGATjpy98bN9OyefkWobGLv
+            kaxHEUIYtvWsjSbYEIhD7lP87I67jgZ8Ena8e38IvwjUYNpyDewhcc3uGiimXZij
+            ERty7vn238Wx+XvDZsBIUhz2RHIGc0kaKt1NCpEp3HJop2lurAk3vYc5QbjJPW81
+            ZYS8WXWPGS5gNHP8e5Dfj10CgYBJsCWp9HWFBG58NufuP4hlqGv/ziGrRxGAX8TC
+            f25k7CzwqUGTUzjonSZGciG/zvaonpG0uh+Up6L8KkfjEbACWSKIeehqVHRbT6JL
+            trKjkPzud1R0cBK6hNWUAbVWiExPCMIqIRtOyZk6XX1l+mDUso3NG9urLKD1f/Ze
+            VBC76QKBgQCGx37XBnD7W5F94QFuNtzjnJjA4qddWfCErmYocuWiOzyblwabpu0i
+            uVfWYIxihYGDdT92/xh+1DLv75FF0bQnYSiiK6tXiIdZyBL1SMzWpo5E1wRR1xuC
+            uwPAhRfwMGT9sxIHyE2pFMyde7KLrEg7lSc2CfTMIyyJgLjwf3p0vA==
+            -----END RSA PRIVATE KEY-----
+    path:
+      default: '/v2/%(tenant_id)s'
+    scheme:
+      default: http
+      public: https
+    port:
+      api:
+        admin: 8786
+        default: 80
+        internal: 8786
+        public: 443
+  oslo_db:
+    auth:
+      admin:
+        username: root
+        password: MII9NdjIVdfRs1XEmb3yKCyvmsC5GQM9
+      manila:
+        username: manila
+        password: password
+  oslo_messaging:
+    auth:
+      admin:
+        username: rabbitmq
+        password: QEgx8HNQz57Z7trLYdUjGp3ZsKwkBsz6
+      user:
+        password: QEgx8HNQz57Z7trLYdUjGp3ZsKwkBsz6
+        username: rabbitmq
+      manila:
+        username: manila
+        password: password
+    hosts:
+      default: rabbitmq
+    host_fqdn_override:
+      default: null
+    path: /manila
+    scheme: rabbit
+    statefulset:
+      name: openstack-rabbitmq-rabbitmq
+      replicas: 1
+    port:
+      amqp:
+        default: 5672
+      http:
+        default: 15672
+  oslo_cache:
+    auth:
+      memcache_secret_key: password
+    statefulset:
+      name: openstack-memcached-memcached
+      replicas: 3
+    hosts:
+      default: memcached
+    host_fqdn_override:
+      default: null
+    port:
+      memcache:
+        default: 11211
+  oslo_messaging_notifications:
+    auth:
+      manila:
+        password: password
+        username: manila
+    host_fqdn_override: {}
+    hosts:
+      default: rabbitmq
+    path: /openstack
+    port:
+      amqp:
+        default: 5672
+      http:
+        default: 15672
+    scheme: rabbit
+    statefulset:
+      name: openstack-rabbitmq-rabbitmq
+      replicas: 1
+
+manifests:
+  pod_rally_test: false

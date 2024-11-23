@@ -1,0 +1,188 @@
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Default values for drb controller.
+# This is a YAML-formatted file.
+# Declare name/value pairs to be passed into your templates.
+# name: value
+
+---
+
+images:
+  pull_policy: IfNotPresent
+  tags:
+    drb_controller: drb-controller/drb-controller:latest
+    rockoon: mirantis.azurecr.io/openstack/rockoon:0.15.14
+    ks_user: docker.io/openstackhelm/heat:queens-ubuntu_xenial
+    dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
+  local_registry:
+    active: false
+
+labels:
+  drb_controller:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  ensure_resources:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  job:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+
+pod:
+  replicas:
+    drb_controller: 1
+  probes:
+    drb_controller:
+      drb_controller:
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 120
+            periodSeconds: 60
+            timeoutSeconds: 5
+        readiness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 60
+            timeoutSeconds: 5
+  security_context:
+    drb_controller:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+        fsGroup: 42424
+      container:
+        drb_controller:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    ensure_resources:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+        fsGroup: 42424
+      container:
+        main:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    ks_user:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        fsGroup: 42424
+      container:
+        ks_user:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+  resources:
+    enabled: false
+    drb_controller:
+      requests:
+        memory: "100Mi"
+        cpu: "100m"
+      limits:
+        memory: "200Mi"
+        cpu: "500m"
+    jobs:
+      ensure_resources:
+        requests:
+          memory: "100Mi"
+          cpu: "100m"
+        limits:
+          memory: "200Mi"
+          cpu: "500m"
+      ks_user:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+  mounts:
+    drb_controller:
+      init_container: null
+      drb_controller:
+        volumeMounts:
+        volumes:
+
+jobs:
+  ensure_resources:
+    backoffLimit: 6
+
+dependencies:
+  static:
+    drb_controller:
+      jobs:
+        - drb-controller-ks-user
+    ks_user:
+      services:
+        - endpoint: internal
+          service: identity
+
+secrets:
+  identity:
+    drb-controller: drb-controller-keystone-user
+
+endpoints:
+  drb_controller:
+    port:
+      healthz:
+        default: 32870
+  identity:
+    name: keystone
+    auth:
+      admin:
+        region_name: RegionOne
+        username: admin
+        password: password
+        project_name: admin
+        user_domain_name: default
+        project_domain_name: default
+      drb-controller:
+        role: admin,service
+        region_name: RegionOne
+        username: drbcontroller
+        password: password
+        project_name: service
+        user_domain_name: service
+        project_domain_name: service
+    hosts:
+      default: keystone
+      internal: keystone-api
+    host_fqdn_override:
+      default: null
+    path:
+      default: /v3
+    scheme:
+      default: http
+    port:
+      api:
+        default: 80
+        internal: 5000
+
+manifests:
+  configmap_bin: true
+  configmap_deploy_resources: true
+  deployment: true
+  job_ensure_resources: true
+  rbac: true
+  job_ks_user: true
+  secret_keystone: true
+...

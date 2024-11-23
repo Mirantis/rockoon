@@ -1,0 +1,654 @@
+identity:keystone:Deployment:keystone-api:
+- from:
+  - podSelector:
+      matchLabels:
+        application: aodh
+        component: api
+  - podSelector:
+      matchLabels:
+        application: aodh
+        component: evaluator
+  - podSelector:
+      matchLabels:
+        application: aodh
+        component: listener
+  - podSelector:
+      matchLabels:
+        application: aodh
+        component: notifier
+  - podSelector:
+      matchLabels:
+        application: aodh
+        component: ks-endpoints
+  - podSelector:
+      matchLabels:
+        application: aodh
+        component: ks-service
+  - podSelector:
+      matchLabels:
+        application: aodh
+        component: ks-user
+  - podSelector:
+      matchLabels:
+        application: ironic
+        component: api
+  - podSelector:
+      matchLabels:
+        application: ironic
+        component: bootstrap
+  - podSelector:
+      matchLabels:
+        application: ironic
+        component: ks-endpoints
+  - podSelector:
+      matchLabels:
+        application: ironic
+        component: ks-service
+  - podSelector:
+      matchLabels:
+        application: ironic
+        component: ks-user
+  - podSelector:
+      matchLabels:
+        application: ironic
+        component: manage-networks
+  - podSelector:
+      matchLabels:
+        application: ironic
+        component: update-nodes-metadata
+  - podSelector:
+      matchLabels:
+        application: ironic
+        component: conductor
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: service-cleaner
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: volume_daemonset
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: api
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: bootstrap
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: create-internal-tenant
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: drop-default-volume-type
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: ks-endpoints
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: ks-service
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: ks-user
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: backup
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: scheduler
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: volume
+  - podSelector:
+      matchLabels:
+        application: cloudprober
+        component: prober
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: cell-setup
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: service-cleaner
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: placement-audit
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: compute
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: metadata
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: os-api
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: consoleauth
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: novnc-proxy
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: spice-proxy
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: placement
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: bootstrap
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: cell-setup
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: ks-endpoints
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: ks-service
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: ks-user
+  - podSelector:
+      matchLabels:
+        application: placement
+        component: ks-endpoints
+  - podSelector:
+      matchLabels:
+        application: placement
+        component: ks-service
+  - podSelector:
+      matchLabels:
+        application: placement
+        component: ks-user
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: compute
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: conductor
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: scheduler
+  - podSelector:
+      matchLabels:
+        application: horizon
+        component: server
+  - podSelector:
+      matchLabels:
+        application: designate
+        component: bootstrap
+  - podSelector:
+      matchLabels:
+        application: designate
+        component: ks-endpoints
+  - podSelector:
+      matchLabels:
+        application: designate
+        component: ks-service
+  - podSelector:
+      matchLabels:
+        application: designate
+        component: ks-user
+  - podSelector:
+      matchLabels:
+        application: designate
+        component: api
+  - podSelector:
+      matchLabels:
+        application: designate
+        component: central
+  - podSelector:
+      matchLabels:
+        application: designate
+        component: mdns
+  - podSelector:
+      matchLabels:
+        application: designate
+        component: producer
+  - podSelector:
+      matchLabels:
+        application: panko
+        component: api
+  - podSelector:
+      matchLabels:
+        application: panko
+        component: ks-endpoints
+  - podSelector:
+      matchLabels:
+        application: panko
+        component: ks-service
+  - podSelector:
+      matchLabels:
+        application: panko
+        component: ks-user
+  - podSelector:
+      matchLabels:
+        application: keystone
+        component: client
+  - podSelector:
+      matchLabels:
+        application: keystone
+        component: bootstrap
+  - podSelector:
+      matchLabels:
+        application: keystone
+        component: domain-manage
+  - podSelector:
+      matchLabels:
+        application: keystone
+        component: federations-create
+  - podSelector:
+      matchLabels:
+        application: keystone
+        component: ks-user
+  - podSelector:
+      matchLabels:
+        application: keystone
+        component: ks-user
+        job-name: osctl-ks-user
+  - podSelector:
+      matchLabels:
+        application: glance
+        component: api
+  - podSelector:
+      matchLabels:
+        application: glance
+        component: registry
+  - podSelector:
+      matchLabels:
+        application: glance
+        component: barbican-cert-init
+  - podSelector:
+      matchLabels:
+        application: glance
+        component: bootstrap
+  - podSelector:
+      matchLabels:
+        application: glance
+        component: clean
+  - podSelector:
+      matchLabels:
+        application: glance
+        component: ks-endpoints
+  - podSelector:
+      matchLabels:
+        application: glance
+        component: ks-service
+  - podSelector:
+      matchLabels:
+        application: glance
+        component: ks-user
+  - podSelector:
+      matchLabels:
+        application: glance
+        component: storage-init
+  - podSelector:
+      matchLabels:
+        application: ingress
+        component: server
+  - podSelector:
+      matchLabels:
+        application: masakari
+        component: monitors
+  - podSelector:
+      matchLabels:
+        application: masakari
+        component: api
+  - podSelector:
+      matchLabels:
+        application: masakari
+        component: engine
+  - podSelector:
+      matchLabels:
+        application: masakari
+        component: bootstrap
+  - podSelector:
+      matchLabels:
+        application: masakari
+        component: ks-endpoints
+  - podSelector:
+      matchLabels:
+        application: masakari
+        component: ks-service
+  - podSelector:
+      matchLabels:
+        application: masakari
+        component: ks-user
+  - podSelector:
+      matchLabels:
+        application: barbican
+        component: api
+  - podSelector:
+      matchLabels:
+        application: barbican
+        component: ks-endpoints
+  - podSelector:
+      matchLabels:
+        application: barbican
+        component: ks-service
+  - podSelector:
+      matchLabels:
+        application: barbican
+        component: ks-user
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: health_manager
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: api
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: housekeeping
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: worker
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: bootstrap
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: create_resources
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: ks-endpoints
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: ks-service
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: ks-user
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: compute
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: ipmi
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: central
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: notification
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: bootstrap
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: ks-endpoints
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: ks-service
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: ks-user
+  - podSelector:
+      matchLabels:
+        application: gnocchi
+        component: metricd
+  - podSelector:
+      matchLabels:
+        application: gnocchi
+        component: metricd
+  - podSelector:
+      matchLabels:
+        application: gnocchi
+        component: api
+  - podSelector:
+      matchLabels:
+        application: gnocchi
+        component: bootstrap
+  - podSelector:
+      matchLabels:
+        application: gnocchi
+        component: ks-endpoints
+  - podSelector:
+      matchLabels:
+        application: gnocchi
+        component: ks-service
+  - podSelector:
+      matchLabels:
+        application: gnocchi
+        component: ks-user
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: bagpipe-bgp
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: dhcp-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: dr-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: l2gw-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: l3-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: metadata-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: neutron-ovs-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: neutron-sriov-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: neutron-portprober-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: server
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: bootstrap
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: ks-endpoints
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: ks-service
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: ks-user
+  - podSelector:
+      matchLabels:
+        application: tungstenfabric
+        component: ks-endpoints
+  - podSelector:
+      matchLabels:
+        application: tungstenfabric
+        component: ks-service
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: ironic-agent
+  - podSelector:
+      matchLabels:
+        application: ceph
+        component: ks-endpoints
+  - podSelector:
+      matchLabels:
+        application: ceph
+        component: ks-service
+  - podSelector:
+      matchLabels:
+        application: ceph
+        component: ks-user
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: engine-cleaner
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: api
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: cfn
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: engine
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: bootstrap
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: ks-user
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: ks-endpoints
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: ks-service
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: ks-user
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: ks-user
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: engine
+  - podSelector:
+      matchLabels:
+        application: placement
+        component: api
+  - podSelector:
+      matchLabels:
+        application: placement
+        component: ks-endpoints
+  - podSelector:
+      matchLabels:
+        application: placement
+        component: ks-service
+  - podSelector:
+      matchLabels:
+        application: placement
+        component: ks-user
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: share_daemonset
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: api
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: bootstrap
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: ks-endpoints
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: ks-service
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: ks-user
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: scheduler
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: share
+  - podSelector:
+      matchLabels:
+        application: stepler
+        component: run-tests
+  - podSelector:
+      matchLabels:
+        application: stepler
+        component: ks-user
+  - podSelector:
+      matchLabels:
+        application: tempest
+        component: run-tests
+  - podSelector:
+      matchLabels:
+        application: tempest
+        component: bootstrap
+  - podSelector:
+      matchLabels:
+        application: tempest
+        component: ks-user
+  - podSelector:
+      matchLabels:
+        application: tempest
+        component: static-accounts
+  ports:
+  - port: 5000
+    protocol: TCP

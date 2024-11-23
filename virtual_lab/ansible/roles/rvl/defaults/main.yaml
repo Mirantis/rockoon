@@ -1,0 +1,132 @@
+rvl_k8s_node_labels:
+  controller:
+    openstack-control-plane: enabled
+    openstack-gateway: enabled
+    openvswitch: enabled
+  compute:
+    openstack-compute-node: enabled
+    openvswitch: enabled
+kubeconfig: "{{ inventory_dir }}/artifacts/k0s-kubeconfig.yml"
+rvl_k8s_objects_path: /src/k8s
+rvl_ca_certs_path: /src/ca
+rvl_dns_coredns: /src/coredns
+rvl_sources_charts: /src/sources/charts/
+rvl_directory: "{{ playbook_dir }}/../../"
+rvl_clients_helm_release: v3.16.1
+rvl_clients_kubectl_release: v1.31.0
+rvl_osdpl_live_migration_interface: ens3
+rvl_osdpl_tunnel_interface: ens3
+rvl_osdpl_floating_network:
+  enabled: True
+  physnet: physnet1
+  subnet:
+    range: 10.11.12.0/24
+    pool_start: 10.11.12.100
+    pool_end: 10.11.12.200
+    gateway: 10.11.12.11
+rvl_osdpl_openstack_version: caracal
+rvl_dns_resolver_ip_address: "{{ ansible_default_ipv4.address|default(ansible_all_ipv4_addresses[0]) }}"
+rvl_dns_nameservers:
+  - 8.8.8.8
+  - 4.2.2.1
+rvl_dns_discover_ingress_ip: true
+
+rvl_registry_node_port: 32500
+rvl_registry_image_tag: v2.8.1-14
+rvl_registry_ip_address: "{{ ansible_default_ipv4.address|default(ansible_all_ipv4_addresses[0]) }}"
+rvl_registry_namespace: registry
+rvl_registry_host: "registry.it.just.works:{{ rvl_registry_node_port }}"
+
+rvl_images_public_base_url: docker-dev-kaas-virtual.mcp.mirantis.com
+rvl_binary_public_base_url: https://binary-dev-kaas-virtual.mcp.mirantis.com
+rvl_images_build_rockoon: true
+rvl_images_build_loci: true
+rvl_images_build_tag: m2
+rvl_images_rockoon: "{{ rvl_registry_host }}/openstack/rockoon"
+rvl_images_ubuntu_base: "{{ rvl_images_public_base_url }}/openstack/base/ubuntu/base-ubuntu:jammy-20230712102344"
+
+rvl_images_base_url: "{{ rvl_images_public_base_url }}"
+rvl_binary_base_url: "{{ rvl_binary_public_base_url }}"
+
+rvl_images_loci_repo: "https://review.opendev.org/openstack/loci"
+rvl_images_loci_refspec: "refs/changes/85/935885/1"
+rvl_images_loci_branch: "22bd4a538c0220b837163a7fbb08b00dcfb2629e"
+rvl_images_loci_path: /src/loci
+rvl_images_loci_registry: "{{ rvl_registry_host }}"
+rvl_images_loci_build_profile: caracal-core
+rvl_images_loci_images_mapping:
+  cinder:
+    - cinder_api
+    - cinder_backup
+    - cinder_db_purge
+    - cinder_db_sync
+    - cinder_db_sync_online
+    - cinder_scheduler
+    - cinder_service_cleaner
+    - cinder_volume
+    - cinder_volume_daemonset
+    - cinder_volume_usage_audit
+  glance:
+    - glance_api
+    - glance_db_contract
+    - glance_db_expand
+    - glance_db_migrate
+    - glance_db_purge
+    - glance_db_sync
+    - glance_metadefs_load
+    - glance_registry
+  horizon:
+    - horizon
+    - horizon_clean_cache
+    - horizon_db_sync
+  keystone:
+    - keystone_api
+    - keystone_credential_rotate
+    - keystone_credential_setup
+    - keystone_db_sync
+    - keystone_db_sync_contract
+    - keystone_db_sync_expand
+    - keystone_db_sync_migrate
+    - keystone_fernet_rotate
+    - keystone_fernet_setup
+  neutron:
+    - neutron_bagpipe_bgp
+    - neutron_db_sync
+    - neutron_dhcp
+    - neutron_dr
+    - neutron_ironic_agent
+    - neutron_l2gw
+    - neutron_l3
+    - neutron_linuxbridge_agent
+    - neutron_metadata
+    - neutron_netns_cleanup_cron
+    - neutron_openvswitch_agent
+    - neutron_ovn_db_sync_migrate
+    - neutron_portprober_agent
+    - neutron_rpc_server
+    - neutron_server
+    - neutron_sriov_agent
+    - neutron_sriov_agent_init
+  nova:
+    - nova_api
+    - nova_cell_setup
+    - nova_compute
+    - nova_compute_ironic
+    - nova_compute_ssh
+    - nova_conductor
+    - nova_consoleauth
+    - nova_db_purge
+    - nova_db_sync
+    - nova_db_sync_api
+    - nova_db_sync_db
+    - nova_db_sync_online
+    - nova_novncproxy
+    - nova_novncproxy_assets
+    - nova_placement
+    - nova_placement_audit
+    - nova_scheduler
+    - nova_spiceproxy
+    - nova_spiceproxy_assets
+  placement:
+    - placement
+    - placement_db_sync

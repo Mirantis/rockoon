@@ -1,0 +1,37 @@
+{%- from 'macros/connections.j2' import from_pod_networks %}
+{%- from 'macros/connections.j2' import from_namespaces %}
+{%- set api_ns_list = ["os_controller", "lma_deployment"] | namespaces  %}
+{%- set lma_ns_list = ["lma_deployment"] | namespaces  %}
+{%- set neutron_server = "networking:neutron:Deployment:neutron-server" %}
+{%- if spec.get("features", {}).get("neutron", {}).get("backend") == "ml2/ovn" %}
+{%- set neutron_server = "networking:neutron:DaemonSet:neutron-server" %}
+{%- endif %}
+{%- set neutron_portprober_agent = "networking:neutron:DaemonSet:neutron-portprober-agent" %}
+        server:
+          spec:
+            podSelector:
+              matchLabels:
+{{ service_childs[neutron_server].get_pod_labels() | toyaml | indent(16, first=True) }}
+            policyTypes:
+            - Ingress
+            ingress:
+# Pods with host network such as nova-compute
+{{ network_policies["ingress"][neutron_server] | toyaml | indent(14, first=True) }}
+              - from:
+{{ from_pod_networks(pod_networks, service_childs[neutron_server].get_np_ports(["q-api"])) | indent(16) }}
+              - from:
+{{ from_namespaces(api_ns_list, service_childs[neutron_server].get_np_ports(["q-api"])) | indent(16) }}
+
+# The portprober-agent pod where portprober-exporter container runs is created with "hostNetwork: true" option
+# In this case Kubernetes network policies don't work and should be used Calico network policies
+# More information in https://github.com/projectcalico/calico/issues/4493#issuecomment-814272944
+        portprober-exporter:
+          spec:
+            podSelector:
+              matchLabels:
+{{ service_childs[neutron_portprober_agent].get_pod_labels() | toyaml | indent(16, first=True) }}
+            policyTypes:
+            - Ingress
+            ingress:
+              - from:
+{{ from_namespaces(lma_ns_list, service_childs[neutron_portprober_agent].get_np_ports(["qpp-exporter"])) | indent(16) }}

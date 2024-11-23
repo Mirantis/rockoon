@@ -1,0 +1,137 @@
+spec:
+  releases:
+  - name: openstack-redis-operator
+    chart: redisoperator
+    values:
+      image:
+        fullName: {{ images["redis-operator"] }}
+      node_affinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: openstack-control-plane
+              operator: In
+              values:
+              - enabled
+      rbac:
+        apiVersion: v1
+        install: true
+      redisfailover:
+        spec:
+          redis:
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: openstack-control-plane
+                          operator: In
+                          values:
+                            - enabled
+              podAntiAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchExpressions:
+                      - key: app.kubernetes.io/component
+                        operator: In
+                        values:
+                        - redis
+                  topologyKey: "kubernetes.io/hostname"
+            containerSecurityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                - ALL
+              privileged: false
+              readOnlyRootFilesystem: true
+              runAsGroup: 65534
+              runAsNonRoot: true
+              runAsUser: 65534
+            customConfig:
+              - "save 600 1"
+              - "save 300 10"
+              - "save 60 1000"
+              - "save 10 10000"
+        #increase hard and soft memory limits for slave replication
+              - "client-output-buffer-limit slave 512mb 512mb 0"
+        {%- if "redis-failover" in images %}
+            image: {{ images["redis-failover"] }}
+        {%- endif %}
+            replicas: 3
+            securityContext:
+              fsGroup: 65534
+              runAsGroup: 65534
+              runAsNonRoot: true
+              runAsUser: 65534
+            storage:
+              keepAfterDeletion: true
+              persistentVolumeClaim:
+                metadata:
+                  name: {{ spec.get('local_volume_storage_class', 'rockoon-bind-mounts') }}
+                spec:
+                  accessModes:
+                  - ReadWriteOnce
+                  resources:
+                    requests:
+                      storage: 1Gi
+                  storageClassName: {{ spec.get('local_volume_storage_class', 'rockoon-bind-mounts') }}
+          sentinel:
+            rollingUpdate:
+              maxSurge: 0
+              maxUnavailable: 1
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: openstack-control-plane
+                          operator: In
+                          values:
+                            - enabled
+              podAntiAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchExpressions:
+                      - key: app.kubernetes.io/component
+                        operator: In
+                        values:
+                        - sentinel
+                  topologyKey: "kubernetes.io/hostname"
+            configCopy:
+              containerSecurityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                  - ALL
+                privileged: false
+                readOnlyRootFilesystem: true
+                runAsGroup: 65534
+                runAsNonRoot: true
+                runAsUser: 65534
+            containerSecurityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                - ALL
+              privileged: false
+              readOnlyRootFilesystem: true
+              runAsGroup: 65534
+              runAsNonRoot: true
+              runAsUser: 65534
+            securityContext:
+              fsGroup: 65534
+              runAsGroup: 65534
+              runAsNonRoot: true
+              runAsUser: 65534
+            customConfig:
+              - "down-after-milliseconds 2000"
+              - "failover-timeout 10000"
+              - "parallel-syncs 1"
+        {%- if "redis-failover" in images %}
+            image: {{ images["redis-failover"] }}
+        {%- endif %}
+            replicas: 3
+          auth:
+            secretPath: generated-redis-password
+          labelWhitelist:
+          - ^app.*

@@ -1,0 +1,1 @@
+Error: UPGRADE FAILED: cannot patch "etcd-etcd" with kind StatefulSet: StatefulSet.apps "etcd-etcd" is invalid: spec: Forbidden: updates to statefulset spec for fields other than 'replicas', 'template', and 'updateStrategy' are forbidden

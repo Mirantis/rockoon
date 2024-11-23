@@ -1,0 +1,157 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- $envAll := . }}
+{{- if and $envAll.Values.manifests.job_bootstrap $envAll.Values.bootstrap.enabled }}
+{{- $serviceName := "nova" -}}
+{{- $keystoneUser := $envAll.Values.bootstrap.ks_user -}}
+{{- $configMapBin := printf "%s-%s" $serviceName "bin" -}}
+{{- $configMapEtc := printf "%s-%s" $serviceName "etc" -}}
+{{- $configFile := printf "/etc/%s/%s.conf" $serviceName $serviceName -}}
+{{- $logConfigFile := $envAll.Values.conf.nova.DEFAULT.log_config_append -}}
+{{- $nodeSelector := index . "nodeSelector" | default ( dict $envAll.Values.labels.job.node_selector_key $envAll.Values.labels.job.node_selector_value ) -}}
+{{- $serviceAccountName := printf "%s-%s" $serviceName "bootstrap" -}}
+{{ tuple $envAll "bootstrap" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $serviceAccountName | quote }}
+spec:
+  backoffLimit: 20
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "nova" "bootstrap" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+    spec:
+{{ dict "envAll" $envAll "application" "bootstrap" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      serviceAccountName: {{ $serviceAccountName }}
+      restartPolicy: OnFailure
+      nodeSelector:
+{{ toYaml $nodeSelector | indent 8 }}
+      initContainers:
+{{ tuple $envAll "bootstrap" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container"  | indent 8 }}
+{{ tuple $envAll "nova" "bootstrap" | include "helm-toolkit.snippets.kubernetes_cacert_init_container" | indent 8 }}
+{{- if $envAll.Values.bootstrap.wait_for_computes.enabled }}
+        - name: nova-wait-for-computes-init
+{{ tuple $envAll "nova_wait_for_computes_init" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "bootstrap" "container" "nova_wait_for_computes_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /bin/bash
+            - -c
+            - /tmp/wait-for-computes-init.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: nova-bin
+              mountPath: /tmp/wait-for-computes-init.sh
+              subPath: wait-for-computes-init.sh
+              readOnly: true
+{{- end }}
+      containers:
+        - name: bootstrap
+          image: {{ $envAll.Values.images.tags.bootstrap }}
+          imagePullPolicy: {{ $envAll.Values.images.pull_policy }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.bootstrap | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "bootstrap" "container" "bootstrap" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+            - name: NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: CURL_CA_BUNDLE
+              value: /certs/ca-bundle.pem
+            - name: REQUESTS_CA_BUNDLE
+              value: /certs/ca-bundle.pem
+{{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" $keystoneUser ) | indent 12 }}
+            - name: WAIT_PERCENTAGE
+              value: "{{ .Values.bootstrap.wait_for_computes.wait_percentage }}"
+            - name: REMAINING_WAIT
+              value: "{{ .Values.bootstrap.wait_for_computes.remaining_wait }}"
+{{ dict "envAll" $envAll | include "helm-toolkit.snippets.kubernetes_proxy_env_vars" | indent 12 }}
+          command:
+            - /bin/bash
+            - -c
+            - /tmp/bootstrap.sh
+          volumeMounts:
+            - name: os-clouds
+              mountPath: /etc/openstack/clouds.yaml
+              subPath: clouds.yaml
+              readOnly: true
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: nova-bin
+              mountPath: /tmp/bootstrap.sh
+              subPath: bootstrap.sh
+              readOnly: true
+            - name: etc-service
+              mountPath: {{ dir $configFile | quote }}
+            - name: bootstrap-conf
+              mountPath: {{ $configFile | quote }}
+              subPath: {{ base $configFile | quote }}
+              readOnly: true
+            - name: bootstrap-conf
+              mountPath: {{ $logConfigFile | quote }}
+              subPath: {{ base $logConfigFile | quote }}
+              readOnly: true
+{{- dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "nova"  | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.compute.osapi.internal | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: nova-bin
+          configMap:
+            name: {{ $configMapBin | quote }}
+            defaultMode: 504
+        - name: etc-service
+          emptyDir: {}
+        - name: bootstrap-conf
+          secret:
+            secretName: {{ $configMapEtc | quote }}
+            defaultMode: 416
+        - name: os-clouds
+          secret:
+            secretName: {{ .Chart.Name }}-os-clouds
+            defaultMode: 416
+{{- dict "envAll" $envAll "objectType" "volume" "secretPrefix" "nova"  | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.compute.osapi.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ $serviceAccountName }}
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - nodes
+    verbs:
+      - get
+      - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ $serviceAccountName }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $serviceAccountName }}
+    namespace: {{ $envAll.Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: {{ $serviceAccountName }}
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}

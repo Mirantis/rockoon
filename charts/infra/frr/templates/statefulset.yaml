@@ -1,0 +1,162 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "ProbeTemplate" }}
+tcpSocket:
+  port: 179
+{{- end }}
+
+{{- if .Values.manifests.statefulset }}
+{{- $envAll := . }}
+
+{{- $serviceAccountName := "frr" }}
+{{ tuple $envAll "frr" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $envAll.Release.Name }}-{{ $serviceAccountName }}-pod
+  namespace: {{ $envAll.Release.Namespace }}
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - update
+      - patch
+      - create
+      - get
+      - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $envAll.Release.Name }}-{{ $serviceAccountName }}-pod
+  namespace: {{ $envAll.Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $envAll.Release.Name }}-{{ $serviceAccountName }}-pod
+subjects:
+  - kind: ServiceAccount
+    name: {{ $serviceAccountName }}
+    namespace: {{ $envAll.Release.Namespace }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $serviceAccountName }}
+  namespace: {{ $envAll.Release.Namespace }}
+  labels:
+{{ tuple $envAll "frr" "server" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  serviceName: "frr-discovery"
+  replicas: {{ .Values.pod.replicas.server }}
+  podManagementPolicy: "Parallel"
+  selector:
+    matchLabels:
+{{ tuple $envAll "frr" "server" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "frr" "server" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      affinity:
+{{ tuple $envAll "frr" "server" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      nodeSelector:
+        {{ .Values.labels.server.node_selector_key }}: {{ .Values.labels.server.node_selector_value | quote }}
+{{ dict "envAll" $envAll "application" "frr" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      initContainers:
+{{ tuple $envAll "server" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+        - name: frr-config-init
+{{ tuple $envAll "frr_init" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "frr" "container" "frr_config_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+            - name: BGP_UPDATE_SOURCE_INTERFACE
+              value: {{ .Values.conf.bgp.update_source_interface }}
+          command:
+            - /tmp/frr-config-init.sh
+          volumeMounts:
+            - name: frr-bin
+              mountPath: /tmp/frr-config-init.sh
+              subPath: frr-config-init.sh
+              readOnly: true
+            - name: frr-etc
+              mountPath: /tmp/frr/frr.conf
+              subPath: frr.template
+              readOnly: true
+            - name: frr-etc
+              mountPath: /tmp/frr/vtysh.conf
+              subPath: vtysh.template
+              readOnly: true
+            - name: frr-etc-shared
+              mountPath: /etc/frr
+            - name: frr-etc
+              mountPath: /tmp/frr/daemons
+              subPath: daemons.template
+        - name: frr-info
+{{ tuple $envAll "frr_info" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "frr" "container" "frr_info" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+            - name: BGP_UPDATE_SOURCE_INTERFACE
+              value: {{ .Values.conf.bgp.update_source_interface }}
+            - name: NAMESPACE
+              value: {{ $envAll.Release.Namespace }}
+          command:
+            - /tmp/frr-info.py
+          volumeMounts:
+            - name: frr-bin
+              mountPath: /tmp/frr-info.py
+              subPath: frr-info.py
+              readOnly: true
+      containers:
+        - name: frr
+{{ tuple $envAll "frr" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "component" "frr" "container" "server" "type" "readiness" "probeTemplate" (include "ProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "frr" "container" "server" "type" "liveness" "probeTemplate" (include "ProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "application" "frr" "container" "frr" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /sbin/tini
+            - --
+            - /usr/lib/frr/docker-start
+          volumeMounts:
+            - name: frr-etc-shared
+              mountPath: /etc/frr
+              readOnly: false
+            - name: frr-etc
+              mountPath: /tmp/frr/daemons
+              subPath: daemons.template
+      volumes:
+        - name: frr-etc
+          secret:
+            secretName: frr-etc
+            defaultMode: 0444
+        - name: frr-bin
+          configMap:
+            name: frr-bin
+            defaultMode: 0555
+        - name: frr-etc-shared
+          emptyDir: {}
+{{- end }}

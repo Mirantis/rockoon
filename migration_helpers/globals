@@ -1,0 +1,23 @@
+# GLOBAL_VARS
+export KUBECONFIG=${KUBECONFIG:-/root/kubernetes-admin.conf}
+export DATABASE_DIR=${DATABASE_DIR:-/var/lib/mysql_dump/}
+export COMPONENTS_TO_MIGRATE=${COMPONENTS_TO_MIGRATE:-keystone glance cinder heat neutron nova octavia designate ironic}
+export COMPONENTS_TO_MIGRATE_DB=${COMPONENTS_TO_MIGRATE_DB:-${COMPONENTS_TO_MIGRATE}}
+export COMPONENTS_TO_MIGRATE_PUBLIC_API=${COMPONENTS_TO_MIGRATE_PUBLIC_API:-${COMPONENTS_TO_MIGRATE} placement rgw-store novncproxy barbican}
+export KEY_REPOSITORY="/var/lib/keystone/credential-keys /var/lib/keystone/fernet-keys"
+export OPENSTACK_DEPLOYMENT_OBJECT_NAME=${OPENSTACK_DEPLOYMENT_OBJECT_NAME:-osh-dev}
+if [[ -z $CLUSTER_NAME ]]; then
+  echo "[INFO]: Getting cluster name"
+  export CLUSTER_NAME=$(reclass -n $(hostname -f)  -o json | jq -r .parameters._param.cluster_name)
+fi
+
+export SAL_CLUSTER_ROOT=${SAL_CLUSTER_ROOT:-/srv/salt/reclass/classes/cluster/$CLUSTER_NAME}
+export FORWARDER_NS='mcp1'
+export MCP2_PUBLIC_DOMAIN_NAME=${MCP2_PUBLIC_DOMAIN_NAME:-it.just.works}
+export HELMBUNDLE_CR='mcp1-forwarder-cr.yaml'
+export HELMBUNDLE_NS=${HELMBUNDLE_NS:-${FORWARDER_NS}}
+# 8080 - switf not supported
+export IGNORE_PUBLIC_PORTS=${IGNORE_PUBLIC_PORTS:-'8080'}
+export COREDNS_HELMBUNDLE_CR='coredns-cr.yaml'
+export COREDNS_NS='coredns-mcp1'
+export HOST_ALIAS_FILE='host-alias.yaml'

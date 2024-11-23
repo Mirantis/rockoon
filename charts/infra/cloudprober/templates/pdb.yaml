@@ -1,0 +1,13 @@
+{{- if .Values.manifests.pdb }}
+{{- $envAll := . }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  minAvailable: {{ .Values.pod.lifecycle.disruption_budget.cloudprober.min_available }}
+  selector:
+    matchLabels:
+{{ tuple $envAll "cloudprober" "prober" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{- end }}

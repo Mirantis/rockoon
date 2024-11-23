@@ -1,0 +1,26 @@
+        identity:
+          auth:
+            admin:
+              region_name: {{ spec.get('region_name', 'RegionOne') }}
+              username: {{ admin_creds.identity.username }}
+              password: {{ admin_creds.identity.password }}
+              project_name: {{ spec.features.get('keystone', {}).get('users', {}).get('admin', {}).get('project_name', 'admin') }}
+              user_domain_name: {{ spec.features.get('keystone', {}).get('users', {}).get('admin', {}).get('user_domain_name', 'default') }}
+              project_domain_name: {{ spec.features.get('keystone', {}).get('users', {}).get('admin', {}).get('project_domain_name', 'default') }}
+              default_domain_id: {{ spec.features.get('keystone', {}).get('users', {}).get('admin', {}).get('default_domain_id', 'default') }}
+{%- for account, creds in credentials[0].identity.items() %}
+            {{ account }}:
+              username: {{ creds.username }}
+              password: {{ creds.password }}
+              region_name: {{ spec.get('region_name', 'RegionOne') }}
+              {%- if account == 'tempest' %}
+              role: admin,key-manager:service-admin,creator
+              {%- endif %}
+{%- endfor %}
+
+{%- for account, creds in keystone_creds.items() %}
+            {{ account }}:
+              username: {{ creds.username }}
+              password: {{ creds.password }}
+              region_name: {{ spec.get('region_name', 'RegionOne') }}
+{%- endfor %}

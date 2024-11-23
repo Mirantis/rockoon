@@ -1,0 +1,1 @@
+../public_endpoints_redirect/01-create-public-tls-secret.sh

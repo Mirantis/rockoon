@@ -1,0 +1,1725 @@
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Default values for heat.
+# This is a YAML-formatted file.
+# Declare name/value pairs to be passed into your templates.
+# name: value
+
+---
+release_group: null
+
+labels:
+  api:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  cfn:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  cloudwatch:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  engine:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  job:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  test:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+
+images:
+  tags:
+    test: docker.io/xrally/xrally-openstack:2.0.0
+    bootstrap: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    db_init: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    heat_db_sync: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    db_drop: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    rabbit_init: docker.io/rabbitmq:3.7-management
+    ks_user: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    ks_service: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    ks_endpoints: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    ks_trusts: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    heat_api: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    heat_cfn: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    heat_cloudwatch: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    heat_engine: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    heat_engine_cleaner: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    heat_db_purge: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
+    image_repo_sync: docker.io/docker:17.07.0
+  pull_policy: "IfNotPresent"
+  local_registry:
+    active: false
+    exclude:
+      - dep_check
+      - image_repo_sync
+
+jobs:
+  engine_cleaner:
+    cron: "*/5 * * * *"
+    starting_deadline: 600
+    history:
+      success: 3
+      failed: 1
+  db_purge:
+    cron: "1 4 * * 1"
+    history:
+      success: 3
+      failed: 1
+    script:
+      config:
+        age: 90
+        granularity: days
+        batch_size: 10
+      template: |
+        #!/bin/bash
+        set -ex
+        age={{ .Values.jobs.db_purge.script.config.age }}
+        granularity={{ .Values.jobs.db_purge.script.config.granularity }}
+        batch_size={{ .Values.jobs.db_purge.script.config.batch_size }}
+        heat-manage purge_deleted $age --granularity $granularity --batch_size $batch_size
+
+conf:
+  rally_tests:
+    run_tempest: false
+    tests:
+      HeatStacks.create_update_delete_stack:
+        - args:
+            template_path: /tmp/rally-jobs/random_strings.yaml
+            updated_template_path: /tmp/rally-jobs/updated_random_strings_replace.yaml
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      HeatStacks.create_check_delete_stack:
+        - args:
+            template_path: /tmp/rally-jobs/random_strings.yaml
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      HeatStacks.create_and_delete_stack:
+        - args:
+            template_path: /tmp/rally-jobs/resource_group_with_constraint.yaml
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      HeatStacks.create_and_list_stack:
+        - args:
+            template_path: /tmp/rally-jobs/default.yaml
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      HeatStacks.create_snapshot_restore_delete_stack:
+        - args:
+            template_path: /tmp/rally-jobs/random_strings.yaml
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      HeatStacks.create_stack_and_list_output:
+        - args:
+            template_path: /tmp/rally-jobs/resource_group_with_outputs.yaml
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+      HeatStacks.create_stack_and_list_output_via_API:
+        - args:
+            template_path: /tmp/rally-jobs/resource_group_with_outputs.yaml
+          runner:
+            concurrency: 1
+            times: 1
+            type: constant
+          sla:
+            failure_rate:
+              max: 0
+    templates:
+      - name: /tmp/rally-jobs/default.yaml
+        template: |
+          heat_template_version: 2014-10-16
+      - name: /tmp/rally-jobs/random_strings.yaml
+        template: |
+          heat_template_version: 2014-10-16
+          description: Test template for rally create-update-delete scenario
+          resources:
+            test_string_one:
+              type: OS::Heat::RandomString
+              properties:
+                length: 20
+            test_string_two:
+              type: OS::Heat::RandomString
+              properties:
+                length: 20
+      - name: /tmp/rally-jobs/resource_group_with_constraint.yaml
+        template: |
+          heat_template_version: 2013-05-23
+          description: Template for testing caching.
+          parameters:
+            count:
+              type: number
+              default: 40
+            delay:
+              type: number
+              default: 0.1
+          resources:
+            rg:
+              type: OS::Heat::ResourceGroup
+              properties:
+                count:
+                  get_param: count
+                resource_def:
+                    type: OS::Heat::TestResource
+                    properties:
+                      constraint_prop_secs:
+                        get_param: delay
+      - name: /tmp/rally-jobs/resource_group_with_outputs.yaml
+        template: |
+          heat_template_version: 2013-05-23
+          parameters:
+            attr_wait_secs:
+              type: number
+              default: 0.5
+          resources:
+            rg:
+              type: OS::Heat::ResourceGroup
+              properties:
+                count: 10
+                resource_def:
+                  type: OS::Heat::TestResource
+                  properties:
+                    attr_wait_secs:
+                      get_param: attr_wait_secs
+          outputs:
+            val1:
+              value:
+                get_attr:
+                  - rg
+                  - resource.0.output
+            val2:
+              value:
+                get_attr:
+                  - rg
+                  - resource.1.output
+            val3:
+              value:
+                get_attr:
+                  - rg
+                  - resource.2.output
+            val4:
+              value:
+                get_attr:
+                  - rg
+                  - resource.3.output
+            val5:
+              value:
+                get_attr:
+                  - rg
+                  - resource.4.output
+            val6:
+              value:
+                get_attr:
+                  - rg
+                  - resource.5.output
+            val7:
+              value:
+                get_attr:
+                  - rg
+                  - resource.6.output
+            val8:
+              value:
+                get_attr:
+                  - rg
+                  - resource.7.output
+            val9:
+              value:
+                get_attr:
+                  - rg
+                  - resource.8.output
+            val10:
+              value:
+                get_attr:
+                  - rg
+                  - resource.9.output
+      - name: /tmp/rally-jobs/updated_random_strings_replace.yaml
+        template: |
+          heat_template_version: 2014-10-16
+          description: |
+            Test template for create-update-delete-stack scenario in rally.
+            The template deletes one resource from the stack defined by
+            random-strings.yaml.template and re-creates it with the updated parameters
+            (so-called update-replace). That happens because some parameters cannot be
+            changed without resource re-creation. The template allows to measure performance
+            of update-replace operation.
+          resources:
+            test_string_one:
+              type: OS::Heat::RandomString
+              properties:
+                length: 20
+            test_string_two:
+              type: OS::Heat::RandomString
+              properties:
+                length: 40
+  paste:
+    pipeline:heat-api:
+      pipeline: cors versionnegotiation request_id faultwrap http_proxy_to_wsgi osprofiler authurl authtoken audit context apiv1app
+    pipeline:heat-api-standalone:
+      pipeline: cors versionnegotiation request_id faultwrap http_proxy_to_wsgi authurl authpassword context apiv1app
+    pipeline:heat-api-custombackend:
+      pipeline: cors versionnegotiation request_id faultwrap context custombackendauth apiv1app
+    pipeline:heat-api-cfn:
+      pipeline: cors cfnversionnegotiation http_proxy_to_wsgi osprofiler ec2authtoken authtoken audit context apicfnv1app
+    pipeline:heat-api-cfn-standalone:
+      pipeline: cors cfnversionnegotiation http_proxy_to_wsgi ec2authtoken context apicfnv1app
+    pipeline:heat-api-cloudwatch:
+      pipeline: cors versionnegotiation osprofiler ec2authtoken authtoken audit context apicwapp
+    pipeline:heat-api-cloudwatch-standalone:
+      pipeline: cors versionnegotiation ec2authtoken context apicwapp
+    app:apiv1app:
+      paste.app_factory: heat.common.wsgi:app_factory
+      heat.app_factory: heat.api.openstack.v1:API
+    app:apicfnv1app:
+      paste.app_factory: heat.common.wsgi:app_factory
+      heat.app_factory: heat.api.cfn.v1:API
+    app:apicwapp:
+      paste.app_factory: heat.common.wsgi:app_factory
+      heat.app_factory: heat.api.cloudwatch:API
+    filter:versionnegotiation:
+      paste.filter_factory: heat.common.wsgi:filter_factory
+      heat.filter_factory: heat.api.openstack:version_negotiation_filter
+    filter:cors:
+      paste.filter_factory: oslo_middleware.cors:filter_factory
+      oslo_config_project: heat
+    filter:faultwrap:
+      paste.filter_factory: heat.common.wsgi:filter_factory
+      heat.filter_factory: heat.api.openstack:faultwrap_filter
+    filter:cfnversionnegotiation:
+      paste.filter_factory: heat.common.wsgi:filter_factory
+      heat.filter_factory: heat.api.cfn:version_negotiation_filter
+    filter:cwversionnegotiation:
+      paste.filter_factory: heat.common.wsgi:filter_factory
+      heat.filter_factory: heat.api.cloudwatch:version_negotiation_filter
+    filter:context:
+      paste.filter_factory: heat.common.context:ContextMiddleware_filter_factory
+    filter:ec2authtoken:
+      paste.filter_factory: heat.api.aws.ec2token:EC2Token_filter_factory
+    filter:http_proxy_to_wsgi:
+      paste.filter_factory: oslo_middleware:HTTPProxyToWSGI.factory
+    filter:authurl:
+      paste.filter_factory: heat.common.auth_url:filter_factory
+    filter:authtoken:
+      paste.filter_factory: keystonemiddleware.auth_token:filter_factory
+    filter:authpassword:
+      paste.filter_factory: heat.common.auth_password:filter_factory
+    filter:custombackendauth:
+      paste.filter_factory: heat.common.custom_backend_auth:filter_factory
+    filter:audit:
+      paste.filter_factory: keystonemiddleware.audit:filter_factory
+      audit_map_file: /etc/heat/api_audit_map.conf
+    filter:request_id:
+      paste.filter_factory: oslo_middleware.request_id:RequestId.factory
+    filter:osprofiler:
+      paste.filter_factory: osprofiler.web:WsgiMiddleware.factory
+  policy: {}
+  policy.d: {}
+  heat:
+    DEFAULT:
+      log_config_append: /etc/heat/logging.conf
+      num_engine_workers: 1
+      trusts_delegated_roles: ""
+      host: heat-engine
+    keystone_authtoken:
+      auth_type: password
+      auth_version: v3
+      memcache_security_strategy: ENCRYPT
+    database:
+      max_retries: -1
+    trustee:
+      auth_type: password
+      auth_version: v3
+    heat_api:
+      # NOTE(portdirect): the bind port should not be defined, and is manipulated
+      # via the endpoints section.
+      bind_port: null
+      workers: 1
+    heat_api_cloudwatch:
+      # NOTE(portdirect): the bind port should not be defined, and is manipulated
+      # via the endpoints section.
+      bind_port: null
+      workers: 1
+    heat_api_cfn:
+      # NOTE(portdirect): the bind port should not be defined, and is manipulated
+      # via the endpoints section.
+      bind_port: null
+      workers: 1
+    paste_deploy:
+      api_paste_config: /etc/heat/api-paste.ini
+    clients:
+      endpoint_type: internalURL
+    clients_contrail:
+      use_ssl: false
+    clients_heat:
+      endpoint_type: publicURL
+    clients_keystone:
+      endpoint_type: internalURL
+    audit_middleware_notifications:
+      publisher: heat-api
+    oslo_messaging_notifications:
+      driver: messagingv2
+    oslo_middleware:
+      enable_proxy_headers_parsing: true
+    oslo_messaging_rabbit:
+      rabbit_ha_queues: True
+    oslo_policy:
+      policy_file: /etc/heat/policy.yaml
+      policy_dirs: /etc/heat/policy.d/
+  api_audit_map:
+    DEFAULT:
+      target_endpoint_type: orchestration
+    path_keywords:
+      stacks: stack
+      resources: resource
+      preview: None
+      detail: None
+      abandon: None
+      snapshots: snapshot
+      restore: None
+      outputs: output
+      metadata: server
+      signal: None
+      events: event
+      template: None
+      template_versions: template_version
+      functions: None
+      validate: None
+      resource_types: resource_type
+      build_info: None
+      actions: None
+      software_configs: software_config
+      software_deployments: software_deployment
+      services: None
+    service_endpoints:
+      orchestration:service/orchestration
+  logging:
+    loggers:
+      keys:
+        - root
+        - heat
+        - oslo_notification_audit
+    handlers:
+      keys:
+        - stdout
+        - stderr
+        - "null"
+    formatters:
+      keys:
+        - context
+        - default
+    logger_root:
+      level: WARNING
+      handlers: stdout
+    logger_heat:
+      level: INFO
+      handlers: ""
+      qualname: heat
+    logger_oslo_notification_audit:
+      level: INFO
+      handlers: ""
+      qualname: oslo.messaging.notification.audit
+    logger_amqp:
+      level: WARNING
+      handlers: ""
+      qualname: amqp
+    logger_amqplib:
+      level: WARNING
+      handlers: ""
+      qualname: amqplib
+    logger_eventletwsgi:
+      level: WARNING
+      handlers: ""
+      qualname: eventlet.wsgi.server
+    logger_sqlalchemy:
+      level: WARNING
+      handlers: ""
+      qualname: sqlalchemy
+    logger_boto:
+      level: WARNING
+      handlers: ""
+      qualname: boto
+    handler_null:
+      class: logging.NullHandler
+      formatter: default
+      args: ()
+    handler_stdout:
+      class: StreamHandler
+      args: (sys.stdout,)
+      formatter: context
+    handler_stderr:
+      class: StreamHandler
+      args: (sys.stderr,)
+      formatter: context
+    formatter_context:
+      class: oslo_log.formatters.ContextFormatter
+      datefmt: "%Y-%m-%d %H:%M:%S"
+    formatter_default:
+      format: "%(message)s"
+      datefmt: "%Y-%m-%d %H:%M:%S"
+  software:
+    apache2:
+      binary: apache2
+      start_parameters: -DFOREGROUND
+      site_dir: /etc/apache2/sites-enable
+      conf_dir: /etc/apache2/conf-enabled
+      mods_dir: /etc/apache2/mods-available
+      a2enmod: null
+      a2dismod: null
+  apache_wsgi:
+    config:
+      keepalive_timeout: 75
+      user_ident: heat
+      script_name: heat-wsgi-api
+      processes: 4
+      service_name: orchestration
+      endpoint:
+        type: orchestration
+        endpoint: internal
+        port: api
+    template: |
+      {{ include "helm-toolkit.snippets.apache_wsgi_config" ( tuple $ .Values.conf.apache_wsgi ) }}
+  apache_wsgi_cfn:
+    config:
+      keepalive_timeout: 75
+      user_ident: heat
+      script_name: heat-wsgi-api-cfn
+      processes: 4
+      service_name: cloudformation
+      endpoint:
+        type: cloudformation
+        endpoint: internal
+        port: api
+    template: |
+      {{ include "helm-toolkit.snippets.apache_wsgi_config" ( tuple $ .Values.conf.apache_wsgi_cfn ) }}
+  security: |
+    {{ include "helm-toolkit.snippets.apache_security" ( tuple "Prod" "Off" "Off" ) }}
+  rabbitmq:
+    # NOTE(rk760n): adding rmq policy to mirror messages from notification queues and set expiration time for the ones
+    policies:
+      - vhost: "heat"
+        name: "ha_ttl_heat"
+        definition:
+          # mirror messges to other nodes in rmq cluster
+          ha-mode: "all"
+          ha-sync-mode: "automatic"
+          # 70s
+          message-ttl: 70000
+        priority: 0
+        apply-to: all
+        pattern: '^(?!(amq\.|reply_)).*'
+  environment:
+    default.yaml: |
+      resource_registry:
+          # allow older templates with Quantum in them.
+          "OS::Quantum*": "OS::Neutron*"
+          # Choose your implementation of AWS::CloudWatch::Alarm
+          "AWS::CloudWatch::Alarm": "file:///etc/heat/templates/AWS_CloudWatch_Alarm.yaml"
+          #"AWS::CloudWatch::Alarm": "OS::Heat::CWLiteAlarm"
+          "OS::Metering::Alarm": "OS::Aodh::Alarm"
+          "AWS::RDS::DBInstance": "file:///etc/heat/templates/AWS_RDS_DBInstance.yaml"
+          "OS::Ceilometer::Alarm": "OS::Aodh::Alarm"
+          "OS::Ceilometer::GnocchiResourcesAlarm": "OS::Aodh::GnocchiResourcesAlarm"
+          "OS::Ceilometer::GnocchiAggregationByMetricsAlarm": "OS::Aodh::GnocchiAggregationByMetricsAlarm"
+          "OS::Ceilometer::GnocchiAggregationByResourcesAlarm": "OS::Aodh::GnocchiAggregationByResourcesAlarm"
+          "OS::Ceilometer::CombinationAlarm": "OS::Aodh::CombinationAlarm"
+  templates:
+    AWS_CloudWatch_Alarm.yaml: |
+      HeatTemplateFormatVersion: '2012-12-12'
+      Description: AWS::CloudWatch::Alarm using Aodh.
+      Parameters:
+        AlarmDescription:
+          Type: String
+          Default: An alarm
+        EvaluationPeriods:
+          Type: String
+        MetricName:
+          Type: String
+        Namespace:
+          Type: String
+          Default: system/linux
+        Period:
+          Type: String
+        ComparisonOperator:
+          Type: String
+          AllowedValues: [GreaterThanOrEqualToThreshold, GreaterThanThreshold,
+                          LessThanThreshold, LessThanOrEqualToThreshold]
+        Statistic:
+          Type: String
+          AllowedValues: [SampleCount, Average, Sum, Minimum, Maximum]
+        Threshold:
+          Type: String
+        Units:
+          Type: String
+          AllowedValues: [Seconds, Microseconds, Milliseconds, Bytes, Kilobytes,
+                          Megabytes, Gigabytes, Terabytes, Bits, Kilobits, Megabits,
+                          Gigabits, Terabits, Percent, Count, Bytes/Second,
+                          Kilobytes/Second, Megabytes/Second, Gigabytes/Second,
+                          Terabytes/Second, Bits/Second, Kilobits/Second,
+                          Megabits/Second, Gigabits/Second, Terabits/Second,
+                          Count/Second, None]
+          Default: None
+        AlarmActions:
+         Type: CommaDelimitedList
+         Default: ''
+        OKActions:
+         Type: CommaDelimitedList
+         Default: ''
+        InsufficientDataActions:
+         Type: CommaDelimitedList
+         Default: ''
+        Dimensions:
+         Type: CommaDelimitedList
+         Default: ''
+
+      Mappings:
+        ComparisonOperatorMap:
+          LessThanOrEqualToThreshold: {Aodh: le}
+          LessThanThreshold: {Aodh: lt}
+          GreaterThanThreshold: {Aodh: gt}
+          GreaterThanOrEqualToThreshold: {Aodh: ge}
+        StatisticMap:
+          SampleCount: {Aodh: count}
+          Average: {Aodh: avg}
+          Sum: {Aodh: sum}
+          Minimum: {Aodh: min}
+          Maximum: {Aodh: max}
+
+      Resources:
+        __alarm__:
+          Type: OS::Aodh::Alarm
+          Properties:
+            description:
+              Ref: AlarmDescription
+            meter_name:
+              Ref: MetricName
+            period:
+              Ref: Period
+            evaluation_periods:
+              Ref: EvaluationPeriods
+            repeat_actions: true
+            threshold:
+              Ref: Threshold
+            alarm_actions:
+              Ref: AlarmActions
+            ok_actions:
+              Ref: OKActions
+            insufficient_data_actions:
+              Ref: InsufficientDataActions
+            statistic:
+              "Fn::FindInMap": [StatisticMap, {Ref: Statistic}, Aodh]
+            comparison_operator:
+              "Fn::FindInMap": [ComparisonOperatorMap, {Ref: ComparisonOperator}, Aodh]
+            matching_metadata:
+              "Fn::MemberListToMap": [Name, Value, {Ref: Dimensions}]
+    AWS_RDS_DBInstance.yaml: |
+      HeatTemplateFormatVersion: '2012-12-12'
+      Description: 'Builtin AWS::RDS::DBInstance'
+      Parameters:
+        AllocatedStorage:
+          Type: String
+        DBInstanceClass:
+          Type: String
+        DBName:
+          Type: String
+        DBSecurityGroups:
+          Type: CommaDelimitedList
+          Default: ''
+        Engine:
+          Type: String
+          AllowedValues: ['MySQL']
+        MasterUsername:
+          Type: String
+        MasterUserPassword:
+          Type: String
+        Port:
+          Type: String
+          Default: '3306'
+        KeyName:
+          Type: String
+          Default: ''
+
+      Mappings:
+        DBInstanceToInstance:
+          db.m1.small: {Instance: m1.small}
+          db.m1.large: {Instance: m1.large}
+          db.m1.xlarge: {Instance: m1.xlarge}
+          db.m2.xlarge: {Instance: m2.xlarge}
+          db.m2.2xlarge: {Instance: m2.2xlarge}
+          db.m2.4xlarge: {Instance: m2.4xlarge}
+
+      Resources:
+        ServerSecurityGroup:
+          Type: AWS::EC2::SecurityGroup
+          Properties:
+            GroupDescription: 'Enable SSH access'
+            SecurityGroupIngress:
+            - IpProtocol: icmp
+              FromPort: '-1'
+              ToPort: '-1'
+              CidrIp: '0.0.0.0/0'
+            - IpProtocol: tcp
+              FromPort: '22'
+              ToPort : '22'
+              CidrIp : '0.0.0.0/0'
+            - IpProtocol: tcp
+              FromPort: {Ref: Port}
+              ToPort : {Ref: Port}
+              CidrIp : '0.0.0.0/0'
+        DatabaseInstance:
+          Type: AWS::EC2::Instance
+          Metadata:
+            AWS::CloudFormation::Init:
+              config:
+                files:
+                  /tmp/db_setup.sql:
+                    content:
+                      'Fn::Replace':
+                      - DBName: {Ref: DBName}
+                        MasterUserPassword: {Ref: MasterUserPassword}
+                        MasterUsername: {Ref: MasterUsername}
+                      - |
+                        CREATE DATABASE DBName;
+                        GRANT ALL PRIVILEGES ON DBName.* TO "MasterUsername"@"%"
+                        IDENTIFIED BY "MasterUserPassword";
+                        FLUSH PRIVILEGES;
+                        EXIT
+                    mode: '000644'
+                    owner: root
+                    group: root
+                packages:
+                  yum:
+                    mariadb: []
+                    mariadb-server: []
+                services:
+                  systemd:
+                    mysqld:
+                      enabled: true
+                      ensureRunning: true
+          Properties:
+            ImageId: F19-x86_64-cfntools
+            InstanceType: {'Fn::FindInMap': [DBInstanceToInstance,
+                                             {Ref: DBInstanceClass}, Instance]}
+            KeyName: {Ref: KeyName}
+            SecurityGroups: [{"Ref" : "ServerSecurityGroup"}]
+            UserData:
+              Fn::Base64:
+                Fn::Replace:
+                - 'AWS::StackName': {Ref: 'AWS::StackName'}
+                  'AWS::Region': {Ref: 'AWS::Region'}
+                  MasterUserPassword: {Ref: MasterUserPassword}
+                  WaitHandle: {Ref: WaitHandle}
+                - |
+                  #!/bin/bash -v
+                  #
+                  iptables -F
+
+                  # Helper function
+                  function error_exit
+                  {
+                    /opt/aws/bin/cfn-signal -e 1 -r \"$1\" 'WaitHandle'
+                    exit 1
+                  }
+                  /opt/aws/bin/cfn-init -s AWS::StackName -r DatabaseInstance --region AWS::Region || error_exit 'Failed to run cfn-init'
+                  # Setup MySQL root password and create a user
+                  mysqladmin -u root password 'MasterUserPassword'
+                  mysql -u root --password='MasterUserPassword' < /tmp/db_setup.sql || error_exit 'Failed to setup mysql'
+
+                  # Database setup completed, signal success
+                  /opt/aws/bin/cfn-signal -e 0 -r "MySQL server setup complete" 'WaitHandle'
+
+        WaitHandle:
+          Type: AWS::CloudFormation::WaitConditionHandle
+        WaitCondition:
+          Type: AWS::CloudFormation::WaitCondition
+          DependsOn: DatabaseInstance
+          Properties:
+            Handle: {Ref: WaitHandle}
+            Timeout: "600"
+
+      Outputs:
+        Endpoint.Address:
+          Value: {'Fn::GetAtt': [DatabaseInstance, PublicIp]}
+        Endpoint.Port:
+          Value: {Ref: Port}
+
+network:
+  core_plugin: ml2
+  api:
+    ingress:
+      public: true
+      classes:
+        namespace: "nginx"
+        cluster: "nginx-cluster"
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /
+    external_policy_local: false
+    node_port:
+      enabled: false
+      port: 30004
+  cfn:
+    ingress:
+      public: true
+      classes:
+        namespace: "nginx"
+        cluster: "nginx-cluster"
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /
+    node_port:
+      enabled: false
+      port: 30800
+  cloudwatch:
+    ingress:
+      public: true
+      classes:
+        namespace: "nginx"
+        cluster: "nginx-cluster"
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /
+    node_port:
+      enabled: false
+      port: 30003
+
+bootstrap:
+  enabled: true
+  ks_user: admin-system
+  script: |
+    #NOTE(portdirect): The Orchestration service automatically assigns the
+    # 'heat_stack_user' role to users that it creates during stack deployment.
+    # By default, this role restricts API operations. To avoid conflicts, do
+    # not add this role to actual users.
+    openstack role create --or-show heat_stack_user
+
+dependencies:
+  dynamic:
+    common:
+      local_image_registry:
+        jobs:
+          - heat-image-repo-sync
+        services:
+          - endpoint: node
+            service: local_image_registry
+    job_rabbit_init:
+      api:
+        jobs:
+          - heat-rabbit-init
+      cfn:
+        jobs:
+          - heat-rabbit-init
+      cloudwatch:
+        jobs:
+          - heat-rabbit-init
+      engine:
+        jobs:
+          - heat-rabbit-init
+    job_ks_endpoints:
+      api:
+        jobs:
+          - heat-ks-endpoints
+      cfn:
+        jobs:
+          - heat-ks-endpoints
+      cloudwatch:
+        jobs:
+          - heat-ks-endpoints
+      engine:
+        jobs:
+          - heat-ks-endpoints
+      engine_cleaner:
+        jobs:
+          - heat-ks-endpoints
+      db_purge:
+        jobs:
+          - heat-ks-endpoints
+  static:
+    api:
+      jobs:
+        - heat-db-sync
+        - heat-ks-user
+        - heat-trustee-ks-user
+        - heat-domain-ks-user
+        - heat-bootstrap
+      services:
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: identity
+    cfn:
+      jobs:
+        - heat-db-sync
+        - heat-ks-user
+        - heat-trustee-ks-user
+        - heat-domain-ks-user
+        - heat-bootstrap
+      services:
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: identity
+    cloudwatch:
+      jobs:
+        - heat-db-sync
+        - heat-ks-user
+        - heat-trustee-ks-user
+        - heat-domain-ks-user
+        - heat-bootstrap
+      services:
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: identity
+    db_drop:
+      services:
+        - endpoint: internal
+          service: oslo_db
+    db_init:
+      services:
+        - endpoint: internal
+          service: oslo_db
+    db_sync:
+      jobs:
+        - heat-db-init
+      services:
+        - endpoint: internal
+          service: oslo_db
+    bootstrap:
+      services:
+        - endpoint: internal
+          service: identity
+    engine:
+      jobs:
+        - heat-db-sync
+        - heat-ks-user
+        - heat-trustee-ks-user
+        - heat-domain-ks-user
+        - heat-bootstrap
+      services:
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: identity
+    engine_cleaner:
+      jobs:
+        - heat-db-sync
+        - heat-ks-user
+        - heat-trustee-ks-user
+        - heat-domain-ks-user
+      services:
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: identity
+    db_purge:
+      jobs:
+        - heat-db-sync
+        - heat-ks-user
+        - heat-trustee-ks-user
+        - heat-domain-ks-user
+      services:
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: identity
+    ks_endpoints:
+      jobs:
+        - heat-ks-service
+      services:
+        - endpoint: internal
+          service: identity
+    ks_service:
+      services:
+        - endpoint: internal
+          service: identity
+    ks_user:
+      services:
+        - endpoint: internal
+          service: identity
+    rabbit_init:
+      services:
+        - endpoint: internal
+          service: oslo_messaging
+    trusts:
+      jobs:
+        - heat-ks-user
+        - heat-trustee-ks-user
+        - heat-domain-ks-user
+      services:
+        - endpoint: internal
+          service: identity
+    image_repo_sync:
+      services:
+        - endpoint: internal
+          service: local_image_registry
+    tests:
+      services:
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: orchestration
+
+# Names of secrets used by bootstrap and environmental checks
+secrets:
+  identity:
+    admin: heat-keystone-admin
+    heat: heat-keystone-user
+    heat_trustee: heat-keystone-trustee
+    heat_stack_user: heat-keystone-stack-user
+    test: heat-keystone-test
+  oslo_db:
+    admin: heat-db-admin
+    heat: heat-db-user
+  oslo_messaging:
+    admin: heat-rabbitmq-admin
+    heat: heat-rabbitmq-user
+  tls:
+    orchestration:
+      api:
+        public: heat-tls-public
+        internal: heat-tls-api
+    cloudformation:
+      cfn:
+        public: cloudformation-tls-public
+        internal: heat-tls-cfn
+# typically overridden by environmental
+# values, but should include all endpoints
+# required by this chart
+endpoints:
+  cluster_domain_suffix: cluster.local
+  local_image_registry:
+    name: docker-registry
+    namespace: docker-registry
+    hosts:
+      default: localhost
+      internal: docker-registry
+      node: localhost
+    host_fqdn_override:
+      default: null
+    port:
+      registry:
+        node: 5000
+  identity:
+    name: keystone
+    auth:
+      admin:
+        region_name: RegionOne
+        username: admin
+        password: password
+        project_name: admin
+        user_domain_name: default
+        project_domain_name: default
+      heat:
+        role: admin,service
+        region_name: RegionOne
+        username: heat
+        password: password
+        project_name: service
+        user_domain_name: service
+        project_domain_name: service
+      heat_trustee:
+        role: admin,service
+        region_name: RegionOne
+        username: heat-trust
+        password: password
+        project_name: service
+        user_domain_name: service
+        project_domain_name: service
+      heat_stack_user:
+        role: admin,service
+        region_name: RegionOne
+        username: heat-domain
+        password: password
+        domain_name: heat
+      test:
+        region_name: RegionOne
+        username: heat-test
+        password: password
+        project_name: test
+        user_domain_name: service
+        project_domain_name: service
+    hosts:
+      default: keystone
+      internal: keystone-api
+    host_fqdn_override:
+      default: null
+    path:
+      default: /v3
+    scheme:
+      default: 'http'
+    port:
+      api:
+        default: 80
+        internal: 5000
+  orchestration:
+    name: heat
+    hosts:
+      default: heat-api
+      public: heat
+    host_fqdn_override:
+      default: null
+      # NOTE(portdirect): this chart supports TLS for fqdn over-ridden public
+      # endpoints using the following format:
+      # public:
+      #   host: null
+      #   tls:
+      #     crt: null
+      #     key: null
+    path:
+      default: '/v1/%(project_id)s'
+    scheme:
+      default: 'http'
+    port:
+      api:
+        default: 8004
+        public: 80
+  cloudformation:
+    name: heat-cfn
+    hosts:
+      default: heat-cfn
+      public: cloudformation
+    host_fqdn_override:
+      default: null
+      # NOTE(portdirect): this chart supports TLS for fqdn over-ridden public
+      # endpoints using the following format:
+      # public:
+      #   host: null
+      #   tls:
+      #     crt: null
+      #     key: null
+    path:
+      default: /v1
+    scheme:
+      default: 'http'
+    port:
+      api:
+        default: 8000
+        public: 80
+  # Cloudwatch does not get an entry in the keystone service catalog
+  cloudwatch:
+    name: heat-cloudwatch
+    hosts:
+      default: heat-cloudwatch
+      public: cloudwatch
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    type: null
+    scheme:
+      default: 'http'
+    port:
+      api:
+        default: 8003
+        public: 80
+  oslo_db:
+    auth:
+      admin:
+        username: root
+        password: password
+        secret:
+          tls:
+            internal: mariadb-tls-direct
+      heat:
+        username: heat
+        password: password
+    hosts:
+      default: mariadb
+    host_fqdn_override:
+      default: null
+    path: /heat
+    scheme: mysql+pymysql
+    port:
+      mysql:
+        default: 3306
+  oslo_cache:
+    auth:
+      # NOTE(portdirect): this is used to define the value for keystone
+      # authtoken cache encryption key, if not set it will be populated
+      # automatically with a random value, but to take advantage of
+      # this feature all services should be set to use the same key,
+      # and memcache service.
+      memcache_secret_key: null
+    hosts:
+      default: memcached
+    host_fqdn_override:
+      default: null
+    port:
+      memcache:
+        default: 11211
+  oslo_messaging:
+    auth:
+      admin:
+        username: rabbitmq
+        password: password
+      heat:
+        username: heat
+        password: password
+    statefulset:
+      replicas: 2
+      name: rabbitmq-rabbitmq
+    hosts:
+      default: rabbitmq
+    host_fqdn_override:
+      default: null
+    path: /heat
+    scheme: rabbit
+    port:
+      amqp:
+        default: 5672
+      http:
+        default: 15672
+  fluentd:
+    namespace: null
+    name: fluentd
+    hosts:
+      default: fluentd-logging
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    scheme: 'http'
+    port:
+      service:
+        default: 24224
+      metrics:
+        default: 24220
+  tungstenfabric:
+    name: tungstenfabric
+    namespace: tf
+    os_service_type: sdn
+    hosts:
+      default: tf-config-api
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    scheme:
+      default: 'http'
+    port:
+      api:
+        default: 8082
+  # NOTE(tp6510): these endpoints allow for things like DNS lookups and ingress
+  # They are using to enable the Egress K8s network policy.
+  kube_dns:
+    namespace: kube-system
+    name: kubernetes-dns
+    hosts:
+      default: kube-dns
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    scheme: http
+    port:
+      dns:
+        default: 53
+        protocol: UDP
+  ingress:
+    namespace: null
+    name: ingress
+    hosts:
+      default: ingress
+    port:
+      ingress:
+        default: 80
+
+pod:
+  probes:
+    rpc_timeout: 30
+    rpc_retries: 2
+    heat_engine:
+      heat_engine:
+        readiness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 30
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 30
+    heat_api:
+      heat_api:
+        readiness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 30
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 30
+    heat_cfn:
+      heat_cfn:
+        readiness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 30
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 30
+
+  security_context:
+    heat:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+      container:
+        heat_api:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        heat_cfn:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        heat_cloudwatch:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        heat_engine:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    trusts:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+      container:
+        heat_trusts:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    bootstrap:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+      container:
+        bootstrap:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    db_init:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+      container:
+        db_init:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    db_purge:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+      container:
+        db_purge:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    db_sync:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+      container:
+        db_sync:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    ks_user:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+      container:
+        heat_ks_domain_user:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        ks_user:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    engine_cleaner:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+      container:
+        heat_engine_cleaner:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    ks_endpoints:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+      container:
+        ks_endpoints:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    ks_service:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+      container:
+        ks_service:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+  affinity:
+    anti:
+      type:
+        default: preferredDuringSchedulingIgnoredDuringExecution
+      topologyKey:
+        default: kubernetes.io/hostname
+      weight:
+        default: 10
+  mounts:
+    heat_api:
+      init_container: null
+      heat_api:
+        volumeMounts:
+        volumes:
+    heat_cfn:
+      init_container: null
+      heat_cfn:
+        volumeMounts:
+        volumes:
+    heat_cloudwatch:
+      init_container: null
+      heat_cloudwatch:
+        volumeMounts:
+        volumes:
+    heat_engine:
+      init_container: null
+      heat_engine:
+        volumeMounts:
+        volumes:
+    heat_bootstrap:
+      init_container: null
+      heat_bootstrap:
+        volumeMounts:
+        volumes:
+    heat_trusts:
+      init_container: null
+      heat_trusts:
+        volumeMounts:
+        volumes:
+    heat_engine_cleaner:
+      init_container: null
+      heat_engine_cleaner:
+        volumeMounts:
+        volumes:
+    heat_db_purge:
+      init_container: null
+      heat_db_purge:
+        volumeMounts:
+        volumes:
+    heat_tests:
+      init_container: null
+      heat_tests:
+        volumeMounts:
+        volumes:
+    heat_db_sync:
+      heat_db_sync:
+        volumeMounts:
+        volumes:
+  replicas:
+    api: 1
+    cfn: 1
+    cloudwatch: 1
+    engine: 1
+  lifecycle:
+    upgrades:
+      deployments:
+        revision_history: 3
+        pod_replacement_strategy: RollingUpdate
+        rolling_update:
+          max_unavailable: 1
+          max_surge: 3
+    disruption_budget:
+      api:
+        min_available: 0
+      cfn:
+        min_available: 0
+      cloudwatch:
+        min_available: 0
+    termination_grace_period:
+      api:
+        timeout: 30
+      cfn:
+        timeout: 30
+      cloudwatch:
+        timeout: 30
+      engine:
+        timeout: 30
+  resources:
+    enabled: false
+    api:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    cfn:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    cloudwatch:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    engine:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    jobs:
+      bootstrap:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      db_init:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      db_sync:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      db_drop:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      ks_endpoints:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      ks_service:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      ks_user:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      rabbit_init:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      tests:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      trusts:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      engine_cleaner:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      db_purge:
+        requests:
+          memory: "124Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      image_repo_sync:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+
+network_policy: {}
+
+manifests:
+  secret_ca_bundle: false
+  certificates: false
+  configmap_bin: true
+  configmap_bin_aux: true
+  configmap_etc: true
+  configmap_oslo_policy: true
+  cron_job_engine_cleaner: true
+  cron_job_db_purge: false
+  deployment_api: true
+  deployment_cfn: true
+  deployment_cloudwatch: false
+  deployment_engine: true
+  ingress_api: true
+  ingress_cfn: true
+  ingress_cloudwatch: false
+  job_bootstrap: true
+  job_db_init: true
+  job_db_sync: true
+  job_db_drop: false
+  job_image_repo_sync: true
+  job_ks_endpoints: true
+  job_ks_service: true
+  job_ks_user_domain: true
+  job_ks_user_trustee: true
+  job_heat_trusts: false
+  job_ks_user: true
+  job_rabbit_init: true
+  pdb_api: true
+  pdb_cfn: true
+  pdb_cloudwatch: false
+  pod_rally_test: true
+  network_policy: false
+  secret_db: true
+  secret_ingress_tls: true
+  secret_keystone: true
+  secret_rabbitmq: true
+  service_api: true
+  service_cfn: true
+  service_cloudwatch: false
+  service_ingress_api: true
+  service_ingress_cfn: true
+  service_ingress_cloudwatch: false
+  statefulset_engine: false
+...

@@ -1,0 +1,200 @@
+spec:
+  releases:
+  - chart: masakari
+    name: openstack-masakari
+    values:
+      conf:
+        libvirt:
+          tls: false
+          interface: ens3
+        policy.d:
+          01-controller-default.yaml: {'instance-ha_rule1': 'instance-ha_value1'}
+          02-custom.yaml: {}
+        masakari:
+          DEFAULT:
+            os_privileged_user_name: admin
+            os_privileged_user_password: ZUqTyP2XwsgEGKZ7qNhhecYyq9NLkGE6
+            nova_catalog_admin_info: compute:nova:internalURL
+          coordination:
+            backend_url: etcd3+http://etcd:2379
+          keystone_authtoken:
+            memcache_secret_key: 3vySYJq0rDZ32KGG
+            memcache_security_strategy: ENCRYPT
+            service_type: instance-ha
+          oslo_policy:
+            enforce_new_defaults: false
+            enforce_scope: false
+          host_failure:
+            evacuate_all_instances: false
+            ignore_instances_in_error_state: true
+        logging:
+          logger_masakari:
+            level: INFO
+          logger_masakarimonitors:
+            level: INFO
+      dependencies:
+        static:
+          db_init:
+            jobs:
+            - openstack-mariadb-cluster-wait
+      endpoints:
+        cluster_domain_suffix: cluster.local
+        identity:
+          auth:
+            admin:
+              default_domain_id: default
+              password: ZUqTyP2XwsgEGKZ7qNhhecYyq9NLkGE6
+              project_domain_name: default
+              project_name: admin
+              region_name: RegionOne
+              user_domain_name: default
+              username: admin
+            masakari:
+              password: fUPlF2xntwICHH8KDYEjuc4Seb1TNQ8d
+              username: masakari8Xfl6MhP
+              region_name: 'RegionOne'
+            test:
+              password: KI40mJVQ9fZP3MBZLpgrFSf2nqZIbbqg
+              username: testC7BY
+              region_name: 'RegionOne'
+        instance_ha:
+          host_fqdn_override:
+            public:
+              host: masakari.it.just.works
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          hosts:
+            admin:
+              host: masakari-api
+            default: masakari
+            internal: masakari-api
+            public:
+              host: masakari
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          port:
+            api:
+              admin: 15868
+              default: 80
+              internal: 15868
+              public: 443
+          scheme:
+            default: http
+            public: https
+        oslo_cache:
+          statefulset:
+            name: openstack-memcached-memcached
+            replicas: 3
+        oslo_db:
+          auth:
+            admin:
+              password: QACDSM6FBTH2LuXjTuRQ6DXhD8bSgPbn
+              username: root
+            masakari:
+              password: R441HIJxfNF8iAfAfwxASnndFXqSBfVn
+              username: masakariteW3kGBC
+        oslo_messaging:
+          auth:
+            admin:
+              password: 2tnAuP0j9MsgaVHErehZkC5HCK3ZxYLr
+              username: rabbitmq
+            guest:
+              password: 7TnAuP0dKMsgaVHErehZkC5HCK3ZxOi4
+              username: guest
+            masakari:
+              password: iHMN1WsAMxAi8G4d0r64iggSdedSRR1p
+              username: masakariVuqCvFid
+            user:
+              password: 2tnAuP0j9MsgaVHErehZkC5HCK3ZxYLr
+              username: rabbitmq
+          hosts:
+            default: rabbitmq
+          path: /masakari
+          statefulset:
+            name: openstack-rabbitmq-rabbitmq
+            replicas: 1
+        oslo_messaging_notifications:
+          auth:
+            masakari:
+              password: acH2p6deh90bDJWlRDzFE7wptqgQgVc7
+              username: masakariyfHtXhiq
+          host_fqdn_override: {}
+          hosts:
+            default: rabbitmq
+          path: /openstack
+          port:
+            amqp:
+              default: 5672
+            http:
+              default: 15672
+          scheme: rabbit
+          statefulset:
+            name: openstack-rabbitmq-rabbitmq
+            replicas: 1
+      images:
+        tags:
+          masakari_api: masakari-api:latest
+          masakari_db_sync: masakari-db-sync:latest
+          bootstrap: bootstrap:latest
+          db_drop: db-drop:latest
+          db_init: db-init:latest
+          dep_check: dep-check:latest
+          image_repo_sync: image-repo-sync:latest
+          ks_endpoints: ks-endpoints:latest
+          ks_service: ks-service:latest
+          ks_user: ks-user:latest
+          test: test:latest
+      jobs:
+        ks_endpoints:
+          restartPolicy: Never
+        ks_service:
+          restartPolicy: Never
+        ks_user:
+          restartPolicy: Never
+        db_purge:
+          enabled: true
+          cron: "1 3 * * 1"
+          script:
+            config:
+              age: 30
+              max_rows: 1000
+      network_policy:
+        api:
+          spec:
+            ingress:
+              - from:
+                - default: selector
+              - from:
+                - ipBlock:
+                    cidr: 192.168.0.0/16
+                ports:
+                - port: 15868
+                  protocol: TCP
+              - from:
+                - namespaceSelector:
+                    matchLabels:
+                      kubernetes.io/metadata.name: osh-system
+                ports:
+                - port: 15868
+                  protocol: TCP
+            podSelector:
+              matchLabels:
+                application: masakari
+                component: api
+            policyTypes:
+            - Ingress
+      manifests:
+        cron_job_db_purge: true
+        job_rabbit_init: false
+        network_policy: true
+        secret_ca_bundle: true

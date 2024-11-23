@@ -1,0 +1,24 @@
+drb-controller:
+  Deployment:
+    drb-controller:
+      hash_fields: []
+      images:
+      - drb_controller
+      manifest: deployment
+      pod_labels:
+        application: drb-controller
+        component: drb_controller
+      ports:
+        - name: healthz
+          port: 32870
+          protocol: TCP
+  Job:
+    drb-controller-ks-user:
+      hash_fields:
+      - endpoints.*
+      images:
+      - ks_user
+      manifest: job_ks_user
+      pod_labels:
+        application: drb-controller
+        component: ks-user

@@ -1,0 +1,448 @@
+{%- from 'macros/connections.j2' import to_child_object %}
+neutron:
+  DaemonSet:
+    {%- if spec.get("features", {}).get("neutron", {}).get("backend") == "ml2/ovn" %}
+    neutron-server:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("networking", "rabbitmq", "StatefulSet", "openstack-neutron-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("compute", "nova", "Deployment", "nova-api-osapi", ["n-api"]) | indent(12)}}
+          - {{ to_child_object("compute", "nova", "Deployment", "nova-api-metadata", ["n-metadata"]) | indent(12)}}
+          - {{ to_child_object("placement", "placement", "Deployment", "placement-api", ["p-api"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+          - {{ to_child_object("dns", "designate", "StatefulSet", "designate-api", ["dns-api"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - neutron_server
+      manifest: deployment_server
+      pod_labels:
+        application: neutron
+        component: server
+      ports:
+        - port: 9696
+          name: q-api
+          protocol: TCP
+    {%- endif %}
+    bagpipe-bgp:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("networking", "rabbitmq", "StatefulSet", "openstack-neutron-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - neutron_bagpipe_bgp
+      manifest: daemonset_bagpipe_bgp
+      pod_labels:
+        application: neutron
+        component: bagpipe-bgp
+      type: dynamic
+    neutron-dhcp-agent:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("networking", "rabbitmq", "StatefulSet", "openstack-neutron-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("placement", "placement", "Deployment", "placement-api", ["p-api"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - neutron_dhcp
+      manifest: daemonset_dhcp_agent
+      pod_labels:
+        application: neutron
+        component: dhcp-agent
+      type: dynamic
+    neutron-dr-agent:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("networking", "rabbitmq", "StatefulSet", "openstack-neutron-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("placement", "placement", "Deployment", "placement-api", ["p-api"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - neutron_dr
+      manifest: daemonset_dr_agent
+      pod_labels:
+        application: neutron
+        component: dr-agent
+      type: dynamic
+    neutron-l2gw-agent:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("networking", "rabbitmq", "StatefulSet", "openstack-neutron-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("placement", "placement", "Deployment", "placement-api", ["p-api"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - neutron_l2gw
+      manifest: daemonset_l2gw_agent
+      pod_labels:
+        application: neutron
+        component: l2gw-agent
+      type: dynamic
+    neutron-l3-agent:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("networking", "rabbitmq", "StatefulSet", "openstack-neutron-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("placement", "placement", "Deployment", "placement-api", ["p-api"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - neutron_l3
+      manifest: daemonset_l3_agent
+      pod_labels:
+        application: neutron
+        component: l3-agent
+      type: dynamic
+    neutron-metadata-agent:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("networking", "rabbitmq", "StatefulSet", "openstack-neutron-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("compute", "nova", "Deployment", "nova-api-metadata", ["n-metadata"]) | indent(12)}}
+          - {{ to_child_object("placement", "placement", "Deployment", "placement-api", ["p-api"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - neutron_metadata
+      manifest: daemonset_metadata_agent
+      pod_labels:
+        application: neutron
+        component: metadata-agent
+      type: dynamic
+    neutron-netns-cleanup-cron:
+      hash_fields: []
+      images:
+      - neutron_netns_cleanup_cron
+      manifest: daemonset_netns_cleanup_cron
+      pod_labels:
+        application: neutron
+        component: netns-cleanup-cron
+      type: dynamic
+    neutron-ovs-agent:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("networking", "rabbitmq", "StatefulSet", "openstack-neutron-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("placement", "placement", "Deployment", "placement-api", ["p-api"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - neutron_openvswitch_agent
+      manifest: daemonset_ovs_agent
+      pod_labels:
+        application: neutron
+        component: neutron-ovs-agent
+      type: dynamic
+    neutron-sriov-agent:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("networking", "rabbitmq", "StatefulSet", "openstack-neutron-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("placement", "placement", "Deployment", "placement-api", ["p-api"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - neutron_sriov_agent_init
+      - neutron_sriov_agent
+      manifest: daemonset_sriov_agent
+      pod_labels:
+        application: neutron
+        component: neutron-sriov-agent
+      type: dynamic
+    neutron-portprober-agent:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("networking", "rabbitmq", "StatefulSet", "openstack-neutron-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - neutron_portprober_agent
+      manifest: daemonset_portprober_agent
+      pod_labels:
+        application: neutron
+        component: neutron-portprober-agent
+      ports:
+        - port: 8000
+          name: qpp-exporter
+          protocol: TCP
+      type: dynamic
+    {%- if spec.get("features", {}).get("neutron", {}).get("backend") != "ml2/ovn" %}
+  Deployment:
+    neutron-server:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("networking", "rabbitmq", "StatefulSet", "openstack-neutron-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("compute", "nova", "Deployment", "nova-api-osapi", ["n-api"]) | indent(12)}}
+          - {{ to_child_object("compute", "nova", "Deployment", "nova-api-metadata", ["n-metadata"]) | indent(12)}}
+          - {{ to_child_object("placement", "placement", "Deployment", "placement-api", ["p-api"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+          - {{ to_child_object("dns", "designate", "StatefulSet", "designate-api", ["dns-api"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - neutron_server
+      manifest: deployment_server
+      pod_labels:
+        application: neutron
+        component: server
+      ports:
+        - port: 9696
+          name: q-api
+          protocol: TCP
+    {%- endif %}
+  Job:
+    neutron-bootstrap:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields:
+      - network.proxy.*
+      - bootstrap.*
+      images:
+      - bootstrap
+      manifest: job_bootstrap
+      pod_labels:
+        application: neutron
+        component: bootstrap
+    neutron-db-init:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - db_init
+      manifest: job_db_init
+      pod_labels:
+        application: neutron
+        component: db-init
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    neutron-db-sync:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - neutron_db_sync
+      manifest: job_db_sync
+      pod_labels:
+        application: neutron
+        component: db-sync
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    neutron-ovn-db-sync-migrate:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - neutron_ovn_db_sync_migrate
+      manifest: job_ovn_db_sync_migrate
+      pod_labels:
+        application: neutron
+        component: ovn-db-sync-migrate
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    neutron-ks-endpoints:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_endpoints
+      manifest: job_ks_endpoints
+      pod_labels:
+        application: neutron
+        component: ks-endpoints
+    neutron-ks-service:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_service
+      manifest: job_ks_service
+      pod_labels:
+        application: neutron
+        component: ks-service
+    neutron-ks-user:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields:
+      - endpoints.*
+      images:
+      - ks_user
+      manifest: job_ks_user
+      pod_labels:
+        application: neutron
+        component: ks-user
+    tungstenfabric-ks-endpoints:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_endpoints
+      manifest: job_ks_endpoints
+      pod_labels:
+        application: tungstenfabric
+        component: ks-endpoints
+    tungstenfabric-ks-service:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_service
+      manifest: job_ks_service
+      pod_labels:
+        application: tungstenfabric
+        component: ks-service
+  StatefulSet:
+    neutron-ironic-agent:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("networking", "rabbitmq", "StatefulSet", "openstack-neutron-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("placement", "placement", "Deployment", "placement-api", ["p-api"]) | indent(12)}}
+          - {{ to_child_object("baremetal", "ironic", "Deployment", "ironic-api", ["m-api"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - neutron_ironic_agent
+      manifest: deployment_ironic_agent
+      pod_labels:
+        application: neutron
+        component: ironic-agent
+openvswitch:
+  DaemonSet:
+    ovn-controller:
+      hash_fields: []
+      images:
+      - openvswitch_ovn_controller
+      - openvswitch_ovn_vswitchd
+      - openvswitch_ovn_db
+      manifest: daemonset_ovn_controller
+      pod_labels:
+        application: openvswitch_ovn
+        component: controller
+      type: dynamic
+    openvswitch-db:
+      hash_fields: []
+      images:
+      - openvswitch_db_server
+      manifest: daemonset_ovs_db
+      pod_labels:
+        application: openvswitch
+        component: openvswitch-vswitchd-db
+      type: dynamic
+    openvswitch-vswitchd:
+      hash_fields: []
+      images:
+      - openvswitch_vswitchd
+      - openvswitch_vswitchd_dpdk
+      - openvswitch_db_server
+      manifest: daemonset_ovs_vswitchd
+      pod_labels:
+        application: openvswitch
+        component: openvswitch-vswitchd
+      type: dynamic
+  StatefulSet:
+    openvswitch-ovn-db:
+      hash_fields: []
+      images:
+      - openvswitch_ovn_db
+      - openvswitch_ovn_db_nb
+      - openvswitch_ovn_db_sb
+      manifest: statefulset_ovn_db
+      pod_labels:
+        application: openvswitch_ovn
+        component: db
+    openvswitch-ovn-northd:
+      hash_fields: []
+      images:
+      - openvswitch_ovn_northd
+      manifest: statefulset_ovn_northd
+      pod_labels:
+        application: openvswitch_ovn
+        component: northd
+rabbitmq:
+  Deployment:
+    openstack-neutron-rabbitmq-rabbitmq-exporter:
+      connections:
+        egress:
+          - {{ to_child_object("networking", "rabbitmq", "StatefulSet", "openstack-neutron-rabbitmq-rabbitmq", ["http"]) | indent(12)}}
+      images:
+      - prometheus_rabbitmq_exporter
+      manifest: ''
+      hash_fields: []
+      pod_labels:
+        application: prometheus_rabbitmq_exporter
+        component: exporter
+        release_group: openstack-neutron-rabbitmq
+      ports:
+      - port: 9095
+        name: metrics
+        protocol: TCP
+  StatefulSet:
+    openstack-neutron-rabbitmq-rabbitmq:
+      images:
+      - rabbitmq_init
+      - rabbitmq
+      manifest: ''
+      hash_fields: []
+      pod_labels:
+        application: rabbitmq
+        component: server
+        release_group: openstack-neutron-rabbitmq
+      ports:
+      - port: 15672
+        name: http
+        protocol: TCP
+      - port: 5672
+        name: amqp
+        protocol: TCP
+      - port: 25672
+        name: clustering
+        protocol: TCP
+      - port: 15692
+        name: metrics
+        protocol: TCP
+  Job:
+    openstack-neutron-rabbitmq-cluster-wait:
+      hash_fields:
+      - endpoints.oslo_messaging.*
+      images:
+      - rabbitmq_scripted_test
+      manifest: job_cluster_wait
+      pod_labels:
+        application: rabbitmq
+        component: cluster-wait
+        release_group: openstack-neutron-rabbitmq
+      connections:
+        egress:
+          - {{ to_child_object("networking", "rabbitmq", "StatefulSet", "openstack-neutron-rabbitmq-rabbitmq", ["http"]) | indent(12)}}

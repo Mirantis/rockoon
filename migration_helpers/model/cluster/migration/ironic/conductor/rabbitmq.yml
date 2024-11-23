@@ -1,0 +1,9 @@
+parameters:
+  ironic:
+    conductor:
+      message_queue:
+        ~members:
+        - host: ${_param:mcp2_rabbitmq_ironic_address}
+        password: ${_param:mcp2_rabbitmq_ironic_password}
+        user: ${_param:mcp2_rabbitmq_ironic_username}
+        virtual_host: 'ironic'

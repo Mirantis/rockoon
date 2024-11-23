@@ -1,0 +1,5 @@
+parameters:
+  heat:
+    server:
+      cache:
+        ~members: ${_param:mcp2_memcached_heat_members}

@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ name }}
+  labels:
+    k8s-app: image-precaching
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cache
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cache
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: openstack-control-plane
+                operator: In
+                values:
+                - enabled
+            - matchExpressions:
+              - key: openstack-compute-node
+                operator: In
+                values:
+                - enabled
+            - matchExpressions:
+              - key: openvswitch
+                operator: In
+                values:
+                - enabled
+      containers:
+{%- for name, url in images.items() %}
+      - name: image-precaching-{{ name | replace("_", "-") }}
+        image: {{ url }}
+{# not all images support "/bin/sleep infinity" #}
+        command: ["/bin/sleep", "86400000"]
+        livenessProbe:
+          exec:
+            command:
+              - "true"
+          periodSeconds: 3600
+        readinessProbe:
+          exec:
+            command:
+              - "true"
+          periodSeconds: 20
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+{%- endfor %}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        allowPrivilegeEscalation: false

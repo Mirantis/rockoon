@@ -1,0 +1,80 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.job_update_nodes_metadata }}
+{{- $envAll := . }}
+
+{{- $serviceAccountName := "ironic-update-nodes-metadata" }}
+{{ tuple $envAll "update_nodes_metadata" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ironic-update-nodes-metadata
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+spec:
+  backoffLimit: 0
+  completions: 1
+  parallelism: 1
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "ironic" "update-nodes-metadata" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+      restartPolicy: Never
+{{ dict "envAll" $envAll "application" "update_nodes_metadata" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      nodeSelector:
+        {{ .Values.labels.job.node_selector_key }}: {{ .Values.labels.job.node_selector_value }}
+      initContainers:
+        {{ tuple $envAll "update_nodes_metadata" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container"  | indent 8 }}
+      containers:
+        - name: ironic-update-nodes-metadata
+{{ tuple $envAll "ironic_update_nodes_metadata" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.update_nodes_metadata | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "update_nodes_metadata" "container" "update_nodes_metadata" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+{{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" "ironic" ) | indent 12 }}
+            - name: DEPLOY_KERNEL_IMAGE
+              value: {{ .Values.conf.nodes.deploy_kernel_image | quote }}
+            - name: DEPLOY_RAMDISK_IMAGE
+              value: {{ .Values.conf.nodes.deploy_ramdisk_image | quote }}
+            - name: IRONIC_FAIL_ON_NOT_UPDATED_NODES
+              value: "false"
+          command:
+            - /tmp/update-nodes-metadata.py
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: ironic-bin
+              mountPath: /tmp/update-nodes-metadata.py
+              subPath: update-nodes-metadata.py
+              readOnly: true
+            - name: os-clouds
+              mountPath: /etc/openstack/clouds.yaml
+              subPath: clouds.yaml
+              readOnly: true
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: ironic-bin
+          configMap:
+            name: ironic-bin
+            defaultMode: 504
+        - name: os-clouds
+          secret:
+            secretName: {{ .Chart.Name }}-os-clouds
+            defaultMode: 416
+{{- end }}

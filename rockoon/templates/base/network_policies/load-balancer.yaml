@@ -1,0 +1,14 @@
+{%- from 'macros/connections.j2' import from_namespaces %}
+{%- set ns_list = ["os_controller", "lma_deployment", "tf_deployment"] | namespaces  %}
+{%- set octavia_api = "load-balancer:octavia:Deployment:octavia-api" %}
+        api:
+          spec:
+            podSelector:
+              matchLabels:
+{{ service_childs[octavia_api].get_pod_labels() | toyaml | indent(16, first=True) }}
+            policyTypes:
+            - Ingress
+            ingress:
+{{ network_policies["ingress"][octavia_api] | toyaml | indent(14, first=True) }}
+              - from:
+{{ from_namespaces(ns_list, service_childs[octavia_api].get_np_ports(["o-api"])) | indent(16) }}

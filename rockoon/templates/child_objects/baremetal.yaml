@@ -1,0 +1,152 @@
+{%- from 'macros/connections.j2' import to_child_object %}
+{%- set neutron_server_deployment_type = "Deployment"%}
+{%- if spec.get("features", {}).get("neutron", {}).get("backend") == "ml2/ovn" %}
+{%- set neutron_server_deployment_type = "DaemonSet"%}
+{%- endif %}
+ironic:
+  Deployment:
+    ironic-api:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("placement", "placement", "Deployment", "placement-api", ["p-api"]) | indent(12)}}
+          - {{ to_child_object("networking", "neutron", neutron_server_deployment_type, "neutron-server", ["q-api"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ironic_retrieve_swift_config
+      - ironic_retrieve_networks
+      - ironic_api
+      manifest: deployment_api
+      pod_labels:
+        application: ironic
+        component: api
+      ports:
+      - port: 6385
+        name: m-api
+        protocol: TCP
+  Job:
+    ironic-bootstrap:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("image", "glance", "Deployment", "glance-api", ["g-api"]) | indent(12)}}
+      hash_fields:
+      - network.proxy.*
+      - bootstrap.*
+      images:
+      - bootstrap
+      manifest: job_bootstrap
+      pod_labels:
+        application: ironic
+        component: bootstrap
+    ironic-db-init:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - db_init
+      manifest: job_db_init
+      pod_labels:
+        application: ironic
+        component: db-init
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    ironic-db-sync:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - ironic_db_sync
+      manifest: job_db_sync
+      pod_labels:
+        application: ironic
+        component: db-sync
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    ironic-ks-endpoints:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_endpoints
+      manifest: job_ks_endpoints
+      pod_labels:
+        application: ironic
+        component: ks-endpoints
+    ironic-ks-service:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ks_service
+      manifest: job_ks_service
+      pod_labels:
+        application: ironic
+        component: ks-service
+    ironic-ks-user:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields:
+      - endpoints.*
+      images:
+      - ks_user
+      manifest: job_ks_user
+      pod_labels:
+        application: ironic
+        component: ks-user
+    ironic-manage-networks:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("networking", "neutron", neutron_server_deployment_type, "neutron-server", ["q-api"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ironic_manage_networks
+      manifest: job_manage_networks
+      pod_labels:
+        application: ironic
+        component: manage-networks
+    ironic-update-nodes-metadata:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("image", "glance", "Deployment", "glance-api", ["g-api"]) | indent(12)}}
+          - {{ to_child_object("baremetal", "ironic", "Deployment", "ironic-api", ["m-api"]) | indent(12)}}
+      hash_fields:
+      - conf.nodes.*
+      images:
+      - ironic_update_nodes_metadata
+      manifest: job_update_nodes_metadata
+      pod_labels:
+        application: ironic
+        component: update-nodes-metadata
+  StatefulSet:
+    ironic-conductor:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("placement", "placement", "Deployment", "placement-api", ["p-api"]) | indent(12)}}
+          - {{ to_child_object("networking", "neutron", neutron_server_deployment_type, "neutron-server", ["q-api"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("image", "glance", "Deployment", "glance-api", ["g-api"]) | indent(12)}}
+          - {{ to_child_object("block-storage", "cinder", "Deployment", "cinder-api", ["c-api"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ironic_pxe_init
+      - ironic_conductor
+      - ironic_retrieve_swift_config
+      - ironic_retrieve_networks
+      - ironic_pxe
+      - ironic_pxe_http
+      manifest: statefulset_conductor
+      pod_labels:
+        application: ironic
+        component: conductor

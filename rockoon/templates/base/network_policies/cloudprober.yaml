@@ -1,0 +1,14 @@
+{%- from 'macros/connections.j2' import from_namespaces %}
+{%- set ns_list = ["lma_deployment"] | namespaces  %}
+{%- set prober = "cloudprober:cloudprober:Deployment:openstack-cloudprober" %}
+        prober:
+          spec:
+            podSelector:
+              matchLabels:
+{{ service_childs[prober].get_pod_labels() | toyaml | indent(16, first=True) }}
+            policyTypes:
+            - Ingress
+            ingress:
+{{ network_policies["ingress"][prober] | toyaml | indent(14, first=True) }}
+              - from:
+{{ from_namespaces(ns_list, service_childs[prober].get_np_ports(["cloudprober"])) | indent(16) }}

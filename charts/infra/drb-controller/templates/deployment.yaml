@@ -1,0 +1,91 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "drbControllerProbeTemplate" }}
+{{ dict "probe_type" "httpGet" "scheme" "HTTP" "path" "/healthz" "port" (tuple "drb_controller" "internal" "healthz" . | include "helm-toolkit.endpoints.endpoint_port_lookup") | include "helm-toolkit.snippets.probe_template" }}
+{{- end }}
+
+{{- if .Values.manifests.deployment }}
+{{- $envAll := . }}
+{{- $serviceAccountName := "drb-controller" }}
+{{ tuple $envAll "drb-controller" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+
+{{- $mounts_drb_controller := .Values.pod.mounts.drb_controller.drb_controller }}
+{{- $mounts_drb_controller_init := .Values.pod.mounts.drb_controller.init_container }}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $serviceAccountName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ tuple $envAll "drb-controller" "drb_controller" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  replicas: {{ .Values.pod.replicas.drb_controller }}
+  selector:
+    matchLabels:
+{{ tuple $envAll "drb-controller" "drb_controller" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+  strategy:
+   type: Recreate
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "drb-controller" "drb_controller" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        endpoints-hash: {{ .Values.endpoints | include "helm-toolkit.utils.get_hash" }}
+    spec:
+{{ dict "envAll" $envAll "application" "drb_controller" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      serviceAccountName: {{ $serviceAccountName }}
+      nodeSelector:
+        {{ .Values.labels.drb_controller.node_selector_key }}: {{ .Values.labels.drb_controller.node_selector_value | quote }}
+      initContainers:
+{{ tuple $envAll "drb_controller" $mounts_drb_controller_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+      containers:
+        - name: drb-controller
+{{ tuple $envAll "drb_controller" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.drb_controller | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "drb_controller" "container" "drb_controller" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ dict "envAll" $envAll "component" "drb_controller" "container" "drb_controller" "type" "liveness" "probeTemplate" (include "drbControllerProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "drb_controller" "container" "drb_controller" "type" "readiness" "probeTemplate" (include "drbControllerProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          env:
+{{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" "drb-controller" ) | indent 12 }}
+          command:
+            - /tmp/drb-controller.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: drb-controller-bin
+              mountPath: /tmp/drb-controller.sh
+              readOnly: true
+              subPath: drb-controller.sh
+            - name: os-clouds
+              mountPath: /etc/openstack/clouds.yaml
+              subPath: clouds.yaml
+              readOnly: true
+{{ if $mounts_drb_controller.volumeMounts }}{{ toYaml $mounts_drb_controller.volumeMounts | indent 12 }}{{ end }}
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: drb-controller-bin
+          configMap:
+            name: drb-controller-bin
+            defaultMode: 504
+        - name: os-clouds
+          secret:
+            secretName: {{ .Chart.Name }}-os-clouds
+            defaultMode: 416
+{{ if $mounts_drb_controller.volumes }}{{ toYaml $mounts_drb_controller.volumes | indent 8 }}{{ end }}
+{{- end }}

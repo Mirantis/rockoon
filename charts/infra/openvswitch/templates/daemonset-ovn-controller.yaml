@@ -1,0 +1,235 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "ovsdblivenessProbeTemplate" }}
+exec:
+  command:
+    - /usr/bin/ovs-vsctl
+    - show
+{{- end }}
+{{- define "ovsdbreadinessProbeTemplate" }}
+exec:
+  command:
+    - /usr/bin/ovs-vsctl
+    - list
+    - Open_Vswitch
+{{- end }}
+
+{{- define "openvswitch.ovn.controller.daemonset" }}
+{{- $daemonset := index . 0 }}
+{{- $configMapName := index . 1 }}
+{{- $serviceAccountName := index . 2 }}
+{{- $envAll := index . 3 }}
+{{- with $envAll }}
+{{- $ovn_migration := index $envAll.Values.conf "ovn_migration" | default false }}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ $daemonset }}
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "openvswitch_ovn" "controller" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+{{ tuple $envAll "openvswitch_ovn" "controller" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll "ovn_controller" | include "helm-toolkit.snippets.kubernetes_upgrades_daemonset" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "openvswitch_ovn" "controller" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+{{ dict "envAll" $envAll "podName" "openvswitch-ovn" "containerNames" (list "controller" "db" "vswitchd" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+    spec:
+      shareProcessNamespace: true
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "openvswitch_ovn_controller" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      nodeSelector:
+        {{ .Values.labels.ovn_controller.node_selector_key }}: {{ .Values.labels.ovn_controller.node_selector_value }}
+      dnsPolicy: {{ .Values.pod.dns_policy }}
+      hostNetwork: true
+      initContainers:
+{{ tuple $envAll "db" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+        - name: perms
+{{ tuple $envAll "openvswitch_ovn_controller" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "openvswitch_ovn_controller" "container" "perms" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.ovn_controller.perms | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          command:
+            - /tmp/ovn-controller-perms.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: run
+              mountPath: /run/openvswitch
+            - name: varlibovn
+              mountPath: /var/lib/ovn
+            - name: openvswitch-bin
+              mountPath: /tmp/ovn-controller-perms.sh
+              subPath: ovn-controller-perms.sh
+              readOnly: true
+{{- if not $ovn_migration }}
+        - name: modules
+{{ tuple $envAll "openvswitch_ovn_vswitchd" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "openvswitch_ovn_controller" "container" "modules" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/openvswitch-vswitchd-init-modules.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: openvswitch-bin
+              mountPath: /tmp/openvswitch-vswitchd-init-modules.sh
+              subPath: openvswitch-vswitchd-init-modules.sh
+              readOnly: true
+            - name: host-rootfs
+              mountPath: /mnt/host-rootfs
+              readOnly: true
+              mountPropagation: HostToContainer
+{{- end }}
+      containers:
+{{- if not $ovn_migration }}
+        - name: vswitchd
+{{ tuple $envAll "openvswitch_ovn_vswitchd" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "openvswitch_ovn_controller" "container" "vswitchd" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.ovn_controller.vswitchd | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "component" "ovn" "container" "vswitchd" "type" "liveness" "probeTemplate" (include "ovsdblivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "ovn" "container" "vswitchd" "type" "readiness" "probeTemplate" (include "ovsdbreadinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          command:
+            - /tmp/openvswitch-vswitchd.sh
+            - start
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /tmp/openvswitch-vswitchd.sh
+                  - stop
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: openvswitch-bin
+              mountPath: /tmp/openvswitch-vswitchd.sh
+              subPath: openvswitch-vswitchd.sh
+              readOnly: true
+            - name: run
+              mountPath: /run/openvswitch
+            - name: varlibovn
+              mountPath: /var/lib/ovn
+            - name: openvswitch-etc
+              mountPath: /tmp/ovs_interfaces.json
+              subPath: ovs_interfaces.json
+              readOnly: true
+        - name: db
+{{ tuple $envAll "openvswitch_ovn_db" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "openvswitch_ovn_controller" "container" "db" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.ovn_controller.db | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "component" "ovn" "container" "db" "type" "liveness" "probeTemplate" (include "ovsdblivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "ovn" "container" "db" "type" "readiness" "probeTemplate" (include "ovsdbreadinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          command:
+            - /tmp/openvswitch-db-server.sh
+            - start
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /tmp/openvswitch-db-server.sh
+                  - stop
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: openvswitch-bin
+              mountPath: /tmp/openvswitch-db-server.sh
+              subPath: openvswitch-db-server.sh
+              readOnly: true
+            - name: run
+              mountPath: /run/openvswitch
+            - name: varlibovn
+              mountPath: /var/lib/ovn
+{{- end }}
+        - name: controller
+{{ tuple $envAll "openvswitch_ovn_controller" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "openvswitch_ovn_controller" "container" "controller" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.ovn_controller.controller | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "component" "ovn" "container" "controller" "type" "liveness" "probeTemplate" (include "ovsdblivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "ovn" "container" "controller" "type" "readiness" "probeTemplate" (include "ovsdbreadinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          command:
+            - /tmp/ovn-controller.sh
+            - start
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /tmp/ovn-controller.sh
+                  - stop
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: openvswitch-bin
+              mountPath: /tmp/ovn-controller.sh
+              subPath: ovn-controller.sh
+              readOnly: true
+{{- if $ovn_migration }}
+            - name: openvswitch-bin
+              mountPath: /tmp/ovn-migrate-dataplane.sh
+              subPath: ovn-migrate-dataplane.sh
+              readOnly: true
+{{- end }}
+            - name: run
+              mountPath: /run/openvswitch
+            - name: varrunovn
+              mountPath: /var/run/ovn
+            - name: varlibovn
+              mountPath: /var/lib/ovn
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: varrunovn
+          emptyDir: {}
+        - name: openvswitch-bin
+          configMap:
+            name: openvswitch-bin
+            defaultMode: 365
+        - name: openvswitch-etc
+          secret:
+            secretName: {{ $configMapName }}
+            defaultMode: 0444
+        - name: run
+          hostPath:
+            path: /run/openvswitch
+        - name: varlibovn
+          hostPath:
+            path: /var/lib/openstack-helm/ovn
+        - name: host-rootfs
+          hostPath:
+            path: /
+            type: Directory
+{{- end }}
+{{- end }}
+{{- if .Values.manifests.daemonset_ovn_controller }}
+{{- $envAll := . }}
+{{- $daemonset := "ovn-controller" }}
+{{- $configMapName := "openvswitch-etc" }}
+{{- $serviceAccountName := "openvswitch-ovn-controller" }}
+{{ tuple $envAll "ovn" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+{{- $configmap_yaml := "openvswitch.configmap.etc" }}
+{{/* Prefer using .Values.overrides rather than .Values.conf.overrides */}}
+{{- if index (index .Values "overrides" |default dict ) "openvswitch_ovn-controller" }}
+{{- list $daemonset "openvswitch.ovn.controller.daemonset" $serviceAccountName $configmap_yaml $configMapName "openvswitch.configmap.bin" "openvswitch-bin" . | include "helm-toolkit.utils.daemonset_overrides_root" }}
+{{- else }}
+{{- $daemonset_yaml := list $daemonset $configMapName $serviceAccountName . | include "openvswitch.ovn.controller.daemonset" | toString | fromYaml }}
+{{- list $daemonset $daemonset_yaml $configmap_yaml $configMapName . | include "helm-toolkit.utils.daemonset_overrides" }}
+{{- end }}
+{{- end }}

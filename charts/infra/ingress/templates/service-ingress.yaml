@@ -1,0 +1,68 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.service_ingress }}
+{{- $envAll := . }}
+{{- $serviceName := tuple "ingress" "internal" . | include "helm-toolkit.endpoints.hostname_short_endpoint_lookup" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+{{ tuple $envAll "ingress" "server" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+{{- if and .Values.network.host_namespace .Values.network.vip.manage }}
+    endpoint: vip
+{{- end }}
+  annotations:
+{{ tuple $envAll "ingress_external" | include "helm-toolkit.snippets.kubernetes_metadata_annotations" | indent 4 }}
+    metallb.universe.tf/allow-shared-ip: {{ $serviceName }}
+  name: {{ $serviceName }}
+spec:
+{{- if and .Values.network.host_namespace .Values.network.vip.manage }}
+  clusterIP: None
+{{- end }}
+  ports:
+{{- if not .Values.manifests.tls_proxy }}
+  - name: http
+    port: {{ tuple "ingress" "internal" "http" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+    protocol: TCP
+    targetPort: {{ tuple "ingress" "internal" "http" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- end }}
+  - name: https
+{{- if .Values.manifests.tls_proxy }}
+    port: {{ tuple "tls_proxy" "internal" "proxy" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+    targetPort: {{ tuple "tls_proxy" "internal" "proxy" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- else }}
+    port: {{ tuple "ingress" "internal" "https" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+    targetPort: {{ tuple "ingress" "internal" "https" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- end }}
+    protocol: TCP
+  - name: status
+    port: {{ tuple "ingress" "internal" "status" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+    protocol: TCP
+    targetPort: {{ tuple "ingress" "internal" "status" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+  {{- if not (empty $envAll.Values.conf.services.tcp) }}
+  {{range $key, $value := $envAll.Values.conf.services.tcp -}}
+  - name: {{ cat ((( $value | split "/" )._1 | split ":" )._0  | trunc 8 ) $key | nospace | quote }}
+    port: {{ $key }}
+    protocol: TCP
+    targetPort: {{ $key }}
+  {{ end -}}
+  {{- end }}
+{{- if not (and .Values.network.host_namespace .Values.network.vip.manage) }}
+  selector:
+{{ tuple $envAll "ingress" "server" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+{{- end }}
+{{ .Values.network | include "helm-toolkit.snippets.service_params" | indent 2 }}
+{{- end }}

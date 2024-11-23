@@ -1,0 +1,49 @@
+type: object
+additionalProperties: False
+patternProperties:
+  ".*":
+    type: object
+    additionalProperties: False
+    required:
+      - device_type
+      - ip
+    properties:
+      device_type:
+        type: string
+        description: "Netmiko device type"
+      ip:
+        type: string
+        descriptions: "IP address of switch"
+      username:
+        descriptions: "Credential username"
+        anyOf: &value_from_or_string
+        - type: string
+        - type: object
+          properties:
+            value_from:
+              type: object
+              additionalProperties: false
+              properties:
+                secret_key_ref:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    name:
+                      type: string
+                      description: The name of secret to get data from.
+                    key:
+                      type: string
+                      description: The name of secret key to get data from.
+      password:
+        description: "Credential password"
+        anyOf: *value_from_or_string
+      ssh_private_key:
+        description:  SSH private key for switch.
+        anyOf: *value_from_or_string
+      secret:
+        description: Enable secret
+        anyOf: *value_from_or_string
+      raw:
+        additionalProperties: True
+        type: object
+        description: RAW config for device.

@@ -1,0 +1,61 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.cronjob }}
+{{- $envAll := . }}
+---
+apiVersion: batch/v1  # for k8s version < 1.21.0, use batch/v1
+kind: CronJob
+metadata:
+  name: descheduler
+  namespace: {{ .Release.Namespace }}
+spec:
+  schedule: {{ .Values.conf.cronjob.schedule | quote }}
+  suspend: {{ .Values.conf.cronjob.suspend }}
+  concurrencyPolicy: "Forbid"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          name: descheduler-pod
+          labels:
+{{ tuple $envAll "descheduler" "descheduler" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 12 }}
+        spec:
+{{ dict "envAll" $envAll "application" "descheduler" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 10 }}
+          nodeSelector:
+            {{ .Values.labels.job.node_selector_key }}: {{ .Values.labels.job.node_selector_value }}
+          priorityClassName: system-cluster-critical
+          containers:
+          - name: descheduler
+            image: "{{ .Values.images.tags.descheduler }}"
+            volumeMounts:
+            - mountPath: /tmp/policy-dir
+              name: policy-volume
+            command:
+              - "/bin/descheduler"
+            args:
+              - "--policy-config-file"
+              - "/tmp/policy-dir/policy.yaml"
+              - "--v"
+              - {{ .Values.conf.cronjob.logOptions.v | quote }}
+            resources:
+              {{- toYaml .Values.pod.resources.jobs.descheduler | nindent 14 }}
+{{ dict "envAll" $envAll "application" "descheduler" "container" "descheduler" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 12 }}
+          restartPolicy: "Never"
+          serviceAccountName: descheduler-sa
+          volumes:
+          - name: policy-volume
+            configMap:
+              name: descheduler-configmap-bin
+{{- end }}

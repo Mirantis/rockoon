@@ -1,0 +1,471 @@
+#apiVersion: lcm.mirantis.com/v1alpha1
+#kind: HelmBundle
+
+{%- set service = 'glance' %}
+{%- set stacklight_enabled = spec.get('features', {}).get('stacklight', {}).get('enabled', False) %}
+{%- set notification_topics = ['notifications'] %}
+{%- do notification_topics.append('stacklight_notifications') if stacklight_enabled %}
+{%- set external_notifications_enabled = spec.get('features', {}).get('messaging', {}).get('notifications', {}).get('external', {}).get('enabled', False) %}
+{%- if external_notifications_enabled %}
+  {%- for topic in spec.get('features', {}).get('messaging', {}).get('notifications', {}).get('external', {}).get('topics', []) %}
+    {%- do notification_topics.append(topic) %}
+  {%- endfor %}
+{%- endif  %}
+{%- set multi_backends = spec.get('features', {}).get('glance', {}).get('backends', {}) %}
+{%- set file_backends = multi_backends.get("file", {}) %}
+{%- set default_backend = namespace(name='') %}
+
+{%- set signature = spec.get('features', {}).get('glance', {}).get("signature", {"enabled": false}) %}
+{%- set glance_db_cleanup = spec.get('features', {}).get('database', {}).get('cleanup', {}).get('glance', {'enabled': true}) %}
+{%- set cadf_audit = spec.get('features', {}).get('logging', {}).get('cadf', {'enabled': false}) %}
+{%- set cadf_audit_driver = spec.get('features', {}).get('logging', {}).get('cadf', {}).get('driver', 'messagingv2') %}
+
+spec:
+  releases:
+{%- if spec.get('migration', {}).get('glance', {}).get('deploy_main_service', True) %}
+  - name: openstack-glance
+    chart: glance
+    values:
+      images:
+        tags:
+{%- for image in [
+    "ks_service",
+    "db_drop",
+    "image_repo_sync",
+    "bootstrap",
+    "glance_bootstrap",
+    "glance_db_sync",
+    "glance_db_expand",
+    "glance_db_migrate",
+    "glance_db_contract",
+    "glance_db_purge",
+    "glance_storage_init",
+    "ks_endpoints",
+    "rabbit_init",
+    "glance_api",
+    "db_init",
+    "dep_check",
+    "test",
+    "glance_registry",
+    "glance_metadefs_load",
+    "glance_barbican_cert_init",
+    "ks_user",] %}
+        {%- if image in images %}
+          {{ image }}: {{ images[image] }}
+        {%- endif %}
+{%- endfor %}
+      dependencies:
+        static:
+          db_init:
+            jobs:
+              - openstack-mariadb-cluster-wait
+{%- if 'cinder' in multi_backends %}
+          api:
+            services:
+              - endpoint: internal
+                service: oslo_db
+              - endpoint: internal
+                service: identity
+              - endpoint: internal
+                service: oslo_messaging
+              - endpoint: internal
+                service: volumev3
+            jobs:
+              - cinder-bootstrap
+{%- endif %}
+      pod:
+        replicas:
+          api: 1
+          registry: 1
+{%- if 'cinder' in multi_backends %}
+        security_context:
+          glance:
+            container:
+              glance_api:
+                allowPrivilegeEscalation: true
+                privileged: true
+{%- endif %}
+{%- if is_ceph_enabled %}
+      storage: rbd
+{%- endif %}
+      bootstrap:
+        enabled: true
+        ks_user: glance
+        structured:
+          images:
+            {%- if OSVer[spec.openstack_version] >= OSVer.yoga %}
+                {%- set cirros_version = "0.6.0" %}
+                {%- set cirros_image_name = "Cirros-6.0" %}
+            {%- else %}
+                {%- set cirros_version = "0.5.1" %}
+                {%- set cirros_image_name = "Cirros-5.1" %}
+            {%- endif %}
+            {%- for image_name in [cirros_image_name, cirros_image_name ~ '.alt'] %}
+            {{ image_name | lower }}:
+              container_format: bare
+              image_file: cirros-{{ cirros_version }}-x86_64-disk.img
+              image_type: qcow2
+              min_disk: 1
+              name: {{ image_name }}
+              private: false
+              properties:
+                os_distro: cirros
+              source_url: {{ spec.artifacts.binary_base_url }}/openstack/bin/cirros/{{ cirros_version }}/
+              checksum: {{ images["cirros_checksum"] }}
+              {%- if signature.enabled %}
+              signature:
+                enabled: true
+                hash_method: SHA-256
+              {%- endif %}
+            {%- endfor %}
+            {%- set cirros_raw_image_name = cirros_image_name ~ '.raw' %}
+            {{ cirros_raw_image_name | lower }}:
+              container_format: bare
+              image_file: cirros-{{ cirros_version }}-x86_64-disk.raw
+              image_type: raw
+              min_disk: 1
+              name: {{ cirros_raw_image_name }}
+              private: false
+              properties:
+                os_distro: cirros
+              source_url: {{ spec.artifacts.binary_base_url }}/openstack/bin/cirros/{{ cirros_version }}/
+              checksum: {{ images["cirros_raw_checksum"] }}
+              {%- if signature.enabled %}
+              signature:
+                enabled: true
+                hash_method: SHA-256
+              {%- endif %}
+            fedora:
+              container_format: bare
+              image_file: Fedora-Cloud-Base-27-1.6.x86_64.qcow2
+              image_type: qcow2
+              min_disk: 1
+              name: Fedora-27-1.6
+              private: false
+              properties:
+                os_distro: fedora
+              source_url: {{ spec.artifacts.binary_base_url }}/openstack/bin/Fedora/27/
+              checksum: {{ images["fedora_checksum"] }}
+{%- if signature.enabled %}
+              signature:
+                enabled: true
+                hash_method: SHA-256
+{%- endif %}
+            ubuntu:
+              container_format: bare
+              image_file: bionic-server-cloudimg-amd64.img
+              image_type: qcow2
+              min_disk: 1
+              name: Ubuntu-18.04
+              private: false
+              properties:
+                os_distro: ubuntu
+              source_url: {{ spec.artifacts.binary_base_url }}/openstack/bin/ubuntu/18.04/
+              checksum: {{ images["ubuntu_checksum"] }}
+{%- if signature.enabled %}
+              signature:
+                enabled: true
+                hash_method: SHA-256
+{%- endif %}
+            amphora-x64-haproxy:
+              container_format: bare
+              image_type: qcow2
+              name: amphora-x64-haproxy
+              private: true
+              properties:
+                os_distro: ubuntu
+              tags: ['amphora']
+              source_url: {{ images["octavia_amphora"] }}
+              checksum: {{ images["octavia_amphora_checksum"] }}
+{%- if signature.enabled %}
+              signature:
+                enabled: true
+                hash_method: SHA-256
+{%- endif %}
+{%- if "shared-file-system" in spec.features.services %}
+            manila-service-image:
+              container_format: bare
+              image_type: qcow2
+              name: manila-service-image
+              private: true
+              properties:
+                os_distro: ubuntu
+              source_url: {{ images["manila_service_image"] }}
+  {%- if signature.enabled %}
+              signature:
+                enabled: true
+                hash_method: SHA-256
+  {%- endif %}
+{%- endif %}
+{%- if "baremetal" in spec.features.services %}
+  {%- set ironic_agent_images = spec.get('features', {}).get('ironic', {}).get('agent_images', {}) %}
+  {%- set ironic_images_base_url = spec.get('features', {}).get('ironic', {}).get('agent_images', {}).get('base_url', spec.artifacts.binary_base_url ~ '/openstack/bin/ironic/tinyipa') %}
+  {%- if ironic_agent_images.get('kernel') %}
+            ironic-agent.kernel:
+              container_format: aki
+              image_type: aki
+              name: 'ironic-agent.kernel'
+              private: true
+              source_url: {{ ironic_images_base_url }}/{{ ironic_agent_images.get('kernel') }}
+    {%- if signature.enabled %}
+              signature:
+                enabled: true
+                hash_method: SHA-256
+    {%- endif %}
+  {%- endif %}
+  {%- if ironic_agent_images.get('initramfs') %}
+            ironic-agent.initramfs:
+              container_format: ari
+              image_type: ari
+              name: 'ironic-agent.initramfs'
+              private: true
+              source_url: {{ ironic_images_base_url }}/{{ ironic_agent_images.get('initramfs') }}
+    {%- if signature.enabled %}
+              signature:
+                enabled: true
+                hash_method: SHA-256
+    {%- endif %}
+  {%- endif %}
+            ironic-agent.kernel.os-controller:
+              container_format: aki
+              image_type: aki
+              name: {{ images["ironic_agent_kernel"].split('/')[-1] }}
+              private: true
+              tags: ['rockoon:managed-image','rockoon:baremetal-image-kernel']
+              source_url: {{ images["ironic_agent_kernel"] }}
+              checksum: {{ images["ironic_agent_kernel_checksum"] }}
+  {%- if signature.enabled %}
+              signature:
+                enabled: true
+                hash_method: SHA-256
+  {%- endif %}
+            ironic-agent.initramfs.os-controller:
+              container_format: ari
+              image_type: ari
+              name: {{ images["ironic_agent_initramfs"].split('/')[-1] }}
+              private: true
+              tags: ['rockoon:managed-image','rockoon:baremetal-image-ramdisk']
+              source_url: {{ images["ironic_agent_initramfs"] }}
+              checksum: {{ images["ironic_agent_initramfs_checksum"] }}
+  {%- if signature.enabled %}
+              signature:
+                enabled: true
+                hash_method: SHA-256
+  {%- endif %}
+{%- endif %}
+      conf:
+        policy.d:
+          01-controller-default.yaml: {{ service_policy }}
+          02-custom.yaml: {{ spec.get("features", {}).get("policies", {}).get("glance", {}) }}
+        ceph:
+{%- if is_ceph_enabled %}
+          config:
+            global:
+              mon_host: {{ ceph.mon_host }}
+          keyrings:
+            {{ ceph.glance.username }}:
+              key: {{ ceph.glance.keyring }}
+{%- else %}
+          enabled: false
+{%- endif %}
+        glance:
+          cors:
+            allow_headers: Content-Type,Cache-Control,Content-Language,Expires,Last-Modified,Pragma,X-Custom-Header,X-Auth-Token
+          keystone_authtoken:
+            memcache_security_strategy: ENCRYPT
+            memcache_secret_key: {{ credentials[0].memcached }}
+            {%- if OSVer[spec.openstack_version] >= OSVer.train %}
+            service_type: image
+            {%- endif %}
+      {%- if multi_backends %}
+      {%- set enabled_backends = [] %}
+      {%- for type, backend in multi_backends.items() %}
+        {%- for store_ident, ident_opts in backend.items() %}
+        {%- do enabled_backends.append(store_ident ~ ':' ~ type) %}
+        {%- if ident_opts.pop('default', False) %}
+          {%- set default_backend.name = store_ident %}
+        {%- endif %}
+          {{store_ident}}:
+{% include 'base/_' + type + '_store_opts.yaml' %}
+          {%- for key,val in ident_opts.items() %}
+            {%- if type == 'cinder' and key == 'backend_name' %}
+            cinder_volume_type: {{ val.split(':')[0] ~ '_multiattach' }}
+            {%- elif type != 'file' %}
+            {{ key }}: {{ val }}
+            {%- endif %}
+          {%- endfor %}
+        {%- endfor %}
+      {%- endfor %}
+      {%- endif %}
+          DEFAULT:
+            enable_v2_registry: True
+            # show_multiple_locations is set True because of the fact that glance uses always
+            # Ceph as backend. The parameter exposes additional information about the images
+            # but this information doesn't exist any sensitive data there are UUIDs and pool name.
+            show_multiple_locations: True
+          {%- if multi_backends %}
+            enabled_backends: {{ ','.join(enabled_backends) }}
+          {%- endif %}
+          glance_store:
+          {%- if multi_backends %}
+            default_backend: {{ default_backend.name }}
+          {%- else %}
+            stores: "rbd"
+          {%- endif %}
+{%- if not multi_backends %}
+{% include 'base/_rbd_store_opts.yaml' %}
+{%- endif %}
+{%- if cadf_audit.enabled %}
+          audit_middleware_notifications:
+            driver: {{ cadf_audit_driver }}
+{%- else %}
+          audit_middleware_notifications:
+            driver: noop
+{%- endif %}
+          oslo_messaging_notifications:
+            topics: {{ notification_topics|join(',') }}
+{% include 'base/_oslo_policy_enforce_defaults.yaml' %}
+          import_filtering_opts:
+            # NOTE(ohryhorov): port 8801 has been added in testing purposes to upload images
+            # "allowed_ports" value has to be inside square brackets.
+            allowed_ports: "[80,443,8801]"
+        glance_registry:
+          keystone_authtoken:
+            memcache_security_strategy: ENCRYPT
+            memcache_secret_key: {{ credentials[0].memcached }}
+            {%- if OSVer[spec.openstack_version] >= OSVer.train %}
+            service_type: image
+            {%- endif %}
+        logging:
+          logger_os.brick:
+            level: {{ spec.get('features', {}).get('logging', {}).get('glance', {}).get('level', 'INFO') }}
+          logger_glance:
+            level: {{ spec.get('features', {}).get('logging', {}).get('glance', {}).get('level', 'INFO') }}
+{%- if 'cinder' in multi_backends %}
+        enable_iscsi: true
+{%- endif %}
+{%- if file_backends %}
+{%-   set file_backend_name = file_backends.keys() | list %}
+{%-   set file_backend = file_backends[file_backend_name[0]] %}
+{%-   if file_backend.get("pvc", {}) %}
+      volume:
+        class_name: {{ file_backend["pvc"]["storage_class_name"] }}
+        size: {{ file_backend["pvc"]["size"] }}
+{%-   endif %}
+{%- endif %}
+{%- if is_ceph_enabled %}
+      ceph_client:
+        configmap: rook-ceph-config
+        user_secret_name: {{ ceph.glance.secrets }}
+      secrets:
+        rbd: {{ ceph.glance.secrets }}
+{%- endif %}
+{%- if spec.features.network_policies.enabled %}
+      network_policy:
+{% include 'base/network_policies/image.yaml' %}
+{%- endif %}
+      manifests:
+        cron_job_db_purge: true
+        network_policy: {{ spec.features.network_policies.enabled }}
+        job_rabbit_init: false
+        job_storage_init: false
+        secret_ca_bundle: true
+        ceph_conf: true
+        job_clean: false
+{%- if signature.enabled %}
+        job_barbican_cert_init: true
+{%- endif %}
+        pvc_images: {{ "file" in multi_backends }}
+      network:
+        proxy:
+{% include 'base/_proxy_vars.yaml' %}
+        api:
+          ingress:
+            annotations:
+              nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+      endpoints:
+        cluster_domain_suffix: {{ spec.internal_domain_name }}
+{% include 'base/_admin_identity.yaml' %}
+{% include 'base/_cache.yaml' %}
+        oslo_db:
+          auth:
+            admin:
+              username: {{ admin_creds.database.username }}
+              password: {{ admin_creds.database.password }}
+            glance:
+              username: {{ credentials[0].database.user.username }}
+              password: {{ credentials[0].database.user.password }}
+{% include 'base/_messaging_shared.yaml' %}
+{% include 'base/_notifications.yaml' %}
+        image:
+          host_fqdn_override:
+            public:
+              host: glance.{{ spec.public_domain_name }}
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+{%- if proxy_settings is defined %}
+{%- if proxy_settings.get("proxy_ca_certificate") %}
+{{ proxy_settings["proxy_ca_certificate"] | indent( width=18, first=True) }}
+{%- endif %}
+{%- endif %}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          hosts:
+            admin:
+              host: glance-api
+            default: glance
+            internal: glance-api
+            public:
+              host: glance
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          port:
+            api:
+              admin: 9292
+              default: 80
+              internal: 9292
+              public: 443
+          scheme:
+            default: http
+            public: https
+        # NOTE(vsaienko): the horizon endpoint is needed to generate correct cors:allowed_origins
+        dashboard:
+          host_fqdn_override:
+            public:
+              host: horizon.{{ spec.public_domain_name }}
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          hosts:
+            default: horizon-int
+            public:
+              host: horizon
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+      jobs:
+{% include 'base/_ks_jobs.yaml' %}
+        db_purge:
+          enabled: {{ glance_db_cleanup.enabled }}
+          cron: {{ glance_db_cleanup.get("schedule", "1 2 * * 1") }}
+          script:
+            config:
+              age: {{ glance_db_cleanup.get("age", 30) }}
+              max_rows: {{ glance_db_cleanup.get("batch", -1) }}
+{%- endif %}

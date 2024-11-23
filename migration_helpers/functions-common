@@ -1,0 +1,326 @@
+function info {
+    local msg="[INFO]: $1"
+    echo "$msg"
+}
+
+# Control Functions
+# =================
+
+# Prints backtrace info
+# filename:lineno:function
+# backtrace level
+function backtrace {
+    local level=$1
+    local deep
+    deep=$((${#BASH_SOURCE[@]} - 1))
+    echo "[Call Trace]"
+    while [ $level -le $deep ]; do
+        echo "${BASH_SOURCE[$deep]}:${BASH_LINENO[$deep-1]}:${FUNCNAME[$deep-1]}"
+        deep=$((deep - 1))
+    done
+}
+
+# Prints line number and "message" then exits
+# die $LINENO "message"
+function die {
+    local exitcode=$?
+    set +o xtrace
+    local line=$1; shift
+    if [ $exitcode == 0 ]; then
+        exitcode=1
+    fi
+    backtrace 2
+    err $line "$*"
+    # Give buffers a second to flush
+    sleep 1
+    exit $exitcode
+}
+
+# Checks an environment variable is not set or has length 0 OR if the
+# exit code is non-zero and prints "message" and exits
+# NOTE: env-var is the variable name without a '$'
+# die_if_not_set $LINENO env-var "message"
+function die_if_not_set {
+    local exitcode=$?
+    local xtrace
+    xtrace=$(set +o | grep xtrace)
+    set +o xtrace
+    local line=$1; shift
+    local evar=$1; shift
+    if ! is_set $evar || [ $exitcode != 0 ]; then
+        die $line "$*"
+    fi
+    $xtrace
+}
+
+function deprecated {
+    local text=$1
+    DEPRECATED_TEXT+="\n$text"
+    echo "WARNING: $text" >&2
+}
+
+# Prints line number and "message" in error format
+# err $LINENO "message"
+function err {
+    local exitcode=$?
+    local xtrace
+    xtrace=$(set +o | grep xtrace)
+    set +o xtrace
+    local msg="[ERROR] ${BASH_SOURCE[2]}:$1 $2"
+    echo "$msg" 1>&2;
+    if [[ -n ${LOGDIR} ]]; then
+        echo "$msg" >> "${LOGDIR}/error.log"
+    fi
+    $xtrace
+    return $exitcode
+}
+
+# Checks an environment variable is not set or has length 0 OR if the
+# exit code is non-zero and prints "message"
+# NOTE: env-var is the variable name without a '$'
+# err_if_not_set $LINENO env-var "message"
+function err_if_not_set {
+    local exitcode=$?
+    local xtrace
+    xtrace=$(set +o | grep xtrace)
+    set +o xtrace
+    local line=$1; shift
+    local evar=$1; shift
+    if ! is_set $evar || [ $exitcode != 0 ]; then
+        err $line "$*"
+    fi
+    $xtrace
+    return $exitcode
+}
+
+# Exit after outputting a message about the distribution not being supported.
+# exit_distro_not_supported [optional-string-telling-what-is-missing]
+function exit_distro_not_supported {
+    if [[ -z "$DISTRO" ]]; then
+        GetDistro
+    fi
+
+    if [ $# -gt 0 ]; then
+        die $LINENO "Support for $DISTRO is incomplete: no support for $@"
+    else
+        die $LINENO "Support for $DISTRO is incomplete."
+    fi
+}
+
+# Test if the named environment variable is set and not zero length
+# is_set env-var
+function is_set {
+    local var=\$"$1"
+    eval "[ -n \"$var\" ]" # For ex.: sh -c "[ -n \"$var\" ]" would be better, but several exercises depends on this
+}
+
+function service_name_to_type {
+    local service_name=$1
+    case "$service_name" in
+        "keystone" )
+            echo "identity";;
+        "heat" )
+            echo "orchestration" ;;
+        "glance" )
+            echo "image" ;;
+        "horizon" )
+            echo "dashboard" ;;
+        "nova" )
+            echo "compute" ;;
+        "octavia" )
+            echo "load-balancer" ;;
+        "cinder" )
+            echo "block-storage" ;;
+        "designate" )
+            echo "dns" ;;
+        "barbican" )
+            echo "key-manager" ;;
+        "neutron" )
+            echo "networking" ;;
+        "ironic" )
+            echo "baremetal" ;;
+        *)
+            exit 1 ;;
+    esac
+}
+
+function get_service_subservices_internal_endpoints {
+local service_name=$1
+    case "$service_name" in
+        "heat" )
+            echo "heat-api heat-cfn" ;;
+        "nova" )
+            echo "nova-api placement-api" ;;
+        "neutron" )
+            echo "neutron-server" ;;
+        *)
+            echo "${service_name}-api" ;;
+    esac
+}
+
+function get_service_subservices_public_endpoints {
+local service_name=$1
+    case "$service_name" in
+        "heat" )
+            echo "cloudformation heat" ;;
+        "nova" )
+            echo "novncproxy nova placement" ;;
+        *)
+            echo "${service_name}" ;;
+    esac
+}
+
+function get_mcp2_external_ip {
+  local service="$1"
+  echo "$(kubectl -n openstack get services $service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+}
+
+function get_mcp2_tf_external_ip {
+    local service="$1"
+    echo "$(kubectl -n tf get services $service -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+}
+
+function expose_mcp2_memcached {
+    local pod_names
+    pod_names=$(kubectl -n openstack get pods -l application=memcached -o name | cut -d/ -f 2)
+    local svc_names_ips=''
+    for pod_name in $pod_names; do
+        echo "
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: memcached-${pod_name##*-}-external
+        spec:
+          externalTrafficPolicy: Cluster
+          ports:
+          - name: memcached
+            port: 11211
+            protocol: TCP
+            targetPort: 11211
+          selector:
+            statefulset.kubernetes.io/pod-name: ${pod_name}
+          type: LoadBalancer
+        " | kubectl -n openstack apply --wait=true -f - $1>/dev/null
+        svc_names_ips="${svc_names_ips} memcached-${pod_name##*-}-external_$(get_mcp2_external_ip memcached-${pod_name##*-}-external)"
+    done
+    echo ${svc_names_ips}
+}
+
+
+function get_mcp2_internal_domain_name {
+  echo "cluster.local"
+}
+
+function get_mcp2_public_domain_name {
+  echo $(kubectl get osdpl "${OPENSTACK_DEPLOYMENT_OBJECT_NAME}" -n openstack -o jsonpath='{.spec.public_domain_name}')
+}
+
+function refresh_pillars {
+  info "Refreshing pillars"
+  timeout 600 salt '*' saltutil.refresh_pillar --timeout=600 > /dev/null || die $LINENO "Failed to refresh pillars"
+  info "Pillars are refreshed"
+}
+
+# examples of args:
+# -C I@ceph:common
+# -C '"I@ceph:common and I@ceph:mon"'
+function get_first_active_minion {
+  local minion_id
+  local cmd="salt $@ test.ping --out json"
+  minion_id=$(eval "$cmd" | jq 'keys[0]' | head -1 | tr -d '"')
+  echo $minion_id
+}
+
+function get_token_project {
+  local token_project=$(salt -C 'I@keystone:server:role:primary' cmd.run '. /root/keystonercv3; openstack token issue -f value -c id -c project_id' --out json | jq '.[]' | tr -d '"')
+  echo $token_project
+}
+
+function get_mcp1_public_endpoint {
+    local public_endpoint=$(salt -C 'I@keystone:server:role:primary' cmd.run '. /root/keystonercv3; openstack endpoint list --interface public --service keystone -f value -c URL' --out json | jq '.[]' | tr -d '"')
+  echo ${public_endpoint::-6}
+}
+
+function get_mcp2_public_endpoint {
+ local service_name=$1
+ echo "https://${service_name}.$(get_mcp2_public_domain_name)"
+}
+
+
+function get_check_endpoint {
+  local service_name="$1"
+  local project="$2"
+  case "$service_name" in
+      "keystone" )
+          endpoint="v3/users";;
+      "heat" )
+          endpoint="v1/${project}/stacks" ;;
+      "glance" )
+          endpoint="v2/images" ;;
+      "nova" )
+          endpoint="v2.1/servers" ;;
+      "cinder" )
+          endpoint="v3/${project}/volumes/detail" ;;
+      "neutron" )
+          endpoint="v2.0/agents" ;;
+      *)
+          exit 1 ;;
+  esac
+
+  echo $endpoint
+}
+
+PORT_SERVICE_MAPPING=(
+"5000:keystone"
+"8004:heat"
+"8000:heat-cfn"
+"9292:glance"
+"8774:nova"
+"8776:cinder"
+"8778:placement"
+"9696:neutron"
+"9001:designate"
+"8977:panko"
+"8041:gnocchi"
+"8042:aodh"
+"9311:barbican"
+"9876:octavia"
+"6385:ironic"
+"8082:tf-config-api"
+)
+
+function get_available_service {
+    local services=""
+    for mapping in "${PORT_SERVICE_MAPPING[@]}"; do
+        service="${mapping##*:}"
+        services="$services $service"
+    done
+    echo $services
+}
+
+function get_service_by {
+    local variable
+    local value
+    local res
+    variable=$1
+    value=$2
+    for mapping in "${PORT_SERVICE_MAPPING[@]}" ; do
+        local port
+        local name
+        port="${mapping%%:*}"
+        name="${mapping##*:}"
+        if [[ "$value" == "${!variable}" ]]; then
+            if [[ "${variable}" == "port" ]]; then
+                res="$name"
+            else
+                res="$port"
+            fi
+            break
+        fi
+    done
+    if [[ ! -z "$res" ]]; then
+        echo "$res"
+    else
+        die $LINENO "ONLY port or name have to be passed as parameter."
+    fi
+}

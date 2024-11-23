@@ -1,0 +1,27 @@
+# Policy copied from openstack-helm
+# Use static policy unless bootstrap procedure
+# is fixed to work with system scope tokens PRODX-15152
+context_is_admin: role:admin
+admin_or_owner: is_admin:True or project_id:%(project_id)s
+admin_api: is_admin:True
+os_masakari_api:extensions:index: rule:admin_api
+os_masakari_api:extensions:detail: rule:admin_api
+os_masakari_api:extensions:discoverable: rule:admin_api
+os_masakari_api:os-hosts:index: rule:admin_api
+os_masakari_api:os-hosts:detail: rule:admin_api
+os_masakari_api:os-hosts:create: rule:admin_api
+os_masakari_api:os-hosts:update: rule:admin_api
+os_masakari_api:os-hosts:delete: rule:admin_api
+os_masakari_api:os-hosts:discoverable: rule:admin_api
+os_masakari_api:notifications:index: rule:admin_api
+os_masakari_api:notifications:detail: rule:admin_api
+os_masakari_api:notifications:create: rule:admin_api
+os_masakari_api:notifications:discoverable: rule:admin_api
+os_masakari_api:segments:index: rule:admin_api
+os_masakari_api:segments:detail: rule:admin_api
+os_masakari_api:segments:create: rule:admin_api
+os_masakari_api:segments:update: rule:admin_api
+os_masakari_api:segments:delete: rule:admin_api
+os_masakari_api:segments:discoverable: rule:admin_api
+os_masakari_api:versions:index: "@"
+os_masakari_api:versions:discoverable: "@"

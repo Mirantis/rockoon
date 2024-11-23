@@ -1,0 +1,185 @@
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+{{- define "designateCentralLivenessProbeTemplate" }}
+exec:
+  command:
+    - python
+    - /tmp/health-probe.py
+    - --config-file
+    - /etc/designate/designate.conf
+    - --rabbitmq-queue-name
+    - central
+    - --probe-type
+    - liveness
+    - --process-name
+    - designate-central
+    - --rabbitmq-rpc-timeout
+    - {{ .Values.pod.probes.rpc_timeout | quote}}
+{{- end }}
+
+{{- define "designateCentralReadinessProbeTemplate" }}
+exec:
+  command:
+    - python
+    - /tmp/health-probe.py
+    - --config-file
+    - /etc/designate/designate.conf
+    - --rabbitmq-queue-name
+    - central
+    - --probe-type
+    - readiness
+    - --process-name
+    - designate-central
+    - --rabbitmq-rpc-timeout
+    - {{ .Values.pod.probes.rpc_timeout | quote}}
+{{- end }}
+
+{{- if .Values.manifests.statefulset_central }}
+{{- $envAll := . }}
+{{- $mounts_designate_central := .Values.pod.mounts.designate_central.designate_central }}
+{{- $mounts_designate_central_init := .Values.pod.mounts.designate_central.init_container }}
+
+{{- $serviceAccountName := "designate-central" }}
+{{ tuple $envAll "central" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: designate-central
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "designate" "central" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  replicas: {{ .Values.pod.replicas.central }}
+  podManagementPolicy: "Parallel"
+  selector:
+    matchLabels:
+{{ tuple $envAll "designate" "central" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll | include "helm-toolkit.snippets.kubernetes_upgrades_statefulset" | indent 2 }}
+  serviceName: designate-central
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "designate" "central" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+        endpoints-hash: {{ .Values.endpoints | include "helm-toolkit.utils.get_hash" }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "designate" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      affinity:
+{{ tuple $envAll "designate" "central" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      nodeSelector:
+        {{ .Values.labels.central.node_selector_key }}: {{ .Values.labels.central.node_selector_value }}
+      initContainers:
+{{ tuple $envAll "central" $mounts_designate_central_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+        - name: designate-central-init
+{{ tuple $envAll "ks_user" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.central | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "designate" "container" "designate_central" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+{{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" "admin" ) | indent 12 }}
+            - name: SERVICE_PROJECT_NAME
+              value: {{ $envAll.Values.endpoints.identity.auth.designate.project_name | default "service" }}
+            - name: SERVICE_DOMAIN_NAME
+              value: {{ $envAll.Values.endpoints.identity.auth.designate.project_domain_name | default "service" }}
+          command:
+            - /tmp/designate-central-init.py
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: pod-shared
+              mountPath: /tmp/pod-shared
+            - name: designate-bin
+              mountPath: /tmp/designate-central-init.py
+              subPath: designate-central-init.py
+              readOnly: true
+            - name: os-clouds
+              mountPath: /etc/openstack/clouds.yaml
+              subPath: clouds.yaml
+              readOnly: true
+      containers:
+        - name: designate-central
+{{ tuple $envAll "designate_central" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.central | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "designate" "container" "designate_central" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ dict "envAll" $envAll "component" "central" "container" "central" "type" "liveness" "probeTemplate" (include "designateCentralLivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "central" "container" "central" "type" "readiness" "probeTemplate" (include "designateCentralReadinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          command:
+            - bash
+            - /tmp/designate-central.sh
+          volumeMounts:
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "designate" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+            - name: designate-bin
+              mountPath: /tmp/designate-central.sh
+              subPath: designate-central.sh
+              readOnly: true
+            - name: designate-bin
+              mountPath: /tmp/health-probe.py
+              subPath: health-probe.py
+              readOnly: true
+            - name: pod-etc-designate
+              mountPath: /etc/designate
+            - name: pod-var-cache-designate
+              mountPath: /var/cache/designate
+            - name: designate-etc
+              mountPath: /etc/designate/designate.conf
+              subPath: designate.conf
+              readOnly: true
+            - name: designate-etc
+              mountPath: /etc/designate/api-paste.ini
+              subPath: api-paste.ini
+              readOnly: true
+            {{- if .Values.conf.designate.DEFAULT.log_config_append }}
+            - name: designate-etc
+              mountPath: {{ .Values.conf.designate.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.designate.DEFAULT.log_config_append }}
+              readOnly: true
+            - name: designate-oslo-policy
+              mountPath: /etc/designate/policy.d/
+            {{- end }}
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: pod-shared
+              mountPath: /tmp/pod-shared
+{{- if $mounts_designate_central.volumeMounts }}{{ toYaml $mounts_designate_central.volumeMounts | indent 12 }}{{ end }}
+      volumes:
+{{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "designate" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
+        - name: pod-etc-designate
+          emptyDir: {}
+        - name: pod-var-cache-designate
+          emptyDir: {}
+        - name: designate-bin
+          configMap:
+            name: designate-bin
+            defaultMode: 504
+        - name: designate-etc
+          secret:
+            secretName: designate-etc
+            defaultMode: 416
+        - name: designate-oslo-policy
+          secret:
+            secretName: designate-oslo-policy
+            defaultMode: 416
+        - name: pod-tmp
+          emptyDir: {}
+        - name: pod-shared
+          emptyDir: {}
+        - name: os-clouds
+          secret:
+            secretName: {{ .Chart.Name }}-os-clouds
+            defaultMode: 416
+{{- if $mounts_designate_central.volumes }}{{ toYaml $mounts_designate_central.volumes | indent 8 }}{{ end }}
+{{- end }}

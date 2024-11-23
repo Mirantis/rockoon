@@ -1,0 +1,10 @@
+{%- set horizon_pod = "dashboard:horizon:Deployment:horizon" %}
+        horizon:
+          spec:
+            podSelector:
+              matchLabels:
+{{ service_childs[horizon_pod].get_pod_labels() | toyaml | indent(16, first=True) }}
+            policyTypes:
+            - Ingress
+            ingress:
+{{ network_policies["ingress"][horizon_pod] | toyaml | indent(14, first=True) }}

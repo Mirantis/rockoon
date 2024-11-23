@@ -1,0 +1,18 @@
+        oslo_messaging_notifications:
+          auth:
+            {{ service }}:
+              password: {{ credentials[0].notifications.user.password }}
+              username: {{ credentials[0].notifications.user.username }}
+          host_fqdn_override: {}
+          hosts:
+            default: rabbitmq
+          path: /openstack
+          port:
+            amqp:
+              default: 5672
+            http:
+              default: 15672
+          scheme: rabbit
+          statefulset:
+            name: openstack-rabbitmq-rabbitmq
+            replicas: 1

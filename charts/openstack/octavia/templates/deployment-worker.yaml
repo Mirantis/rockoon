@@ -1,0 +1,179 @@
+{{/*
+Copyright 2019 Samsung Electronics Co., Ltd.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "octaviaWorkerReadynessProbeTemplate" }}
+exec:
+  command:
+    - python
+    - /tmp/health-probe.py
+    - --config-file
+    - /etc/octavia/octavia.conf
+    - --probe-type
+    - readiness
+    - --process-name
+    - octavia-worker
+    - --check
+    - rabbitmq_sockets
+{{- if (index .Values.conf.octavia.task_flow "jobboard_enabled") }}
+    - --check
+    - jobboard_sockets
+{{- end }}
+{{- end }}
+
+{{- define "octaviaWorkerLivenessProbeTemplate" }}
+exec:
+  command:
+    - python
+    - /tmp/health-probe.py
+    - --config-file
+    - /etc/octavia/octavia.conf
+    - --probe-type
+    - liveness
+    - --process-name
+    - octavia-worker
+    - --check
+    - rabbitmq_sockets
+{{- if (index .Values.conf.octavia.task_flow "jobboard_enabled") }}
+    - --check
+    - jobboard_sockets
+{{- end }}
+{{- end }}
+
+{{- if .Values.manifests.deployment_worker }}
+{{- $envAll := . }}
+
+{{- $mounts_octavia_worker := .Values.pod.mounts.octavia_worker.octavia_worker }}
+{{- $mounts_octavia_worker_init := .Values.pod.mounts.octavia_worker.init_container }}
+
+{{- $serviceAccountName := "octavia-worker" }}
+{{ tuple $envAll "worker" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: octavia-worker
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "octavia" "worker" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  replicas: {{ .Values.pod.replicas.worker }}
+  selector:
+    matchLabels:
+{{ tuple $envAll "octavia" "worker" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll | include "helm-toolkit.snippets.kubernetes_upgrades_deployment" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "octavia" "worker" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+        endpoints-hash: {{ .Values.endpoints | include "helm-toolkit.utils.get_hash" }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "octavia_worker" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      affinity:
+{{ tuple $envAll "octavia" "worker" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+                - key: component
+                  operator: In
+                  values:
+                  - health_manager
+            topologyKey: kubernetes.io/hostname
+      nodeSelector:
+        {{ .Values.labels.worker.node_selector_key }}: {{ .Values.labels.worker.node_selector_value }}
+      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: true
+      initContainers:
+{{ tuple $envAll "worker" $mounts_octavia_worker_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+      containers:
+        - name: octavia-worker
+{{ tuple $envAll "octavia_worker" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.worker | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "octavia_worker" "container" "octavia_worker" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/octavia-worker.sh
+            - start
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /tmp/octavia-worker.sh
+                  - stop
+{{ dict "envAll" $envAll "component" "octavia_worker" "container" "octavia_worker" "type" "liveness" "probeTemplate" (include "octaviaWorkerLivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "octavia_worker" "container" "octavia_worker" "type" "readiness" "probeTemplate" (include "octaviaWorkerReadynessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          volumeMounts:
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "octavia" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: pod-etc-octavia
+              mountPath: /etc/octavia
+            - name: octavia-bin
+              mountPath: /tmp/octavia-worker.sh
+              subPath: octavia-worker.sh
+              readOnly: true
+            - name: octavia-bin
+              mountPath: /tmp/health-probe.py
+              subPath: health-probe.py
+              readOnly: true
+            - name: octavia-etc
+              mountPath: /etc/octavia/octavia.conf
+              subPath: octavia.conf
+              readOnly: true
+            - name: octavia-etc
+              mountPath: {{ .Values.conf.octavia.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.octavia.DEFAULT.log_config_append }}
+              readOnly: true
+            - name: octavia-settings
+              mountPath: /etc/octavia/updated_conf
+            - name: octavia-certs
+              mountPath: /etc/octavia/certs/private/cakey.pem
+              subPath: key
+            - name: octavia-certs
+              mountPath: /etc/octavia/certs/ca_01.pem
+              subPath: cert
+            - name: octavia-certs
+              mountPath: /etc/octavia/certs/client.pem
+              subPath: cert_all
+{{ if $mounts_octavia_worker.volumeMounts }}{{ toYaml $mounts_octavia_worker.volumeMounts | indent 12 }}{{ end }}
+      volumes:
+{{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "octavia" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
+        - name: pod-tmp
+          emptyDir: {}
+        - name: pod-etc-octavia
+          emptyDir: {}
+        - name: octavia-bin
+          configMap:
+            name: octavia-bin
+            defaultMode: 504
+        - name: octavia-settings
+          configMap:
+            name: octavia-settings
+            defaultMode: 416
+        - name: octavia-etc
+          secret:
+            secretName: octavia-etc
+            defaultMode: 416
+        - name: octavia-certs
+          secret:
+            secretName: octavia-certs
+            defaultMode: 416
+{{ if $mounts_octavia_worker.volumes }}{{ toYaml $mounts_octavia_worker.volumes | indent 8 }}{{ end }}
+{{- end }}

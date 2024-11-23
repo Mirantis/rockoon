@@ -1,0 +1,10 @@
+{% macro get_etcd3_endpoint(openstack_version, driver) -%}
+{% if driver == 'etcd3' %} etcd3://etcd:2379
+{%- elif driver == 'etcd3gw' %}
+{%- if OSVer[openstack_version] <= OSVer.ussuri -%} etcd3+http://etcd:2379
+{%- else -%} etcd3+http://etcd:2379?api_version=auto
+{%- endif -%}
+{% else %}
+{{ raise_error("Unsupported Etcd driver") }}
+{%- endif %}
+{%- endmacro -%}

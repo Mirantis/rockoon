@@ -1,0 +1,9 @@
+          {%- if proxy_vars is defined and proxy_vars %}
+          enabled: true
+          env_vars:
+            {%- for key, val in proxy_vars.items() %}
+            {{ key }}: "{{ val }}"
+            {%- endfor %}
+          {%- else %}
+          enabled: false
+          {% endif %}

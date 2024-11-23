@@ -1,0 +1,7 @@
+# Policy copied from openstack-helm
+# Use static policy unless bootstrap procedure
+# is fixed to work with system scope tokens PRODX-15152
+context_is_admin: role:admin
+segregation: rule:context_is_admin
+telemetry:events:index: ''
+telemetry:events:show: ''

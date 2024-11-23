@@ -1,0 +1,523 @@
+database:mariadb:StatefulSet:mariadb-server:
+- from:
+  - podSelector:
+      matchLabels:
+        application: aodh
+        component: db-purge
+  - podSelector:
+      matchLabels:
+        application: aodh
+        component: api
+  - podSelector:
+      matchLabels:
+        application: aodh
+        component: evaluator
+  - podSelector:
+      matchLabels:
+        application: aodh
+        component: listener
+  - podSelector:
+      matchLabels:
+        application: aodh
+        component: notifier
+  - podSelector:
+      matchLabels:
+        application: aodh
+        component: db-init
+  - podSelector:
+      matchLabels:
+        application: aodh
+        component: db-sync
+  - podSelector:
+      matchLabels:
+        application: ironic
+        component: api
+  - podSelector:
+      matchLabels:
+        application: ironic
+        component: db-init
+  - podSelector:
+      matchLabels:
+        application: ironic
+        component: db-sync
+  - podSelector:
+      matchLabels:
+        application: ironic
+        component: conductor
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: db-purge
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: service-cleaner
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: volume_daemonset
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: api
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: db-init
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: db-sync
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: db-sync-online
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: backup
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: scheduler
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: volume
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: cell-setup
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: db-purge
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: placement-audit
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: metadata
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: os-api
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: consoleauth
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: novnc-proxy
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: spice-proxy
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: placement
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: cell-setup
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: db-init
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: db-sync
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: db-sync-api
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: db-sync-db
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: db-sync-online
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: conductor
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: scheduler
+  - podSelector:
+      matchLabels:
+        application: mariadb
+        component: backup
+  - podSelector:
+      matchLabels:
+        application: prometheus-mysql-exporter
+        component: create-sql-user
+  - podSelector:
+      matchLabels:
+        application: mariadb
+        component: restore
+  - podSelector:
+      matchLabels:
+        application: mariadb
+        component: cluster-wait
+  - podSelector:
+      matchLabels:
+        application: designate
+        component: db-init
+  - podSelector:
+      matchLabels:
+        application: designate
+        component: db-sync
+  - podSelector:
+      matchLabels:
+        application: designate
+        component: pool-manage
+  - podSelector:
+      matchLabels:
+        application: designate
+        component: powerdns-db-init
+  - podSelector:
+      matchLabels:
+        application: designate
+        component: powerdns-db-sync
+  - podSelector:
+      matchLabels:
+        application: designate
+        component: central
+  - podSelector:
+      matchLabels:
+        application: designate
+        component: mdns
+  - podSelector:
+      matchLabels:
+        application: designate
+        component: producer
+  - podSelector:
+      matchLabels:
+        application: panko
+        component: events-cleaner
+  - podSelector:
+      matchLabels:
+        application: panko
+        component: api
+  - podSelector:
+      matchLabels:
+        application: panko
+        component: db-init
+  - podSelector:
+      matchLabels:
+        application: panko
+        component: db-sync
+  - podSelector:
+      matchLabels:
+        application: keystone
+        component: api
+  - podSelector:
+      matchLabels:
+        application: keystone
+        component: db-init
+  - podSelector:
+      matchLabels:
+        application: keystone
+        component: db-sync
+  - podSelector:
+      matchLabels:
+        application: keystone
+        component: db-sync-contract
+  - podSelector:
+      matchLabels:
+        application: keystone
+        component: db-sync-expand
+  - podSelector:
+      matchLabels:
+        application: keystone
+        component: db-sync-migrate
+  - podSelector:
+      matchLabels:
+        application: glance
+        component: db-purge
+  - podSelector:
+      matchLabels:
+        application: glance
+        component: api
+  - podSelector:
+      matchLabels:
+        application: glance
+        component: registry
+  - podSelector:
+      matchLabels:
+        application: glance
+        component: db-contract
+  - podSelector:
+      matchLabels:
+        application: glance
+        component: db-expand
+  - podSelector:
+      matchLabels:
+        application: glance
+        component: db-init
+  - podSelector:
+      matchLabels:
+        application: glance
+        component: db-migrate
+  - podSelector:
+      matchLabels:
+        application: glance
+        component: db-sync
+  - podSelector:
+      matchLabels:
+        application: masakari
+        component: db-purge
+  - podSelector:
+      matchLabels:
+        application: masakari
+        component: api
+  - podSelector:
+      matchLabels:
+        application: masakari
+        component: engine
+  - podSelector:
+      matchLabels:
+        application: masakari
+        component: db-init
+  - podSelector:
+      matchLabels:
+        application: masakari
+        component: db-sync
+  - podSelector:
+      matchLabels:
+        application: barbican
+        component: db-purge
+  - podSelector:
+      matchLabels:
+        application: barbican
+        component: api
+  - podSelector:
+      matchLabels:
+        application: barbican
+        component: db-init
+  - podSelector:
+      matchLabels:
+        application: barbican
+        component: db-sync
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: health_manager
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: api
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: housekeeping
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: worker
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: db-init
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: db-sync
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: db-sync-persistence
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: ipmi
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: central
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: notification
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: db-init
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: db-sync
+  - podSelector:
+      matchLabels:
+        application: gnocchi
+        component: metricd
+  - podSelector:
+      matchLabels:
+        application: gnocchi
+        component: metricd
+  - podSelector:
+      matchLabels:
+        application: gnocchi
+        component: api
+  - podSelector:
+      matchLabels:
+        application: gnocchi
+        component: db-init
+  - podSelector:
+      matchLabels:
+        application: gnocchi
+        component: db-sync
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: dhcp-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: dr-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: l2gw-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: l3-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: metadata-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: neutron-ovs-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: neutron-sriov-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: server
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: db-init
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: db-sync
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: ovn-db-sync-migrate
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: ironic-agent
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: db-purge
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: engine-cleaner
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: api
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: cfn
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: engine
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: db-init
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: db-sync
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: engine
+  - podSelector:
+      matchLabels:
+        application: placement
+        component: api
+  - podSelector:
+      matchLabels:
+        application: placement
+        component: db-init
+  - podSelector:
+      matchLabels:
+        application: placement
+        component: db_migrate
+  - podSelector:
+      matchLabels:
+        application: placement
+        component: db-nova-migrate-placement
+  - podSelector:
+      matchLabels:
+        application: placement
+        component: db-sync
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: db-purge
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: share_daemonset
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: api
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: db-init
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: db-sync
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: scheduler
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: share
+  ports:
+  - port: 3306
+    protocol: TCP
+- from:
+  - podSelector:
+      matchLabels:
+        application: mariadb
+        component: server
+  ports:
+  - port: 3306
+    protocol: TCP
+  - port: 4567
+    protocol: TCP
+  - port: 4568
+    protocol: TCP
+  - port: 4444
+    protocol: TCP

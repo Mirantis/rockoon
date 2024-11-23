@@ -1,0 +1,63 @@
+{%- from 'macros/connections.j2' import to_child_object %}
+ingress:
+  DaemonSet:
+    ingress:
+      connections:
+        egress:
+          - {{ to_child_object("alarming", "aodh", "Deployment", "aodh-api", ["a-api"]) | indent(12)}}
+          - {{ to_child_object("metric", "gnocchi", "Deployment", "gnocchi-api", ["gn-api"]) | indent(12)}}
+          - {{ to_child_object("orchestration", "heat", "Deployment", "heat-api", ["h-api"]) | indent(12)}}
+          - {{ to_child_object("orchestration", "heat", "Deployment", "heat-cfn", ["h-cfn"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("compute", "nova", "Deployment", "nova-api-metadata", ["n-metadata"]) | indent(12)}}
+          - {{ to_child_object("compute", "nova", "Deployment", "nova-novncproxy", ["n-novnc"]) | indent(12)}}
+          - {{ to_child_object("compute", "nova", "Deployment", "nova-spiceproxy", ["n-spice"]) | indent(12)}}
+          - {{ to_child_object("compute", "nova", "Deployment", "nova-api-osapi", ["n-api"]) | indent(12)}}
+          - {{ to_child_object("instance-ha", "masakari", "Deployment", "masakari-api", ["m-api"]) | indent(12)}}
+          - {{ to_child_object("image", "glance", "Deployment", "glance-api", ["g-api"]) | indent(12)}}
+          - {{ to_child_object("image", "glance", "Deployment", "glance-registry", ["g-reg"]) | indent(12)}}
+          - {{ to_child_object("block-storage", "cinder", "Deployment", "cinder-api", ["c-api"]) | indent(12)}}
+          - {{ to_child_object("baremetal", "ironic", "Deployment", "ironic-api", ["m-api"]) | indent(12)}}
+          - {{ to_child_object("shared-file-system", "manila", "Deployment", "manila-api", ["m-api"]) | indent(12)}}
+          - {{ to_child_object("dns", "designate", "StatefulSet", "designate-api", ["dns-api"]) | indent(12)}}
+          - {{ to_child_object("dns", "designate", "StatefulSet", "designate-mdns", ["pdns-tcp", "pdns-udp"]) | indent(12)}}
+          - {{ to_child_object("key-manager", "barbican", "Deployment", "barbican-api", ["b-api"]) | indent(12)}}
+          - {{ to_child_object("load-balancer", "octavia", "Deployment", "octavia-api", ["o-api"]) | indent(12)}}
+          - {{ to_child_object("dashboard", "horizon", "Deployment", "horizon", ["web"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - ingress
+      - ingress_module_init
+      - ingress_tls_proxy
+      manifest: deployment_ingress
+      pod_labels:
+        application: ingress
+        component: server
+      ports:
+        - name: http
+          port: 80
+          protocol: TCP
+        - name: https
+          port: 5443
+          protocol: TCP
+        - name: healthz
+          port: 10254
+          protocol: TCP
+        - name: pdns-udp
+          port: 53
+          protocol: UDP
+        - name: pdns-tcp
+          port: 53
+          protocol: TCP
+        - name: tls-proxy
+          port: 443
+          protocol: TCP
+  Deployment:
+    ingress-error-pages:
+      hash_fields: []
+      images:
+      - error_pages
+      manifest: deployment_error
+      pod_labels:
+        application: ingress
+        component: error-pages

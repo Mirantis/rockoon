@@ -1,0 +1,44 @@
+---
+all:
+  vars:
+    ansible_ssh_user: ubuntu
+    k0s_worker_on_controller: false
+    k0s_no_taints: false
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    rvl_binary_base_url: https://artifactory.mcp.mirantis.net/artifactory/binary-dev-kaas-virtual
+    rvl_images_base_url: docker-dev-kaas-virtual.docker.mirantis.net
+
+  hosts:
+    oc-virtual-lab-server-ctl-01:
+      ansible_host: 172.19.114.202
+    oc-virtual-lab-server-os-ctl-01:
+      ansible_host: 172.19.122.225
+    oc-virtual-lab-server-os-ctl-02:
+      ansible_host: 172.19.120.249
+    oc-virtual-lab-server-os-ctl-03:
+      ansible_host: 172.19.123.25
+    oc-virtual-lab-server-os-cmp-01:
+      ansible_host: 172.19.120.227
+    oc-virtual-lab-server-os-cmp-02:
+      ansible_host: 172.19.118.12
+
+  children:
+    computes:
+      hosts:
+        oc-virtual-lab-server-os-cmp-01:
+        oc-virtual-lab-server-os-cmp-02:
+    controllers:
+      hosts:
+        oc-virtual-lab-server-os-ctl-01:
+        oc-virtual-lab-server-os-ctl-02:
+        oc-virtual-lab-server-os-ctl-03:
+    k8s_controllers:
+      hosts:
+        oc-virtual-lab-server-ctl-01:
+    k8s_workers:
+      hosts:
+        oc-virtual-lab-server-os-ctl-01:
+        oc-virtual-lab-server-os-ctl-02:
+        oc-virtual-lab-server-os-ctl-03:
+        oc-virtual-lab-server-os-cmp-01:
+        oc-virtual-lab-server-os-cmp-02:

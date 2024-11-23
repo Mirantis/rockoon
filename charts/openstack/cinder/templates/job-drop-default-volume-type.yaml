@@ -1,0 +1,151 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.job_drop_default_volume_type }}
+{{- $envAll := . }}
+
+{{- $serviceName := "cinder" }}
+{{- $nodeSelector := index . "nodeSelector" | default ( dict $envAll.Values.labels.job.node_selector_key $envAll.Values.labels.job.node_selector_value ) -}}
+{{- $configMapBin := index . "configMapBin" | default (printf "%s-%s" $serviceName "bin" ) -}}
+{{- $serviceUser := index . "serviceUser" | default $serviceName -}}
+{{- $serviceUserPretty := $serviceUser | replace "_" "-" -}}
+
+{{- $serviceAccountName := printf "%s-%s" $serviceUserPretty "drop-default-volume-type" }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $serviceAccountName }}
+  namespace: {{ $envAll.Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $envAll.Release.Name }}-{{ $envAll.Release.Namespace }}-{{ $serviceAccountName }}
+  namespace: {{ $envAll.Release.Namespace }}
+rules:
+  - apiGroups:
+      - ""
+      - extensions
+      - batch
+      - apps
+    verbs:
+      - get
+      - list
+    resources:
+      - services
+      - endpoints
+      - pods
+      - jobs
+      - statefulsets
+      - daemonsets
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $envAll.Release.Name }}-{{ $serviceAccountName }}
+  namespace: {{ $envAll.Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $envAll.Release.Name }}-{{ $envAll.Release.Namespace }}-{{ $serviceAccountName }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $serviceAccountName }}
+    namespace: {{ $envAll.Release.Namespace }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ printf "%s-%s" $serviceUserPretty "drop-default-volume-type" | quote }}
+spec:
+  backoffLimit: 20
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll $serviceName "drop-default-volume-type" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ dict "envAll" $envAll "podName" $serviceAccountName "containerNames" (list "drop-default-volume-type" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+    spec:
+{{ dict "envAll" $envAll "application" "drop_default_volume_type" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      serviceAccountName: {{ $serviceAccountName | quote }}
+      restartPolicy: OnFailure
+      nodeSelector:
+{{ toYaml $nodeSelector | indent 8 }}
+      initContainers:
+{{ tuple $envAll "drop_default_volume_type" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+        - name: cinder-wait-for-backends
+{{ tuple $envAll "cinder_wait_for_backends" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "drop_default_volume_type" "container" "cinder_wait_for_backends" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+          command:
+            - /bin/bash
+            - -c
+            - /tmp/cinder-wait-for-backends.py
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: cinder-bin
+              mountPath: /tmp/cinder-wait-for-backends.py
+              subPath: cinder-wait-for-backends.py
+              readOnly: true
+      containers:
+        - name: drop-default-volume-type
+{{ tuple $envAll "cinder_drop_default_volume_type" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.ks_user | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "drop_default_volume_type" "container" "drop_default_volume_type" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/drop-default-volume-type.py
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: cinder-bin
+              mountPath: /tmp/drop-default-volume-type.py
+              subPath: drop-default-volume-type.py
+              readOnly: true
+            - name: os-clouds
+              mountPath: /etc/openstack/clouds.yaml
+              subPath: clouds.yaml
+              readOnly: true
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.volumev3.api.internal | include "helm-toolkit.snippets.tls_volume_mount"  | indent 12 }}
+          env:
+{{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" "admin" ) | indent 12 }}
+{{- with $env := dict "ksUserSecret" (index $envAll.Values.secrets.identity $serviceUser ) }}
+{{- include "helm-toolkit.snippets.keystone_user_create_env_vars" $env | indent 12 }}
+{{- end }}
+            - name: SERVICE_OS_ROLES
+            {{- $serviceOsRoles := index $envAll.Values.endpoints.identity.auth $serviceUser "role" }}
+            {{- if kindIs "slice" $serviceOsRoles }}
+              value: {{ include "helm-toolkit.utils.joinListWithComma" $serviceOsRoles | quote }}
+            {{- else }}
+              value: {{ $serviceOsRoles | quote }}
+            {{- end }}
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: os-clouds
+          secret:
+            secretName: {{ $serviceName }}-os-clouds
+            defaultMode: 416
+        - name: cinder-bin
+          configMap:
+            name: {{ $configMapBin | quote }}
+            defaultMode: 504
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.volumev3.api.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{- end -}}

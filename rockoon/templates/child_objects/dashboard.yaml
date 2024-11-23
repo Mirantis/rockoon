@@ -1,0 +1,34 @@
+{%- from 'macros/connections.j2' import to_child_object %}
+{%- set neutron_server_deployment_type = "Deployment"%}
+{%- if spec.get("features", {}).get("neutron", {}).get("backend") == "ml2/ovn" %}
+{%- set neutron_server_deployment_type = "DaemonSet"%}
+{%- endif %}
+horizon:
+  Deployment:
+    horizon:
+      connections:
+        egress:
+          - {{ to_child_object("orchestration", "heat", "Deployment", "heat-api", ["h-api"]) | indent(12)}}
+          - {{ to_child_object("orchestration", "heat", "Deployment", "heat-cfn", ["h-cfn"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("compute", "nova", "Deployment", "nova-api-osapi", ["n-api"]) | indent(12)}}
+          - {{ to_child_object("networking", "neutron", neutron_server_deployment_type, "neutron-server", ["q-api"]) | indent(12)}}
+          - {{ to_child_object("instance-ha", "masakari", "Deployment", "masakari-api", ["m-api"]) | indent(12)}}
+          - {{ to_child_object("image", "glance", "Deployment", "glance-api", ["g-api"]) | indent(12)}}
+          - {{ to_child_object("block-storage", "cinder", "Deployment", "cinder-api", ["c-api"]) | indent(12)}}
+          - {{ to_child_object("shared-file-system", "manila", "Deployment", "manila-api", ["m-api"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+          - {{ to_child_object("dns", "designate", "StatefulSet", "designate-api", ["dns-api"]) | indent(12)}}
+          - {{ to_child_object("key-manager", "barbican", "Deployment", "barbican-api", ["b-api"]) | indent(12)}}
+          - {{ to_child_object("load-balancer", "octavia", "Deployment", "octavia-api", ["o-api"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - horizon
+      manifest: deployment
+      pod_labels:
+        application: horizon
+        component: server
+      ports:
+        - name: web
+          port: 4999
+          protocol: TCP

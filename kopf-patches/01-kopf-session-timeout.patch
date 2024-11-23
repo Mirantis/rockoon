@@ -1,0 +1,93 @@
+From 6816f6a0de293b893b2990af80e753280df13780 Mon Sep 17 00:00:00 2001
+From: Pavlo Shchelokovskyy <shchelokovskyy@gmail.com>
+Date: Wed, 16 Jun 2021 17:11:37 +0300
+Subject: [PATCH] Configure session timeous globally
+
+Previously timeouts were configured only for watching requests,
+this patch makes them configured directly in session constructor.
+---
+ kopf/_cogs/clients/auth.py          |  9 +++++++++
+ kopf/_cogs/configs/configuration.py | 26 ++++++++++++++++++++++++++
+ 2 files changed, 35 insertions(+)
+
+diff --git a/kopf/_cogs/clients/auth.py b/kopf/_cogs/clients/auth.py
+index 53367ad..bf6fafc 100644
+--- a/kopf/_cogs/clients/auth.py
++++ b/kopf/_cogs/clients/auth.py
+@@ -10,6 +10,7 @@
+ 
+ from kopf._cogs.clients import errors
+ from kopf._cogs.helpers import versions
++from kopf._cogs.configs import configuration
+ from kopf._cogs.structs import credentials
+ 
+ # Per-operator storage and exchange point for authentication methods.
+@@ -89,6 +90,8 @@ def __init__(
+         certificate_path: Optional[str]
+         private_key_path: Optional[str]
+ 
++        settings = configuration.OperatorSettings()
++
+         if info.ca_path and info.ca_data:
+             raise credentials.LoginError("Both CA path & data are set. Need only one.")
+         elif info.ca_path:
+@@ -160,6 +163,12 @@ def __init__(
+             ),
+             headers=headers,
+             auth=auth,
++            timeout=aiohttp.ClientTimeout(
++                total=settings.session.total_timeout,
++                sock_connect=settings.session.sock_connect_timeout,
++                sock_read=settings.session.sock_read_timeout,
++                connect=settings.session.connect_timeout
++            ),
+         )
+ 
+         # Add the extra payload information. We avoid overriding the constructor.
+diff --git a/kopf/_cogs/configs/configuration.py b/kopf/_cogs/configs/configuration.py
+index db8d517..a9ed042 100644
+--- a/kopf/_cogs/configs/configuration.py
++++ b/kopf/_cogs/configs/configuration.py
+@@ -162,6 +162,31 @@ def namespaced(self, value: bool) -> None:
+         self.clusterwide = not value
+ 
+ 
++@dataclasses.dataclass
++class SessionSettings:
++
++    total_timeout: Optional[float] = 1 * 600
++    """
++    An HTTP/HTTPS session Total timeout for the whole request.
++    """
++
++    sock_connect_timeout: Optional[float] = 1 * 60
++    """
++    An HTTP/HTTPS session timeout for connecting to a peer for a new connection,
++    not given from a pool. See also connect.
++    """
++
++    sock_read_timeout: Optional[float] = 1 * 60
++    """
++    An HTTP/HTTPS session timeout for reading a portion of data from a peer.
++    """
++
++    connect_timeout: Optional[float] = 1 * 60
++    """
++    An HTTP/HTTPS session timeout for acquiring a connection from pool.
++    """
++
++
+ @dataclasses.dataclass
+ class WatchingSettings:
+ 
+@@ -439,6 +464,7 @@ class OperatorSettings:
+     process: ProcessSettings = dataclasses.field(default_factory=ProcessSettings)
+     posting: PostingSettings = dataclasses.field(default_factory=PostingSettings)
+     peering: PeeringSettings = dataclasses.field(default_factory=PeeringSettings)
++    session: SessionSettings = dataclasses.field(default_factory=SessionSettings)
+     watching: WatchingSettings = dataclasses.field(default_factory=WatchingSettings)
+     batching: BatchingSettings = dataclasses.field(default_factory=BatchingSettings)
+     scanning: ScanningSettings = dataclasses.field(default_factory=ScanningSettings)
+-- 
+2.25.1
+

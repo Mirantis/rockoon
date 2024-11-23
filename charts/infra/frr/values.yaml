@@ -1,0 +1,252 @@
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+---
+images:
+  tags:
+    frr: docker.io/frrouting/frr:v7.5.0
+    frr_init: docker.io/openstackhelm/heat:train-ubuntu_bionic
+    frr_info: docker-dev-kaas-local.docker.mirantis.net/openstack/extra/ceph-config-helper:nautilus-bionic-20210202133935
+    dep_check: quay.io/stackanetes/kubernetes-entrypoint:v0.3.1
+    image_repo_sync: docker.io/docker:17.07.0
+  pull_policy: IfNotPresent
+  local_registry:
+    active: false
+    exclude:
+      - dep_check
+      - image_repo_sync
+
+dependencies:
+  dynamic:
+    common:
+      local_image_registry:
+        jobs:
+          - frr-image-repo-sync
+        services:
+          - endpoint: node
+            service: local_image_registry
+  static:
+    image_repo_sync:
+      services:
+        - endpoint: internal
+          service: local_image_registry
+    server:
+      jobs: null
+
+labels:
+  server:
+    node_selector_key: openstack-frrouting
+    node_selector_value: enabled
+  job:
+    node_selector_key: openstack-frrouting
+    node_selector_value: enabled
+
+endpoints:
+  cluster_domain_suffix: cluster.local
+  local_image_registry:
+    name: docker-registry
+    namespace: docker-registry
+    hosts:
+      default: localhost
+      internal: docker-registry
+      node: localhost
+    host_fqdn_override:
+      default: null
+    port:
+      registry:
+        node: 5000
+network_policy: {}
+
+pod:
+  affinity:
+    anti:
+      type:
+        default: preferredDuringSchedulingIgnoredDuringExecution
+      topologyKey:
+        default: kubernetes.io/hostname
+      weight:
+        default: 10
+  replicas:
+    server: 2
+  lifecycle:
+    upgrades:
+      deployments:
+        revision_history: 3
+        pod_replacement_strategy: RollingUpdate
+        rolling_update:
+          max_unavailable: 1
+          max_surge: 3
+  resources:
+    enabled: false
+    server:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    jobs:
+      image_repo_sync:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+  probes:
+    frr:
+      server:
+        readiness:
+          enabled: true
+          params:
+            initialDelaySeconds: 10
+            periodSeconds: 60
+            timeoutSeconds: 15
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 10
+            periodSeconds: 60
+            timeoutSeconds: 15
+  security_context:
+    frr:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+      container:
+        frr_config_init:
+          capabilities:
+            drop:
+              - ALL
+        frr_info:
+          capabilities:
+            drop:
+              - ALL
+        # frr is spawned by tini init daemon which
+        # forks frr daemons under non root user
+        frr:
+          runAsUser: 0
+          runAsNonRoot: false
+          privileged: true
+conf:
+  bgp:
+    as_number: 64512
+    neighbor_subnets:
+     - 10.0.0.0/8
+    update_source_interface: ens3
+  init:
+    script: |
+      #!/bin/bash
+      SYSLOG_FACILITY=informational
+      INTERFACES_INFO=($(python3 <<PYTHONCODE
+      import netifaces as ni
+      import ipaddress
+      import os
+      iface = ni.ifaddresses(os.environ["BGP_UPDATE_SOURCE_INTERFACE"])[ni.AF_INET][0]
+      network = ipaddress.ip_interface(f"{iface['addr']}/{iface['netmask']}").network
+      print(f"{iface['addr']} {network}")
+      PYTHONCODE
+      ))
+      ROUTER_ID=${INTERFACES_INFO[0]}
+
+      for file in $(ls /tmp/frr/); do
+      eval "cat <<EOF
+      $(</tmp/frr/${file})
+      " > /etc/frr/${file}
+      done
+  frr:
+    config:
+    template: |
+      log file /var/log/frr.log informational
+      !
+      router bgp {{ .Values.conf.bgp.as_number }}
+        bgp router-id ${ROUTER_ID}
+        no bgp default ipv4-unicast
+        bgp cluster-id ${ROUTER_ID}
+        neighbor fabric peer-group
+        neighbor fabric remote-as {{ .Values.conf.bgp.as_number }}
+        neighbor fabric update-source {{ .Values.conf.bgp.update_source_interface }}
+        neighbor fabric capability extended-nexthop
+        {{- range .Values.conf.bgp.neighbor_subnets }}
+        bgp listen range {{ . }} peer-group fabric
+        {{- end }}
+        !
+        address-family ipv4 unicast
+         neighbor fabric activate
+        exit-address-family
+        !
+        address-family ipv4 vpn
+         neighbor fabric activate
+         neighbor fabric route-reflector-client
+        exit-address-family
+        !
+        address-family l2vpn evpn
+         neighbor fabric activate
+         neighbor fabric route-reflector-client
+        exit-address-family
+      !
+      line vty
+      !
+  daemons: 
+    template: |
+      bgpd=yes
+      ospfd=no
+      ospf6d=no
+      ripd=no
+      ripngd=no
+      isisd=no
+      pimd=no
+      ldpd=no
+      nhrpd=no
+      eigrpd=no
+      babeld=no
+      sharpd=no
+      pbrd=no
+      bfdd=no
+      fabricd=no
+      vrrpd=no
+  
+      #
+      # If this option is set the /etc/init.d/frr script automatically loads
+      # the config via 'vtysh -b' when the servers are started.
+      # Check /etc/pam.d/frr if you intend to use 'vtysh'!
+      #
+      vtysh_enable=yes
+      zebra_options="  -A 127.0.0.1 -s 90000000"
+      bgpd_options="   -A 127.0.0.1"
+      ospfd_options="  -A 127.0.0.1"
+      ospf6d_options=" -A ::1"
+      ripd_options="   -A 127.0.0.1"
+      ripngd_options=" -A ::1"
+      isisd_options="  -A 127.0.0.1"
+      pimd_options="   -A 127.0.0.1"
+      ldpd_options="   -A 127.0.0.1"
+      nhrpd_options="  -A 127.0.0.1"
+      eigrpd_options=" -A 127.0.0.1"
+      babeld_options=" -A 127.0.0.1"
+      sharpd_options=" -A 127.0.0.1"
+      pbrd_options="   -A 127.0.0.1"
+      staticd_options="-A 127.0.0.1"
+      bfdd_options="   -A 127.0.0.1"
+      fabricd_options="-A 127.0.0.1"
+      vrrpd_options="  -A 127.0.0.1"
+  vtysh:
+    template: |
+      service integrated-vtysh-config
+manifests:
+  configmap_etc: true
+  configmap_bin: true
+  service: false
+  statefulset: true
+  network_policy: false
+  job_image_repo_sync: true
+...

@@ -1,0 +1,28 @@
+{{- if .Values.exporter.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    prometheus.io/scrape: "true"
+  labels:
+    app.kubernetes.io/name: {{ include "rockoon.name" . }}-exporter
+    helm.sh/chart: {{ include "rockoon.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    application: rockoon
+    component: exporter
+  name: rockoon-exporter
+  namespace: {{ .Release.Namespace }}
+spec:
+  ports:
+  - name: metrics
+    port: 9102
+    protocol: TCP
+    targetPort: {{ .Values.exporter.settings.raw.OSCTL_EXPORTER_BIND_PORT }}
+  selector:
+    application: rockoon
+    component: exporter
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  sessionAffinity: None
+  type: ClusterIP
+{{- end }}

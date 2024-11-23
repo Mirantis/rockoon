@@ -1,0 +1,234 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "backupProbeTemplate" }}
+{{- $probeType := . }}
+exec:
+  command:
+    - python
+    - /tmp/health-probe.py
+    - --config-file
+    - /etc/cinder/cinder.conf
+    - --probe-type
+    - {{ $probeType }}
+    - --check
+    - rabbitmq_sockets
+    - --process-name
+    - cinder-backup
+{{- end }}
+
+{{- if .Values.manifests.statefulset_backup }}
+{{- $envAll := . }}
+{{- $envBackend := .Values.conf.backends }}
+
+{{- $mounts_cinder_backup := .Values.pod.mounts.cinder_backup.cinder_backup }}
+{{- $mounts_cinder_backup_init := .Values.pod.mounts.cinder_backup.init_container }}
+
+{{- $serviceAccountName := "cinder-backup" }}
+{{ tuple $envAll "backup" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: cinder-backup
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "cinder" "backup" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  serviceName: cinder-backup
+  podManagementPolicy: "Parallel"
+  replicas: {{ .Values.pod.replicas.backup }}
+  selector:
+    matchLabels:
+{{ tuple $envAll "cinder" "backup" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll | include "helm-toolkit.snippets.kubernetes_upgrades_statefulset" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "cinder" "backup" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+        endpoints-hash: {{ .Values.endpoints | include "helm-toolkit.utils.get_hash" }}
+{{ dict "envAll" $envAll "podName" "cinder-backup" "containerNames" (list "cinder-backup" "ceph-coordination-volume-perms" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "cinder_backup" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      affinity:
+{{ tuple $envAll "cinder" "backup" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      nodeSelector:
+        {{ .Values.labels.backup.node_selector_key }}: {{ .Values.labels.backup.node_selector_value }}
+      {{- if .Values.conf.enable_iscsi }}
+      hostNetwork: true
+      hostPID: false
+      # To let udev work
+      hostIPC: true
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- end }}
+      initContainers:
+{{ tuple $envAll "backup" $mounts_cinder_backup_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+        - name: cinder-backup-init
+{{ tuple $envAll "cinder_backup" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "cinder_backup" "container" "cinder_backup_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+            - name: CINDER_USER_UID
+              value: "{{ .Values.pod.security_context.cinder_backup.pod.runAsUser }}"
+          command:
+            - /tmp/cinder-backup-init.sh
+          terminationMessagePath: /var/log/termination-log
+          volumeMounts:
+            - name: cinder-bin
+              mountPath: /tmp/cinder-backup-init.sh
+              subPath: cinder-backup-init.sh
+              readOnly: true
+            - name: varlibcinder
+              mountPath: {{ .Values.conf.cinder.DEFAULT.state_path | default "/var/lib/cinder" }}
+            - name: lockpath
+              mountPath: {{ .Values.conf.cinder.oslo_concurrency.lock_path }}
+      containers:
+        - name: cinder-backup
+{{ tuple $envAll "cinder_backup" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.backup | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "cinder_backup" "container" "cinder_backup" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/cinder-backup.sh
+{{ dict "envAll" $envAll "component" "backup" "container" "default" "type" "liveness" "probeTemplate" (include "backupProbeTemplate" "liveness" | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "backup" "container" "default" "type" "readiness" "probeTemplate" (include "backupProbeTemplate" "readiness" | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          terminationMessagePath: /var/log/termination-log
+          volumeMounts:
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "cinder" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: cinder-bin
+              mountPath: /tmp/cinder-backup.sh
+              subPath: cinder-backup.sh
+              readOnly: true
+            - name: cinder-etc
+              mountPath: /etc/cinder/cinder.conf
+              subPath: cinder.conf
+              readOnly: true
+            - name: lockpath
+              mountPath: {{ .Values.conf.cinder.oslo_concurrency.lock_path }}
+            {{- if .Values.conf.cinder.DEFAULT.log_config_append }}
+            - name: cinder-etc
+              mountPath: {{ .Values.conf.cinder.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.cinder.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+            {{ if or .Values.manifests.ceph_conf (contains "cinder.backup.drivers.ceph" .Values.conf.cinder.DEFAULT.backup_driver) (eq "true" (list $envBackend | include "cinder.utils.has_ceph_backend")) }}
+            - name: ceph-etc
+              mountPath: /etc/ceph/ceph.conf
+              subPath: ceph.conf
+              readOnly: true
+            {{ dict "envAll" $envAll "objectType" "mountpoint" "application" "cinder" | include "helm-toolkit.snippets.kubernetes_ceph_keyring_objects" | indent 12 }}
+            {{- end }}
+            - name: cinder-etc
+              # NOTE (Portdirect): We mount here to override Kollas
+              # custom sudoers file when using Kolla images, this
+              # location will also work fine for other images.
+              mountPath: /etc/sudoers.d/kolla_cinder_sudoers
+              subPath: cinder_sudoers
+              readOnly: true
+            - name: cinder-etc
+              mountPath: /etc/sudoers.d/kolla_cinder_volume_sudoers
+              subPath: cinder_sudoers
+              readOnly: true
+            - name: cinder-etc
+              mountPath: /etc/cinder/rootwrap.conf
+              subPath: rootwrap.conf
+              readOnly: true
+            - name: cinder-etc
+              mountPath: /etc/cinder/rootwrap.d/volume.filters
+              subPath: volume.filters
+              readOnly: true
+            - name: cinder-bin
+              mountPath: /tmp/health-probe.py
+              subPath: health-probe.py
+              readOnly: true
+            - name: varlibcinder
+              mountPath: {{ .Values.conf.cinder.DEFAULT.state_path | default "/var/lib/cinder" }}
+            {{- if .Values.conf.enable_iscsi }}
+            - name: host-rootfs
+              mountPath: /mnt/host-rootfs
+            - name: runlock
+              mountPath: /run/lock
+            - name: etciscsi
+              mountPath: /etc/iscsi
+            - name: etcmultipath
+              mountPath: /etc/multipath
+              readOnly: false
+            - name: cinder-bin
+              mountPath: /usr/local/sbin/iscsiadm
+              subPath: iscsiadm
+            - name: dev
+              mountPath: /dev
+              mountPropagation: HostToContainer
+            {{- end }}
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{ if $mounts_cinder_backup.volumeMounts }}{{ toYaml $mounts_cinder_backup.volumeMounts | indent 12 }}{{ end }}
+      volumes:
+{{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "cinder" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
+        - name: pod-tmp
+          emptyDir: {}
+        - name: cinder-etc
+          secret:
+            secretName: cinder-etc
+            defaultMode: 416
+        - name: cinder-bin
+          configMap:
+            name: cinder-bin
+            defaultMode: 504
+        {{ if or .Values.manifests.ceph_conf (contains "cinder.backup.drivers.ceph" .Values.conf.cinder.DEFAULT.backup_driver) (eq "true" (list $envBackend | include "cinder.utils.has_ceph_backend")) }}
+        - name: ceph-etc
+        {{- if .Values.manifests.ceph_conf }}
+          secret:
+            secretName: cinder-etc
+        {{- else }}
+          configMap:
+            name: {{ .Values.ceph_client.configmap }}
+        {{- end }}
+            defaultMode: 416
+        {{ end }}
+        {{- if .Values.conf.enable_iscsi }}
+        - name: host-rootfs
+          hostPath:
+            path: /
+        - name: runlock
+          hostPath:
+            path: /run/lock
+        - name: etciscsi
+          hostPath:
+            path: /etc/iscsi
+        - name: etcmultipath
+          hostPath:
+            path: /etc/multipath
+            type: DirectoryOrCreate
+        - name: dev
+          hostPath:
+            path: /dev
+        - name: libmodules
+          hostPath:
+            path: /lib/modules
+        {{- end }}
+        - name: varlibcinder
+          hostPath:
+            path: {{ .Values.conf.cinder.DEFAULT.state_path | default "/var/lib/cinder" }}
+        - name: lockpath
+          hostPath:
+            path: {{ .Values.conf.cinder.oslo_concurrency.lock_path }}
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{ if $mounts_cinder_backup.volumes }}{{ toYaml $mounts_cinder_backup.volumes | indent 8 }}{{ end }}
+{{- end }}

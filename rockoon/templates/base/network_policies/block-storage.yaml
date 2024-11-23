@@ -1,0 +1,17 @@
+{%- from 'macros/connections.j2' import from_pod_networks %}
+{%- from 'macros/connections.j2' import from_namespaces %}
+{%- set ns_list = ["os_controller", "lma_deployment"] | namespaces  %}
+{%- set cinder_api = "block-storage:cinder:Deployment:cinder-api" %}
+        api:
+          spec:
+            podSelector:
+              matchLabels:
+{{ service_childs[cinder_api].get_pod_labels() | toyaml | indent(16, first=True) }}
+            policyTypes:
+            - Ingress
+            ingress:
+{{ network_policies["ingress"][cinder_api] | toyaml | indent(14, first=True) }}
+              - from:
+{{ from_pod_networks(pod_networks, service_childs[cinder_api].get_np_ports(["c-api"])) | indent(16) }}
+              - from:
+{{ from_namespaces(ns_list, service_childs[cinder_api].get_np_ports(["c-api"])) | indent(16) }}

@@ -1,0 +1,10 @@
+parameters:
+  linux:
+    system:
+      job:
+        keystone_credential_rotate_rsync:
+          enabled: False
+        keystone_fernet_rotate_rsync:
+          enabled: False
+        keystone_job_rotate:
+          enabled: False

@@ -1,0 +1,7 @@
+parameters:
+  neutron:
+    gateway:
+      database:
+        host: ${_param:mcp2_database_neutron_address}
+        password: ${_param:mcp2_database_neutron_password}
+        user: ${_param:mcp2_database_neutron_username}

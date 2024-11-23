@@ -1,0 +1,18 @@
+{%- from 'macros/connections.j2' import from_namespaces %}
+{%- from 'macros/connections.j2' import from_pod_networks %}
+{%- set ns_list = ["os_controller", "lma_deployment", "tf_deployment"] | namespaces  %}
+{%- set api = "key-manager:barbican:Deployment:barbican-api" %}
+        api:
+          spec:
+            podSelector:
+              matchLabels:
+{{ service_childs[api].get_pod_labels() | toyaml | indent(16, first=True) }}
+            policyTypes:
+            - Ingress
+            ingress:
+{{ network_policies["ingress"][api] | toyaml | indent(14, first=True) }}
+# for services like nova-compute which is running with host networking
+              - from:
+{{ from_pod_networks(pod_networks, service_childs[api].get_np_ports(["b-api"])) | indent(16) }}
+              - from:
+{{ from_namespaces(ns_list, service_childs[api].get_np_ports(["b-api"])) | indent(16) }}

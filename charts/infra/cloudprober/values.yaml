@@ -1,0 +1,309 @@
+conf:
+  cloudprober:
+    surfacer:
+      __type__: array
+      prometheus:
+        type: <<PROMETHEUS>>
+        prometheus_surfacer:
+          metrics_prefix: "cloudprober_"
+    probe:
+      __type__: array
+      instances_icmp:
+        name: "openstack-instances-icmp-probe"
+        type: <<PING>>
+        targets:
+          file_targets:
+            file_path: "/etc/cloudprober/targets.d/openstack_instances.json"
+            re_eval_sec: 60
+        interval_msec: 15000
+        timeout_msec: 10000
+        # default stats_export_interval_msec is 10000
+        ping_probe:
+          packets_per_probe: 1
+          packets_interval_msec: 100
+          use_datagram_socket: true
+        additional_label:
+          __type__: array
+          openstack_project_id:
+            key: "openstack_project_id"
+            value: "@target.label.openstack_project_id@"
+          openstack_hypervisor_hostname:
+            key: "openstack_hypervisor_hostname"
+            value: "@target.label.openstack_hypervisor_hostname@"
+          openstack_instance_name:
+            key: "openstack_instance_name"
+            value: "@target.label.openstack_instance_name@"
+          openstack_instance_id:
+            key: "openstack_instance_id"
+            value: "@target.label.openstack_instance_id@"
+      network_ports_icmp:
+        name: "openstack-ports-icmp-probe"
+        type: <<PING>>
+        targets:
+          file_targets:
+            file_path: "/etc/cloudprober/targets.d/openstack_ports.json"
+            re_eval_sec: 60
+        interval_msec: 15000
+        timeout_msec: 10000
+        # default stats_export_interval_msec is 10000
+        ping_probe:
+          packets_per_probe: 1
+          packets_interval_msec: 100
+          use_datagram_socket: true
+        additional_label:
+          __type__: array
+          openstack_project_id:
+            key: "openstack_project_id"
+            value: "@target.label.openstack_project_id@"
+          openstack_hypervisor_hostname:
+            key: "openstack_hypervisor_hostname"
+            value: "@target.label.openstack_hypervisor_hostname@"
+          openstack_instance_name:
+            key: "openstack_instance_name"
+            value: "@target.label.openstack_instance_name@"
+          openstack_instance_id:
+            key: "openstack_instance_id"
+            value: "@target.label.openstack_instance_id@"
+  openstack_discovery:
+    os_cloud: admin
+    interval: 600
+    # discover all resources having openstack tag <tag_name>
+    # should be a string without / or , symbols. Max length - 50 symbols.
+    # Specify "*" to discover all resources regardless of tag.
+    tag_name: openstack.lcm.mirantis.com:prober
+    instances:
+      enabled: true
+    ports:
+      enabled: true
+      # tag_name: openstack.lcm.mirantis.com:prober
+  static_targets: null
+    # cloudprober targets to write in file in format:
+    # target_name1:
+    #   name: target1
+    #   ip: ip1
+    #   labels:
+    #     label1: val1
+    # target_name2:
+    #   name: target2
+    #   ip: ip2
+    #   labels:
+    #     label1: val1
+    #     label2: val2
+
+dependencies:
+  static:
+    cloudprober:
+      services:
+        - endpoint: internal
+          service: compute
+
+# typically overridden by environmental
+# values, but should include all endpoints
+# required by this chart
+endpoints:
+  compute:
+    name: nova
+    hosts:
+      default: nova-api
+      public: nova
+    host_fqdn_override:
+      default: null
+    path:
+      default: "/v2.1/%(tenant_id)s"
+    scheme:
+      default: 'http'
+    port:
+      api:
+        default: 8774
+        public: 80
+  cloudprober:
+    namespace: null
+    hosts:
+      default: cloudprober
+      public: cloudprober
+    host_fqdn_override:
+      default: null
+    path:
+      default: /metrics
+    scheme:
+      default: 'http'
+    port:
+      prober:
+        default: 9313
+        public: 80
+  identity:
+    name: keystone
+    auth:
+      admin:
+        region_name: RegionOne
+        username: admin
+        password: password
+        project_name: admin
+        user_domain_name: default
+        project_domain_name: default
+    hosts:
+      default: keystone
+      internal: keystone-api
+    host_fqdn_override:
+      default: null
+    path:
+      default: /v3
+    scheme:
+      default: http
+    port:
+      api:
+        default: 80
+        internal: 5000
+
+images:
+  pull_policy: IfNotPresent
+  tags:
+    cloudprober: cloudprober/cloudprober:latest
+    cloudprober_openstack_discovery: docker-dev-kaas-local.docker.mirantis.net/openstack/openstack-tools:yoga-focal-20230227093206
+    dep_check: docker-dev-kaas-local.docker.mirantis.net/openstack/extra/kubernetes-entrypoint:v1.0.1-27d64fb-20230421151539
+  local_registry:
+    active: false
+
+labels:
+  prober:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+
+network:
+  prober:
+    port: 9313
+    ingress:
+      public: true
+      classes:
+        namespace: "nginx"
+        cluster: "nginx-cluster"
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /
+    external_policy_local: false
+    node_port:
+      enabled: false
+      port: 39313
+
+network_policy: {}
+
+pod:
+  probes:
+    cloudprober:
+      prober:
+        liveness:
+          enabled: True
+          params:
+            initialDelaySeconds: 120
+            periodSeconds: 10
+            timeoutSeconds: 5
+        readiness:
+          enabled: True
+          params:
+            initialDelaySeconds: 120
+            periodSeconds: 10
+            timeoutSeconds: 5
+      openstack_discovery:
+        liveness:
+          enabled: True
+          params:
+            initialDelaySeconds: 30
+            periodSeconds: 120
+            timeoutSeconds: 5
+        readiness:
+          enabled: True
+          params:
+            initialDelaySeconds: 30
+            periodSeconds: 120
+            timeoutSeconds: 5
+  security_context:
+    cloudprober:
+      pod:
+        runAsUser: 42424
+        fsGroup: 42424
+        runAsNonRoot: true
+        sysctls:
+          - name: net.ipv4.ping_group_range
+            value: "42424 42424"
+      container:
+        prober:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        openstack_discovery_init:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        openstack_discovery:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+  affinity:
+    anti:
+      type:
+        default: requiredDuringSchedulingIgnoredDuringExecution
+      topologyKey:
+        default: kubernetes.io/hostname
+      weight:
+        default: 10
+  mounts:
+    cloudprober:
+      init_container: null
+      prober:
+        volumeMounts:
+        volumes:
+  replicas:
+    cloudprober: 2
+  lifecycle:
+    upgrades:
+      deployments:
+        revision_history: 3
+        pod_replacement_strategy: RollingUpdate
+        rolling_update:
+          # make sure we have 2 instances ready during
+          # update, to decrease downtime
+          max_unavailable: 0
+          max_surge: 1
+    disruption_budget:
+      cloudprober:
+        min_available: 1
+    termination_grace_period:
+      cloudprober:
+        timeout: 30
+  resources:
+    enabled: false
+    cloudprober:
+      requests:
+        memory: "100Mi"
+        cpu: "100m"
+      limits:
+        memory: "200Mi"
+        cpu: "500m"
+    openstack_discovery:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+
+secrets:
+  tls:
+    cloudprober:
+      prober:
+        public: cloudprober-tls-public
+        internal: cloudprober-tls-api
+
+manifests:
+  configmap_bin: true
+  deployment: true
+  ingress: false
+  network_policy: false
+  secret_ingress_tls: false
+  service: true
+  pdb: true

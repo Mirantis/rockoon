@@ -1,0 +1,60 @@
+{%- from 'macros/connections.j2' import to_child_object %}
+rabbitmq:
+  Deployment:
+    openstack-rabbitmq-rabbitmq-exporter:
+      connections:
+        egress:
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["http"]) | indent(12)}}
+      images:
+      - prometheus_rabbitmq_exporter
+      manifest: ''
+      hash_fields: []
+      pod_labels:
+        application: prometheus_rabbitmq_exporter
+        component: exporter
+        release_group: openstack-rabbitmq
+      ports:
+      - port: 9095
+        name: metrics
+        protocol: TCP
+  Job:
+    openstack-rabbitmq-cluster-wait:
+      connections:
+        egress:
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["http"]) | indent(12)}}
+      hash_fields:
+      - endpoints.oslo_messaging.*
+      images:
+      - rabbitmq_scripted_test
+      manifest: job_cluster_wait
+      pod_labels:
+        application: rabbitmq
+        component: cluster-wait
+        release_group: openstack-rabbitmq
+  StatefulSet:
+    openstack-rabbitmq-rabbitmq:
+      hash_fields: []
+      images:
+      - rabbitmq_init
+      - rabbitmq
+      manifest: statefulset
+      pod_labels:
+        application: rabbitmq
+        component: server
+        release_group: openstack-rabbitmq
+      ports:
+      - port: 15672
+        name: http
+        protocol: TCP
+      - port: 5671
+        name: amqp-tls
+        protocol: TCP
+      - port: 5672
+        name: amqp
+        protocol: TCP
+      - port: 25672
+        name: clustering
+        protocol: TCP
+      - port: 15692
+        name: metrics
+        protocol: TCP

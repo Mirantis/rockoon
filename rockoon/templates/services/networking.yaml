@@ -1,0 +1,1134 @@
+#apiVersion: lcm.mirantis.com/v1alpha1
+#kind: HelmBundle
+{%- from 'macros/messaging_service_creds.j2' import messaging_service_creds %}
+{%- set service = 'neutron' %}
+{%- set components_with_dedicated_messaging = spec.get('features', {}).get('messaging', {}).get('components_with_dedicated_messaging', []) %}
+{%- set stacklight_enabled = spec.get('features', {}).get('stacklight', {}).get('enabled', False) %}
+{%- set default_tenant_network_types = ['vxlan'] %}
+{%- set core_plugin = spec.features.neutron.get('backend', 'ml2') %}
+{%- set ovn_enabled = core_plugin == 'ml2/ovn'%}
+{%- if ovn_enabled %}
+{%- set default_tenant_network_types = ['geneve'] %}
+{%- set core_plugin = "ml2" %}
+{%- endif %}
+{%- set tungstenfabric_enabled = spec.features.neutron.get('backend', 'ml2') == 'tungstenfabric' %}
+{%- set tungstenfabric_custom_api_opts = tf_api_service is defined and tf_api_port is defined %}
+{%- set bgpvpn = spec.features.neutron.get('bgpvpn', {'enabled': False}) %}
+{%- set ipsec = spec.features.neutron.get('ipsec', {'enabled': False}) %}
+{%- set vpnaas = spec.features.neutron.get("extensions", {}).get("vpnaas", {"enabled": False}) %}
+{%- set dynamic_routing = spec.features.neutron.get("extensions", {}).get("dynamic_routing", {"enabled": False}) %}
+{%- set trunk_default = not tungstenfabric_enabled and OSVer[spec.openstack_version] >= OSVer.antelope %}
+{%- set trunk = spec.features.neutron.get("extensions", {}).get("trunk", {"enabled": trunk_default}) %}
+{%- set service_providers = [] %}
+{%- set l3_agent_extensions = ["fip_qos", "gateway_ip_qos"] %}
+{%- set notification_topics = ['notifications'] %}
+{%- if tungstenfabric_enabled %}
+  {%- if OSVer[spec.openstack_version] >= OSVer.victoria %}
+    {%- set service_plugins = ['neutron_plugin_contrail.plugins.opencontrail.services.tag.tag_plugin.TagPlugin,neutron_plugin_contrail.plugins.opencontrail.services.timestamp.timestamp_plugin.TimeStampPlugin,neutron_plugin_contrail.plugins.opencontrail.services.trunk.plugin.TrunkPlugin'] %}
+  {%- else %}
+    {%- set service_plugins = ['<None>'] %}
+  {%- endif %}
+{%- else %}
+  {%- set service_plugins = ['router', 'metering', 'qos'] %}
+  {%- if ovn_enabled %}
+    {%- set service_plugins = ['ovn-router', 'metering', 'qos'] %}
+  {%- endif %}
+{%- endif %}
+{%- set portprober_enabled_default = "cloudprober" in spec.features.services and OSVer[spec.openstack_version] >= OSVer.antelope and not tungstenfabric_enabled and not ovn_enabled %}
+{%- set portprober_enabled = spec.features.neutron.get("extensions", {}).get("portprober", {}).get("enabled", portprober_enabled_default) %}
+
+{%- do service_plugins.append('bgpvpn') if bgpvpn.enabled %}
+{%- do service_providers.append("BGPVPN:BaGPipe:networking_bgpvpn.neutron.services.service_drivers.bagpipe.bagpipe_v2.BaGPipeBGPVPNDriver:default") if bgpvpn.enabled %}
+{%- do service_plugins.append('vpnaas') if vpnaas.enabled %}
+{%- do service_providers.append("VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ipsec.IPsecVPNDriver:default") if vpnaas.enabled %}
+{%- do service_plugins.append('bgp') if dynamic_routing.enabled %}
+{%- do l3_agent_extensions.append("vpnaas") if  vpnaas.enabled %}
+{%- do service_plugins.append('portprober') if portprober_enabled %}
+{%- do service_plugins.append('trunk') if trunk.enabled %}
+{%- do notification_topics.append('stacklight_notifications') if stacklight_enabled %}
+{%- set external_notifications_enabled = spec.get('features', {}).get('messaging', {}).get('notifications', {}).get('external', {}).get('enabled', False) %}
+{%- if external_notifications_enabled %}
+  {%- for topic in spec.get('features', {}).get('messaging', {}).get('notifications', {}).get('external', {}).get('topics', []) %}
+    {%- do notification_topics.append(topic) %}
+  {%- endfor %}
+{%- endif  %}
+{%- set floating_network = spec.features.neutron.get('floating_network', {}) %}
+{%- set baremetal_enabled = 'baremetal' in spec.features.get('services', []) %}
+{%- set neutron_node_specific = {} %}
+{%- set sriov = namespace(enabled=false) %}
+{%- set dpdk = namespace(enabled=false) %}
+{%- for label, node_features in spec.get("nodes", {}).items() %}
+  {%- if node_features.get("features", {}).get("neutron", {}) %}
+    {%- do neutron_node_specific.update({label: node_features.features.neutron}) %}
+    {%- if node_features.features.neutron.get("sriov", {}).get("enabled", false) %}
+        {%- set sriov.enabled = true %}
+    {%- endif %}
+    {%- if node_features.features.neutron.get("dpdk", {}).get("enabled", true) %}
+        {%- set dpdk.enabled = true %}
+    {%- endif %}
+  {%- endif %}
+{%- endfor %}
+# NOTE(vsaienko): change default 4789 port to do not conflict with docker swarm
+# overlay networks.
+{%- set vxlan_udp_port = 4790 %}
+
+# TODO: make other networks types configurable
+{%- set networks = {'flat': [], 'vlan': []} %}
+{%- set bridge_mappings = [] %}
+{%- set physnet_vlan_mappings = [] %}
+{%- set physnet_mtus = [] %}
+{%- for network in spec.features.neutron.external_networks %}
+    {%- for network_type in network.network_types %}
+        {%- do networks[network_type].append(network.physnet) %}
+    {%- endfor %}
+    {%- if network.get('vlan_ranges') %}
+        {%- for range in network.vlan_ranges.split(',') %}
+            {%- do physnet_vlan_mappings.append(network.physnet + ':' + range) %}
+        {%- endfor %}
+    {%- endif %}
+    {%- do bridge_mappings.append(network.physnet + ':' + network.bridge) %}
+    {%- if network.get('mtu') %}
+        {%- do physnet_mtus.append(network.physnet + ':' + network.mtu|string) %}
+    {%- endif %}
+{%- endfor %}
+
+{%- set support_sync_ovs_info = True %}
+{%- if OSVer[spec.openstack_version] >= OSVer.master or ovn_enabled %}
+{%- set support_sync_ovs_info = False %}
+{%- endif %}
+{%- set cadf_audit = spec.get('features', {}).get('logging', {}).get('cadf', {'enabled': false}) %}
+{%- set cadf_audit_driver = spec.get('features', {}).get('logging', {}).get('cadf', {}).get('driver', 'messagingv2') %}
+
+{%- set neutron_tenant_network_types = spec.get('features', {}).get('neutron', {}).get('tenant_network_types', default_tenant_network_types) %}
+{%- if 'vxlan' in neutron_tenant_network_types %}
+    {%- set l3_ha_network_type = 'vxlan' %}
+{%- elif 'geneve' in neutron_tenant_network_types %}
+    {%- set l3_ha_network_type = 'geneve' %}
+{%- elif 'gre' in neutron_tenant_network_types %}
+    {%- set l3_ha_network_type = 'gre' %}
+{%- elif 'vlan' in neutron_tenant_network_types %}
+    {%- set l3_ha_network_type = 'vlan' %}
+{%- elif 'flat' in neutron_tenant_network_types %}
+    {%- set l3_ha_network_type = 'flat' %}
+{%- endif %}
+
+spec:
+  releases:
+{%- if 'networking' in components_with_dedicated_messaging %}
+  - name: openstack-neutron-rabbitmq
+    chart: rabbitmq
+    values:
+{% include 'base/_rabbitmq_images.yaml' %}
+  {%- if stacklight_enabled %}
+      monitoring:
+        prometheus:
+          enabled: true
+  {%- endif %}
+{%- if spec.features.network_policies.enabled %}
+      network_policy:
+{% include 'base/network_policies/networking-rabbitmq.yaml' %}
+{%- endif %}
+      pod:
+        replicas:
+          server: 1
+        probes:
+          server:
+            rabbitmq:
+              readiness:
+                params:
+                  periodSeconds: 60
+                  timeoutSeconds: 30
+              liveness:
+                params:
+                  periodSeconds: 60
+                  timeoutSeconds: 30
+      manifests:
+        job_users_create: true
+        network_policy: {{ spec.features.network_policies.enabled }}
+        {%- if stacklight_enabled %}
+        monitoring:
+          prometheus:
+            configmap_bin: true
+            deployment_exporter: true
+            service_exporter: true
+        {%- endif %}
+      volume:
+        enabled: false
+      endpoints:
+        cluster_domain_suffix: {{ spec.internal_domain_name }}
+{% include 'base/_messaging_dedicated.yaml' %}
+      conf:
+        enabled_plugins:
+          - rabbitmq_management
+        {%- if stacklight_enabled %}
+          - rabbitmq_prometheus
+        {%- endif %}
+        users:
+         {{ messaging_service_creds(credentials, "neutron", ["/neutron"], enable_notifications=False)  }}
+        aux_conf:
+          policies:
+          - vhost: neutron
+            name: default-policy
+            pattern: '^(?!amq\.).*'
+            definition:
+              message-ttl: 120000
+              expires: 600000
+          - vhost: neutron
+            name: results_expire
+            pattern: '^results\.'
+            definition:
+              expires: 600000
+            priority: 1
+          - vhost: neutron
+            name: tasks_expire
+            pattern: '^tasks\.'
+            definition:
+              expires: 600000
+            priority: 1
+  {%- if stacklight_enabled %}
+        prometheus_exporter:
+          rabbit_exporters: "overview,exchange,node"
+  {%- endif %}
+{%- endif %}
+  {%- if not tungstenfabric_enabled %}
+  - name: openstack-openvswitch
+    chart: openvswitch
+    values:
+      conf:
+        neutron:
+          DEFAULT:
+            support_sync_ovs_info: {{ support_sync_ovs_info }}
+      {%- if ovn_enabled %}
+        openvswitch_db_server:
+          ptcp_port: 6640
+        external-ids:
+          ovn-bridge: br-int
+          ovn-encap-type: geneve
+          ovn-bridge-mappings: {{ ','.join(bridge_mappings) }}
+          ovn-monitor-all: true
+          ovn-remote-probe-interval: 60000
+          ovn-openflow-probe-interval: 60
+      volume:
+        ovn_db:
+          class_name: {{ spec.get('local_volume_storage_class', 'rockoon-bind-mounts') }}
+      {%- if spec.get('features', {}).get('neutron', {}).get('tunnel_interface') %}
+      network:
+        interface:
+          tunnel: {{ spec.features.neutron.tunnel_interface }}
+      {%- endif %}
+      {%- endif %}
+      pod:
+        probes:
+          ovs_db:
+            ovs_db:
+              liveness:
+                enabled: true
+                params:
+                  initialDelaySeconds: 0
+                  failureThreshold: 3
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+              readiness:
+                enabled: true
+                params:
+                  initialDelaySeconds: 0
+                  failureThreshold: 3
+                  periodSeconds: 20
+                  timeoutSeconds: 5
+          ovs_vswitch:
+            ovs_vswitch:
+              liveness:
+                enabled: true
+                params:
+                  initialDelaySeconds: 0
+                  failureThreshold: 3
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+              readiness:
+                enabled: true
+                params:
+                  initialDelaySeconds: 0
+                  failureThreshold: 3
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+{%- if ovn_enabled %}
+          ovn:
+           northd:
+             liveness:
+               params:
+                 initialDelaySeconds: 10
+             readiness:
+               params:
+                 initialDelaySeconds: 10
+           nb:
+             liveness:
+               params:
+                 initialDelaySeconds: 10
+             readiness:
+               params:
+                 initialDelaySeconds: 10
+           sb:
+             liveness:
+               params:
+                 initialDelaySeconds: 10
+             readiness:
+               params:
+                 initialDelaySeconds: 10
+           vswitchd:
+             liveness:
+               params:
+                 initialDelaySeconds: 10
+             readiness:
+               params:
+                 initialDelaySeconds: 10
+           controller:
+             liveness:
+               params:
+                 initialDelaySeconds: 10
+             readiness:
+               params:
+                 initialDelaySeconds: 10
+           db:
+             liveness:
+               params:
+                 initialDelaySeconds: 10
+             readiness:
+               params:
+                 initialDelaySeconds: 10
+{%- endif %}
+      images:
+        tags:
+{%- for image in [
+    "openvswitch_db_server",
+    "openvswitch_vswitchd",
+    "openvswitch_vswitchd_dpdk",
+    "dep_check",
+    "image_repo_sync",
+    "openvswitch_ovn_db_nb",
+    "openvswitch_ovn_db_sb",
+    "openvswitch_ovn_northd",
+    "openvswitch_ovn_vswitchd",
+    "openvswitch_ovn_db",
+    "openvswitch_ovn_controller"] %}
+        {%- if image in images %}
+          {{ image }}: {{ images[image] }}
+        {%- endif %}
+{%- endfor %}
+{%- if ovn_enabled %}
+      manifests:
+        statefulset_ovn_db: true
+        statefulset_ovn_northd: true
+        service_discovery_ovn_db: true
+        service_master_ovn_db: true
+        daemonset_ovn_controller: true
+        daemonset_ovs_db: false
+        daemonset_ovs_vswitchd: false
+{%- endif %}
+      endpoints:
+        cluster_domain_suffix: {{ spec.internal_domain_name }}
+  {%- endif %}
+  # NODE SPECIFIC START
+  {%- if neutron_node_specific or ovn_enabled %}
+      overrides:
+    {%- if ovn_enabled %}
+        openvswitch_ovn-controller:
+          overrides_default: false
+          labels:
+            openstack-gateway::enabled:
+              values:
+                conf:
+                  external-ids:
+                    ovn-cms-options: "enable-chassis-as-gw"
+                  ovs_bridges:
+      {%- for network in spec.features.neutron.external_networks %}
+                    {{ network.bridge }}:
+                      nics:
+                        - name: {{ network.interface }}
+      {%- endfor %}
+            openstack-compute-node::enabled:
+              values:
+                conf:
+                  ovs_bridges:
+      {%- for network in spec.features.neutron.external_networks %}
+                    {{ network.bridge }}:
+                      nics:
+                        - name: {{ network.interface }}
+      {%- endfor %}
+    {%- endif %}
+    # TODO(vsaienko): implement ovn + dpdk support
+    {%- if dpdk.enabled %}
+       openvswitch_openvswitch-vswitchd:
+          labels:
+    {%- for label, override in neutron_node_specific.items() %}
+      {%- if override.get("dpdk", {}).get("enabled", False) %}
+      {%- set hp_size = override.get("dpdk", {}).get("hugepages", {}).get("size", "2Mi") %}
+      {%- set hp_amount = override.get("dpdk", {}).get("hugepages", {}).get("amount", "1Gi") %}
+      {%- set socket_memory = override.get("dpdk", {}).get("socket_memory", "1024") %}
+            {{ label }}:
+              values:
+                pod:
+                  resources:
+                    enabled: true
+                    ovs:
+                      vswitchd:
+                        limits:
+                          hugepages-{{ hp_size }}: {{ hp_amount }}
+                          memory: {{ hp_amount }}
+                conf:
+                  ovs_dpdk:
+                    enabled: true
+                    driver: {{ override.dpdk.driver }}
+                    hugepages_mountpath: /dev/hugepages
+                    socket_memory: {{ socket_memory }}
+                    vhostuser_socket_dir: vhostuser
+      {%- endif %}
+    {%- endfor %}
+    {%- endif %}
+  {%- endif %}
+  # NODE SPECIFIC END
+{%- if spec.get('migration', {}).get('neutron', {}).get('deploy_main_service', true) %}
+{%- if bgpvpn.get("route_reflector", {}).get("enabled", False) %}
+  - name: openstack-neutron-frrouting
+    chart: frr
+    values:
+      images:
+        tags:
+          {%- for image in [
+          "frr",
+          "frr_init",
+          "frr_info",
+          "dep_check",
+          "image_repo_sync",] %}
+              {%- if image in images %}
+                {{ image }}: {{ images[image] }}
+              {%- endif %}
+          {%- endfor %}
+      conf:
+        bgp:
+          as_number: {{ bgpvpn.as_number }}
+          update_source_interface: {{ bgpvpn.get('control_interface', spec.features.neutron.tunnel_interface) }}
+          {%- if bgpvpn.route_reflector.get("neighbor_subnets") %}
+          neighbor_subnets: {{ bgpvpn.route_reflector.neighbor_subnets }}
+          {%- endif %}
+{%- endif %}
+{%- if ipsec.enabled %}
+  - name: openstack-ipsec
+    chart: strongswan
+    values:
+      images:
+        tags:
+          {%- for image in [
+          "strongswan",
+          "dep_check",
+          "image_repo_sync",] %}
+              {%- if image in images %}
+                {{ image }}: {{ images[image] }}
+              {%- endif %}
+          {%- endfor %}
+      conf:
+        ipsec:
+          conn %default:
+            authby: psk
+          conn vxlan-in:
+            leftsubnet: '0.0.0.0/0[udp/{{ vxlan_udp_port }}]'
+          conn vxlan-out:
+            rightsubnet: '%dynamic[udp/{{ vxlan_udp_port }}]'
+        ipsec_secrets:
+          config:
+            type: psk
+            key: {{ credentials[0].ipsec_secret_key }}
+        strongswan:
+          charon:
+            plugins:
+              # When enabled, all local networks will be automatically bypassed by default
+              # https://docs.strongswan.org/docs/5.9/plugins/bypass-lan.html
+              bypass-lan:
+                interfaces_ignore: {{ spec.features.neutron.tunnel_interface }}
+{%- endif %}
+  - name: openstack-neutron
+    chart: neutron
+    values:
+      images:
+        tags:
+{%- for image in [
+    "neutron_metadata",
+    "db_drop",
+    "image_repo_sync",
+    "neutron_l2gw",
+    "neutron_bagpipe_bgp",
+    "neutron_openvswitch_agent",
+    "neutron_db_sync",
+    "neutron_ovn_db_sync_migrate",
+    "db_init",
+    "neutron_dhcp",
+    "dep_check",
+    "ks_user",
+    "ks_service",
+    "neutron_linuxbridge_agent",
+    "neutron_netns_cleanup_cron",
+    "ks_endpoints",
+    "neutron_l3",
+    "neutron_dr",
+    "neutron_sriov_agent_init",
+    "bootstrap",
+    "neutron_bootstrap",
+    "neutron_ironic_agent",
+    "neutron_sriov_agent",
+    "rabbit_init",
+    "neutron_server",
+    "neutron_rpc_server",
+    "neutron_portprober_agent",
+    "purge_test",
+    "test",] %}
+        {%- if image in images %}
+          {{ image }}: {{ images[image] }}
+        {%- endif %}
+{%- endfor %}
+{%- if OSVer[spec.openstack_version] <= OSVer.xena %}
+# NOTE(mkarpin): In images based on focal and earlier (from queens - to xena) ip6tables
+# utility requires ip6_tables module to be loaded. Starting jammy release (yoga) ip6tables
+# utility doesn't use it.
+      kernel:
+        modules:
+          l3_agent:
+            ip6_tables:
+              enabled: true
+          dhcp_agent:
+            ip6_tables:
+              enabled: true
+          lb_agent:
+            ip6_tables:
+              enabled: true
+{%- endif %}
+      pod:
+        # NOTE(ohryhorov): use_fqdn is disabled not to use FQDN
+        # in agent hostnames
+        use_fqdn:
+          neutron_agent: false
+        probes:
+          rpc_timeout: 30
+          rpc_retries: 2
+          server:
+            server:
+              readiness:
+                enabled: true
+                params:
+                  periodSeconds: 15
+                  timeoutSeconds: 15
+              liveness:
+                enabled: true
+                params:
+                  initialDelaySeconds: 60
+                  periodSeconds: 30
+                  timeoutSeconds: 30
+              startup:
+                enabled: true
+                params:
+                  periodSeconds: 30
+                  successThreshold: 1
+                  timeoutSeconds: 30
+          dhcp_agent:
+            dhcp_agent:
+              liveness:
+                enabled: true
+                params:
+                  initialDelaySeconds: 180
+                  periodSeconds: 90
+                  timeoutSeconds: 65
+          l3_agent:
+            l3_agent:
+              liveness:
+                enabled: true
+                params:
+                  initialDelaySeconds: 180
+                  periodSeconds: 90
+                  timeoutSeconds: 65
+              readiness:
+                # The probe is used to detect inital sync state
+                # it takes near 10-15 minutes to synchronize state for 100 routers
+                # wait for 15x240=3600 unless marking pod as not ready.
+                enabled: true
+                params:
+                  failureThreshold: 240
+                  initialDelaySeconds: 60
+                  periodSeconds: 15
+          ovs_agent:
+            ovs_agent:
+              liveness:
+                enabled: true
+                params:
+                  initialDelaySeconds: 180
+                  periodSeconds: 90
+                  timeoutSeconds: 65
+              readiness:
+                params:
+                  initialDelaySeconds: 30
+                  periodSeconds: 30
+                  timeoutSeconds: 30
+          metadata_agent:
+            metadata_agent:
+              liveness:
+                enabled: true
+                params:
+                  initialDelaySeconds: 180
+                  periodSeconds: 90
+                  timeoutSeconds: 65
+              readiness:
+                enabled: true
+                params:
+                  initialDelaySeconds: 10
+                  periodSeconds: 50
+                  timeoutSeconds: 40
+      {%- if baremetal_enabled %}
+        {%- set ssh_private_key = { 'defined': False } %}
+        {%- for gs_dev in spec.features.neutron.get('baremetal', {}).get('ngs', {}).get('devices', []) %}
+          {%- if gs_dev.ssh_private_key is defined %}
+            {%- do ssh_private_key.update({ 'defined': True }) %}
+            {%- break %}
+          {%- endif %}
+        {%- endfor %}
+        {%- for hw_dev_name, hw_dev in spec.features.neutron.get('baremetal', {}).get('ngs', {}).get('hardware', {}).items() %}
+          {%- if hw_dev.ssh_private_key is defined %}
+            {%- do ssh_private_key.update({ 'defined': True }) %}
+            {%- break %}
+          {%- endif %}
+        {%- endfor %}
+        {%- if ssh_private_key['defined'] %}
+        mounts:
+          neutron_server:
+            neutron_server:
+              volumeMounts:
+              {%- for gs_dev in spec.features.neutron.get('baremetal', {}).get('ngs', {}).get('devices', []) %}
+                - name: ngs-ssh-private
+                  mountPath: /etc/neutron/ngs/{{ gs_dev.name }}.key
+                  subPath: {{ gs_dev.name }}_ssh_private_key
+              {%- endfor %}
+              {%- for hw_dev_name, hw_dev in spec.features.neutron.get('baremetal', {}).get('ngs', {}).get('hardware', {}).items() %}
+                - name: ngs-ssh-private
+                  mountPath: /etc/neutron/ngs/{{ hw_dev_name }}.key
+                  subPath: {{ hw_dev_name }}_ssh_private_key
+              {%- endfor %}
+              volumes:
+                - name: ngs-ssh-private
+                  secret:
+                    secretName: ngs-ssh-keys
+                    defaultMode: 416
+        {%- endif %}
+      {%- endif %}
+      {%- if ovn_enabled %}
+        security_context:
+          neutron_metadata_agent:
+            container:
+              neutron_metadata_agent:
+                privileged: true
+                allowPrivilegeEscalation: true
+      {%- endif %}
+      dependencies:
+        static:
+          db_init:
+            jobs:
+              - openstack-mariadb-cluster-wait
+      {%- if tungstenfabric_enabled and tungstenfabric_custom_api_opts %}
+          ks_endpoints:
+            jobs:
+              - neutron-ks-service
+              - tungstenfabric-ks-service
+      {%- endif %}
+      endpoints:
+        cluster_domain_suffix: {{ spec.internal_domain_name }}
+{% include 'base/_admin_identity.yaml' %}
+{% include 'base/_cache.yaml' %}
+        oslo_db:
+          auth:
+            admin:
+              username: {{ admin_creds.database.username }}
+              password: {{ admin_creds.database.password }}
+            neutron:
+              username: {{ credentials[0].database.user.username }}
+              password: {{ credentials[0].database.user.password }}
+{%- if 'networking' in components_with_dedicated_messaging %}
+{% include 'base/_messaging_dedicated.yaml' %}
+{%- else %}
+{% include 'base/_messaging_shared.yaml' %}
+{%- endif %}
+{% include 'base/_notifications.yaml' %}
+        network:
+          host_fqdn_override:
+            public:
+              host: neutron.{{ spec.public_domain_name }}
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+{%- if proxy_settings is defined %}
+{%- if proxy_settings.get("proxy_ca_certificate") %}
+{{ proxy_settings["proxy_ca_certificate"] | indent( width=18, first=True) }}
+{%- endif %}
+{%- endif %}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          hosts:
+            admin:
+              host: neutron-server
+            default: neutron
+            internal: neutron-server
+            public:
+              host: neutron
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          port:
+            api:
+              admin: 9696
+              default: 80
+              internal: 9696
+              public: 443
+          scheme:
+            default: http
+            public: https
+        compute_metadata:
+          hosts:
+            default: nova-metadata
+            public: nova-metadata
+          scheme:
+            default: http
+      {%- if tungstenfabric_enabled and tungstenfabric_custom_api_opts %}
+        tungstenfabric:
+          host_fqdn_override:
+            public:
+              host: {{ tf_api_service }}.{{ spec.public_domain_name }}
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          hosts:
+            default: {{ tf_api_service }}
+            public:
+              host: {{ tf_api_service }}
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          port:
+            api:
+              default: {{ tf_api_port }}
+              public: 443
+          scheme:
+            default: http
+            public: https
+      {%- endif %}
+{%- if spec.features.network_policies.enabled %}
+      network_policy:
+{% include 'base/network_policies/networking.yaml' %}
+{%- endif %}
+      manifests:
+      {%- if sriov.enabled %}
+        daemonset_sriov_agent: true
+      {%- endif %}
+        job_rabbit_init: false
+      {%- if baremetal_enabled %}
+        deployment_ironic_agent: true
+      {%- endif %}
+        secret_ca_bundle: true
+      {%- if tungstenfabric_enabled or ovn_enabled %}
+        daemonset_dhcp_agent: false
+        daemonset_l3_agent: false
+        daemonset_lb_agent: false
+        daemonset_ovs_agent: false
+        daemonset_sriov_agent: false
+        daemonset_netns_cleanup_cron: false
+        pod_rally_test: false
+      {%- endif %}
+      {%- if tungstenfabric_enabled %}
+        daemonset_metadata_agent: false
+      {%- endif %}
+      {%- if bgpvpn.enabled %}
+        daemonset_bagpipe_bgp: true
+      {%- endif %}
+      {%- if dynamic_routing.enabled %}
+        daemonset_dr_agent: true
+      {%- endif %}
+        network_policy: {{ spec.features.network_policies.enabled }}
+      {%- if portprober_enabled %}
+        daemonset_portprober_agent: true
+      {%- endif %}
+      network:
+        server:
+          ingress:
+            annotations:
+            {%- if 'baremetal' in spec.features.services %}
+              nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+            {%- else %}
+              nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+            {%- endif %}
+        core_plugin: {{ core_plugin }}
+      {%- if spec.get('features', {}).get('neutron', {}).get('tunnel_interface') %}
+        interface:
+          tunnel: {{ spec.features.neutron.tunnel_interface }}
+      {%- endif %}
+      {%- set neutron_backends = [] %}
+      {%- if ovn_enabled %}
+        {%- do neutron_backends.extend(["ovn"]) %}
+      {%- else %}
+        {%- do neutron_backends.extend(["openvswitch"]) %}
+      {%- endif %}
+      {%- if baremetal_enabled %}
+          {%- do neutron_backends.extend(["baremetal", "genericswitch"]) %}
+      {%- endif %}
+      {%- if sriov.enabled %}
+          {%- do neutron_backends.extend(["sriovnicswitch"]) %}
+      {%- endif %}
+      {%- if neutron_backends %}
+        backend: {{ neutron_backends }}
+      {%- endif %}
+      {%- if floating_network.get('enabled', False) %}
+      bootstrap:
+        enabled: true
+        {%- if not tungstenfabric_enabled %}
+          {%- do floating_network.update({ 'default': True }) %}
+          {%- do floating_network.setdefault('network_type', 'flat') %}
+        {%- endif %}
+        {%- do floating_network.update({ 'external': True }) %}
+        {%- do floating_network.setdefault('name', 'public') %}
+        {%- do floating_network.subnet.update({ 'dhcp': False }) %}
+        {%- do floating_network.subnet.setdefault('name', 'public-subnet') %}
+        {%- do floating_network.setdefault('router', {'name': 'r1'}) %}
+        floating_network: {{ floating_network }}
+      {%- endif %}
+      conf:
+        policy.d:
+          01-controller-default.yaml: {{ service_policy }}
+          02-custom.yaml: {{ spec.get("features", {}).get("policies", {}).get("neutron", {}) }}
+        paste:
+          app:neutronversions:
+            paste.app_factory: neutron.pecan_wsgi.app:versions_factory
+        neutron:
+          {%- if ovn_enabled %}
+          ovn:
+            enable_distributed_floating_ip: {{ spec.get('features', {}).get('neutron', {}).get('dvr', {}).get('enabled', False) }}
+            {%- if spec.get('features', {}).get('neutron', {}).get('dns_servers', []) %}
+            dns_servers: {{ spec.features.neutron.dns_servers |join(',') }}
+            {%- endif %}
+          {%- endif %}
+          cache:
+            backend: oslo_cache.memcache_pool
+          keystone_authtoken:
+            memcache_security_strategy: ENCRYPT
+            memcache_secret_key: {{ credentials[0].memcached }}
+            {%- if OSVer[spec.openstack_version] >= OSVer.train %}
+            service_type: network
+            {%- endif %}
+          DEFAULT:
+            support_sync_ovs_info: {{ support_sync_ovs_info }}
+            support_sync_ha_routers_info: {{ support_sync_ovs_info }}
+            router_processes_greentlet_max: 10
+            {%- if ovn_enabled %}
+            dhcp_agent_notification: false
+            {%- endif %}
+            api_workers: 4
+            # Combined DVR + L3 HA is not recommended until load tested (had issues in the past)
+            {%- if spec.get('features', {}).get('neutron', {}).get('dvr', {}).get('enabled', False) %}
+            l3_ha: False
+            # NOTE(vsaienko): Enable automatic l3 agent failover only when using non-HA routers, for example
+            # DVR case, to make sure SNAT parts are moved from dead node automatically. For HA routers we allow
+            # one node failure a time, as we have backup router.
+            allow_automatic_l3agent_failover: True
+            {%- else %}
+            l3_ha: True
+            allow_automatic_l3agent_failover: False
+            {%- endif %}
+            max_l3_agents_per_router: 2
+            l3_ha_network_type: {{ l3_ha_network_type }}
+            dhcp_agents_per_network: 2
+            {%- if 'dns' in spec.features.services %}
+            external_dns_driver: designate
+            # NOTE: dns_domain can be safely hardcoded because it is just prerequisite option
+            # for enabling dns integration
+            dns_domain: openstack.internal.
+            {%- endif %}
+            {%- if spec.get('features', {}).get('neutron', {}).get('dvr', {}).get('enabled', False) %}
+            router_distributed: True
+            {%- endif %}
+            {%- if spec.get('features', {}).get('neutron', {}).get('dns_servers', []) %}
+            dnsmasq_dns_servers: {{ spec.features.neutron.dns_servers |join(',') }}
+            {%- else %}
+            dnsmasq_local_resolv: true
+            {%- endif %}
+            service_plugins: {{ service_plugins|join(',') }}
+          {%- if tungstenfabric_enabled %}
+            core_plugin: neutron_plugin_contrail.plugins.opencontrail.contrail_plugin.NeutronPluginContrailCoreV2
+          quotas:
+            quota_driver: neutron_plugin_contrail.plugins.opencontrail.quota.driver.QuotaDriver
+          {%- endif %}
+          {%- if cadf_audit.enabled %}
+          audit_middleware_notifications:
+            driver: {{ cadf_audit_driver }}
+          {%- else %}
+          audit_middleware_notifications:
+            driver: noop
+          {%- endif %}
+          oslo_messaging_notifications:
+            topics: {{ notification_topics|join(',') }}
+{% include 'base/_oslo_policy_enforce_defaults.yaml' %}
+          {%- if service_providers %}
+          service_providers:
+            service_provider:
+              type: multistring
+              values: {{ service_providers }}
+          {%- endif %}
+          # TODO: option will be removed in Yoga, it will be default behavior.
+          {%- if OSVer[spec.openstack_version] >= OSVer.victoria %}
+          nova:
+            live_migration_events: true
+          {%- endif %}
+          ironic:
+            valid_interfaces: internal
+        logging:
+          logger_neutron:
+            level: {{ spec.get('features', {}).get('logging', {}).get('neutron', {}).get('level', 'INFO') }}
+          logger_neutron_lib:
+             handlers: ""
+             level: {{ spec.get('features', {}).get('logging', {}).get('neutron', {}).get('level', 'INFO') }}
+             qualname: neutron_lib
+        l3_agent:
+          agent:
+            extensions: {{ ','.join(l3_agent_extensions) }}
+          {%- if vpnaas.enabled %}
+          vpnagent:
+            vpn_device_driver: neutron_vpnaas.services.vpn.device_drivers.strongswan_ipsec.StrongSwanDriver
+          {%- endif %}
+          {%- if spec.get('features', {}).get('neutron', {}).get('dvr', {}).get('enabled', False) %}
+          DEFAULT:
+            agent_mode: dvr_snat
+          {%- elif OSVer[spec.openstack_version] >= OSVer.ussuri %}
+          DEFAULT:
+            cleanup_on_shutdown: True
+          {%- endif %}
+        metadata_agent:
+          DEFAULT:
+            metadata_proxy_shared_secret: {{ credentials[0].metadata_secret }}
+            nova_metadata_port: 8775
+            nova_metadata_protocol: http
+          {%- if ovn_enabled %}
+          ovs:
+            ovsdb_connection: tcp:127.0.0.1:6640
+          {%- endif %}
+        plugins:
+          ml2_conf:
+            {%- if ovn_enabled %}
+            ovn:
+              ovn_metadata_enabled: true
+            {%- endif %}
+            {%- if physnet_vlan_mappings %}
+            ml2_type_vlan:
+              network_vlan_ranges: {{ ','.join(physnet_vlan_mappings) }}
+            {%- endif %}
+            ml2_type_flat:
+              flat_networks: {{ ','.join(networks.flat) }}
+            {%- if ovn_enabled %}
+            ml2_type_geneve:
+              max_header_size: 38
+              vni_ranges: 1:65536
+            {%- endif %}
+            ml2:
+            {%- if ovn_enabled %}
+              mechanism_drivers: ovn
+              type_drivers: local,flat,vlan,geneve,vxlan
+            {%- endif %}
+            {%- if physnet_mtus %}
+              physical_network_mtus: {{ physnet_mtus }}
+            {%- endif %}
+              extension_drivers:
+                - port_security
+                - qos
+              {%- if 'dns' in spec.features.services %}
+                - dns_domain_ports
+              {%- endif %}
+              tenant_network_types: {{ spec.features.neutron.get('tenant_network_types', default_tenant_network_types)|join(',') }}
+          {%- if baremetal_enabled %}
+            {%- for gs_dev in spec.features.neutron.get('baremetal', {}).get('ngs', {}).get('devices', []) %}
+            genericswitch:{{ gs_dev.name }}:
+              device_type: {{ gs_dev.device_type }}
+              ip: {{ gs_dev.ip }}
+              username: {{ gs_dev.username }}
+              {% if gs_dev.password is defined %}password: {{ gs_dev.password }}{% endif %}
+              {% if gs_dev.secret is defined %}password: {{ gs_dev.secret }}{% endif %}
+              {%- if gs_dev.ssh_private_key is defined %}
+              key_file: /etc/neutron/ngs/{{ gs_dev.name }}.key
+              {%- endif %}
+              {%- for key, val in  gs_dev.get('raw', {}).items() %}
+              {{ key }}: {{ val }}
+              {%- endfor %}
+            {%- endfor %}
+            {%- for hw_dev_name, hw_dev in spec.features.neutron.get('baremetal', {}).get('ngs', {}).get('hardware', {}).items() %}
+            genericswitch:{{ hw_dev_name }}:
+              device_type: {{ hw_dev.device_type }}
+              ip: {{ hw_dev.ip }}
+              username: {{ hw_dev.username }}
+              {% if hw_dev.password is defined %}password: {{ hw_dev.password }}{% endif %}
+              {% if hw_dev.secret is defined %}password: {{ hw_dev.secret }}{% endif %}
+              {%- if hw_dev.ssh_private_key is defined %}
+              key_file: /etc/neutron/ngs/{{ hw_dev_name }}.key
+              {%- endif %}
+              {%- for key, val in hw_dev.get('raw', {}).items() %}
+              {{ key }}: {{ val }}
+              {%- endfor %}
+            {%- endfor %}
+          {%- endif %}
+          openvswitch_agent:
+            agent:
+              vxlan_udp_port: {{ vxlan_udp_port }}
+              tunnel_types: vxlan
+              {%- if spec.get('features', {}).get('neutron', {}).get('dvr', {}).get('enabled', False) %}
+              enable_distributed_routing: True
+              allowed_address_pair_arp_responder: True
+              {%- endif %}
+              extensions: qos
+            ovs:
+              bridge_mappings: {{ ','.join(bridge_mappings) }}
+            securitygroup:
+              # iptables security groups may lead to conflicts with k8s iptables rules on host
+              # so use openvswitch securuty groups by default
+              # (https://mirantis.jira.com/browse/PRODX-2048)
+              firewall_driver: openvswitch
+          linuxbridge_agent:
+            linux_bridge:
+              bridge_mappings: {{ ','.join(bridge_mappings) }}
+        auto_bridge_add:
+{%- for network in spec.features.neutron.external_networks %}
+          {{ network.bridge }}: {{ network.interface }}
+{%- endfor %}
+      {%- if bgpvpn.enabled %}
+          br-mpls: 'null'
+        bagpipe_bgp:
+          bgp:
+            local_address: {{ bgpvpn.get('control_interface', spec.features.neutron.tunnel_interface) }}
+            {%- set bgpvpn_peers = bgpvpn.get("peers", bgpvpn_reflector_peers) %}
+            {%- if bgpvpn_peers %}
+            peers: {{ bgpvpn_peers | join(',') }}
+            {%- endif %}
+            my_as: {{ bgpvpn.as_number }}
+          common:
+            root_helper: sudo /var/lib/openstack/bin/neutron-rootwrap /etc/neutron/rootwrap.conf
+          api:
+            host: localhost
+            port: 8082
+          dataplane_driver_ipvpn:
+            dataplane_driver: ovs
+            dataplane_local_address: {{ bgpvpn.get('dataplane_interface', spec.features.neutron.tunnel_interface) }}
+            ovs_bridge: br-mpls
+            mpls_interface: '*gre*'
+            gre_tunnel_options: packet_type=legacy_l3
+            proxy_arp: false
+          dataplane_driver_evpn:
+            dataplane_driver: ovs
+            dataplane_local_address: {{ bgpvpn.get('dataplane_interface', spec.features.neutron.tunnel_interface) }}
+            vxlan_dst_port: {{ bgpvpn.get('evpn_vxlan_port', vxlan_udp_port) }}
+      {%- endif %}
+      # turn on option for versions starting from victoria besides master
+      {%- if OSVer.victoria <= OSVer[spec.openstack_version] < OSVer.master %}
+        netns_cleanup:
+          orphaned_ports: true
+      {%- endif %}
+      labels:
+        sriov:
+          node_selector_key: openstack-compute-node
+          node_selector_value: enabled
+        netns_cleanup_cron:
+          node_selector_key: openvswitch
+          node_selector_value: enabled
+      {%- if ovn_enabled %}
+        # NOTE(vsaienko): for Ironic use-case metadata is provided from gtw node
+        agent:
+          metadata:
+            node_selector_key: openvswitch
+            node_selector_value: enabled
+      {%- endif %}
+      # NODE SPECIFIC START
+      overrides:
+      {%- if spec.get('features', {}).get('neutron', {}).get('dvr', {}).get('enabled', False) %}
+        neutron_l3-agent:
+          labels:
+            openstack-compute-node::enabled:
+              values:
+                pod:
+                  lifecycle:
+                    upgrades:
+                      daemonsets:
+                        l3_agent:
+                          max_unavailable: 10%
+                labels:
+                  agent:
+                    l3:
+                      node_selector_key: openstack-compute-node
+                      value: enabled
+                conf:
+                  l3_agent:
+                    DEFAULT:
+                      agent_mode: dvr
+      {%- endif %}
+        neutron_ovs-agent:
+          labels:
+      {%- for label, override in neutron_node_specific.items() %}
+        {%- set bagpipe_bgpvpn = override.get('bgpvpn', {}).get('enabled', False) %}
+        {%- if override.get("dpdk", {}).get("enabled", False) or override.get('tunnel_interface') or bagpipe_bgpvpn %}
+            {{ label }}:
+              values:
+                {%- if override.get('tunnel_interface') %}
+                network:
+                  interface:
+                    tunnel: {{  override.tunnel_interface }}
+                {%- endif %}
+                {%- if override.get("dpdk", {}).get("enabled", False) or bagpipe_bgpvpn %}
+                conf:
+                  {%- if override.get("dpdk", {}).get("enabled", False) %}
+                  ovs_dpdk:
+                    bonds: {{ override.dpdk.get("bonds", []) }}
+                    bridges: {{ override.dpdk.bridges }}
+                    driver: {{ override.dpdk.driver }}
+                    nics: {{ override.dpdk.get("nics", []) }}
+                    enabled: true
+                  {%- endif %}
+                  plugins:
+                    openvswitch_agent:
+                  {%- if override.get("dpdk", {}).get("enabled", False) %}
+                      ovs:
+                        datapath_type: netdev
+                        vhostuser_socket_dir: /var/run/openvswitch/vhostuser
+                  {%- endif %}
+                  {%- if bagpipe_bgpvpn %}
+                      agent:
+                        extensions: qos,bagpipe_bgpvpn
+                  {%- endif %}
+                {%- endif %}
+        {%- endif %}
+      {%- endfor %}
+      {%- if sriov.enabled %}
+        neutron_sriov-agent:
+          overrides_default: false
+          labels:
+        {%- for label, override in neutron_node_specific.items() %}
+          {%- if override.get("sriov", {}).get("enabled", False) %}
+            {{ label }}:
+              values:
+                network:
+                  interface:
+                    sriov: {{ override.sriov.nics }}
+          {%- endif %}
+        {%- endfor %}
+      {%- endif %}
+      # NODE SPECIFIC END
+      jobs:
+{% include 'base/_ks_jobs.yaml' %}
+{%- endif %}

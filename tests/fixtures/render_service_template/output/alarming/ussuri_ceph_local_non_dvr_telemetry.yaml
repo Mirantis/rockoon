@@ -1,0 +1,210 @@
+spec:
+  releases:
+  - name: openstack-aodh
+    chart: aodh
+    values:
+      images:
+        tags:
+          dep_check: dep-check:latest
+          db_init: db-init:latest
+          db_drop: db-drop:latest
+          bootstrap: bootstrap:latest
+          ks_user: ks-user:latest
+          ks_service: ks-service:latest
+          ks_endpoints: ks-endpoints:latest
+          rabbit_init: rabbit-init:latest
+          aodh_db_sync: aodh-db-sync:latest
+          aodh_api: aodh-api:latest
+          aodh_evaluator: aodh-evaluator:latest
+          aodh_listener: aodh-listener:latest
+          aodh_notifier: aodh-notifier:latest
+          aodh_db_purge: aodh-db-purge:latest
+          image_repo_sync: image-repo-sync:latest
+      conf:
+        policy.d:
+          01-controller-default.yaml: {'alarming_rule1': 'alarming_value1'}
+          02-custom.yaml: {}
+        aodh:
+          api:
+            gnocchi_external_project_owner: service
+            gnocchi_external_domain_name: service
+          coordination:
+            backend_url: etcd3://etcd:2379
+          database:
+            alarm_history_time_to_live: 86400
+          keystone_authtoken:
+            memcache_security_strategy: ENCRYPT
+            memcache_secret_key: vaT1fSWMgCwFlXem
+            service_type: alarming
+          oslo_policy:
+            enforce_new_defaults: false
+            enforce_scope: false
+        logging:
+          logger_aodh:
+            level: INFO
+      dependencies:
+        static:
+          db_init:
+            jobs:
+              - openstack-mariadb-cluster-wait
+      network_policy:
+        api:
+          spec:
+            ingress:
+              - from:
+                - default: selector
+              - from:
+                - namespaceSelector:
+                    matchLabels:
+                      kubernetes.io/metadata.name: osh-system
+                - namespaceSelector:
+                    matchLabels:
+                      kubernetes.io/metadata.name: stacklight
+                ports:
+                - port: 8042
+                  protocol: TCP
+            podSelector:
+              matchLabels:
+                application: aodh
+                component: api
+            policyTypes:
+            - Ingress
+      manifests:
+        network_policy: true
+        job_rabbit_init: false
+        secret_ca_bundle: true
+        cron_job_db_purge: true
+      endpoints:
+        cluster_domain_suffix: cluster.local
+        identity:
+          auth:
+            admin:
+              region_name: RegionOne
+              username: admin
+              password: ZUqTyP2XwsgEGKZ7qNhhecYyq9NLkGE6
+              project_name: admin
+              user_domain_name: default
+              project_domain_name: default
+              default_domain_id: default
+            aodh:
+              username: aodheGbd
+              password: 9iaJ9hP83P41Mz8WMww1IggDCclZXWFM
+              region_name: 'RegionOne'
+            test:
+              username: testZL04
+              password: DExly456mr4ZGIlmtccQRs5jsmMR1W9A
+              region_name: 'RegionOne'
+        oslo_cache:
+          statefulset:
+            name: openstack-memcached-memcached
+            replicas: 3
+        oslo_db:
+          auth:
+            admin:
+              username: root
+              password: QACDSM6FBTH2LuXjTuRQ6DXhD8bSgPbn
+            aodh:
+              username: aodh3dEe
+              password: WxMxKPef5uHCHZHPfYBMNwY1fGxUG8pD
+        oslo_messaging:
+          auth:
+            admin:
+              username: rabbitmq
+              password: 2tnAuP0j9MsgaVHErehZkC5HCK3ZxYLr
+            user:
+              username: rabbitmq
+              password: 2tnAuP0j9MsgaVHErehZkC5HCK3ZxYLr
+            guest:
+              username: guest
+              password: 7TnAuP0dKMsgaVHErehZkC5HCK3ZxOi4
+            aodh:
+              username: aodhfe3v
+              password: D3R9K371zxx2bygGZRXgz2Mrp2XsL1P6
+          statefulset:
+            replicas: 1
+            name: openstack-rabbitmq-rabbitmq
+          hosts:
+            default: rabbitmq
+          path: /aodh
+        oslo_messaging_notifications:
+          auth:
+            aodh:
+              password: dxDZQgkkcVjGQAQw5dfZKSlpbHlMpxlA
+              username: aodh3FeH
+          host_fqdn_override: {}
+          hosts:
+            default: rabbitmq
+          path: /openstack
+          port:
+            amqp:
+              default: 5672
+            http:
+              default: 15672
+          scheme: rabbit
+          statefulset:
+            name: openstack-rabbitmq-rabbitmq
+            replicas: 1
+        alarming:
+          host_fqdn_override:
+            public:
+              host: aodh.it.just.works
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          hosts:
+            admin:
+              host: aodh-api
+            default: aodh
+            internal: aodh-api
+            public:
+              host: aodh
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          port:
+            api:
+              admin: 8042
+              default: 80
+              internal: 8042
+              public: 443
+          scheme:
+            default: http
+            public: https
+      jobs:
+        db_purge:
+          cron: '1 6 * * 1'
+          enabled: true
+        ks_service:
+          restartPolicy: Never
+        ks_endpoints:
+          restartPolicy: Never
+        ks_user:
+          restartPolicy: Never
+      pod:
+        probes:
+          evaluator:
+            evaluator:
+              readiness:
+                enabled: false
+              liveness:
+                enabled: false
+          listener:
+            listener:
+              readiness:
+                enabled: false
+              liveness:
+                enabled: false
+          notifier:
+            notifier:
+              readiness:
+                enabled: false
+              liveness:
+                enabled: false

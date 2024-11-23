@@ -1,0 +1,80 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.job_db_sync }}
+{{- $envAll := . }}
+
+{{- $storageDriver := .Values.conf.gnocchi.storage.driver }}
+
+{{- $serviceAccountName := "gnocchi-db-sync" }}
+{{ tuple $envAll "db_sync" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gnocchi-db-sync
+spec:
+  backoffLimit: 20
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "gnocchi" "db-sync" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "db_sync" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      restartPolicy: OnFailure
+      nodeSelector:
+        {{ .Values.labels.job.node_selector_key }}: {{ .Values.labels.job.node_selector_value }}
+      initContainers:
+{{ tuple $envAll "db_sync" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+      containers:
+        - name: gnocchi-db-sync
+{{ tuple $envAll "gnocchi_db_sync" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "db_sync" "container" "db_sync" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.db_sync | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          command:
+            - /tmp/db-sync.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: gnocchi-etc
+              mountPath: /etc/gnocchi/gnocchi.conf
+              subPath: gnocchi.conf
+            - name: gnocchi-bin
+              mountPath: /tmp/db-sync.sh
+              subPath: db-sync.sh
+{{- if eq $storageDriver "ceph" }}
+            - name: ceph-etc
+              mountPath: /etc/ceph/ceph.conf
+              subPath: ceph.conf
+              readOnly: true
+            {{ dict "envAll" $envAll "objectType" "mountpoint" "application" "gnocchi" | include "helm-toolkit.snippets.kubernetes_ceph_keyring_objects" | indent 12 }}
+{{- end }}
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: gnocchi-etc
+          secret:
+            secretName: gnocchi-etc
+            defaultMode: 416
+        - name: gnocchi-bin
+          configMap:
+            name: gnocchi-bin
+            defaultMode: 504
+{{- if eq $storageDriver "ceph" }}
+        - name: ceph-etc
+          configMap:
+            name: {{ .Values.ceph_client.configmap }}
+{{- end }}
+{{- end }}

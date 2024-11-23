@@ -1,0 +1,71 @@
+- name: Read osdpl ca
+  slurp:
+    src: "{{ rvl_ca_certs_path }}/ca-certificate.pem"
+  register: osdpl_ca_certificate_result
+
+- name: Read osdpl key
+  slurp:
+    src: "{{ rvl_ca_certs_path }}/osdpl.key"
+  register: osdpl_api_key_result
+
+- name: Read osdpl cert
+  slurp:
+    src: "{{ rvl_ca_certs_path }}/osdpl.pem"
+  register: osdpl_api_cert_result
+
+- name: Template a file secret /src/k8s/secret-osdpl-hidden.yaml
+  ansible.builtin.template:
+    src: secret-osdpl-hidden.j2
+    dest: /src/k8s/secret-osdpl-hidden.yaml
+    owner: bin
+    group: root
+    mode: '0644'
+  vars:
+    api_key: "{{ osdpl_api_key_result.content }}"
+    ca_cert: "{{ osdpl_ca_certificate_result.content }}"
+    api_cert: "{{ osdpl_api_cert_result.content }}"
+  register: osdpl_hidden
+
+- name: Create osdpl-hiden secret
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    state: present
+    src: "{{rvl_k8s_objects_path }}/secret-osdpl-hidden.yaml"
+  when: osdpl_hidden is changed
+
+- name: Template a file osdpl /src/k8s/osdpl.yaml
+  ansible.builtin.template:
+    src: osdpl.j2
+    dest: "{{rvl_k8s_objects_path }}/osdpl.yaml"
+    owner: bin
+    group: root
+    mode: '0644'
+  vars:
+    rockoon:
+      osdpl:
+        binary_base_url: "{{ rvl_binary_base_url }}"
+        images_base_url: "{{ rvl_images_base_url }}"
+  register: osdpl
+
+- name: Create OpenStackDeployment
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    state: present
+    src: "{{rvl_k8s_objects_path }}/osdpl.yaml"
+  when: osdpl is changed
+
+- name: Install the latest jq
+  ansible.builtin.package:
+    name:
+      - jq
+    state: latest
+
+- name: Wait OpenStackDeployment is applied
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+    NAMESPACE: openstack
+    OSDPL_NAME: osh-dev
+  ansible.builtin.script: osdpl-wait.sh
+  tags:
+  - never
+  - wait

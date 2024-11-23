@@ -1,0 +1,28 @@
+{%- from 'macros/connections.j2' import from_namespaces %}
+{%- from 'macros/connections.j2' import from_all %}
+{%- set api_ns_list = ["os_controller", "lma_deployment"] | namespaces  %}
+{%- set api_pod = "dns:designate:StatefulSet:designate-api" %}
+{%- set mdns_pod = "dns:designate:StatefulSet:designate-mdns" %}
+        api:
+          spec:
+            podSelector:
+              matchLabels:
+{{ service_childs[api_pod].get_pod_labels() | toyaml | indent(16, first=True) }}
+            policyTypes:
+            - Ingress
+            ingress:
+{{ network_policies["ingress"][api_pod] | toyaml | indent(14, first=True) }}
+              - from:
+{{ from_namespaces(api_ns_list, service_childs[api_pod].get_np_ports(["dns-api"])) | indent(16) }}
+        mdns:
+          spec:
+            podSelector:
+              matchLabels:
+{{ service_childs[mdns_pod].get_pod_labels() | toyaml | indent(16, first=True) }}
+            policyTypes:
+            - Ingress
+            ingress:
+              - from:
+{{ from_all(service_childs[mdns_pod].get_np_ports(["pdns-tcp", "pdns-udp"])) | indent(16) }}
+              - from:
+{{ from_namespaces(api_ns_list, service_childs[mdns_pod].get_np_ports(["pdns-api"])) | indent(16) }}

@@ -1,0 +1,119 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    k8s-app: image-precaching
+  name: image-precaching-0
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cache
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cache
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: openstack-control-plane
+                operator: In
+                values:
+                - enabled
+            - matchExpressions:
+              - key: openstack-compute-node
+                operator: In
+                values:
+                - enabled
+            - matchExpressions:
+              - key: openvswitch
+                operator: In
+                values:
+                - enabled
+      containers:
+      - command:
+        - /bin/sleep
+        - '86400000'
+        image: neutron:latest
+        livenessProbe:
+          exec:
+            command:
+            - "true"
+          periodSeconds: 3600
+        readinessProbe:
+          exec:
+            command:
+            - "true"
+          periodSeconds: 20
+        name: image-precaching-neutron-db-sync
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+      - command:
+        - /bin/sleep
+        - '86400000'
+        image: nova:latest
+        livenessProbe:
+          exec:
+            command:
+            - "true"
+          periodSeconds: 3600
+        readinessProbe:
+          exec:
+            command:
+            - "true"
+          periodSeconds: 20
+        name: image-precaching-nova-api
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+      - command:
+        - /bin/sleep
+        - '86400000'
+        image: libvirt:latest
+        livenessProbe:
+          exec:
+            command:
+            - "true"
+          periodSeconds: 3600
+        readinessProbe:
+          exec:
+            command:
+            - "true"
+          periodSeconds: 20
+        name: image-precaching-libvirt
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+      - command:
+        - /bin/sleep
+        - '86400000'
+        image: openvswitch:latest
+        livenessProbe:
+          exec:
+            command:
+            - "true"
+          periodSeconds: 3600
+        readinessProbe:
+          exec:
+            command:
+            - "true"
+          periodSeconds: 20
+        name: image-precaching-openvswitch
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        allowPrivilegeEscalation: false

@@ -1,0 +1,97 @@
+- name: Create a directory if it does not exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0750'
+  loop:
+    - "{{ rvl_ca_certs_path }}"
+
+- name: Check whether CA certificate exists
+  stat:
+    path: "{{ rvl_ca_certs_path }}/ca-certificate.key"
+  register: osdpl_ca_certificate_exits
+
+- name: Create CA private key
+  community.crypto.openssl_privatekey:
+    path: "{{ rvl_ca_certs_path }}/ca-certificate.key"
+  when: not osdpl_ca_certificate_exits.stat.exists
+  run_once: true
+
+- name: Create certificate signing request (CSR) for CA certificate
+  community.crypto.openssl_csr_pipe:
+    privatekey_path: "{{ rvl_ca_certs_path }}/ca-certificate.key"
+    common_name: OSDPL CA
+    use_common_name_for_san: false  # since we do not specify SANs, don't use CN as a SAN
+    basic_constraints:
+      - 'CA:TRUE'
+    basic_constraints_critical: true
+    key_usage:
+      - keyCertSign
+    key_usage_critical: true
+  register: osdpl_ca_csr
+  run_once: true
+  when: not osdpl_ca_certificate_exits.stat.exists
+
+- name: Create self-signed CA certificate from CSR
+  community.crypto.x509_certificate:
+    path: "{{ rvl_ca_certs_path }}/ca-certificate.pem"
+    csr_content: "{{ osdpl_ca_csr.csr }}"
+    privatekey_path: "{{ rvl_ca_certs_path }}/ca-certificate.key"
+    provider: selfsigned
+    return_content: true
+  register: osdpl_ca_certificate_result
+  when: osdpl_ca_csr is changed
+
+- name: Check whether osdpl certificate exists
+  stat:
+    path: "{{ rvl_ca_certs_path }}/osdpl.key"
+  register: osdpl_certificate_exists
+
+- name: Create private key for osdpl
+  community.crypto.openssl_privatekey:
+    path: "{{ rvl_ca_certs_path }}/osdpl.key"
+    return_content: true
+  register: osdpl_api_key_result
+  when: not osdpl_certificate_exists.stat.exists
+
+- name: Create certificate signing request (CSR) for new certificate
+  community.crypto.openssl_csr_pipe:
+    privatekey_path: "{{ rvl_ca_certs_path }}/osdpl.key"
+    common_name: "*.it.just.works"
+  register: osdpl_csr
+  run_once: true
+  when: not osdpl_certificate_exists.stat.exists
+
+- name: Read existing certificate if exists
+  slurp:
+    src: "{{ rvl_ca_certs_path }}/osdpl.pem"
+  when: osdpl_certificate_exists.stat.exists
+  register: osdpl_certificate
+
+- name: Sign certificate with our CA
+  community.crypto.x509_certificate_pipe:
+    content: "{{ (osdpl_certificate.content | b64decode) if osdpl_certificate_exists.stat.exists else omit }}"
+    csr_content: "{{ osdpl_csr.csr }}"
+    provider: ownca
+    ownca_path: "{{ rvl_ca_certs_path }}/ca-certificate.pem"
+    ownca_privatekey_path: "{{ rvl_ca_certs_path }}/ca-certificate.key"
+    ownca_not_after: +365d  # valid for one year
+    ownca_not_before: "-1d"  # valid since yesterday
+  register: osdpl_api_cert_result
+  when: not osdpl_certificate_exists.stat.exists
+
+- name: Write certificate file
+  copy:
+    dest: "{{ rvl_ca_certs_path }}/osdpl.pem"
+    content: "{{ osdpl_api_cert_result.certificate }}"
+  when: osdpl_api_cert_result is changed
+
+- name: Copy the certificate
+  copy:
+    src: "{{ rvl_ca_certs_path }}/ca-certificate.pem"
+    dest: "/usr/local/share/ca-certificates/osdpl-ca.crt"
+  register: copy_osdpl_ca_result
+
+- name: Update CA Trust (Debian, Ubuntu)
+  command: update-ca-certificates
+  when: copy_osdpl_ca_result is changed

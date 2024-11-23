@@ -1,0 +1,268 @@
+spec:
+  releases:
+  - chart: manila
+    name: openstack-manila
+    values:
+      bootstrap:
+        share_types:
+          default:
+            driver_handles_share_servers: false
+      overrides:
+        manila_share_sts:
+          cephfs:
+            values:
+              conf:
+                manila:
+                  DEFAULT:
+                    enabled_share_backends: cephfs
+                  cephfs:
+                    cephfs_auth_id: manila
+                    cephfs_protocol_helper_type: CEPHFS
+                    driver_handles_share_servers: false
+                    share_backend_name: cephfs
+                    share_driver: manila.share.drivers.cephfs.driver.CephFSDriver
+      conf:
+        ceph:
+          config:
+            global:
+              mon_host:
+                - "10.10.10.1:6789"
+                - "10.10.10.2:6789"
+                - "10.10.10.3:6789"
+          keyrings:
+            manila:
+              key: AQDLZLJfNPtTOxAAQm248Q9AyoirvELaSyPy1w==
+        aux_conf:
+          policies:
+          - definition:
+              message-ttl: 120000
+              expires: 600000
+            name: default-policy
+            pattern: ^(?!amq\.).*
+            vhost: manila
+          - definition:
+              expires: 600000
+            name: results_expire
+            pattern: ^results\.
+            priority: 1
+            vhost: manila
+          - definition:
+              expires: 600000
+            name: tasks_expire
+            pattern: ^tasks\.
+            priority: 1
+            vhost: manila
+        logging:
+          logger_manila:
+            level: INFO
+        manila:
+          DEFAULT:
+            enabled_share_protocols: CEPHFS
+          keystone_authtoken:
+            memcache_security_strategy: ENCRYPT
+            memcache_secret_key: JinzIdQzLdIslgxu
+          coordination:
+            backend_url: etcd3+http://etcd:2379?api_version=auto
+          audit_middleware_notifications:
+            driver:
+              noop
+          oslo_messaging_notifications:
+            topics: notifications,stacklight_notifications
+          oslo_policy:
+            enforce_new_defaults: false
+            enforce_scope: false
+        policy.d:
+          01-controller-default.yaml:
+            shared-file-system_rule1: shared-file-system_value1
+          02-custom.yaml: {}
+        prometheus_exporter:
+          rabbit_exporters: overview,exchange,node
+      dependencies:
+        static:
+          db_init:
+            jobs:
+              - openstack-mariadb-cluster-wait
+      endpoints:
+        cluster_domain_suffix: cluster.local
+        identity:
+          auth:
+            admin:
+              default_domain_id: default
+              password: ZUqTyP2XwsgEGKZ7qNhhecYyq9NLkGE6
+              project_domain_name: default
+              project_name: admin
+              region_name: RegionOne
+              user_domain_name: default
+              username: admin
+            cinder:
+              password: Heh1rJglWv6gZ7DbbemCQEEZedy9eEYa
+              region_name: RegionOne
+              username: cinderAc6HLU
+            glance:
+              password: uk1dAWaEMMH7CE7b3Da6fTjExmLTCaFE
+              region_name: RegionOne
+              username: glancevjNVQP
+            manila:
+              password: r2YNrW8yvGwtcl9KDY0zSDgE45SZls8b
+              region_name: RegionOne
+              username: manilaUfGLay
+            neutron:
+              password: idJHmYN0KNt9hfG9WTkePz8ewZivABm3
+              region_name: RegionOne
+              username: neutronSQgdY7N
+            nova:
+              password: xyE6HLcM9rk815HMIbIcaFCm7HeAPjxR
+              region_name: RegionOne
+              username: novadbtY
+            test:
+              password: FfYMQLEZJ5fLRz32VzawQ9I7ezMJGVw6
+              region_name: RegionOne
+              username: testFrbP
+        oslo_db:
+          auth:
+            admin:
+              password: QACDSM6FBTH2LuXjTuRQ6DXhD8bSgPbn
+              username: root
+            manila:
+              password: 8xckAGB149FBiBsPfawjSqRNNF7lvXmM
+              username: manilapn3iEA
+        oslo_messaging:
+          auth:
+            admin:
+              password: 2tnAuP0j9MsgaVHErehZkC5HCK3ZxYLr
+              username: rabbitmq
+            guest:
+              password: 7TnAuP0dKMsgaVHErehZkC5HCK3ZxOi4
+              username: guest
+            manila:
+              password: BY5CvE9aGG3jUkQghTCACvcDZbp6VcUI
+              username: manilaHcMEmb
+            user:
+              password: 2tnAuP0j9MsgaVHErehZkC5HCK3ZxYLr
+              username: rabbitmq
+          hosts:
+            default: rabbitmq
+          path: /manila
+          statefulset:
+            name: openstack-rabbitmq-rabbitmq
+            replicas: 1
+        oslo_messaging_notifications:
+          auth:
+            manila:
+              password: ptehSf4lZxF0TAs16INhV9XmuVXHbL6R
+              username: manilaYTrhf
+          host_fqdn_override: {}
+          hosts:
+            default: rabbitmq
+          path: /openstack
+          port:
+            amqp:
+              default: 5672
+            http:
+              default: 15672
+          scheme: rabbit
+          statefulset:
+            name: openstack-rabbitmq-rabbitmq
+            replicas: 1
+        sharev2:
+          host_fqdn_override:
+            public:
+              host: manila.it.just.works
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          hosts:
+            admin:
+              host: manila-api
+            default: manila
+            internal: manila-api
+            public:
+              host: manila
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          port:
+            api:
+              admin: 8786
+              default: 80
+              internal: 8786
+              public: 443
+          scheme:
+            default: http
+            public: https
+      images:
+        tags:
+          bootstrap: bootstrap:latest
+          db_drop: db-drop:latest
+          db_init: db-init:latest
+          dep_check: dep-check:latest
+          image_repo_sync: image-repo-sync:latest
+          ks_endpoints: ks-endpoints:latest
+          ks_service: ks-service:latest
+          ks_user: ks-user:latest
+          manila_api: manila:latest
+          manila_db_sync: manila:latest
+          manila_scheduler: manila:latest
+          manila_share: manila:latest
+          manila_db_purge: manila:latest
+          manila-uuids-init: heat:latest
+          test: test:latest
+      jobs:
+        db_purge:
+          cron: '1 7 * * 1'
+          enabled: True
+          script:
+            config:
+              age: 30
+        ks_endpoints:
+          restartPolicy: Never
+        ks_service:
+          restartPolicy: Never
+        ks_user:
+          restartPolicy: Never
+      network_policy:
+        api:
+          spec:
+            ingress:
+              - from:
+                - default: selector
+              - from:
+                - namespaceSelector:
+                    matchLabels:
+                      kubernetes.io/metadata.name: osh-system
+                - namespaceSelector:
+                    matchLabels:
+                      kubernetes.io/metadata.name: stacklight
+                ports:
+                - port: 8786
+                  protocol: TCP
+            podSelector:
+              matchLabels:
+                application: manila
+                component: api
+            policyTypes:
+            - Ingress
+      manifests:
+        secret_ca_bundle: True
+        cron_job_db_purge: True
+        daemonset_share: False
+        network_policy: True
+        service_instance_ssh_key: True
+        ceph_conf: True
+        daemonset_share: False
+      secrets:
+        service_instance_ssh_key:
+          private: 'MANILA TEST SSH PRIVATE KEY
+
+          '
+          public: 'MANILA TEST SSH PUBLIC KEY
+
+          '

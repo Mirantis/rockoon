@@ -1,0 +1,9 @@
+cloudprober:cloudprober:Deployment:openstack-cloudprober:
+- from:
+  - podSelector:
+      matchLabels:
+        application: keystone
+        component: client
+  ports:
+  - port: 9313
+    protocol: TCP

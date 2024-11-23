@@ -1,0 +1,80 @@
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Default values for descheduler
+# This is a YAML-formatted file.
+# Declare name/value pairs to be passed into your templates.
+# name: value
+
+---
+labels:
+  job:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+
+release_group: null
+
+images:
+  tags:
+    descheduler: docker-dev-kaas-local.docker.mirantis.net/openstack/extra/descheduler:v0.21.0
+  pull_policy: IfNotPresent
+
+pod:
+  resources:
+    enabled: false
+    jobs:
+      descheduler:
+        requests:
+          memory: "256Mi"
+          cpu: "500m"
+        limits:
+          memory: "512Mi"
+          cpu: "1000m"
+  security_context:
+    descheduler:
+      pod:
+        runAsUser: 65534
+        runAsNonRoot: true
+      container:
+        descheduler:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          readOnlyRootFilesystem: true
+
+conf:
+  cronjob:
+    schedule: "*/30 * * * *"
+    logOptions:
+      v: 3    # Setting 4 or greater on the Descheduler will log all reasons why any pod is not evictable.
+    suspend: false
+  policy:
+    evictLocalStoragePods: true
+    strategies:
+      RemoveDuplicates:
+        enabled: true
+        params:
+          namespaces:
+            include:
+            - "openstack"
+          removeDuplicates:
+            excludeOwnerKinds:
+            - "StatefulSet"
+
+manifests:
+  rbac: true
+  configmap_bin: true
+  cronjob: true
+...
+

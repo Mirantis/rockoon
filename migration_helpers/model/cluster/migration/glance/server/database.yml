@@ -1,0 +1,7 @@
+parameters:
+  glance:
+    server:
+      database:
+        host: ${_param:mcp2_database_glance_address}
+        password: ${_param:mcp2_database_glance_password}
+        user: ${_param:mcp2_database_glance_username}

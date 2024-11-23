@@ -1,0 +1,236 @@
+spec:
+  releases:
+  - chart: keystone
+    name: openstack-keystone
+    values:
+      objects:
+        secret_credentials_keys:
+          secret: 'keystone-credential-data'
+        secret_fernet_keys:
+          secret: 'keystone-fernet-data'
+      jobs:
+        fernet_rotate:
+          cron: "0 */12 * * *"  # once per 12h
+      conf:
+        policy.d:
+          01-controller-default.yaml: {'identity_rule1': 'identity_value1'}
+          02-custom.yaml: {}
+        keystone:
+          DEFAULT:
+            notification_format: cadf
+          fernet_tokens:
+            max_active_keys: 7
+          token:
+            expiration: 43200
+            allow_expired_window: 172800
+          cache:
+            backend: oslo_cache.memcache_pool
+          oslo_messaging_notifications:
+            topics: notifications,stacklight_notifications
+          oslo_policy:
+            enforce_new_defaults: false
+            enforce_scope: false
+        logging:
+          logger_keystone:
+            level: INFO
+        wsgi_keystone: |
+          {{- $portInt := tuple "identity" "internal" "api" $ | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+          {{- $keystoneHost := tuple "identity" "public" . | include "helm-toolkit.endpoints.hostname_fqdn_endpoint_lookup" }}
+          {{- $keystoneProtocol := tuple "identity" "public" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" }}
+          Listen 0.0.0.0:{{ $portInt }}
+          LogFormat "%h %l %u %t \"%r\" %>s %b %D \"%{Referer}i\" \"%{User-Agent}i\"" combined
+          LogFormat "%{X-Forwarded-For}i %l %u %t \"%r\" %>s %b %D \"%{Referer}i\" \"%{User-Agent}i\"" proxy
+          SetEnvIf X-Forwarded-For "^.*\..*\..*\..*" forwarded
+          CustomLog /dev/stdout combined env=!forwarded
+          CustomLog /dev/stdout proxy env=forwarded
+          <VirtualHost *:{{ $portInt }}>
+              WSGIDaemonProcess keystone-public processes=8 threads=1 user=keystone group=keystone display-name=%{GROUP}
+              WSGIProcessGroup keystone-public
+              WSGIScriptAlias / /var/www/cgi-bin/keystone/keystone-wsgi-public
+              WSGIApplicationGroup %{GLOBAL}
+              WSGIPassAuthorization On
+              ServerSignature Off
+              LimitRequestFieldSize 16380
+              TraceEnable Off
+              <IfVersion >= 2.4>
+                 ErrorLogFormat "%{cu}t %M"
+              </IfVersion>
+              ErrorLog /dev/stdout
+              SetEnvIf X-Forwarded-For "^.*\..*\..*\..*" forwarded proxy env=forwarded
+              </VirtualHost>
+      dependencies:
+        static:
+          db_init:
+            jobs:
+            - openstack-mariadb-cluster-wait
+      network:
+        api:
+          ingress:
+            annotations:
+              nginx.ingress.kubernetes.io/proxy-body-size: "114688"
+      endpoints:
+        cluster_domain_suffix: cluster.local
+        identity:
+          auth:
+            admin:
+              default_domain_id: default
+              password: ZUqTyP2XwsgEGKZ7qNhhecYyq9NLkGE6
+              project_domain_name: default
+              project_name: admin
+              region_name: RegionOne
+              user_domain_name: default
+              username: admin
+            keystone:
+              password: CZTF3XgNSfbahGGcx0EnjzqTQspr9aPi
+              username: keystonesCHMyIkz
+              region_name: 'RegionOne'
+            test:
+              password: lIaVpAA3RiymRzerAWbNYFj5XfSitjcL
+              username: testQALi
+              region_name: 'RegionOne'
+          host_fqdn_override:
+            public:
+              host: keystone.it.just.works
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          hosts:
+            admin:
+              host: keystone-api
+            default: keystone
+            internal: keystone-api
+            public:
+              host: keystone
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          port:
+            api:
+              admin: 5000
+              default: 80
+              internal: 5000
+              public: 443
+          scheme:
+            default: http
+            public: https
+        oslo_cache:
+          statefulset:
+            name: openstack-memcached-memcached
+            replicas: 3
+        oslo_db:
+          auth:
+            admin:
+              password: QACDSM6FBTH2LuXjTuRQ6DXhD8bSgPbn
+              username: root
+            keystone:
+              password: GW4MBjKLshsGdLI38kKUpR2gm3SQiHFp
+              username: keystonemzhwDmzj
+        oslo_messaging:
+          auth:
+            admin:
+              password: 2tnAuP0j9MsgaVHErehZkC5HCK3ZxYLr
+              username: rabbitmq
+            guest:
+              password: 7TnAuP0dKMsgaVHErehZkC5HCK3ZxOi4
+              username: guest
+            keystone:
+              password: i1LUJuYCIEeUdpKbztpemVvIQhmJ56cn
+              username: keystoneeYwYK03G
+            user:
+              password: 2tnAuP0j9MsgaVHErehZkC5HCK3ZxYLr
+              username: rabbitmq
+          hosts:
+            default: rabbitmq
+          path: /keystone
+          statefulset:
+            name: openstack-rabbitmq-rabbitmq
+            replicas: 1
+        oslo_messaging_notifications:
+          auth:
+            keystone:
+              password: TzLbvAXVJKzX4klDdVWEuYnWf35hVBTf
+              username: keystonefz7wkYYH
+          host_fqdn_override: {}
+          hosts:
+            default: rabbitmq
+          path: /openstack
+          port:
+            amqp:
+              default: 5672
+            http:
+              default: 15672
+          scheme: rabbit
+          statefulset:
+            name: openstack-rabbitmq-rabbitmq
+            replicas: 1
+      images:
+        tags:
+          bootstrap: bootstrap:latest
+          db_drop: db-drop:latest
+          db_init: db-init:latest
+          dep_check: dep-check:latest
+          image_repo_sync: image-repo-sync:latest
+          keystone_api: keystone-api:latest
+          keystone_client: keystone-client:latest
+          keystone_credential_cleanup: keystone-credential-cleanup:latest
+          keystone_credential_rotate: keystone-credential-rotate:latest
+          keystone_credential_setup: keystone-credential-setup:latest
+          keystone_db_sync: keystone-db-sync:latest
+          keystone_db_sync_contract: keystone-db-sync-contract:latest
+          keystone_db_sync_expand: keystone-db-sync-expand:latest
+          keystone_db_sync_migrate: keystone-db-sync-migrate:latest
+          keystone_domain_manage: keystone-domain-manage:latest
+          keystone_federations_create: keystone-federations-create:latest
+          keystone_fernet_rotate: keystone-fernet-rotate:latest
+          keystone_fernet_setup: keystone-fernet-setup:latest
+          keystone_init_secrets: keystone-init-secrets:latest
+          ks_user: ks-user:latest
+          rabbit_init: rabbit-init:latest
+          test: test:latest
+      network_policy:
+        api:
+          spec:
+            ingress:
+              - from:
+                - default: selector
+              - from:
+                - ipBlock:
+                    cidr: 192.168.0.0/16
+                ports:
+                - port: 5000
+                  protocol: TCP
+              - from:
+                - namespaceSelector:
+                    matchLabels:
+                      kubernetes.io/metadata.name: osh-system
+                - namespaceSelector:
+                    matchLabels:
+                      kubernetes.io/metadata.name: rook-ceph
+                - namespaceSelector:
+                    matchLabels:
+                      kubernetes.io/metadata.name: stacklight
+                - namespaceSelector:
+                    matchLabels:
+                      kubernetes.io/metadata.name: tf
+                ports:
+                - port: 5000
+                  protocol: TCP
+            podSelector:
+              matchLabels:
+                application: keystone
+                component: api
+            policyTypes:
+            - Ingress
+      manifests:
+        job_credential_cleanup: false
+        job_rabbit_init: false
+        network_policy: true
+        secret_ca_bundle: true

@@ -1,0 +1,8 @@
+parameters:
+  haproxy:
+    proxy:
+      listen:
+        neutron_api:
+          redirects:
+           - code: 301
+             location: https://neutron.${_param:mcp2_public_domain_name}%[path]

@@ -1,0 +1,7 @@
+parameters:
+  ironic:
+    api:
+      database:
+        host: ${_param:mcp2_database_ironic_address}
+        password: ${_param:mcp2_database_ironic_password}
+        user: ${_param:mcp2_database_ironic_username}

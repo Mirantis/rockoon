@@ -1,0 +1,124 @@
+apiVersion: lcm.mirantis.com/v1alpha1
+kind: HelmBundle
+metadata:
+  name: openstack-compute
+spec:
+  releases:
+  - chart: rabbitmq
+    name: openstack-nova-rabbitmq
+    namespace: openstack
+    values:
+      conf:
+        users:
+          nova:
+            auth:
+              service_user:
+                password: password
+                username: nova
+            path: /nova
+      endpoints:
+        cluster_domain_suffix: kaas-kubernetes-3af5ae538cf411e9a6c7fa163e5a4837
+        oslo_messaging:
+          hosts: &id001
+            default: rabbitmq-nova
+          path: /nova
+          statefulset: &id002
+            name: openstack-nova-rabbitmq-rabbitmq
+            replicas: 1
+      manifests:
+        job_users_create: true
+        network_policy: false
+      pod:
+        replicas:
+          server: 1
+      volume:
+        enabled: false
+  - chart: libvirt
+    name: openstack-libvirt
+    namespace: openstack
+    values:
+      ceph_client:
+        configmap: rook-ceph-config
+        user_secret_name: rook-ceph-admin-keyring
+      conf:
+        ceph:
+          enabled: true
+          keyrings:
+            cinder:
+              key: 'AQDLZLJfNPtTOxAAQm248Q9AyoirvELaSyPz5w=='
+              secret_uuid: c9543a17-411c-45e1-8a25-3f03e0090dc2
+            nova:
+              key: 'AQDNZLJf8S+fORAA6hg50Jo+vBq07kxtBXB9PQ=='
+              secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
+        nova:
+          cinder:
+            catalog_info: volumev3:cinderv3:internalURL
+      images:
+        tags:
+          libvirt: docker-prod-virtual.docker.mirantis.net/mcp/libvirt:4.0.0-bionic-1554881274591
+      manifests:
+        network_policy: false
+  - chart: nova
+    name: openstack-nova
+    namespace: openstack
+    values:
+      conf:
+        ceph:
+          enabled: false
+          keyrings:
+            cinder:
+              key: 'AQDLZLJfNPtTOxAAQm248Q9AyoirvELaSyPz5w=='
+            nova:
+              key: 'AQDNZLJf8S+fORAA6hg50Jo+vBq07kxtBXB9PQ=='
+        libvirt:
+          live_migration_interface: ens3
+        nova:
+          libvirt:
+            cpu_mode: custom
+            cpu_models: host-model
+            virt_type: kvm
+          scheduler:
+            ram_weight_multiplier: 1.0
+      dependencies:
+        static:
+          db_init:
+            jobs:
+            - openstack-mariadb-cluster-wait
+      endpoints:
+        cluster_domain_suffix: kaas-kubernetes-3af5ae538cf411e9a6c7fa163e5a4837
+        identity:
+          auth:
+            admin:
+              default_domain_id: default
+              password: workshop
+              project_domain_name: default
+              project_name: admin
+              region_name: RegionOne
+              user_domain_name: default
+              username: admin
+        oslo_messaging:
+          hosts: *id001
+          path: /nova
+          statefulset: *id002
+        oslo_messaging_notifications:
+          auth:
+            nova:
+              password: password
+              username: nova
+          host_fqdn_override: {}
+          hosts:
+            default: rabbitmq
+          path: /openstack
+          port:
+            amqp:
+              default: 5672
+            http:
+              default: 15672
+          scheme: rabbit
+          statefulset:
+            name: openstack-rabbitmq-rabbitmq
+            replicas: 1
+      manifests:
+        job_rabbit_init: false
+        network_policy: false
+

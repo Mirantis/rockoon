@@ -1,0 +1,222 @@
+spec:
+  releases:
+  - chart: heat
+    name: openstack-heat
+    values:
+      conf:
+        policy.d:
+          01-controller-default.yaml: {'orchestration_rule1': 'orchestration_value1'}
+          02-custom.yaml: {}
+        heat:
+          DEFAULT:
+            server_keystone_endpoint_type: public
+          keystone_authtoken:
+            memcache_secret_key: 7JNLzlMydG5nxe80
+            memcache_security_strategy: ENCRYPT
+            service_type: orchestration
+          clients_swift:
+            endpoint_type: public
+          audit_middleware_notifications:
+            driver: noop
+          oslo_messaging_notifications:
+            topics: notifications,stacklight_notifications
+          oslo_policy:
+            enforce_new_defaults: false
+            enforce_scope: false
+        logging:
+          logger_heat:
+            level: INFO
+      dependencies:
+        static:
+          db_init:
+            jobs:
+            - openstack-mariadb-cluster-wait
+      endpoints:
+        cloudformation:
+          host_fqdn_override:
+            public:
+              host: cloudformation.it.just.works
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          hosts:
+            admin:
+              host: heat-cfn
+            default: cloudformation
+            internal: heat-cfn
+            public:
+              host: cloudformation
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          port:
+            api:
+              admin: 8000
+              default: 80
+              internal: 8000
+              public: 443
+          scheme:
+            default: http
+            public: https
+        cluster_domain_suffix: cluster.local
+        identity:
+          auth:
+            admin:
+              default_domain_id: default
+              password: ZUqTyP2XwsgEGKZ7qNhhecYyq9NLkGE6
+              project_domain_name: default
+              project_name: admin
+              region_name: RegionOne
+              user_domain_name: default
+              username: admin
+            heat:
+              password: u21jJUD1Gfy1aJ0aLmP9vZCHwc6KP1Ct
+              username: heatJAfw
+              region_name: 'RegionOne'
+            heat_stack_user:
+              password: NcS3SPS193Kzn6thbf3z4NgaQhnQJvd0
+              username: heat_stack_useraPNg9FUFALHAHdG
+              region_name: 'RegionOne'
+            heat_trustee:
+              password: Y2Lue7K2AP7MSqZBcFDlsaCbdBMaW612
+              username: heat_trustee2Z9xQdWPIsCJ
+              region_name: 'RegionOne'
+            test:
+              password: nDsJytWemY6VcFv0jxqsg7QHBRgetQF7
+              username: testyRGH
+              region_name: 'RegionOne'
+        orchestration:
+          host_fqdn_override:
+            public:
+              host: heat.it.just.works
+              tls:
+                ca: |
+                  TEST CA
+                  PROXY CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          hosts:
+            admin:
+              host: heat-api
+            default: heat
+            internal: heat-api
+            public:
+              host: heat
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          port:
+            api:
+              admin: 8004
+              default: 80
+              internal: 8004
+              public: 443
+          scheme:
+            default: http
+            public: https
+        oslo_cache:
+          statefulset:
+            name: openstack-memcached-memcached
+            replicas: 3
+        oslo_db:
+          auth:
+            admin:
+              password: QACDSM6FBTH2LuXjTuRQ6DXhD8bSgPbn
+              username: root
+            heat:
+              password: nCaJwL99CRHY0gPNfEmihxtVAbrNGgCD
+              username: heatuQjt
+        oslo_messaging:
+          auth:
+            admin:
+              password: 2tnAuP0j9MsgaVHErehZkC5HCK3ZxYLr
+              username: rabbitmq
+            guest:
+              password: 7TnAuP0dKMsgaVHErehZkC5HCK3ZxOi4
+              username: guest
+            heat:
+              password: BY5CvE9aGG3jUkQghTCACvcDZbp6VcUI
+              username: heatekEb
+            user:
+              password: 2tnAuP0j9MsgaVHErehZkC5HCK3ZxYLr
+              username: rabbitmq
+          hosts:
+            default: rabbitmq
+          path: /heat_ussuri
+          statefulset:
+            name: openstack-rabbitmq-rabbitmq
+            replicas: 1
+        oslo_messaging_notifications:
+          auth:
+            heat:
+              password: GPQzkiL39fEDGEWn6DIZGBxkjXBuDpQe
+              username: heatKQF7
+          host_fqdn_override: {}
+          hosts:
+            default: rabbitmq
+          path: /openstack
+          port:
+            amqp:
+              default: 5672
+            http:
+              default: 15672
+          scheme: rabbit
+          statefulset:
+            name: openstack-rabbitmq-rabbitmq
+            replicas: 1
+      images:
+        tags:
+          bootstrap: bootstrap:latest
+          db_drop: db-drop:latest
+          db_init: db-init:latest
+          dep_check: dep-check:latest
+          heat_api: heat-api:latest
+          heat_cfn: heat-cfn:latest
+          heat_cloudwatch: heat-cloudwatch:latest
+          heat_db_sync: heat-db-sync:latest
+          heat_engine: heat-engine:latest
+          heat_engine_cleaner: heat-engine-cleaner:latest
+          heat_db_purge: heat-purge-deleted:latest
+          image_repo_sync: image-repo-sync:latest
+          ks_endpoints: ks-endpoints:latest
+          ks_trusts: ks-trusts:latest
+          ks_service: ks-service:latest
+          ks_user: ks-user:latest
+          rabbit_init: rabbit-init:latest
+          test: test:latest
+      jobs:
+        ks_endpoints:
+          restartPolicy: Never
+        ks_service:
+          restartPolicy: Never
+        ks_user:
+          restartPolicy: Never
+        db_purge:
+          enabled: true
+          cron: "1 5 * * 1"
+          script:
+            config:
+              age: 30
+              batch_size: 10
+      manifests:
+        cron_job_db_purge: true
+        job_rabbit_init: false
+        network_policy: false
+        secret_ca_bundle: true
+        job_heat_trusts: false
+      network:
+        core_plugin: ml2

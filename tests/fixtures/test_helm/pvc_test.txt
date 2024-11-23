@@ -1,0 +1,1 @@
+Error: UPGRADE FAILED: cannot patch "mariadb-backup-data" with kind PersistentVolumeClaim: persistentvolumeclaims "mariadb-backup-data" is forbidden: updates to statefulset spec for fields other than 'replicas', 'template', and 'updateStrategy' are forbidden

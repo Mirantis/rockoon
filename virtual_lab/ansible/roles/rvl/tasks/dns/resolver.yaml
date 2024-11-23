@@ -1,0 +1,49 @@
+- name: Disable systemd-resolved
+  service:
+    enabled: false
+    name: systemd-resolved
+    state: stopped
+  tags:
+    - dns
+
+- name: Render resolv.conf
+  ansible.builtin.template:
+    src: resolv.conf.j2
+    dest: /etc/resolv.conf
+    owner: bin
+    group: root
+    mode: '0644'
+  register: resolve_conf
+  vars:
+    dns: "{{ rvl_dns_resolver_ip_address }}"
+  tags:
+    - dns
+
+- name: Run systemd resolve exists
+  stat:
+    path:  /var/run/systemd/resolve/
+  register: systemd_resolve
+
+- name: Symlink run/systemd/resolv.conf to /etc/resolv.conf
+  ansible.builtin.file:
+    src: /etc/resolv.conf
+    dest: /var/run/systemd/resolve/resolv.conf
+    owner: root
+    group: root
+    state: link
+    force: yes
+  tags:
+    - dns
+  when: systemd_resolve.stat.exists
+
+- name: Restart kube-system coredns
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Pod
+    namespace: kube-system
+    label_selectors:
+      - "k8s-app=kube-dns"
+    state: absent
+  when: resolve_conf is changed
+  tags:
+    - dns

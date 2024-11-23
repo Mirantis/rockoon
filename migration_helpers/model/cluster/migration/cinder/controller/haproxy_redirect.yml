@@ -1,0 +1,8 @@
+parameters:
+  haproxy:
+    proxy:
+      listen:
+        cinder_api:
+          redirects:
+           - code: 301
+             location: https://cinder.${_param:mcp2_public_domain_name}%[path]

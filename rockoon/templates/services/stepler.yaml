@@ -1,0 +1,131 @@
+#apiVersion: lcm.mirantis.com/v1alpha1
+#kind: HelmBundle
+
+{%- set service = 'stepler' %}
+{%- if OSVer[spec.openstack_version] >= OSVer.yoga %}
+  {%- set cirros_image_name = "Cirros-6.0" %}
+{%- else %}
+    {%- set cirros_image_name = "Cirros-5.1" %}
+{%- endif %}
+spec:
+  releases:
+  - name: openstack-stepler
+    chart: stepler
+    values:
+      images:
+        tags:
+{%- for image in [
+    "stepler_run_tests",
+    "ks_user",
+    "dep_check",
+    "bootstrap",] %}
+        {%- if image in images %}
+          {{ image }}: {{ images[image] }}
+        {%- endif %}
+{%- endfor %}
+      manifests:
+        network_policy: false
+        secret_ca_bundle: true
+      pvc:
+{%- if is_ceph_enabled %}
+        storage_class: {{ spec.get('persistent_volume_storage_class', 'default') }}
+{%- else %}
+        storage_class: {{ spec.get('local_volume_storage_class', 'rockoon-bind-mounts') }}
+{%- endif %}
+        requests:
+          storage: 10Gi
+      endpoints:
+        cluster_domain_suffix: {{ spec.internal_domain_name }}
+{% include 'base/_admin_identity.yaml' %}
+          host_fqdn_override:
+            public:
+              host: keystone.{{ spec.public_domain_name }}
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+{%- if rgw_internal_cacert is defined %}
+{{ rgw_internal_cacert | indent( width=18, first=True) }}
+{%- endif %}
+{%- if proxy_settings is defined %}
+{%- if proxy_settings.get("proxy_ca_certificate") %}
+{{ proxy_settings["proxy_ca_certificate"] | indent( width=18, first=True) }}
+{%- endif %}
+{%- endif %}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          hosts:
+            admin:
+              host: keystone-api
+            default: keystone
+            internal: keystone-api
+            public:
+              host: keystone
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+{%- if rgw_internal_cacert is defined %}
+{{ rgw_internal_cacert | indent( width=18, first=True) }}
+{%- endif %}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          port:
+            api:
+              admin: 5000
+              default: 80
+              internal: 5000
+              public: 443
+          scheme:
+            default: http
+            public: https
+        dashboard:
+          host_fqdn_override:
+            public:
+              host: horizon.{{ spec.public_domain_name }}
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          hosts:
+            default: horizon-int
+            public:
+              host: horizon
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          port:
+            web:
+              default: 80
+              public: 443
+          scheme:
+            default: http
+            public: https
+      conf:
+        skiplist: |
+{% include 'base/_stepler_skiplist.yaml' %}
+        stepler_env:
+{%- if spec.features.get("policies", {}).get("strict_admin", {}).get("enabled", False) %}
+          ROLE_ADMIN: service
+{%- endif %}
+          HORIZON_TEST_IMAGE_CIRROS: {{ cirros_image_name }}
+{%- set public_network_name = "public" %}
+{%- if spec.features.neutron.get('floating_network', {}).get('enabled', true) %}
+{%-   set public_network_name = spec.features.neutron.get('floating_network', {}).get('name', 'public') -%}
+{%- else %}
+{%-   if spec.services.get('tempest', {}).get('tempest', {}).get('values', {}).get('conf', {}).get('convert_to_uuid', {}).get('network', {}).get('public_network_id') %}
+{%-     set public_network_name = spec.services.get('tempest', {}).get('tempest', {}).get('values', {}).get('conf', {}).get('convert_to_uuid', {}).get('network', {}).get('public_network_id') %}
+{%-   endif %}
+{%- endif %}
+          PUBLIC_NETWORK_NAME: {{ public_network_name }}
+      bootstrap:
+        enabled: false

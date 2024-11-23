@@ -1,0 +1,5 @@
+parameters:
+  keystone:
+    server:
+      cache:
+        ~members: ${_param:mcp2_memcached_keystone_members}

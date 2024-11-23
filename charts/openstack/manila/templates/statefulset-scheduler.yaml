@@ -1,0 +1,137 @@
+{{/*
+Copyright 2022 Mirantis Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "schedulerProbeTemplate" }}
+{{- $probeType := . }}
+exec:
+  command:
+    - python
+    - /tmp/health-probe.py
+    - --config-file
+    - /etc/manila/manila.conf
+    - --probe-type
+    - {{ $probeType }}
+    - --check
+    - rabbitmq_sockets
+    - --process-name
+    - manila-scheduler
+{{- end }}
+
+{{- if .Values.manifests.statefulset_scheduler }}
+{{- $envAll := . }}
+
+{{- $mounts_manila_scheduler := .Values.pod.mounts.manila_scheduler.manila_scheduler }}
+{{- $mounts_manila_scheduler_init := .Values.pod.mounts.manila_scheduler.init_container }}
+
+{{- $serviceAccountName := "manila-scheduler" }}
+{{ tuple $envAll "scheduler" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: manila-scheduler
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "manila" "scheduler" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  serviceName: manila-scheduler
+  podManagementPolicy: "Parallel"
+  replicas: {{ .Values.pod.replicas.scheduler }}
+  selector:
+    matchLabels:
+{{ tuple $envAll "manila" "scheduler" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll | include "helm-toolkit.snippets.kubernetes_upgrades_statefulset" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "manila" "scheduler" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+        endpoints-hash: {{ .Values.endpoints | include "helm-toolkit.utils.get_hash" }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "manila_scheduler" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      affinity:
+{{ tuple $envAll "manila" "scheduler" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      nodeSelector:
+        {{ .Values.labels.scheduler.node_selector_key }}: {{ .Values.labels.scheduler.node_selector_value }}
+      initContainers:
+{{ tuple $envAll "scheduler" $mounts_manila_scheduler_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+{{ tuple $envAll "manila" "manila_scheduler" | include "helm-toolkit.snippets.kubernetes_cacert_init_container" | indent 8 }}
+      containers:
+        - name: manila-scheduler
+{{ tuple $envAll "manila_scheduler" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.scheduler | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "manila_scheduler" "container" "manila_scheduler" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/manila-scheduler.sh
+{{ dict "envAll" $envAll "component" "scheduler" "container" "default" "type" "readiness" "probeTemplate" (include "schedulerProbeTemplate" "readiness" | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "scheduler" "container" "default" "type" "liveness" "probeTemplate" (include "schedulerProbeTemplate" "liveness" | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          env:
+            - name: REQUESTS_CA_BUNDLE
+              value: /certs/ca-bundle.pem
+          volumeMounts:
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "manila" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+            - name: manila-bin
+              mountPath: /tmp/manila-scheduler.sh
+              subPath: manila-scheduler.sh
+              readOnly: true
+            - name: manila-etc
+              mountPath: /etc/manila/manila.conf
+              subPath: manila.conf
+              readOnly: true
+            {{- if .Values.conf.manila.DEFAULT.log_config_append }}
+            - name: manila-etc
+              mountPath: {{ .Values.conf.manila.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.manila.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+            - name: manila-etc
+              mountPath: /etc/manila/api-paste.ini
+              subPath: api-paste.ini
+              readOnly: true
+            - name: manila-bin
+              mountPath: /tmp/health-probe.py
+              subPath: health-probe.py
+              readOnly: true
+            - name: manila-tmp
+              mountPath: /tmp
+            - name: manila-oslo-policy
+              mountPath: /etc/manila/policy.d/
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{ if $mounts_manila_scheduler.volumeMounts }}{{ toYaml $mounts_manila_scheduler.volumeMounts | indent 12 }}{{ end }}
+      volumes:
+{{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "manila" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
+        - name: manila-bin
+          configMap:
+            name: manila-bin
+            defaultMode: 504
+        - name: manila-etc
+          secret:
+            secretName: manila-etc
+            defaultMode: 416
+        - name: manila-tmp
+          emptyDir: {}
+        - name: manila-oslo-policy
+          secret:
+            secretName: manila-oslo-policy
+            defaultMode: 416
+{{- dict "enabled" $envAll.Values.manifests.certificates "name" $envAll.Values.endpoints.oslo_db.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{ if $mounts_manila_scheduler.volumes }}{{ toYaml $mounts_manila_scheduler.volumes | indent 8 }}{{ end }}
+{{- end }}

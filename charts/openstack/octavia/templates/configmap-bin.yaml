@@ -1,0 +1,81 @@
+{{/*
+Copyright 2019 Samsung Electronics Co., Ltd.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "octavia.configmap.bin" }}
+{{- $configMapName := index . 0 }}
+{{- $envAll := index . 1 }}
+{{- with $envAll }}
+{{- $rallyTests := $envAll.Values.conf.rally_tests }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $configMapName }}
+data:
+{{- if .Values.images.local_registry.active }}
+  image-repo-sync.sh: |
+{{- include "helm-toolkit.scripts.image_repo_sync" . | indent 4 }}
+{{- end }}
+{{- if .Values.bootstrap.enabled }}
+  bootstrap.sh: |
+{{ tuple "bin/_bootstrap.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{- end }}
+  rally-test.sh: |
+{{ tuple $rallyTests | include "helm-toolkit.scripts.rally_test" | indent 4 }}
+  cacert-init.sh: |
+{{ tuple "bin/_cacert-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  db-init.py: |
+{{- include "helm-toolkit.scripts.db_init" . | indent 4 }}
+  db-sync.sh: |
+{{ tuple "bin/_db-sync.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  db-sync-persistence.sh: |
+{{ tuple "bin/_db-sync-persistence.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  db-drop.py: |
+{{- include "helm-toolkit.scripts.db_drop" . | indent 4 }}
+  health-probe.py: |
+{{- include "helm-toolkit.scripts.generic_health_probe" . | indent 4 }}
+  ks-service.py: |
+{{- include "helm-toolkit.scripts.keystone_service" . | indent 4 }}
+  ks-endpoints.py: |
+{{- include "helm-toolkit.scripts.keystone_endpoints" . | indent 4 }}
+  ks-user.py: |
+{{- include "helm-toolkit.scripts.keystone_user" . | indent 4 }}
+  create-octavia-openstack-resources.py: |
+{{ tuple "bin/_create_octavia_resources.py.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  octavia-api.sh: |
+{{ tuple "bin/_octavia-api.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  octavia-health-manager.sh: |
+{{ tuple "bin/_octavia-health-manager.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  octavia-health-manager-nic-init.sh: |
+{{ tuple "bin/_octavia-health-manager-nic-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  octavia-health-manager-get-port.sh: |
+{{ tuple "bin/_octavia-health-manager-get-port.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  octavia-health-manager-wait-port-init.py: |
+{{ tuple "bin/_octavia-health-manager-wait-port-init.py.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  octavia-housekeeping.sh: |
+{{ tuple "bin/_octavia-housekeeping.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  octavia-driver-agent.sh: |
+{{ tuple "bin/_octavia-driver-agent.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  octavia-worker.sh: |
+{{ tuple "bin/_octavia-worker.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  rabbit-init.sh: |
+{{- include "helm-toolkit.scripts.rabbit_init" . | indent 4 }}
+{{- end }}
+{{- end }}
+{{- if .Values.manifests.configmap_bin }}
+{{- list "octavia-bin" . | include "octavia.configmap.bin" }}
+{{- end }}

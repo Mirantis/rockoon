@@ -1,0 +1,9 @@
+parameters:
+  neutron:
+    server:
+      allow_automatic_dhcp_failover: False
+      configmap:
+        neutron_server:
+          DEFAULT:
+            allow_automatic_l3agent_failover: False
+            enable_new_agents: False

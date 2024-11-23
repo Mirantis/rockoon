@@ -1,0 +1,264 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.job_mariadb_phy_restore }}
+{{- $envAll := . }}
+
+{{- $serviceAccountName := "mariadb-phy-restore" }}
+{{- $runnerServiceAccountName := "mariadb-phy-restore-runner" }}
+{{- $runner_node_selector := dict .Values.labels.server.node_selector_key .Values.labels.server.node_selector_value }}
+{{- if hasKey .Values.conf.phy_restore "runner_node_selector" }}
+{{- $runner_node_selector = .Values.conf.phy_restore "runner_node_selector" }}
+{{- end }}
+{{- $mariadbReplicas := int .Values.pod.replicas.server }}
+{{- $mariadbTargetReplicaID := "None" }}
+{{- if gt $mariadbReplicas 0 }}
+{{- $mariadbTargetReplicaID = sub $mariadbReplicas 1 }}
+{{- end }}
+{{- $mariadbStsName := tuple "oslo_db" "direct" . | include "helm-toolkit.endpoints.hostname_short_endpoint_lookup" }}
+{{- $mariadbTargetReplicaName := printf "%s-%d" $mariadbStsName $mariadbTargetReplicaID }}
+{{- $backupHashConfigmap := printf "%s-%s" .Release.Name "backup-hash" }}
+{{- $activeDeadlineSeconds := add (mul $mariadbReplicas .Values.conf.phy_restore.replica_restore_timeout) .Values.conf.phy_restore.restore_timeout_delta }}
+
+{{/* mariadb scale timeout depends on termination grace period and time needed for replicas to become ready */}}
+{{- $defaultStsScaleTimeout := add .Values.pod.lifecycle.termination_grace_period.server.timeout 600 }}
+{{- $stsScaleTimeout := index .Values.conf.phy_restore "sts_scale_timeout" | default $defaultStsScaleTimeout }}
+{{- $stateConfigMap := printf "%s-%s" $envAll.Release.Name "mariadb-state" | quote }}
+{{- $backupBackend := .Values.conf.phy_backup.backend }}
+{{ tuple $envAll "mariadb_phy_restore" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $envAll.Release.Name }}-{{ $serviceAccountName }}-pod-manager
+  namespace: {{ $envAll.Release.Namespace }}
+rules:
+  - apiGroups:
+      - ""
+    resourceNames:
+      - {{ $stateConfigMap }}
+      - {{ $backupHashConfigmap }}
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+  - apiGroups:
+      - ""
+    resources:
+      - pods/log
+    verbs:
+      - get
+  - apiGroups:
+      - ""
+    resources:
+      - persistentvolumeclaims
+    verbs:
+      - get
+      - list
+  - apiGroups:
+      - apps
+    resources:
+      - statefulsets
+    verbs:
+      - get
+      - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $envAll.Release.Name }}-{{ $serviceAccountName }}-pod-manager
+  namespace: {{ $envAll.Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $envAll.Release.Name }}-{{ $serviceAccountName }}-pod-manager
+subjects:
+  - kind: ServiceAccount
+    name: {{ $serviceAccountName }}
+    namespace: {{ $envAll.Release.Namespace }}
+{{ tuple $envAll "" $runnerServiceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mariadb-phy-restore
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+spec:
+  backoffLimit: 0
+  completions: 1
+  parallelism: 1
+  activeDeadlineSeconds: {{ $activeDeadlineSeconds }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "mariadb-phy-restore" "restore" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+    spec:
+{{ dict "envAll" $envAll "application" "mariadb_phy_restore" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      serviceAccountName: {{ $serviceAccountName }}
+      restartPolicy: Never
+      nodeSelector:
+        {{ .Values.labels.server.node_selector_key }}: {{ .Values.labels.server.node_selector_value }}
+      initContainers:
+        - name: mariadb-perms
+{{ tuple $envAll "mariadb_phy_restore" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{- dict "envAll" $envAll "application" "mariadb_phy_restore" "container" "perms" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{- tuple $envAll $envAll.Values.pod.resources.jobs.mariadb_phy_restore | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          command:
+            - chown
+            - -R
+            - "mysql:mysql"
+            - /var/lib/mysql
+{{- if ne $backupBackend "pv_nfs" }}
+            - /var/backup
+{{- end }}
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: mysql-data
+              mountPath: /var/lib/mysql
+{{- if ne $backupBackend "pv_nfs" }}
+            - mountPath: /var/backup
+              name: mysql-backup
+{{- end }}
+      containers:
+        - name: phy-restore
+{{ dict "envAll" $envAll "application" "mariadb_phy_restore" "container" "phy_restore" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/mariadb_resque.py
+            - "restore"
+            - --backup-name
+            - {{ .Values.conf.phy_restore.backup_name | quote }}
+            - --replica-restore-timeout
+            - {{ .Values.conf.phy_restore.replica_restore_timeout | quote }}
+            {{- if .Values.conf.phy_backup.sync_remote.enabled }}
+            - --sync-remote-path
+            - {{ printf "%s:%s" .Values.conf.phy_backup.sync_remote.remote .Values.conf.phy_backup.sync_remote.path }}
+            {{- end }}
+          env:
+            - name: MARIADB_REPLICAS
+              value: {{ $mariadbReplicas | quote }}
+            - name: MARIADB_TARGET_REPLICA
+              value: {{ $mariadbTargetReplicaName | quote }}
+            - name: MARIADB_RESQUE_RUNNER_IMAGE
+              value: {{ tuple $envAll "mariadb_phy_restore" | include "helm-toolkit.snippets.imageName" | quote }}
+            - name: MARIADB_RESQUE_RUNNER_SERVICE_ACCOUNT
+              value: {{ $runnerServiceAccountName | quote }}
+            - name: MARIADB_RESQUE_RUNNER_POD_NAME_PREFIX
+              value: {{ .Release.Name }}
+            - name: MARIADB_RESQUE_RUNNER_RESTORE_NODE_SELECTOR
+              value: {{ toJson $runner_node_selector | quote }}
+            - name: MARIADB_STS_SCALE_TIMEOUT
+              value: {{ $stsScaleTimeout | quote }}
+            - name: MARIADB_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: MARIADB_STATE_CONFIGMAP
+              value: {{ $stateConfigMap }}
+            - name: MARIADB_BACKUP_HASH_CONFIGMAP
+              value: {{ $backupHashConfigmap }}
+            {{- range $key, $value := .Values.conf.rclone_env }}
+            {{- $opt := printf "%s_%s" "RCLONE" $key | upper }}
+            - name: {{ $opt }}
+              value: {{ $value | quote }}
+            {{- end }}
+{{- dict "envAll" $envAll | include "helm-toolkit.snippets.kubernetes_proxy_env_vars" | indent 12 }}
+{{ tuple $envAll "mariadb_phy_restore" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.mariadb_phy_restore | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - mountPath: /tmp/mariadb_resque.py
+              name: mariadb-bin
+              readOnly: true
+              subPath: mariadb_resque.py
+            - mountPath: /tmp/run_mariadb_resque.sh
+              name: mariadb-bin
+              readOnly: true
+              subPath: run_mariadb_resque.sh
+            - mountPath: /tmp/resque_runner.yaml.j2
+              name: mariadb-bin
+              readOnly: true
+              subPath: resque_runner.yaml.j2
+            - name: mariadb-secrets
+              mountPath: /etc/mysql/admin_user.cnf
+              subPath: admin_user.cnf
+              readOnly: true
+            - name: mariadb-secrets
+              mountPath: /etc/mysql/mariabackup_user.cnf
+              subPath: mariabackup_user.cnf
+              readOnly: true
+            - name: mariadb-secrets
+              mountPath: /home/mysql/.rclone.conf
+              subPath: rclone.conf
+              readOnly: true
+            {{- if $envAll.Values.manifests.secret_ca_bundle }}
+            - name: ca-cert-bundle
+              mountPath: /etc/ssl/certs/openstack-ca-bundle.pem
+              readOnly: true
+              subPath: ca_bundle
+            {{- end }}
+            - mountPath: /var/lib/mysql
+              name: mysql-data
+            - mountPath: /var/backup
+              name: mysql-backup
+            - mountPath: /etc/mysql/backup-kek
+              name: mariadb-secrets
+              subPath: openssl_kek
+              readOnly: true
+      restartPolicy: Never
+      serviceAccount: {{ $serviceAccountName }}
+      serviceAccountName: {{ $serviceAccountName }}
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: mariadb-secrets
+          secret:
+            secretName: mariadb-secrets
+            defaultMode: 0444
+        - name: mariadb-bin
+          configMap:
+            defaultMode: 0555
+            name: mariadb-bin
+
+        - name: mysql-data
+          persistentVolumeClaim:
+            claimName: mysql-data-{{ $mariadbTargetReplicaName }}
+        {{- if has .Values.conf.phy_backup.backend (list "pvc" "pv_nfs") }}
+        - name: mysql-backup
+          persistentVolumeClaim:
+            claimName: {{ .Values.conf.phy_backup.backup_pvc_name | quote }}
+        {{- else }}
+        - name: mysql-backup
+          hostPath:
+            path: {{ .Values.conf.phy_backup.host_path }}
+            type: DirectoryOrCreate
+        {{- end }}
+        {{- if $envAll.Values.manifests.secret_ca_bundle }}
+        - name: ca-cert-bundle
+          secret:
+            secretName: mariadb-ca-bundle
+        {{- end }}
+{{- end }}

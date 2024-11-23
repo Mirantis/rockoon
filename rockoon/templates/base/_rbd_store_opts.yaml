@@ -1,0 +1,8 @@
+             {%- for pools, pools_config in ceph.glance.pools.items() %}
+            rbd_store_pool: {{ pools_config.name }}
+             {%- endfor %}
+            rbd_store_chunk_size: 8
+            rbd_store_replication: 3
+            rbd_store_crush_rule: replicated_rule
+            rbd_store_user: glance
+            rbd_store_ceph_conf: /etc/ceph/ceph.conf

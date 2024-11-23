@@ -1,0 +1,23 @@
+        oslo_messaging:
+          auth:
+            admin:
+              username: {{ admin_creds.messaging.username }}
+              password: {{ admin_creds.messaging.password }}
+            guest:
+              username: guest
+              password: {{ guest_creds.password }}
+            user:
+              username: {{ admin_creds.messaging.username }}
+              password: {{ admin_creds.messaging.password }}
+            {{ service }}:
+              username: {{ credentials[0].messaging.user.username }}
+              password: {{ credentials[0].messaging.user.password }}
+          statefulset:
+            replicas: 1
+            name: openstack-{{ service }}-rabbitmq-rabbitmq
+          hosts:
+            default: rabbitmq-{{ service }}
+          path: /{{ service }}{% if service == 'heat' %}_{{ spec.openstack_version }}{% endif %}
+        prometheus_rabbitmq_exporter:
+          hosts:
+            default: rabbitmq-exporter-{{ service }}

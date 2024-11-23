@@ -1,0 +1,28 @@
+{%- from 'macros/connections.j2' import from_pod_networks %}
+{%- from 'macros/connections.j2' import from_namespaces %}
+{%- set ns_list = ["os_controller", "lma_deployment", "tf_deployment"] | namespaces  %}
+{%- set glance_api = "image:glance:Deployment:glance-api" %}
+{%- set glance_registry = "image:glance:Deployment:glance-registry" %}
+        api:
+          spec:
+            podSelector:
+              matchLabels:
+{{ service_childs[glance_api].get_pod_labels() | toyaml | indent(16, first=True) }}
+            policyTypes:
+            - Ingress
+            ingress:
+{{ network_policies["ingress"][glance_api] | toyaml | indent(14, first=True) }}
+              - from:
+# cinder-volume, nova-compute use networking
+{{ from_pod_networks(pod_networks, service_childs[glance_api].get_np_ports(["g-api"])) | indent(16) }}
+              - from:
+{{ from_namespaces(ns_list, service_childs[glance_api].get_np_ports(["g-api"])) | indent(16) }}
+        registry:
+          spec:
+            podSelector:
+              matchLabels:
+{{ service_childs[glance_registry].get_pod_labels() | toyaml | indent(16, first=True) }}
+            policyTypes:
+            - Ingress
+            ingress:
+{{ network_policies["ingress"][glance_registry] | toyaml | indent(14, first=True) }}

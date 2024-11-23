@@ -1,0 +1,23 @@
+spec:
+  releases:
+  - chart: memcached
+    name: openstack-memcached
+    values:
+      endpoints:
+        cluster_domain_suffix: cluster.local
+      images:
+        tags:
+          dep_check: dep-check:latest
+          image_repo_sync: image-repo-sync:latest
+          memcached: memcached:latest
+          prometheus_memcached_exporter: prometheus-memcached-exporter:latest
+      manifests:
+        deployment: false
+        network_policy: false
+        statefulset: true
+      monitoring:
+        prometheus:
+          enabled: true
+      pod:
+        replicas:
+          server: 3

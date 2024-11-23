@@ -1,0 +1,21 @@
+alarming:aodh:Deployment:aodh-api:
+- from:
+  - podSelector:
+      matchLabels:
+        application: keystone
+        component: client
+  - podSelector:
+      matchLabels:
+        application: ingress
+        component: server
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: engine
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: engine
+  ports:
+  - port: 8042
+    protocol: TCP

@@ -1,0 +1,9 @@
+parameters:
+  cinder:
+    volume:
+      message_queue:
+        ~members:
+        - host: ${_param:mcp2_rabbitmq_cinder_address}
+        password: ${_param:mcp2_rabbitmq_cinder_password}
+        user: ${_param:mcp2_rabbitmq_cinder_username}
+        virtual_host: 'cinder'

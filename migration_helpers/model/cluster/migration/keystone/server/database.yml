@@ -1,0 +1,7 @@
+parameters:
+  keystone:
+    server:
+      database:
+        host: ${_param:mcp2_database_keystone_address}
+        password: ${_param:mcp2_database_keystone_password}
+        user: ${_param:mcp2_database_keystone_username}

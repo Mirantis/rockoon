@@ -1,0 +1,179 @@
+compute:nova:Deployment:nova-api-metadata:
+- from:
+  - podSelector:
+      matchLabels: &id001
+        application: ingress
+        component: server
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: metadata-agent
+  - podSelector:
+      matchLabels: &id002
+        application: neutron
+        component: server
+  ports:
+  - port: 8775
+    protocol: TCP
+compute:nova:Deployment:nova-api-osapi:
+- from:
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: volume_daemonset
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: api
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: backup
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: volume
+  - podSelector:
+      matchLabels:
+        application: cloudprober
+        component: prober
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: bootstrap
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: cell-setup
+  - podSelector:
+      matchLabels:
+        application: horizon
+        component: server
+  - podSelector:
+      matchLabels:
+        application: keystone
+        component: client
+  - podSelector:
+      matchLabels: *id001
+  - podSelector:
+      matchLabels:
+        application: masakari
+        component: engine
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: worker
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: compute
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: ipmi
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: central
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: notification
+  - podSelector:
+      matchLabels: *id002
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: engine
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: engine
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: share
+  - podSelector:
+      matchLabels:
+        application: tempest
+        component: run-tests
+  - podSelector:
+      matchLabels:
+        application: tempest
+        component: bootstrap
+  - podSelector:
+      matchLabels:
+        application: tempest
+        component: static-accounts
+  ports:
+  - port: 8774
+    protocol: TCP
+compute:nova:Deployment:nova-novncproxy:
+- from:
+  - podSelector:
+      matchLabels: *id001
+  ports:
+  - port: 6080
+    protocol: TCP
+compute:nova:Deployment:nova-spiceproxy:
+- from:
+  - podSelector:
+      matchLabels: *id001
+  ports:
+  - port: 6082
+    protocol: TCP
+compute:rabbitmq:StatefulSet:openstack-nova-rabbitmq-rabbitmq:
+- from:
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: compute
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: metadata
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: os-api
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: consoleauth
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: novnc-proxy
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: spice-proxy
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: placement
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: conductor
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: scheduler
+  ports:
+  - port: 5672
+    protocol: TCP
+- from:
+  - podSelector:
+      matchLabels:
+        application: prometheus_rabbitmq_exporter
+        component: exporter
+        release_group: openstack-nova-rabbitmq
+  - podSelector:
+      matchLabels:
+        application: rabbitmq
+        component: cluster-wait
+        release_group: openstack-nova-rabbitmq
+  ports:
+  - port: 15672
+    protocol: TCP

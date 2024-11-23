@@ -1,0 +1,57 @@
+#apiVersion: lcm.mirantis.com/v1alpha1
+#kind: HelmBundle
+
+{%- set service = 'cloudprober' %}
+{%- set clp_options = spec.features.get('cloudprober', {}) %}
+{%- set keystone_users =  spec.features.get('keystone', {}).get('users', {}) %}
+spec:
+  releases:
+  - name: openstack-cloudprober
+    chart: cloudprober
+    values:
+      images:
+        tags:
+{%- for image in [
+    "cloudprober",
+    "cloudprober_openstack_discovery",
+    "dep_check"] %}
+        {%- if image in images %}
+          {{ image }}: {{ images[image] }}
+        {%- endif %}
+{%- endfor %}
+      endpoints:
+        cluster_domain_suffix: {{ spec.internal_domain_name }}
+        identity:
+          auth:
+            cloudprober:
+              region_name: {{ spec.get('region_name', 'RegionOne') }}
+              username: {{ keystone_creds["cloudprober"].username }}
+              password: {{ keystone_creds["cloudprober"].password }}
+              project_name: {{ keystone_users.get('admin', {}).get('project_name', 'admin') }}
+              user_domain_name: {{ keystone_users.get('admin', {}).get('user_domain_name', 'default') }}
+              project_domain_name: {{ keystone_users.get('admin', {}).get('project_domain_name', 'default') }}
+              default_domain_id: {{ keystone_users.get('admin', {}).get('default_domain_id', 'default') }}
+          hosts:
+            admin:
+              host: keystone-api
+            default: keystone
+            internal: keystone-api
+          port:
+            api:
+              admin: 5000
+              default: 80
+              internal: 5000
+              public: 443
+          scheme:
+            default: http
+            public: https
+      conf:
+        openstack_discovery:
+          os_cloud: cloudprober
+          interval: {{ clp_options.get('discovery', {}).get('interval', 600) }}
+{%- if spec.features.network_policies.enabled %}
+      network_policy:
+{% include 'base/network_policies/cloudprober.yaml' %}
+{%- endif %}
+      manifests:
+        network_policy: {{ spec.features.network_policies.enabled }}

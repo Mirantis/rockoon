@@ -1,0 +1,5 @@
+---
+fixes:
+  - An issue when admission controller wasn't restarted
+    when tls certificate changed, as result editing osdpl
+    resource raise error. For more info please see `PRODX-8492 <https://mirantis.jira.com/browse/PRODX-8492>`__

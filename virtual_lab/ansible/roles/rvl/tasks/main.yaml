@@ -1,0 +1,75 @@
+- name: Create a directory if it does not exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0750'
+  loop:
+    - "{{ rvl_k8s_objects_path }}"
+    - "{{ rvl_ca_certs_path }}"
+  delegate_to: initial_controller
+
+- name: Include network tasks
+  ansible.builtin.include_tasks:
+    file: network.yaml
+  tags:
+  - rvl_network
+
+- name: Include clients tasks
+  ansible.builtin.include_tasks:
+    file: clients.yaml
+  tags:
+  - rvl_clients
+  delegate_to: initial_controller
+
+- name: Label k8s nodes
+  ansible.builtin.include_tasks:
+    file: k8s-label-nodes.yaml
+  delegate_to: initial_controller
+
+- name: Include lvp tasks
+  ansible.builtin.include_tasks:
+    file: lvp.yaml
+  tags:
+  - rvl_lvp
+  delegate_to: initial_controller
+
+- name: Include metallb tasks
+  ansible.builtin.include_tasks:
+    file: metallb.yaml
+  tags:
+  - rvl_metallb
+  delegate_to: initial_controller
+
+- name: Deploy rockoon
+  ansible.builtin.include_tasks:
+    file: rockoon.yaml
+  tags:
+  - oc
+  delegate_to: initial_controller
+
+- name: Include certs tasks
+  ansible.builtin.include_tasks:
+    file: certs.yaml
+  tags:
+  - rvl_osdpl_certs
+  delegate_to: initial_controller
+
+- name: Include osdpl tasks
+  ansible.builtin.include_tasks:
+    file: osdpl.yaml
+  tags:
+  - rvl_osdpl
+  delegate_to: initial_controller
+
+- name: Include coredns tasks
+  ansible.builtin.include_tasks:
+    file: dns/coredns.yaml
+  tags:
+  - rvl_dns
+  delegate_to: initial_controller
+
+- name: Include resolver tasks
+  ansible.builtin.include_tasks:
+    file: dns/resolver.yaml
+  tags:
+  - rvl_dns

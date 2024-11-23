@@ -1,0 +1,126 @@
+#!/bin/bash
+
+set -e #x
+RUN_DIR=$(cd $(dirname "$0") && pwd)
+TOP_DIR=$( cd $(dirname $RUN_DIR/../../) && pwd)
+
+. $TOP_DIR/globals
+. $TOP_DIR/functions-common
+
+function get_mcp1_database_address {
+  local mcp1_db_address=$(reclass -n $(hostname -f)  -o json | jq -r .parameters._param.mcp1_database_address)
+  echo "$mcp1_db_address"
+}
+
+function get_mcp2_database_address {
+  local mcp2_db_address=$(reclass -n $(hostname -f)  -o json | jq -r .parameters._param.mcp2_database_address)
+  echo "$mcp2_db_address"
+}
+
+function get_mcp1_database_username {
+  local component=$1
+  local mcp1_db_user=$(reclass -n $(hostname -f)  -o json | jq -r .parameters._param.mcp1_database_${component}_username)
+  echo "$mcp1_db_user"
+}
+
+
+function get_mcp1_database_password {
+  local component=$1
+  local mcp1_db_password=$(reclass -n $(hostname -f)  -o json | jq -r .parameters._param.mcp1_database_${component}_password)
+  echo "$mcp1_db_password"
+}
+
+function get_mcp2_database_username {
+  local component=$1
+  local mcp2_db_user=$(reclass -n $(hostname -f)  -o json | jq -r .parameters._param.mcp2_database_${component}_username)
+  echo "$mcp2_db_user"
+}
+
+function get_mcp2_database_password {
+  local component=$1
+  local mcp2_db_password=$(reclass -n $(hostname -f)  -o json | jq -r .parameters._param.mcp2_database_${component}_password)
+  echo "$mcp2_db_password"
+}
+
+function get_service_dbs {
+    local service_name=$1
+    case "$service_name" in
+        "nova" )
+            echo "nova nova_api nova_cell0" ;;
+        *)
+            echo "$service_name" ;;
+    esac
+}
+
+function get_database_size {
+  info "Calculating database size for $component"
+  local component="$1"
+  local host="$2"
+  local db_admin="$3"
+  local db_password="$4"
+
+  component_dbs=$(get_service_dbs $component)
+  for database in component_dbs; do
+    timeout 60 mysql -u${db_admin} -p$db_password  -h${host} -e "SELECT table_schema \"$database\", \
+      ROUND(SUM(data_length + index_length) / 1024 / 1024, 1) \"DB Size in MB\" \
+      FROM information_schema.tables \
+      GROUP BY table_schema;"
+  done
+}
+
+function check_database_connection {
+  local component="$1"
+  local host="$2"
+  local db_admin="$3"
+  local db_password="$4"
+
+  info "Checking database connection for $component"
+  timeout 10 mysql -u${db_admin} -p$db_password  -h${host} -e "show databases;" || die $LINENO "Failed to connect to $host with username: $db_admin and password: $db_password"
+  info "Access OK"
+}
+
+function dump_openstack_component_dbs {
+  info "Preparing variables for ${FUNCNAME[*]}"
+  local component="$1"
+  local host=$(get_mcp1_database_address)
+  local db_admin=$(get_mcp1_database_username $component)
+  local db_password=$(get_mcp1_database_password $component)
+  local mysql_cmd="mysql -B -N -h${host} -u${db_admin} -p$db_password "
+
+  component_dbs=$(get_service_dbs $component)
+  info "Running dump of databases ${component_dbs} from mysql host ${host}"
+  mysqldump -u${db_admin} -p$db_password  -h${host} --no-tablespaces --routines --events --single-transaction --databases ${component_dbs} --result-file="$DATABASE_DIR/${component}-dump.sql" || die $LINENO "Failed to dump ${component} database"
+  info "Dump completed"
+}
+
+function import_openstack_component_dbs {
+  info "Preparing variables for ${FUNCNAME[*]}"
+  local component="$1"
+  local host=$(get_mcp2_database_address)
+  local db_admin=$(get_mcp2_database_username $component)
+  local db_password=$(get_mcp2_database_password $component)
+
+  info "Importing databases of openstack component ${component} to mysql host ${host}"
+  mysql -u ${db_admin} -h ${host} -p${db_password} < "$DATABASE_DIR/${component}-dump.sql" || die $LINENO "Failed to import ${component} database"
+  info "Import done"
+}
+
+function drop_database_on_target {
+  info "Preparing variables for ${FUNCNAME[*]}"
+  local component="$1"
+  local host=$(get_mcp2_database_address)
+  local db_admin=$(get_mcp2_database_username $component)
+  local db_password=$(get_mcp2_database_password $component)
+
+  component_dbs=$(get_service_dbs $component)
+  local current_databases
+  for database in $component_dbs; do
+      info "Checking database $database on $host"
+      if mysql -u ${db_admin} -h ${host} -p${db_password} -e "use $database;" > /dev/null 2>&1; then
+          info "Removing database $database on $host"
+          mysql -u ${db_admin} -h ${host} -p${db_password} -e "drop database $database;" || die $LINENO "Failed to drop database ${database}"
+      else
+         info "Database $database on $host not present."
+      fi
+  done
+}

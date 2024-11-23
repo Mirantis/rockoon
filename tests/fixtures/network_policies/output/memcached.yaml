@@ -1,0 +1,261 @@
+memcached:memcached:StatefulSet:openstack-memcached-memcached:
+- from:
+  - podSelector:
+      matchLabels:
+        application: aodh
+        component: api
+  - podSelector:
+      matchLabels:
+        application: aodh
+        component: evaluator
+  - podSelector:
+      matchLabels:
+        application: aodh
+        component: listener
+  - podSelector:
+      matchLabels:
+        application: aodh
+        component: notifier
+  - podSelector:
+      matchLabels:
+        application: ironic
+        component: api
+  - podSelector:
+      matchLabels:
+        application: ironic
+        component: conductor
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: volume_daemonset
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: api
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: backup
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: scheduler
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: volume
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: compute
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: metadata
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: os-api
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: consoleauth
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: novnc-proxy
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: spice-proxy
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: placement
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: compute
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: conductor
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: scheduler
+  - podSelector:
+      matchLabels:
+        application: horizon
+        component: server
+  - podSelector:
+      matchLabels:
+        application: designate
+        component: api
+  - podSelector:
+      matchLabels:
+        application: designate
+        component: central
+  - podSelector:
+      matchLabels:
+        application: designate
+        component: mdns
+  - podSelector:
+      matchLabels:
+        application: designate
+        component: producer
+  - podSelector:
+      matchLabels:
+        application: panko
+        component: api
+  - podSelector:
+      matchLabels:
+        application: keystone
+        component: api
+  - podSelector:
+      matchLabels:
+        application: glance
+        component: api
+  - podSelector:
+      matchLabels:
+        application: glance
+        component: registry
+  - podSelector:
+      matchLabels:
+        application: masakari
+        component: monitors
+  - podSelector:
+      matchLabels:
+        application: masakari
+        component: api
+  - podSelector:
+      matchLabels:
+        application: masakari
+        component: engine
+  - podSelector:
+      matchLabels:
+        application: barbican
+        component: api
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: health_manager
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: api
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: housekeeping
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: worker
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: compute
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: ipmi
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: central
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: notification
+  - podSelector:
+      matchLabels:
+        application: gnocchi
+        component: metricd
+  - podSelector:
+      matchLabels:
+        application: gnocchi
+        component: metricd
+  - podSelector:
+      matchLabels:
+        application: gnocchi
+        component: api
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: bagpipe-bgp
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: dhcp-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: dr-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: l2gw-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: l3-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: metadata-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: neutron-ovs-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: neutron-sriov-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: neutron-portprober-agent
+  - podSelector:
+      matchLabels:
+        application: neutron
+        component: server
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: api
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: cfn
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: engine
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: engine
+  - podSelector:
+      matchLabels:
+        application: placement
+        component: api
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: share_daemonset
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: api
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: scheduler
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: share
+  ports:
+  - port: 11211
+    protocol: TCP

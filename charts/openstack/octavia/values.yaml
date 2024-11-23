@@ -1,0 +1,1312 @@
+# Copyright 2019 Samsung Electronics Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Default values for octavia.
+# This is a YAML-formatted file.
+# Declare name/value pairs to be passed into your templates.
+# name: value
+
+---
+release_group: null
+
+labels:
+  api:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  driver_agent:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  worker:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+    # Scheduled together with health_manager
+  housekeeping:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+    # Scheduled together with health_manager
+  health_manager:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+    node_affinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: openvswitch
+            operator: In
+            values:
+            - enabled
+          - key: openstack-gateway
+            operator: In
+            values:
+            - enabled
+        - matchExpressions:
+          - key: openvswitch
+            operator: In
+            values:
+            - enabled
+          - key: openstack-control-plane
+            operator: In
+            values:
+            - enabled
+        - matchExpressions:
+          - key: linuxbridge
+            operator: In
+            values:
+            - enabled
+          - key: openstack-gateway
+            operator: In
+            values:
+            - enabled
+        - matchExpressions:
+          - key: linuxbridge
+            operator: In
+            values:
+            - enabled
+          - key: openstack-control-plane
+            operator: In
+            values:
+            - enabled
+  job:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+
+images:
+  tags:
+    test: docker.io/xrally/xrally-openstack:2.0.0
+    bootstrap: docker.io/openstackhelm/heat:ocata
+    db_init: docker.io/openstackhelm/heat:ocata
+    octavia_db_sync: docker.io/loci/octavia:master-ubuntu
+    octavia_db_sync_persistence: docker.io/loci/octavia:master-ubuntu
+    db_drop: docker.io/openstackhelm/heat:ocata
+    rabbit_init: docker.io/rabbitmq:3.7-management
+    create_resources: docker.io/openstackhelm/ceph-config-helper:latest-ubuntu_xenial
+    ks_user: docker.io/openstackhelm/heat:ocata
+    ks_service: docker.io/openstackhelm/heat:ocata
+    ks_endpoints: docker.io/openstackhelm/heat:ocata
+    dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
+    image_repo_sync: docker.io/docker:17.07.0
+    octavia_api: docker.io/loci/octavia:master-ubuntu
+    octavia_worker: docker.io/loci/octavia:master-ubuntu
+    octavia_housekeeping: docker.io/loci/octavia:master-ubuntu
+    octavia_driver_agent: docker.io/loci/octavia:master-ubuntu
+    octavia_health_manager: docker.io/loci/octavia:master-ubuntu
+    octavia_health_manager_init: docker.io/kolla/ubuntu-source-octavia-health-manager:rocky
+    openvswitch_vswitchd: docker.io/kolla/centos-source-openvswitch-vswitchd:rocky
+  pull_policy: "IfNotPresent"
+  local_registry:
+    active: false
+    exclude:
+      - dep_check
+      - image_repo_sync
+
+bootstrap:
+  enabled: true
+  ks_user: admin-system
+  script: |
+    openstack role create --or-show load-balancer_admin
+    openstack role create --or-show load-balancer_observer
+    openstack role create --or-show load-balancer_global_observer
+    openstack role create --or-show load-balancer_quota_admin
+    openstack role create --or-show load-balancer_member
+
+network:
+  api:
+    ingress:
+      public: true
+      classes:
+        namespace: "nginx"
+        cluster: "nginx-cluster"
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /
+    external_policy_local: false
+    node_port:
+      enabled: false
+      port: 30826
+  core_plugin: ml2
+
+dependencies:
+  dynamic:
+    targeted:
+      openvswitch: {}
+      ovn:
+        health_manager:
+          pod:
+            - requireSameNode: true
+              labels:
+                application: openvswitch-ovn
+                component: controller
+    common:
+      local_image_registry:
+        jobs:
+          - heat-image-repo-sync
+        services:
+          - endpoint: node
+            service: local_image_registry
+    job_rabbit_init:
+      api:
+        jobs:
+          - octavia-rabbit-init
+      worker:
+        jobs:
+          - octavia-rabbit-init
+      housekeeping:
+        jobs:
+          - octavia-rabbit-init
+      driver_agent:
+        jobs:
+          - octavia-rabbit-init
+      health_manager:
+        jobs:
+          - octavia-rabbit-init
+    job_ks_endpoints:
+      api:
+        jobs:
+          - octavia-ks-endpoints
+      worker:
+        jobs:
+          - octavia-ks-endpoints
+      housekeeping:
+        jobs:
+          - octavia-ks-endpoints
+      driver_agent:
+        jobs:
+          - octavia-ks-endpoints
+      health_manager:
+        jobs:
+          - octavia-ks-endpoints
+  static:
+    api:
+      jobs:
+        - octavia-db-sync
+        - octavia-ks-user
+      services:
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: oslo_cache
+        - endpoint: internal
+          service: network
+    driver_agent:
+      jobs:
+        - octavia-db-sync
+        - octavia-ks-user
+      services:
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: oslo_cache
+        - endpoint: internal
+          service: network
+    worker:
+      jobs:
+        - octavia-db-sync
+        - octavia-ks-user
+        - octavia-create-resources
+      services:
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: oslo_cache
+        - endpoint: internal
+          service: network
+        - endpoint: internal
+          service: load_balancer
+    housekeeping:
+      jobs:
+        - octavia-db-sync
+        - octavia-ks-user
+        - octavia-create-resources
+      services:
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: oslo_cache
+        - endpoint: internal
+          service: network
+        - endpoint: internal
+          service: load_balancer
+    health_manager:
+      jobs:
+        - octavia-db-sync
+        - octavia-ks-user
+        - octavia-create-resources
+      services:
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: oslo_cache
+        - endpoint: internal
+          service: network
+        - endpoint: internal
+          service: load_balancer
+    db_init:
+      services:
+        - endpoint: internal
+          service: oslo_db
+    db_sync:
+      jobs:
+        - octavia-db-init
+      services:
+        - endpoint: internal
+          service: oslo_db
+    db_sync_persistence:
+      jobs:
+        - octavia-db-init
+      services:
+        - endpoint: internal
+          service: oslo_db
+    ks_endpoints:
+      jobs:
+        - octavia-ks-service
+      services:
+        - endpoint: internal
+          service: identity
+    ks_service:
+      services:
+        - endpoint: internal
+          service: identity
+    ks_user:
+      services:
+        - endpoint: internal
+          service: identity
+    rabbit_init:
+      services:
+      - endpoint: internal
+        service: oslo_messaging
+    image_repo_sync:
+      services:
+        - endpoint: internal
+          service: local_image_registry
+    create_resources:
+      jobs:
+        - octavia-ks-user
+      services:
+        - endpoint: internal
+          service: identity
+        - endpoint: internal
+          service: network
+        - endpoint: internal
+          service: image
+    bootstrap:
+      services:
+        - endpoint: internal
+          service: load_balancer
+        - endpoint: internal
+          service: identity
+conf:
+  api_audit_map:
+    DEFAULT:
+      target_endpoint_type: load-balancer
+    custom_actions:
+      failover: update/failover
+    path_keywords:
+      amphorae: amphora
+      availabilityzones: availabilityzone
+      availabilityzoneprofiles: availabilityzoneprofile
+      config: None
+      defaults: None
+      failover: None
+      flavors: flavor
+      flavorprofiles: flavorprofile
+      healthmonitors: healthmonitor
+      l7policies: l7policy
+      listeners: listener
+      loadbalancers: loadbalancer
+      members: member
+      pools: pool
+      providers: None
+      quotas: quota
+      rules: rule
+      stats: None
+      status: None
+    service_endpoints:
+      load-balancer: service/load-balancer
+  octavia:
+    DEFAULT:
+      log_config_append: /etc/octavia/logging.conf
+    audit:
+      audit_map_file: /etc/octavia/api_audit_map.conf
+      enabled: false
+    audit_middleware_notifications:
+      publisher: octavia-api
+    api_settings:
+      api_handler: queue_producer
+      bind_host: 0.0.0.0
+    database:
+      max_retries: -1
+    health_manager:
+      bind_port: 5555
+      bind_ip: 0.0.0.0
+      controller_ip_port_list: 0.0.0.0:5555
+      heartbeat_key: insecure
+    keystone_authtoken:
+      auth_type: password
+      auth_version: v3
+      memcache_security_strategy: ENCRYPT
+    certificates:
+      #ca_private_key_passphrase: foobar
+      ca_private_key: /etc/octavia/certs/private/cakey.pem
+      ca_certificate: /etc/octavia/certs/ca_01.pem
+      endpoint_type: internal
+    haproxy_amphora:
+      server_ca: /etc/octavia/certs/ca_01.pem
+      client_cert: /etc/octavia/certs/client.pem
+      base_path: /var/lib/octavia
+      base_cert_dir: /var/lib/octavia/certs
+      connection_max_retries: 1500
+      connection_retry_interval: 1
+      rest_request_conn_timeout: 10
+      rest_request_read_timeout: 120
+    controller_worker:
+      amp_ssh_key_name: octavia_ssh_key
+      amp_image_tag: amphora
+      network_driver: allowed_address_pairs_driver
+      compute_driver: compute_nova_driver
+      amphora_driver: amphora_haproxy_rest_driver
+      workers: 2
+      amp_active_retries: 100
+      amp_active_wait_sec: 2
+      loadbalancer_topology: SINGLE
+    oslo_middleware:
+      enable_proxy_headers_parsing: true
+    oslo_messaging:
+      topic: octavia_prov
+      rpc_thread_pool_size: 2
+    oslo_messaging_notifications:
+      driver: messagingv2
+    house_keeping:
+      load_balancer_expiry_age: 3600
+      amphora_expiry_age: 3600
+    service_auth:
+      auth_type: password
+      cafile: ""
+      auth_version: v3
+      memcache_security_strategy: ENCRYPT
+    task_flow:
+      jobboard_backend_driver: redis_taskflow_driver
+    oslo_policy:
+      policy_file: /etc/octavia/policy.yaml
+      policy_dirs: /etc/octavia/policy.d/
+  logging:
+    loggers:
+      keys:
+        - root
+        - octavia
+        - oslo_notification_audit
+    handlers:
+      keys:
+        - stdout
+        - stderr
+        - "null"
+    formatters:
+      keys:
+        - context
+        - default
+    logger_root:
+      level: WARNING
+      handlers: stdout
+    logger_octavia:
+      level: WARNING
+      handlers: ""
+      qualname: octavia
+    logger_oslo_notification_audit:
+      level: INFO
+      handlers: ""
+      qualname: oslo.messaging.notification.audit
+    logger_amqp:
+      level: WARNING
+      handlers: ""
+      qualname: amqp
+    logger_amqplib:
+      level: WARNING
+      handlers: ""
+      qualname: amqplib
+    logger_eventletwsgi:
+      level: WARNING
+      handlers: ""
+      qualname: eventlet.wsgi.server
+    logger_sqlalchemy:
+      level: WARNING
+      handlers: ""
+      qualname: sqlalchemy
+    logger_boto:
+      level: WARNING
+      handlers: ""
+      qualname: boto
+    handler_null:
+      class: logging.NullHandler
+      formatter: default
+      args: ()
+    handler_stdout:
+      class: StreamHandler
+      args: (sys.stdout,)
+      formatter: context
+    handler_stderr:
+      class: StreamHandler
+      args: (sys.stderr,)
+      formatter: context
+    formatter_context:
+      class: oslo_log.formatters.ContextFormatter
+      datefmt: "%Y-%m-%d %H:%M:%S"
+    formatter_default:
+      format: "%(message)s"
+      datefmt: "%Y-%m-%d %H:%M:%S"
+
+  rabbitmq:
+    # NOTE(rk760n): adding rmq policy to mirror messages from notification queues and set expiration time for the ones
+    policies:
+      - vhost: "octavia"
+        name: "ha_ttl_octavia"
+        definition:
+          # mirror messges to other nodes in rmq cluster
+          ha-mode: "all"
+          ha-sync-mode: "automatic"
+          # 70s
+          message-ttl: 70000
+        priority: 0
+        apply-to: all
+        pattern: '(notifications)\.'
+  wsgi_octavia: |
+    {{- $portInt := tuple "load_balancer" "internal" "api" $ | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+
+    Listen 0.0.0.0:{{ $portInt }}
+
+    LogFormat "%h %l %u %t \"%r\" %>s %b %D \"%{Referer}i\" \"%{User-Agent}i\"" combined
+    LogFormat "%{X-Forwarded-For}i %l %u %t \"%r\" %>s %b %D \"%{Referer}i\" \"%{User-Agent}i\"" proxy
+
+    SetEnvIf X-Forwarded-For "^.*\..*\..*\..*" forwarded
+    CustomLog /dev/stdout combined env=!forwarded
+    CustomLog /dev/stdout proxy env=forwarded
+
+    <VirtualHost *:{{ $portInt }}>
+        WSGIDaemonProcess octavia-api processes={{ .Values.conf.software.apache2.processes }} threads=1 user=octavia group=octavia display-name=%{GROUP}
+        WSGIProcessGroup octavia-api
+        WSGIScriptAlias / /var/www/cgi-bin/octavia/octavia-wsgi
+        WSGIApplicationGroup %{GLOBAL}
+        WSGIPassAuthorization On
+        <IfVersion >= 2.4>
+          ErrorLogFormat "%{cu}t %M"
+        </IfVersion>
+        ErrorLog /dev/stdout
+
+        SetEnvIf X-Forwarded-For "^.*\..*\..*\..*" forwarded
+        CustomLog /dev/stdout combined env=!forwarded
+        CustomLog /dev/stdout proxy env=forwarded
+    </VirtualHost>
+  software:
+    apache2:
+      binary: apache2
+      start_parameters: -DFOREGROUND
+      site_dir: /etc/apache2/sites-enable
+      conf_dir: /etc/apache2/conf-enabled
+      mods_dir: /etc/apache2/mods-available
+      a2enmod: null
+      a2dismod: null
+      processes: 5
+  security: |
+    #
+    # Disable access to the entire file system except for the directories that
+    # are explicitly allowed later.
+    #
+    # This currently breaks the configurations that come with some web application
+    # Debian packages.
+    #
+    #<Directory />
+    #   AllowOverride None
+    #   Require all denied
+    #</Directory>
+
+    # Changing the following options will not really affect the security of the
+    # server, but might make attacks slightly more difficult in some cases.
+
+    #
+    # ServerTokens
+    # This directive configures what you return as the Server HTTP response
+    # Header. The default is 'Full' which sends information about the OS-Type
+    # and compiled in modules.
+    # Set to one of:  Full | OS | Minimal | Minor | Major | Prod
+    # where Full conveys the most information, and Prod the least.
+    ServerTokens Prod
+
+    #
+    # Optionally add a line containing the server version and virtual host
+    # name to server-generated pages (internal error documents, FTP directory
+    # listings, mod_status and mod_info output etc., but not CGI generated
+    # documents or custom error documents).
+    # Set to "EMail" to also include a mailto: link to the ServerAdmin.
+    # Set to one of:  On | Off | EMail
+    ServerSignature Off
+
+    #
+    # Allow TRACE method
+    #
+    # Set to "extended" to also reflect the request body (only for testing and
+    # diagnostic purposes).
+    #
+    # Set to one of:  On | Off | extended
+    TraceEnable Off
+
+    #
+    # Forbid access to version control directories
+    #
+    # If you use version control systems in your document root, you should
+    # probably deny access to their directories. For example, for subversion:
+    #
+    #<DirectoryMatch "/\.svn">
+  policy: {}
+  policy.d: {}
+
+secrets:
+  identity:
+    admin: octavia-keystone-admin
+    octavia: octavia-keystone-user
+    test: octavia-keystone-test
+  oslo_db:
+    admin: octavia-db-admin
+    octavia: octavia-db-user
+  oslo_db_persistence:
+    admin: octavia-persistence-db-admin
+    octavia: octavia-persistence-db-user
+  oslo_messaging:
+    admin: octavia-rabbitmq-admin
+    octavia: octavia-rabbitmq-user
+  tls:
+    load_balancer:
+      api:
+        public: octavia-tls-public
+
+octavia:
+  settings:
+    enable_amphorav2: false
+    lbmgmt_subnets:
+      - range: "192.168.100.0/24"
+        pool_start: "192.168.100.2"
+        pool_end: "192.168.100.254"
+    hm_remote_port: "9443"
+
+endpoints:
+  cluster_domain_suffix: cluster.local
+  local_image_registry:
+    name: docker-registry
+    namespace: docker-registry
+    hosts:
+      default: localhost
+      internal: docker-registry
+      node: localhost
+    host_fqdn_override:
+      default: null
+    port:
+      registry:
+        node: 5000
+  identity:
+    name: keystone
+    auth:
+      admin:
+        region_name: RegionOne
+        username: admin
+        password: password
+        project_name: admin
+        user_domain_name: default
+        project_domain_name: default
+      octavia:
+        role: admin,service
+        region_name: RegionOne
+        username: octavia
+        password: password
+        project_name: service
+        user_domain_name: service
+        project_domain_name: service
+      test:
+        region_name: RegionOne
+        username: test
+        password: password
+        project_name: test
+        user_domain_name: service
+        project_domain_name: service
+    hosts:
+      default: keystone
+      internal: keystone-api
+    host_fqdn_override:
+      default: null
+    path:
+      default: /v3
+    scheme:
+      default: 'http'
+    port:
+      api:
+        default: 80
+        internal: 5000
+  load_balancer:
+    name: octavia
+    hosts:
+      default: octavia-api
+      public: octavia
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    scheme:
+      default: http
+    port:
+      api:
+        default: 9876
+        public: 80
+  ovn_db:
+    namespace: null
+    hosts:
+      default: ovn-db
+      direct: ovn-db
+      discovery: ovn-discovery
+    host_fqdn_override:
+      default: null
+    path: null
+    scheme: tcp
+    port:
+      sb:
+        default: 6642
+      nb:
+        default: 6641
+  oslo_db:
+    auth:
+      admin:
+        username: root
+        password: password
+      octavia:
+        username: octavia
+        password: password
+    hosts:
+      default: mariadb
+    host_fqdn_override:
+      default: null
+    path: /octavia
+    scheme: mysql+pymysql
+    port:
+      mysql:
+        default: 3306
+  oslo_db_persistence:
+    auth:
+      admin:
+        username: root
+        password: password
+      octavia:
+        username: octavia
+        password: password
+    hosts:
+      default: mariadb
+    host_fqdn_override:
+      default: null
+    path: /octavia_persistence
+    scheme: mysql+pymysql
+    port:
+      mysql:
+        default: 3306
+  oslo_cache:
+    auth:
+      # NOTE(portdirect): this is used to define the value for keystone
+      # authtoken cache encryption key, if not set it will be populated
+      # automatically with a random value, but to take advantage of
+      # this feature all services should be set to use the same key,
+      # and memcache service.
+      memcache_secret_key: null
+    hosts:
+      default: memcached
+    host_fqdn_override:
+      default: null
+    port:
+      memcache:
+        default: 11211
+  oslo_messaging:
+    auth:
+      admin:
+        username: rabbitmq
+        password: password
+      octavia:
+        username: octavia
+        password: password
+    hosts:
+      default: rabbitmq
+    host_fqdn_override:
+      default: null
+    path: /octavia
+    scheme: rabbit
+    port:
+      amqp:
+        default: 5672
+      http:
+        default: 15672
+  network:
+    name: neutron
+    hosts:
+      default: neutron-server
+      public: neutron
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    scheme:
+      default: 'http'
+    port:
+      api:
+        default: 9696
+        public: 80
+  image:
+    name: glance
+    hosts:
+      default: glance-api
+      public: glance
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    scheme:
+      default: http
+    port:
+      api:
+        default: 9292
+        public: 80
+  jobboard_redis:
+    name: redis
+    namespace: openstack-redis
+    auth:
+      redis:
+        username: redis
+        password: password
+    hosts:
+      default: rfs-openstack-redis
+    host_fqdn_override:
+      default: null
+    path:
+      default: null
+    scheme:
+      default: redis
+    port:
+      redis:
+        default: 26379
+  jobboard_etcd:
+    name: etcd
+    hosts:
+      default: etcd
+    host_fqdn_override:
+      default: null
+    path: /v3
+    scheme: etcd3+http
+    port:
+      etcd:
+        default: 2379
+
+pod:
+  user:
+    octavia:
+      uid: 42424
+  affinity:
+    anti:
+      type:
+        default: preferredDuringSchedulingIgnoredDuringExecution
+      topologyKey:
+        default: kubernetes.io/hostname
+  mounts:
+    octavia_api:
+      init_container: null
+      octavia_api:
+        volumeMounts:
+        volumes:
+      octavia_driver_agent:
+        volumeMounts:
+        volumes:
+    octavia_worker:
+      init_container: null
+      octavia_worker:
+        volumeMounts:
+        volumes:
+    octavia_housekeeping:
+      init_container: null
+      octavia_housekeeping:
+        volumeMounts:
+        volumes:
+    octavia_health_manager:
+      init_container: null
+      octavia_health_manager:
+        volumeMounts:
+        volumes:
+  replicas:
+    api: 1
+    worker: 1
+    housekeeping: 1
+  lifecycle:
+    upgrades:
+      deployments:
+        revision_history: 3
+        pod_replacement_strategy: RollingUpdate
+        rolling_update:
+          max_unavailable: 1
+          max_surge: 3
+      daemonsets:
+        pod_replacement_strategy: RollingUpdate
+        health_manager:
+          enabled: true
+          min_ready_seconds: 0
+          max_unavailable: 1
+    disruption_budget:
+      api:
+        min_available: 0
+    termination_grace_period:
+      api:
+        timeout: 30
+  resources:
+    enabled: false
+    api:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    worker:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    housekeeping:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    driver_agent:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    health_manager:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    jobs:
+      bootstrap:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      rabbit_init:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      db_init:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      db_sync:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      db_sync_persistence:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      db_drop:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      ks_endpoints:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      ks_service:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      ks_user:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      create_resources:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      tests:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      image_repo_sync:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+  probes:
+    octavia_api:
+      octavia_api:
+        readiness:
+          enabled: true
+          params: {}
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 30
+      octavia_driver_agent:
+        readiness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 30
+            successThreshold: 1
+            failureThreshold: 5
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 30
+            successThreshold: 1
+            failureThreshold: 5
+    octavia_worker:
+      octavia_worker:
+        readiness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 30
+            successThreshold: 1
+            failureThreshold: 5
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 30
+            successThreshold: 1
+            failureThreshold: 5
+    octavia_health_manager:
+      octavia_health_manager:
+        readiness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 30
+            successThreshold: 1
+            failureThreshold: 5
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 30
+            successThreshold: 1
+            failureThreshold: 5
+    octavia_housekeeping:
+      octavia_housekeeping:
+        readiness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 30
+            successThreshold: 1
+            failureThreshold: 5
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 30
+            successThreshold: 1
+            failureThreshold: 5
+  security_context:
+    bootstrap:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        fsGroup: 42424
+      container:
+        bootstrap:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    db_init:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        fsGroup: 42424
+      container:
+        db_init:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    db_purge:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        fsGroup: 42424
+      container:
+        db_purge:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    db_sync:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        fsGroup: 42424
+      container:
+        db_sync:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    db_sync_persistence:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        fsGroup: 42424
+      container:
+        db_sync_persistence:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    ks_user:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        fsGroup: 42424
+      container:
+        ks_user:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    ks_endpoints:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        fsGroup: 42424
+      container:
+        ks_endpoints:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    ks_service:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        fsGroup: 42424
+      container:
+        ks_service:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    create_resources:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+        fsGroup: 42424
+      container:
+        create_resources:
+          runAsNonRoot: true
+          runAsUser: 42424
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    octavia_api:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+        fsGroup: 42424
+      container:
+        octavia_api:
+          capabilities:
+            drop:
+              - ALL
+        octavia_driver_agent:
+          capabilities:
+            drop:
+              - ALL
+    octavia_housekeeping:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+        fsGroup: 42424
+      container:
+        octavia_housekeeping:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    octavia_worker:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+        fsGroup: 42424
+      container:
+        octavia_worker:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    octavia_health_manager:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+        fsGroup: 42424
+      container:
+        nic_init:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          runAsUser: 0
+          capabilities:
+            add:
+              - NET_ADMIN
+              - DAC_OVERRIDE
+            drop:
+              - ALL
+          runAsNonRoot: false
+        wait_port_init:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        octavia_health_manager:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          runAsUser: 0
+          capabilities:
+            add:
+              - NET_ADMIN
+            drop:
+              - ALL
+          runAsNonRoot: false
+network_policy: {}
+jobs:
+  create_resources:
+    backoffLimit: 20
+    restartPolicy: OnFailure
+
+manifests:
+  secret_ca_bundle: false
+  configmap_bin: true
+  configmap_etc: true
+  configmap_oslo_policy: true
+  daemonset_health_manager: true
+  deployment_api: true
+  deployment_worker: true
+  deployment_housekeeping: true
+  # available since stein
+  octavia_driver_agent: false
+  ingress_api: true
+  job_bootstrap: true
+  job_db_init: true
+  job_db_sync: true
+  job_db_sync_persistence: false
+  job_db_drop: false
+  job_image_repo_sync: true
+  job_rabbit_init: true
+  job_ks_endpoints: true
+  job_ks_service: true
+  job_ks_user: true
+  job_create_resources: true
+  pdb_api: true
+  pod_rally_test: false
+  network_policy: false
+  secret_amphora_ssh_key: false
+  secret_octavia_certs: true
+  secret_credential_keys: true
+  secret_db: true
+  secret_ingress_tls: true
+  secret_keystone: true
+  secret_rabbitmq: true
+  service_ingress_api: true
+  service_api: true
+...

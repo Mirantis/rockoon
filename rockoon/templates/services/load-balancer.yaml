@@ -1,0 +1,347 @@
+#apiVersion: lcm.mirantis.com/v1alpha1
+#kind: HelmBundle
+
+{%- from 'macros/messaging_service_creds.j2' import messaging_service_creds %}
+{%- set service = 'octavia' %}
+{%- set core_plugin = spec.features.neutron.get('backend', 'ml2') %}
+{%- set tungstenfabric_enabled = spec.features.neutron.get('backend', 'ml2') == 'tungstenfabric' %}
+{%- set ovn_enabled = core_plugin == 'ml2/ovn'%}
+{%- set provider_map = {'amphora': 'amphora:The Octavia Amphora driver.',
+                        'octavia': 'octavia:Deprecated alias of the Octavia Amphora driver.'} %}
+{%- if tungstenfabric_enabled %}
+  {%- set provider_map = {'tungstenfabric': 'tungstenfabric:Tungsten Fabric driver.'} %}
+{%- endif %}
+{%- set amphora_enabled = (not tungstenfabric_enabled) or (tungstenfabric_enabled and octavia_hm_list|length != 0) %}
+# NOTE: amphorav2 is supported only from Ussuri
+{%- if OSVer[spec.openstack_version] >= OSVer.ussuri and amphora_enabled %}
+  {%- do provider_map.update({'amphorav2': 'amphorav2:Extented Octavia Amphora driver with jobboard support.'})%}
+{%- endif %}
+{%- if ovn_enabled %}
+  {%- do provider_map.update({'ovn': 'ovn:OVN provider driver'}) %}
+{%- endif %}
+{%- set stacklight_enabled = spec.get('features', {}).get('stacklight', {}).get('enabled', False) %}
+{%- set ovn_enabled = spec.features.neutron.get('backend', 'ml2') == 'ml2/ovn'%}
+{%- set notification_topics = ['notifications'] %}
+{%- do notification_topics.append('stacklight_notifications') if stacklight_enabled %}
+{%- set external_notifications_enabled = spec.get('features', {}).get('messaging', {}).get('notifications', {}).get('external', {}).get('enabled', False) %}
+{%- if external_notifications_enabled %}
+  {%- for topic in spec.get('features', {}).get('messaging', {}).get('notifications', {}).get('external', {}).get('topics', []) %}
+    {%- do notification_topics.append(topic) %}
+  {%- endfor %}
+{%- endif  %}
+{%- set cadf_audit = spec.get('features', {}).get('logging', {}).get('cadf', {'enabled': false}) %}
+{%- set cadf_audit_driver = spec.get('features', {}).get('logging', {}).get('cadf', {}).get('driver', 'messagingv2') %}
+{% set health_manager_bind_port = 5555 %}
+
+spec:
+  releases:
+{%- if spec.get('migration', {}).get('octavia', {}).get('deploy_main_service', True) %}
+  - name: openstack-octavia
+    chart: octavia
+    values:
+      octavia:
+        settings:
+  {%- set lb_network = spec.features.get('octavia', {}).get('lb_network', {}) %}
+          lbmgmt_network_name: {{ lb_network.get('name', 'lb-mgmt-net') }}
+          lbmgmt_subnets:
+  {%- set lb_subnets = [] %}
+  {%- if lb_network.get('subnets', []) %}
+      {%- do lb_subnets.extend(spec.features.octavia.lb_network.subnets) %}
+  {%- else %}
+      {%- do lb_subnets.append({"range": "10.255.0.0/16",
+                                "pool_start": "10.255.1.0",
+                                "pool_end": "10.255.255.254"}) %}
+  {%- endif %}
+  {%- for subnet in lb_subnets %}
+            - range: {{ subnet.range }}
+              pool_start: {{ subnet.pool_start }}
+              pool_end: {{ subnet.pool_end }}
+  {%- endfor %}
+{%- if 'amphorav2' in provider_map.keys() %}
+          enable_amphorav2: true
+{%- endif %}
+      images:
+        tags:
+{%- for image in [
+    "openvswitch_vswitchd",
+    "octavia_worker",
+    "db_drop",
+    "image_repo_sync",
+    "ks_endpoints",
+    "test",
+    "db_init",
+    "dep_check",
+    "octavia_api",
+    "ks_user",
+    "ks_service",
+    "octavia_db_sync",
+    "octavia_db_sync_persistence",
+    "octavia_health_manager_init",
+    "bootstrap",
+    "rabbit_init",
+    "octavia_health_manager",
+    "octavia_housekeeping",
+    "octavia_driver_agent",
+    "create_resources",] %}
+        {%- if image in images %}
+          {{ image }}: {{ images[image] }}
+        {%- endif %}
+{%- endfor %}
+      dependencies:
+        static:
+          db_init:
+            jobs:
+              - openstack-mariadb-cluster-wait
+      pod:
+        {%- if OSVer[spec.openstack_version] <= OSVer.xena %}
+        security_context:
+          octavia_health_manager:
+            container:
+              nic_init:
+                capabilities:
+                  add:
+                   # Add NET_RAW as required for focal 2.13 openvswitch image and kernel on the host PRODX-37293
+                   - NET_RAW
+                   - NET_ADMIN
+                   - DAC_OVERRIDE
+                  drop:
+                   - ALL
+        {%- endif %}
+        replicas:
+          worker: 3
+          housekeeping: 3
+          health_manager: 3
+        probes:
+          octavia_api:
+            octavia_api:
+              readiness:
+                enabled: true
+                params:
+                  initialDelaySeconds: 5
+                  timeoutSeconds: 5
+              liveness:
+                enabled: true
+                params:
+                  initialDelaySeconds: 30
+                  timeoutSeconds: 5
+      # NOTE(vsaienko): openstack-gateway label is mandatory, target
+      # workers to openstack-gateway nodes to ensure create resources
+      # job picks correct nodes to create lb ports.
+      labels:
+        worker:
+          node_selector_key: openstack-gateway
+          node_selector_value: enabled
+        health_manager:
+          node_affinity: false
+          node_selector_key: openstack-gateway
+          node_selector_value: enabled
+        housekeeping:
+          node_selector_key: openstack-gateway
+          node_selector_value: enabled
+{%- if spec.features.network_policies.enabled %}
+      network_policy:
+{% include 'base/network_policies/load-balancer.yaml' %}
+{%- endif %}
+      manifests:
+{%- if tungstenfabric_enabled and not amphora_enabled %}
+        daemonset_health_manager: false
+        deployment_worker: false
+        deployment_housekeeping: false
+        job_create_resources: false
+        secret_octavia_certs: false
+{%- endif %}
+        network_policy: {{ spec.features.network_policies.enabled }}
+        job_rabbit_init: false
+        secret_amphora_ssh_key: true
+        secret_octavia_certs: false
+        secret_ca_bundle: true
+{%- if OSVer[spec.openstack_version] >= OSVer.stein and tungstenfabric_enabled %}
+        octavia_driver_agent: true
+{%- endif %}
+{%- if 'amphorav2' in provider_map.keys() %}
+        job_db_sync_persistence: true
+{%- endif %}
+{%- if ovn_enabled %}
+        octavia_driver_agent: true
+{%- endif %}
+      network:
+        api:
+          ingress:
+            annotations:
+              # NOTE(vsaienko): octavia driver agents are synchronous
+              # they may require a bit more time to setup lb
+              nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+      {%- if ovn_enabled %}
+        backend:
+          - ovn
+      {%- endif %}
+      {%- if tungstenfabric_enabled %}
+        core_plugin: tungstenfabric
+      {%- endif %}
+        proxy:
+{% include 'base/_proxy_vars.yaml' %}
+      conf:
+        policy.d:
+          01-controller-default.yaml: {{ service_policy }}
+          02-custom.yaml: {{ spec.get("features", {}).get("policies", {}).get("octavia", {}) }}
+        octavia:
+{% set _default_provider_driver = 'amphorav2' %}
+{%- if OSVer[spec.openstack_version] <= OSVer.queens %}
+  {% set _default_provider_driver = 'octavia' %}
+{%- elif OSVer[spec.openstack_version] <= OSVer.ussuri %}
+  {% set _default_provider_driver = 'amphora' %}
+{%- elif tungstenfabric_enabled %}
+  {% set _default_provider_driver = 'tungstenfabric' %}
+{%- endif %}
+        {%- if ovn_enabled %}
+          {% set _default_provider_driver = 'ovn' %}
+          driver_agent:
+                    enabled_provider_agents: ovn
+        {%- endif %}
+{% set default_provider_driver = spec.features.get('octavia', {}).get('default_provider', _default_provider_driver) %}
+{%- if tungstenfabric_enabled %}
+          apiserver:
+            api_server_ip: tf-config-api.tf.svc.cluster.local
+            api_server_port: 8082
+  {%- if default_provider_driver == 'tungstenfabric' %}
+          driver_agent:
+              enabled_provider_agents: tungstenfabric-agent
+              max_process_warning_percent: 0.75
+              provider_agent_shutdown_timeout: 60
+              stats_max_processes: 50
+              stats_request_timeout: 5
+              status_max_processes: 50
+              status_request_timeout: 5
+  {%- endif %}
+          health_manager:
+            controller_ip_port_list: "{% for ip in octavia_hm_list %}{{ ip }}:{{ health_manager_bind_port }}{% if not loop.last %}, {% endif %}{% endfor %}"
+{%- endif %}
+          audit:
+            enabled: true
+            # TODO: remove GET when issue with probes PRODX-25190 is fixed
+            ignore_req_list: GET, HEAD
+          api_settings:
+            default_provider_driver: {{ spec.features.get('octavia', {}).get('default_provider', _default_provider_driver) }}
+            enabled_provider_drivers: {{ ','.join(provider_map.values()) }}
+{%- if 'amphorav2' in provider_map.keys() %}
+          task_flow:
+            jobboard_enabled: true
+            # Use this option to switch beetwen jobboard redis/etcd backend parameters
+  {%- if OSVer[spec.openstack_version] >= OSVer.antelope %}
+            jobboard_backend_driver: etcd_taskflow_driver
+  {%- else %}
+            jobboard_backend_driver: redis_taskflow_driver
+  {%- endif %}
+            jobboard_expiration_time: 90
+{%- endif %}
+          keystone_authtoken:
+            memcache_security_strategy: ENCRYPT
+            memcache_secret_key: {{ credentials[0].memcached }}
+            {%- if OSVer[spec.openstack_version] >= OSVer.train %}
+            service_type: load-balancer
+            {%- endif %}
+          service_auth:
+            memcache_security_strategy: ENCRYPT
+            memcache_secret_key: {{ credentials[0].memcached }}
+          certificates:
+            endpoint_type: internalURL
+          haproxy_amphora:
+            connection_max_retries: 500
+          glance:
+            endpoint_type: internalURL
+          neutron:
+            endpoint_type: internalURL
+            connect_retries: 10
+          nova:
+            endpoint_type: internalURL
+{%- if cadf_audit.enabled %}
+          audit_middleware_notifications:
+            driver: {{ cadf_audit_driver }}
+{%- else %}
+          audit_middleware_notifications:
+            driver: noop
+{%- endif %}
+          oslo_messaging_notifications:
+            topics: {{ notification_topics|join(',') }}
+{% include 'base/_oslo_policy_enforce_defaults.yaml' %}
+        logging:
+          logger_octavia:
+            level: {{ spec.get('features', {}).get('logging', {}).get('octavia', {}).get('level', 'INFO') }}
+      secrets:
+        amphora_ssh_key:
+          private: {{ ssh_credentials.private| encode | b64encode | decode }}
+          public: {{ ssh_credentials.public | encode | b64encode | decode }}
+      endpoints:
+        cluster_domain_suffix: {{ spec.internal_domain_name }}
+{% include 'base/_admin_identity.yaml' %}
+{% include 'base/_cache.yaml' %}
+        oslo_db:
+          auth:
+            admin:
+              username: {{ admin_creds.database.username }}
+              password: {{ admin_creds.database.password }}
+            octavia:
+              username: {{ credentials[0].database.user.username }}
+              password: {{ credentials[0].database.user.password }}
+        oslo_db_persistence:
+          auth:
+            admin:
+              username: {{ admin_creds.database.username }}
+              password: {{ admin_creds.database.password }}
+            octavia:
+              username: {{ credentials[0].database.user.username }}
+              password: {{ credentials[0].database.user.password }}
+{% include 'base/_messaging_shared.yaml' %}
+{% include 'base/_notifications.yaml' %}
+        load_balancer:
+          host_fqdn_override:
+            public:
+              host: octavia.{{ spec.public_domain_name }}
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+{%- if proxy_settings is defined %}
+{%- if proxy_settings.get("proxy_ca_certificate") %}
+{{ proxy_settings["proxy_ca_certificate"] | indent( width=18, first=True) }}
+{%- endif %}
+{%- endif %}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          hosts:
+            admin:
+              host: octavia-api
+            default: octavia
+            internal: octavia-api
+            public:
+              host: octavia
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          port:
+            api:
+              admin: 9876
+              default: 80
+              internal: 9876
+              public: 443
+          scheme:
+            default: http
+            public: https
+{%- if 'amphorav2' in provider_map.keys() %}
+        jobboard_redis:
+          namespace: {{ redis_namespace }}
+          auth:
+            redis:
+              username: 'mymaster'
+              password: {{ redis_secret }}
+{%- endif %}
+      jobs:
+        create_resources:
+          restartPolicy: Never
+{% include 'base/_ks_jobs.yaml' %}
+{%- endif %}

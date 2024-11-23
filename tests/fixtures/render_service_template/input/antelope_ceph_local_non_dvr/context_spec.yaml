@@ -1,0 +1,135 @@
+openstack_version: antelope
+features:
+  network_policies:
+    enabled: true
+  barbican:
+    backends:
+      vault:
+        approle_role_id: e5e97952-cf82-e7fd-da71-c568f18cea5e
+        approle_secret_id: e33841c6-f175-1ea1-87ba-2dd49df6f776
+        enabled: true
+        use_ssl: false
+        vault_url: http://vault.openstack-vault.svc:8200
+  cloudprober:
+    discovery:
+      interval: 900
+  database:
+    local_volumes:
+      enabled: true
+  messaging:
+    components_with_dedicated_messaging:
+    - networking
+  keystone:
+    domain_specific_configuration:
+      enabled: true
+      ks_domains:
+        domain.with.ldap:
+          enabled: true
+          config:
+            assignment:
+              driver: keystone.assignment.backends.sql.Assignment
+            identity:
+              driver: ldap
+            ldap:
+              chase_referrals: false
+              group_desc_attribute: description
+              group_id_attribute: cn
+              group_member_attribute: member
+              group_name_attribute: ou
+              group_objectclass: groupOfNames
+              page_size: 0
+              password: ar4DtqGDBQ2xEGvw
+              query_scope: sub
+              suffix: dc=mydomain,dc=com
+              url: ldap://ldap01.mydomain.com,ldap://ldap02.mydomain.com
+              user: uid=openstack,ou=people,o=mydomain,dc=com
+              user_enabled_attribute: enabled
+              user_enabled_default: false
+              user_enabled_invert: true
+              user_enabled_mask: 0
+              user_id_attribute: uid
+              user_mail_attribute: mail
+              user_name_attribute: uid
+              user_objectclass: inetOrgPerson
+  neutron:
+    backend: ml2
+    dns_servers:
+    - 10.172.1.100
+    external_networks:
+    - bridge: br-ex
+      interface: veth-phy
+      mtu: null
+      network_types:
+      - flat
+      physnet: physnet1
+      vlan_ranges: null
+    floating_network:
+      enabled: true
+      physnet: physnet1
+      subnet:
+        gateway: 10.11.12.39
+        pool_end: 10.11.12.200
+        pool_start: 10.11.12.100
+        range: 10.11.12.0/24
+    tunnel_interface: ens3
+  octavia:
+    lb_network:
+      subnets:
+      - range: '192.168.0.0/24'
+        pool_start: '192.168.0.1'
+        pool_end: '192.168.0.254'
+  nova:
+    console:
+      novnc:
+        enabled: false
+      spice:
+        enabled: true
+    images:
+      backend: local
+    live_migration_interface: ens3
+  services:
+  - block-storage
+  - cloudprober
+  - compute
+  - dns
+  - identity
+  - dashboard
+  - image
+  - ingress
+  - database
+  - descheduler
+  - memcached
+  - networking
+  - orchestration
+  - messaging
+  - load-balancer
+  - placement
+  - coordination
+  - key-manager
+  - redis
+  - instance-ha
+  - shared-file-system
+  ssl:
+    public_endpoints:
+      api_cert: "TEST CRT"
+      api_key: "TEST KEY"
+      ca_cert: "TEST CA"
+      enabled: true
+  stacklight:
+    enabled: true
+    user:
+      password: stacklight
+      username: stacklight
+artifacts:
+  binary_base_url: https://artifactory.mcp.mirantis.net/binary-dev-kaas-local
+  images_base_url: docker-dev-kaas-local.docker.mirantis.net
+common:
+  charts: {}
+  infra:
+    repo: osh-infra
+  openstack:
+    repo: osh
+persistent_volume_storage_class: mirablock-k8s-block-hdd
+public_domain_name: it.just.works
+internal_domain_name: cluster.local
+local_volume_storage_class: lvp-fake-root

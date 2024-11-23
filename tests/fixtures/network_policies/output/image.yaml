@@ -1,0 +1,108 @@
+image:glance:Deployment:glance-api:
+- from:
+  - podSelector:
+      matchLabels:
+        application: ironic
+        component: bootstrap
+  - podSelector:
+      matchLabels:
+        application: ironic
+        component: update-nodes-metadata
+  - podSelector:
+      matchLabels:
+        application: ironic
+        component: conductor
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: volume_daemonset
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: api
+  - podSelector:
+      matchLabels:
+        application: cinder
+        component: volume
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: compute
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: os-api
+  - podSelector:
+      matchLabels:
+        application: nova
+        component: compute
+  - podSelector:
+      matchLabels:
+        application: horizon
+        component: server
+  - podSelector:
+      matchLabels:
+        application: keystone
+        component: client
+  - podSelector:
+      matchLabels:
+        application: glance
+        component: bootstrap
+  - podSelector:
+      matchLabels:
+        application: glance
+        component: clean
+  - podSelector:
+      matchLabels: &id001
+        application: ingress
+        component: server
+  - podSelector:
+      matchLabels:
+        application: octavia
+        component: worker
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: compute
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: ipmi
+  - podSelector:
+      matchLabels:
+        application: ceilometer
+        component: central
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: engine
+  - podSelector:
+      matchLabels:
+        application: heat
+        component: engine
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: share_daemonset
+  - podSelector:
+      matchLabels:
+        application: manila
+        component: share
+  - podSelector:
+      matchLabels:
+        application: tempest
+        component: run-tests
+  - podSelector:
+      matchLabels:
+        application: tempest
+        component: bootstrap
+  ports:
+  - port: 9292
+    protocol: TCP
+image:glance:Deployment:glance-registry:
+- from:
+  - podSelector:
+      matchLabels: *id001
+  ports:
+  - port: 9191
+    protocol: TCP

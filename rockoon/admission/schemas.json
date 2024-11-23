@@ -1,0 +1,323 @@
+{
+  "id": "http://fabric8.io/fabric8/v2/Schema#",
+  "$schema": "http://json-schema.org/draft-03/schema#",
+  "definitions": {
+    "kubernetes_apimachinery_GroupVersionResource": {
+      "type": "object",
+      "description": "",
+      "properties": {
+        "group": {
+          "type": "string",
+          "description": ""
+        },
+        "resource": {
+          "type": "string",
+          "description": ""
+        },
+        "version": {
+          "type": "string",
+          "description": ""
+        }
+      },
+      "additionalProperties": true
+    },
+    "kubernetes_apimachinery_GroupVersionKind": {
+      "type": "object",
+      "description": "",
+      "properties": {
+        "group": {
+          "type": "string",
+          "description": ""
+        },
+        "kind": {
+          "type": "string",
+          "description": ""
+        },
+        "version": {
+          "type": "string",
+          "description": ""
+        }
+      },
+      "additionalProperties": true
+    },
+    "kubernetes_apimachinery_pkg_runtime_RawExtension": {
+      "type": ["object", "null"],
+      "description": "",
+      "additionalProperties": true
+    },
+    "kubernetes_authentication_UserInfo": {
+      "type": "object",
+      "description": "",
+      "properties": {
+        "extra": {
+          "type": "object",
+          "description": "",
+          "additionalProperties": {
+            "type": "array",
+            "description": "",
+            "items": {
+              "type": "string",
+              "description": ""
+            }
+          }
+        },
+        "groups": {
+          "type": "array",
+          "description": "",
+          "javaOmitEmpty": true,
+          "items": {
+            "type": "string",
+            "description": ""
+          }
+        },
+        "uid": {
+          "type": "string",
+          "description": ""
+        },
+        "username": {
+          "type": "string",
+          "description": ""
+        }
+      },
+      "additionalProperties": true
+    },
+    "kubernetes_apimachinery_ListMeta": {
+      "type": "object",
+      "description": "",
+      "properties": {
+        "continue": {
+          "type": "string",
+          "description": ""
+        },
+        "remainingItemCount": {
+          "type": "integer",
+          "description": "",
+          "javaType": "Long"
+        },
+        "resourceVersion": {
+          "type": "string",
+          "description": ""
+        },
+        "selfLink": {
+          "type": "string",
+          "description": ""
+        }
+      },
+      "additionalProperties": true
+    },
+    "kubernetes_apimachinery_StatusCause": {
+      "type": "object",
+      "description": "",
+      "properties": {
+        "field": {
+          "type": "string",
+          "description": ""
+        },
+        "message": {
+          "type": "string",
+          "description": ""
+        },
+        "reason": {
+          "type": "string",
+          "description": ""
+        }
+      },
+      "additionalProperties": true
+    },
+    "kubernetes_apimachinery_StatusDetails": {
+      "type": "object",
+      "description": "",
+      "properties": {
+        "causes": {
+          "type": "array",
+          "description": "",
+          "javaOmitEmpty": true,
+          "items": {
+            "$ref": "#/definitions/kubernetes_apimachinery_StatusCause"
+          }
+        },
+        "group": {
+          "type": "string",
+          "description": ""
+        },
+        "kind": {
+          "type": "string",
+          "description": ""
+        },
+        "name": {
+          "type": "string",
+          "description": ""
+        },
+        "retryAfterSeconds": {
+          "type": "integer",
+          "description": ""
+        },
+        "uid": {
+          "type": "string",
+          "description": ""
+        }
+      },
+      "additionalProperties": true
+    },
+    "kubernetes_apimachinery_Status": {
+      "type": "object",
+      "description": "",
+      "properties": {
+        "apiVersion": {
+          "type": "string",
+          "description": "",
+          "default": "v1",
+          "required": true
+        },
+        "code": {
+          "type": "integer",
+          "description": ""
+        },
+        "details": {
+          "$ref": "#/definitions/kubernetes_apimachinery_StatusDetails"
+        },
+        "kind": {
+          "type": "string",
+          "description": "",
+          "default": "Status",
+          "required": true
+        },
+        "message": {
+          "type": "string",
+          "description": ""
+        },
+        "metadata": {
+          "$ref": "#/definitions/kubernetes_apimachinery_ListMeta"
+        },
+        "reason": {
+          "type": "string",
+          "description": ""
+        },
+        "status": {
+          "type": "string",
+          "description": ""
+        }
+      },
+      "additionalProperties": true
+    },
+    "kubernetes_admission_AdmissionRequest": {
+      "type": "object",
+      "description": "",
+      "properties": {
+        "dryRun": {
+          "type": "boolean",
+          "description": ""
+        },
+        "kind": {
+          "$ref": "#/definitions/kubernetes_apimachinery_GroupVersionKind"
+        },
+        "name": {
+          "type": "string",
+          "description": ""
+        },
+        "namespace": {
+          "type": "string",
+          "description": ""
+        },
+        "object": {
+          "$ref": "#/definitions/kubernetes_apimachinery_pkg_runtime_RawExtension"
+        },
+        "oldObject": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/definitions/kubernetes_apimachinery_pkg_runtime_RawExtension"}
+          ]
+        },
+        "operation": {
+          "type": "string",
+          "description": ""
+        },
+        "options": {
+          "$ref": "#/definitions/kubernetes_apimachinery_pkg_runtime_RawExtension"
+        },
+        "requestKind": {
+          "$ref": "#/definitions/kubernetes_apimachinery_GroupVersionKind"
+        },
+        "requestResource": {
+          "$ref": "#/definitions/kubernetes_apimachinery_GroupVersionResource"
+        },
+        "requestSubResource": {
+          "type": "string",
+          "description": ""
+        },
+        "resource": {
+          "$ref": "#/definitions/kubernetes_apimachinery_GroupVersionResource"
+        },
+        "subResource": {
+          "type": "string",
+          "description": ""
+        },
+        "uid": {
+          "type": "string",
+          "description": "",
+          "required": true
+        },
+        "userInfo": {
+          "$ref": "#/definitions/kubernetes_authentication_UserInfo"
+        }
+      },
+      "additionalProperties": true
+    },
+    "kubernetes_admission_AdmissionResponse": {
+      "type": "object",
+      "description": "",
+      "properties": {
+        "allowed": {
+          "type": "boolean",
+          "description": ""
+        },
+        "auditAnnotations": {
+          "type": "object",
+          "description": "",
+          "additionalProperties": {
+            "type": "string",
+            "description": ""
+          }
+        },
+        "patch": {
+          "type": "string",
+          "description": ""
+        },
+        "patchType": {
+          "type": "string",
+          "description": ""
+        },
+        "status": {
+          "$ref": "#/definitions/kubernetes_apimachinery_Status"
+        },
+        "uid": {
+          "type": "string",
+          "description": ""
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "type": "object",
+  "description": "",
+  "properties": {
+    "apiVersion": {
+      "type": "string",
+      "description": "",
+      "required": true
+    },
+    "kind": {
+      "type": "string",
+      "description": "",
+      "default": "AdmissionReview",
+      "required": true
+    },
+    "request": {
+      "$ref": "#/definitions/kubernetes_admission_AdmissionRequest"
+    },
+    "response": {
+      "$ref": "#/definitions/kubernetes_admission_AdmissionResponse"
+    }
+  },
+  "additionalProperties": true
+}

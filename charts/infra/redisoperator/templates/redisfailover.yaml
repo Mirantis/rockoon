@@ -1,0 +1,4 @@
+apiVersion: databases.spotahome.com/v1
+kind: RedisFailover
+metadata: {{ .Values.redisfailover.metadata |toJson }}
+spec: {{ .Values.redisfailover.spec | toJson }}

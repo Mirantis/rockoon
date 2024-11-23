@@ -1,0 +1,238 @@
+spec:
+  releases:
+  - chart: designate
+    name: openstack-designate
+    values:
+      conf:
+        zones: |
+          test-zone.test.:
+            email: test@test.test
+            recordsets:
+              - name: test-record.test-zone.test.
+                type: A
+                records:
+                  - 1.2.3.4
+        policy.d:
+          01-controller-default.yaml: {'dns_rule1': 'dns_value1'}
+          02-custom.yaml: {}
+        powerdns:
+          zone-cache-refresh-interval: 120
+          cache_ttl: 20
+          negquery_cache_ttl: 60
+          query_cache_ttl: 20
+          receiver-threads: 2
+        designate:
+          keystone_authtoken:
+            memcache_secret_key: zdLlg6VAsGH6E7tX
+            memcache_security_strategy: ENCRYPT
+            service_type: dns
+          audit_middleware_notifications:
+            driver: noop
+          oslo_messaging_notifications:
+            topics: notifications,stacklight_notifications
+          oslo_policy:
+            enforce_new_defaults: false
+            enforce_scope: false
+          service:api:
+            enabled_extensions_admin: quotas
+        logging:
+          logger_designate:
+            level: INFO
+      dependencies:
+        static:
+          db_init:
+            jobs:
+            - openstack-mariadb-cluster-wait
+      endpoints:
+        cluster_domain_suffix: cluster.local
+        dns:
+          host_fqdn_override:
+            public:
+              host: designate.it.just.works
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          hosts:
+            admin:
+              host: designate-api
+            default: designate
+            internal: designate-api
+            public:
+              host: designate
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          port:
+            api:
+              admin: 9001
+              default: 80
+              internal: 9001
+              public: 443
+          scheme:
+            default: http
+            public: https
+        identity:
+          auth:
+            admin:
+              default_domain_id: default
+              password: ZUqTyP2XwsgEGKZ7qNhhecYyq9NLkGE6
+              project_domain_name: default
+              project_name: admin
+              region_name: RegionOne
+              user_domain_name: default
+              username: admin
+            designate:
+              password: KBecvsPZsWBFzDqYnevHWArm7tFycZKr
+              username: designateLeRjiDsyT
+              region_name: 'RegionOne'
+            test:
+              password: YspSgibZuHb2lFBxM8kzDDtstsrEqbWM
+              username: testQuxr
+              region_name: 'RegionOne'
+        mdns:
+          host_fqdn_override:
+            public:
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          hosts:
+            admin:
+              host: designate-mdns
+            default: minidns
+            public:
+              host: minidns
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          port:
+            ipc:
+              admin: 5354
+              default: 80
+              internal: 5354
+              public: 443
+          scheme:
+            default: http
+            public: https
+        oslo_cache:
+          statefulset:
+            name: openstack-memcached-memcached
+            replicas: 3
+        oslo_db:
+          auth:
+            admin:
+              password: QACDSM6FBTH2LuXjTuRQ6DXhD8bSgPbn
+              username: root
+            designate:
+              password: UYBLfmPtWfLqWw3rgcR0Jf4NTqzWtTIG
+              username: designate9fbxYXW1E
+        oslo_db_powerdns:
+          auth:
+            admin:
+              password: QACDSM6FBTH2LuXjTuRQ6DXhD8bSgPbn
+              username: root
+            powerdns:
+              password: EMG3I4EUNat5buHSUW9kmzFIdiCMSZRZ
+              username: powerdns4TuEzVpk
+        oslo_messaging:
+          auth:
+            admin:
+              password: 2tnAuP0j9MsgaVHErehZkC5HCK3ZxYLr
+              username: rabbitmq
+            guest:
+              password: 7TnAuP0dKMsgaVHErehZkC5HCK3ZxOi4
+              username: guest
+            designate:
+              password: tBFq4j3X2PdA5Jh9x2kkR0Hgs7FZhdFE
+              username: designatePLbJrH4JP
+            user:
+              password: 2tnAuP0j9MsgaVHErehZkC5HCK3ZxYLr
+              username: rabbitmq
+          hosts:
+            default: rabbitmq
+          path: /designate
+          statefulset:
+            name: openstack-rabbitmq-rabbitmq
+            replicas: 1
+        oslo_messaging_notifications:
+          auth:
+            designate:
+              password: nzsKJHIGHIwsildBgpfmZQDan7Cexzc1
+              username: designateUMq5w6Q7G
+          host_fqdn_override: {}
+          hosts:
+            default: rabbitmq
+          path: /openstack
+          port:
+            amqp:
+              default: 5672
+            http:
+              default: 15672
+          scheme: rabbit
+          statefulset:
+            name: openstack-rabbitmq-rabbitmq
+            replicas: 1
+        powerdns:
+          auth:
+            service:
+              token: YiXHHuH21qlTtdv7
+      images:
+        tags:
+          bootstrap: bootstrap:latest
+          db_drop: db-drop:latest
+          db_init: db-init:latest
+          dep_check: dep-check:latest
+          designate_api: designate-api:latest
+          designate_central: designate-central:latest
+          designate_db_sync: designate-db-sync:latest
+          designate_mdns: designate-mdns:latest
+          designate_producer: designate-producer:latest
+          designate_sink: designate-sink:latest
+          designate_worker: designate-worker:latest
+          ks_endpoints: ks-endpoints:latest
+          ks_service: ks-service:latest
+          ks_user: ks-user:latest
+          powerdns: powerdns:latest
+          powerdns_db_sync: powerdns-db-sync:latest
+          rabbit_init: rabbit-init:latest
+          designate_pool_manage: designate-pool-manage:latest
+          designate_pool_manage_hash: designate-pool-manage-hash:latest
+      jobs:
+        ks_endpoints:
+          restartPolicy: Never
+        ks_service:
+          restartPolicy: Never
+        ks_user:
+          restartPolicy: Never
+      manifests:
+        configmap_powerdns_bin: true
+        configmap_powerdns_etc: true
+        designate_powerdns: true
+        job_powerdns_db_init: true
+        job_powerdns_db_sync: true
+        job_rabbit_init: false
+        network_policy: false
+        secret_ca_bundle: true
+        secret_powerdns_db: true
+        service_powerdns_api: true
+        service_powerdns_external: true
+        job_zone_setup: true
+      network:
+        mdns:
+          node_port:
+            enabled: false

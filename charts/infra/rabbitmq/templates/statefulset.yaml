@@ -1,0 +1,300 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "ReadinessProbeTemplate" }}
+exec:
+  command:
+  - /tmp/rabbitmq-readiness.sh
+{{- end }}
+{{- define "LivenessProbeTemplate" }}
+exec:
+  command:
+  - /tmp/rabbitmq-liveness.sh
+{{- end }}
+
+{{- if .Values.manifests.statefulset }}
+{{- $envAll := . }}
+
+{{- $rcControllerName := printf "%s-%s" $envAll.Release.Name "rabbitmq" }}
+{{ tuple $envAll "rabbitmq" $rcControllerName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $rcControllerName | quote }}
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $rcControllerName | quote }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $rcControllerName | quote }}
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $rcControllerName | quote }}
+  namespace: {{ .Release.Namespace }}
+rules:
+  - apiGroups:
+      - ""
+      - extensions
+      - batch
+      - apps
+    verbs:
+      - get
+      - list
+    resources:
+      - services
+      - endpoints
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $rcControllerName | quote }}
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "rabbitmq" "server" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  serviceName: {{ tuple "oslo_messaging" "internal" . | include "helm-toolkit.endpoints.hostname_short_endpoint_lookup" }}
+  replicas: {{ $envAll.Values.pod.replicas.server }}
+  podManagementPolicy: "Parallel"
+  selector:
+    matchLabels:
+{{ tuple $envAll "rabbitmq" "server" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "rabbitmq" "server" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+        secret-rabbit-admin-hash: {{ tuple "secret-rabbit-admin.yaml" . | include "helm-toolkit.utils.hash" }}
+        secret-erlang-cookie-hash: {{ tuple "secret-erlang-cookie.yaml" . | include "helm-toolkit.utils.hash" }}
+        secret-rabbitmq-users-credentials-hash: {{ tuple "secret-rabbitmq-users-credentials.yaml" . | include "helm-toolkit.utils.hash" }}
+        {{- if .Values.manifests.service_external }}
+        secret-external-tls-hash: {{ tuple "secret-external-tls.yaml" . | include "helm-toolkit.utils.hash" }}
+        {{- end }}
+{{ dict "envAll" $envAll "podName" "rabbitmq" "containerNames" (list "init" "rabbitmq-password" "rabbitmq-cookie" "rabbitmq-perms" "rabbitmq") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+    spec:
+{{ dict "envAll" $envAll "application" "server" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      serviceAccountName: {{ $rcControllerName | quote }}
+      affinity:
+{{ tuple $envAll "rabbitmq" "server" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      nodeSelector:
+        {{ $envAll.Values.labels.server.node_selector_key }}: {{ $envAll.Values.labels.server.node_selector_value | quote }}
+      initContainers:
+{{ tuple $envAll "rabbitmq" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+        - name: rabbitmq-password
+{{ tuple $envAll "rabbitmq_init" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "server" "container" "rabbitmq_password" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/rabbitmq-password-hash.py
+          env:
+            - name: RABBITMQ_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ printf "%s-%s" $envAll.Release.Name "admin-user" | quote }}
+                  key: RABBITMQ_ADMIN_USERNAME
+            - name: RABBITMQ_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ printf "%s-%s" $envAll.Release.Name "admin-user" | quote }}
+                  key: RABBITMQ_ADMIN_PASSWORD
+            - name: RABBITMQ_GUEST_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ printf "%s-%s" $envAll.Release.Name "admin-user" | quote }}
+                  key: RABBITMQ_GUEST_PASSWORD
+{{- if .Values.manifests.job_users_create }}
+            - name: RABBITMQ_USERS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ printf "%s-%s" $envAll.Release.Name "users-credentials" | quote }}
+                  key: RABBITMQ_USERS
+{{- end }}
+{{- if hasKey .Values.conf "aux_conf" }}
+            - name: RABBITMQ_AUXILIARY_CONFIGURATION
+              value: {{ toJson $envAll.Values.conf.aux_conf | quote }}
+{{- end }}
+            - name: RABBITMQ_DEFINITION_FILE
+              value: "{{ index $envAll.Values.conf.rabbitmq "management.load_definitions" }}"
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: rabbitmq-data
+              mountPath: /var/lib/rabbitmq
+            - name: rabbitmq-bin
+              mountPath: /tmp/rabbitmq-password-hash.py
+              subPath: rabbitmq-password-hash.py
+              readOnly: true
+        - name: rabbitmq-cookie
+{{ tuple $envAll "rabbitmq" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "server" "container" "rabbitmq_cookie" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/rabbitmq-cookie.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: rabbitmq-bin
+              mountPath: /tmp/rabbitmq-cookie.sh
+              subPath: rabbitmq-cookie.sh
+              readOnly: true
+            - name: rabbitmq-data
+              mountPath: /var/lib/rabbitmq
+            - name: rabbitmq-erlang-cookie
+              mountPath: /var/run/lib/rabbitmq/.erlang.cookie
+              subPath: erlang_cookie
+              readOnly: true
+        - name: rabbitmq-perms
+{{ tuple $envAll "rabbitmq" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "server" "container" "rabbitmq_perms" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - chown
+            - -R
+            - "{{ $envAll.Values.pod.security_context.server.runAsUser }}:"
+            - /var/lib/rabbitmq
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: rabbitmq-data
+              mountPath: /var/lib/rabbitmq
+      containers:
+        - name: rabbitmq
+{{ tuple $envAll "rabbitmq" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "server" "container" "rabbitmq" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/rabbitmq-start.sh
+          ports:
+            - name: http
+              protocol: TCP
+              containerPort: {{ tuple "oslo_messaging" "internal" "http" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+            - name: amqp
+              protocol: TCP
+              containerPort: {{ tuple "oslo_messaging" "internal" "amqp" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+            {{- if .Values.manifests.service_external }}
+            - name: amqp-tls
+              protocol: TCP
+              containerPort: {{ tuple "oslo_messaging" "internal" "amqp_tls" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+            {{- end }}
+            - name: clustering
+              protocol: TCP
+              containerPort: {{ add (tuple "oslo_messaging" "internal" "amqp" . | include "helm-toolkit.endpoints.endpoint_port_lookup") 20000 }}
+            - name: metrics
+              containerPort: {{ tuple "oslo_messaging" "internal" "metrics" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+              protocol: TCP
+          env:
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: RABBITMQ_USE_LONGNAME
+              value: "false"
+            - name: RABBITMQ_NODENAME
+              value: "rabbit@$(MY_POD_NAME)"
+            - name: K8S_SERVICE_NAME
+              value: {{ tuple "oslo_messaging" "internal" . | include "helm-toolkit.endpoints.hostname_short_endpoint_lookup" }}
+            - name: K8S_HOSTNAME_SUFFIX
+              value: ".{{ tuple "oslo_messaging" "internal" . | include "helm-toolkit.endpoints.hostname_namespaced_endpoint_lookup" }}"
+            - name: RABBITMQ_ERLANG_COOKIE
+              value: "{{ $envAll.Values.endpoints.oslo_messaging.auth.erlang_cookie }}"
+            - name: PORT_HTTP
+              value: "{{ tuple "oslo_messaging" "internal" "http" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}"
+            - name: PORT_AMPQ
+              value: "{{ tuple "oslo_messaging" "internal" "amqp" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}"
+            - name: PORT_CLUSTERING
+              value: "{{ add (tuple "oslo_messaging" "internal" "amqp" . | include "helm-toolkit.endpoints.endpoint_port_lookup") 20000 }}"
+{{ include "helm-toolkit.utils.to_k8s_env_vars" .Values.pod.env.server | indent 12 }}
+{{ dict "envAll" $envAll "component" "server" "container" "rabbitmq" "type" "readiness" "probeTemplate" (include "ReadinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | trim | indent 10 }}
+{{ dict "envAll" $envAll "component" "server" "container" "rabbitmq" "type" "liveness" "probeTemplate" (include "LivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | trim | indent 10 }}
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: rabbitmq-data
+              mountPath: /var/lib/rabbitmq
+            - name: rabbitmq-bin
+              mountPath: /tmp/rabbitmq-start.sh
+              subPath: rabbitmq-start.sh
+              readOnly: true
+            - name: rabbitmq-bin
+              mountPath: /tmp/rabbitmq-readiness.sh
+              subPath: rabbitmq-readiness.sh
+              readOnly: true
+            - name: rabbitmq-bin
+              mountPath: /tmp/rabbitmq-liveness.sh
+              subPath: rabbitmq-liveness.sh
+              readOnly: true
+            - name: rabbitmq-etc
+              mountPath: /etc/rabbitmq/enabled_plugins
+              subPath: enabled_plugins
+              readOnly: true
+            - name: rabbitmq-etc
+              mountPath: /etc/rabbitmq/rabbitmq.conf
+              subPath: rabbitmq.conf
+              readOnly: true
+            - name: rabbitmq-conf-d
+              mountPath: /etc/rabbitmq/conf.d
+{{ dict "enabled" .Values.manifests.service_external "name" .Values.secrets.tls.oslo_messaging.server.external "path" "/etc/rabbitmq/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: rabbitmq-conf-d
+          emptyDir: {}
+        - name: rabbitmq-bin
+          configMap:
+            name: {{ printf "%s-%s" $envAll.Release.Name "rabbitmq-bin" | quote }}
+            defaultMode: 365
+        - name: rabbitmq-etc
+          configMap:
+            name: {{ printf "%s-%s" $envAll.Release.Name "rabbitmq-etc" | quote }}
+            defaultMode: 292
+        - name: rabbitmq-erlang-cookie
+          secret:
+            secretName: {{ printf "%s-%s" $envAll.Release.Name "erlang-cookie" | quote }}
+            defaultMode: 292
+        {{- if not $envAll.Values.volume.enabled }}
+        - name: rabbitmq-data
+        {{- if .Values.volume.use_local_path.enabled }}
+          hostPath:
+            path:  {{ .Values.volume.use_local_path.host_path }}
+            type: DirectoryOrCreate
+        {{- else }}
+          emptyDir: {}
+        {{- end }}
+        {{- end }}
+{{ dict "enabled" .Values.manifests.service_external "name" .Values.secrets.tls.oslo_messaging.server.external | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{- if $envAll.Values.volume.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: rabbitmq-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: {{ $envAll.Values.volume.size }}
+        storageClassName: {{ $envAll.Values.volume.class_name }}
+{{- end }}
+{{ end }}

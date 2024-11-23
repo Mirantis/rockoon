@@ -1,0 +1,25 @@
+---
+all:
+  vars:
+    ansible_ssh_user: ubuntu
+    k0s_worker_on_controller: true
+    k0s_no_taints: true
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+
+  hosts:
+    oc-virtual-lab-server-ctl-01:
+      ansible_host: localhost
+      ansible_connection: local
+
+  children:
+    computes:
+      hosts:
+        oc-virtual-lab-server-ctl-01:
+    controllers:
+      hosts:
+        oc-virtual-lab-server-ctl-01:
+    k8s_controllers:
+      hosts:
+        oc-virtual-lab-server-ctl-01:
+    k8s_workers:
+      hosts:

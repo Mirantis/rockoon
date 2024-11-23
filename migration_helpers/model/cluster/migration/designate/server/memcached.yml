@@ -1,0 +1,5 @@
+parameters:
+  designate:
+    server:
+      cache:
+        ~members: ${_param:mcp2_memcached_designate_members}

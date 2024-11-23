@@ -1,0 +1,377 @@
+#apiVersion: lcm.mirantis.com/v1alpha1
+#kind: HelmBundle
+
+{%- set openid_providers = {} %}
+{%- for name, opts in federation.get("openid", {}).get("providers", {}).items() %}
+{%-   if opts.get("enabled", True) %}
+{%-      do openid_providers.update({name: opts}) %}
+{%-   endif %}
+{%- endfor %}
+{%- set validate_true_line = "{% if auth_type in \"" + openid_providers.keys() | join(',') + "\" %}" %}
+{%- set validate_false_line = "{% if auth_type not in \"" + openid_providers.keys() | join(',') + "\" %}" %}
+{%- set horizon_features = spec.get('features', {}).get('horizon', {}) %}
+{%- set neutron_backend = spec.features.neutron.get('backend', 'ml2') %}
+{%- set custom_policies = {} %}
+{%- for service_name in os_policy_services %}
+{%- if service_name in spec.get("features", {}).get("policies", {}) %}
+{%- do custom_policies.update({service_name: {"01-custom.yaml": spec.features.policies.get(service_name) }}) %}
+{%- endif %}
+{%- endfor %}
+
+spec:
+  releases:
+  - name: openstack-horizon
+    chart: horizon
+    values:
+      images:
+        tags:
+{%- for image in [
+    "horizon_db_sync",
+    "db_init",
+    "db_drop",
+    "horizon",
+    "image_repo_sync",
+    "test",
+    "dep_check",] %}
+        {%- if image in images %}
+          {{ image }}: {{ images[image] }}
+        {%- endif %}
+{%- endfor %}
+      dependencies:
+        static:
+          db_init:
+            jobs:
+              - openstack-mariadb-cluster-wait
+{%- if spec.features.network_policies.enabled %}
+      network_policy:
+{% include 'base/network_policies/dashboard.yaml' %}
+{%- endif %}
+      manifests:
+        network_policy: {{ spec.features.network_policies.enabled }}
+        secret_ca_bundle: true
+      network:
+        proxy:
+{% include 'base/_proxy_vars.yaml' %}
+        dashboard:
+          ingress:
+            annotations:
+              nginx.ingress.kubernetes.io/proxy-body-size: "0"
+      endpoints:
+        cluster_domain_suffix: {{ spec.internal_domain_name }}
+{% include 'base/_admin_identity.yaml' %}
+          host_fqdn_override:
+            public:
+              host: keystone.{{ spec.public_domain_name }}
+          hosts:
+            default: keystone
+            internal: keystone-api
+            public:
+              host: keystone
+          port:
+            api:
+              default: 80
+              internal: 5000
+              public: 443
+          scheme:
+            default: http
+            public: https
+{% include 'base/_cache.yaml' %}
+        oslo_db:
+          auth:
+            admin:
+              username: {{ admin_creds.database.username }}
+              password: {{ admin_creds.database.password }}
+            horizon:
+              username: {{ credentials[0].database.user.username }}
+              password: {{ credentials[0].database.user.password }}
+        dashboard:
+          host_fqdn_override:
+            public:
+              host: horizon.{{ spec.public_domain_name }}
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+{%- if rgw_internal_cacert is defined %}
+{{ rgw_internal_cacert | indent( width=18, first=True) }}
+{%- endif %}
+{%- if proxy_settings is defined %}
+{%- if proxy_settings.get("proxy_ca_certificate") %}
+{{ proxy_settings["proxy_ca_certificate"] | indent( width=18, first=True) }}
+{%- endif %}
+{%- endif %}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          hosts:
+            default: horizon-int
+            public:
+              host: horizon
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+{%- if rgw_internal_cacert is defined %}
+{{ rgw_internal_cacert | indent( width=18, first=True) }}
+{%- endif %}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+      conf:
+        policy.d: {{ custom_policies }}
+        software:
+          horizon:
+{%- if OSVer[spec.openstack_version] <= OSVer.queens %}
+            dashboard_path: /var/lib/openstack/lib/python2.7/site-packages/openstack_dashboard
+{%- elif OSVer[spec.openstack_version] <= OSVer.ussuri %}
+            dashboard_path: /var/lib/openstack/lib/python3.6/site-packages/openstack_dashboard
+{%- elif OSVer[spec.openstack_version] <= OSVer.xena %}
+            dashboard_path: /var/lib/openstack/lib/python3.8/site-packages/openstack_dashboard
+{%- else %}
+            dashboard_path: /usr/local/share/openstack_dashboard
+{%- endif %}
+        horizon:
+  {%- if horizon_features.get("motd", {}) %}
+          motd:
+          {%- for fname, fcontent in horizon_features.motd.items() %}
+            {{ fname }}.json:
+              {{ fcontent | toyaml | indent(14) }}
+          {%- endfor %}
+  {%- endif %}
+          policy:
+  {%- for component, component_policy in service_policy.items() %}
+            {{ component }}: {{ component_policy }}
+  {%- endfor %}
+          {%- if federation.get("openid", {}).get("enabled") %}
+          openstack_clouds_yaml_custom_template:
+            template: |
+              {%- raw %}
+              # This is a clouds.yaml file, which can be used by OpenStack tools as a source
+              # of configuration on how to connect to a cloud. If this is your only cloud,
+              # just put this file in ~/.config/openstack/clouds.yaml and tools like
+              # python-openstackclient will just work with no further config. (You will need
+              # to add your password to the auth section)
+              # If you have more than one cloud account, add the cloud entry to the clouds
+              # section of your existing file and you can refer to them by name with
+              # OS_CLOUD={{ "{{" }} cloud_name {{ "}}" }} or --os-cloud={{ "{{" }} cloud_name {{ "}}" }}
+              clouds:
+                {{ "{{" }} cloud_name {{ "}}" }}:
+                  {% if profile %}
+                  profile: {{ "{{" }} profile {{ "}}" }}
+                  {% endif %}
+                  auth:
+                    {% if not profile %}
+              {%- endraw %}
+                    {{ validate_true_line }}
+              {%- raw %}
+                    # v3oidcpassword does not work with unversioned identity endpoint
+                    # TODO: remove once LP bug/1998366 is fixed and released
+                    auth_url: {{ "{{" }} auth_url {{ "}}/v3" }}
+                    {% else %}
+                    auth_url: {{ "{{" }} auth_url {{ "}}" }}
+                    {% endif %}
+                    {% endif %}
+                    username: "{{ "{{" }} user.username {{ "}}" }}"
+                    project_id: {{ "{{" }} tenant_id {{ "}}" }}
+                    project_name: "{{ "{{" }} tenant_name {{ "}}" }}"
+                    project_domain_id: {{ "{{" }} tenant_id {{ "}}" }}
+              {%- endraw %}
+                    {{ validate_false_line }}
+              {%- raw %}
+                    {% if user_domain_name %}
+                    user_domain_name: "{{ "{{" }} user_domain_name {{ "}}" }}"
+                    {%  endif %}
+                    {%  endif %}
+              {%- endraw %}
+                    {{ validate_true_line }}
+              {%- raw %}
+                    identity_provider: {{ "{{" }} auth_type {{ "}}" }}
+                    {% endif %}
+                  {% if not profile %}
+                    {% if regions %}
+                  regions:
+                      {% for r in regions %}
+                  - {{ "{{" }} r {{ "}}" }}
+                      {% endfor %}
+                    {% else %}
+                      {% if region %}
+                  region_name: "{{ "{{" }} region {{ "}}" }}"
+                      {% endif %}
+                    {% endif %}
+                  interface: "{{ "{{" }} interface {{ "}}" }}"
+                  identity_api_version: {{ "{{" }} os_identity_api_version {{ "}}" }}
+                  {% endif %}
+              {%- endraw %}
+                  {{ validate_true_line }}
+            {%- set first_line = {"is": True} %}
+            {%- for name, opts in openid_providers.items() %}
+            {%-   if first_line.is %}
+            {%-     set to_print = "{% if auth_type == '" + name + "' %}" %}
+            {%-     do first_line.update({"is": False}) %}
+            {%-   else %}
+            {%-     set to_print = "{% elif auth_type == '" + name + "' %}" %}
+            {%-   endif %}
+                  {{ to_print }}
+                  client_secret: {{opts["metadata"]["client"].get("client_secret", "someRandomClientSecretMightBeNull") }}
+                  protocol: mapped
+                  openid_scope: openid
+                  client_id: {{ opts["metadata"]["client"]["client_id"]}}
+                  discovery_endpoint: {{ opts["metadata"]["provider"]["value_from"]["from_url"]["url"] }}
+            {%- endfor %}
+              {%- raw %}
+                  {% endif %}
+                  auth_type: v3oidcpassword
+                  {% endif %}
+              {%- endraw %}
+          openrc_custom_template:
+            template: |
+              {%- raw %}
+              {% load shellfilter %}#!/usr/bin/env bash
+
+              # To use an OpenStack cloud you need to authenticate against the Identity
+              # service named keystone, which returns a **Token** and **Service Catalog**.
+              # The catalog contains the endpoints for all services the user/tenant has
+              # access to - such as Compute, Image Service, Identity, Object Storage, Block
+              # Storage, and Networking (code-named nova, glance, keystone, swift,
+              # cinder, and neutron).
+              #
+              # *NOTE*: Using the 3 *Identity API* does not necessarily mean any other
+              # OpenStack API is version 3. For example, your cloud provider may implement
+              # Image API v1.1, Block Storage API v2, and Compute API v2.0. OS_AUTH_URL is
+              # only for the Identity API served through keystone.
+              {%- endraw %}
+              {{ validate_true_line }}
+              {%- raw %}
+              # v3oidcpassword does not work with unversioned identity endpoint
+              # TODO: remove once LP bug/1998366 is fixed and released
+              export OS_AUTH_URL={{ "{{" }} auth_url {{ "}}/v3" }}
+              {% else %}
+              export OS_AUTH_URL={{ "{{" }} auth_url {{ "}}" }}
+              {% endif %}
+
+              # With the addition of Keystone we have standardized on the term **project**
+              # as the entity that owns the resources.
+              {%- endraw %}
+              {{ validate_false_line }}
+              {%- raw %}
+              export OS_PROJECT_ID={{ "{{" }} tenant_id {{ "}}" }}
+              export OS_USER_DOMAIN_NAME="{{ "{{" }} user_domain_name|shellfilter {{ "}}" }}"
+              if [ -z "$OS_USER_DOMAIN_NAME" ]; then unset OS_USER_DOMAIN_NAME; fi
+              {% endif %}
+              export OS_PROJECT_NAME="{{ "{{" }} tenant_name|shellfilter {{ "}}" }}"
+              export OS_PROJECT_DOMAIN_ID="{{ "{{" }} project_domain_id|shellfilter {{ "}}" }}"
+              if [ -z "$OS_PROJECT_DOMAIN_ID" ]; then unset OS_PROJECT_DOMAIN_ID; fi
+
+              # unset v2.0 items in case set
+              unset OS_TENANT_ID
+              unset OS_TENANT_NAME
+
+              # In addition to the owning entity (tenant), OpenStack stores the entity
+              # performing the action as the **user**.
+              export OS_USERNAME="{{ "{{" }} user.username|shellfilter {{ "}}" }}"
+
+              # With Keystone you pass the keystone password.
+              echo "Please enter your OpenStack Password for project $OS_PROJECT_NAME as user $OS_USERNAME: "
+              read -sr OS_PASSWORD_INPUT
+              export OS_PASSWORD=$OS_PASSWORD_INPUT
+              # If your configuration has multiple regions, we set that information here.
+              # OS_REGION_NAME is optional and only valid in certain environments.
+              export OS_REGION_NAME="{{ "{{" }} region|shellfilter {{ "}}" }}"
+              # Don't leave a blank variable, unset it if it was empty
+              if [ -z "$OS_REGION_NAME" ]; then unset OS_REGION_NAME; fi
+
+              export OS_INTERFACE={{ "{{" }} interface {{ "}}" }}
+              export OS_IDENTITY_API_VERSION={{ "{{" }} os_identity_api_version {{ "}}" }}
+
+
+              {%- endraw %}
+              {{ validate_true_line }}
+            {%- set first_line = {"is": True} %}
+            {%- for name, opts in openid_providers.items() %}
+            {%-   if first_line.is %}
+            {%-     set to_print = "{% if auth_type == '" + name + "' %}" %}
+            {%-     do first_line.update({"is": False}) %}
+            {%-   else %}
+            {%-     set to_print = "{% elif auth_type == '" + name + "' %}" %}
+            {%-   endif %}
+              {{ to_print }}
+              export OS_CLIENT_SECRET={{opts["metadata"]["client"].get("client_secret", "someRandomClientSecretMightBeNull") }}
+              export OS_PROTOCOL=mapped
+              export OS_OPENID_SCOPE=openid
+              export OS_CLIENT_ID={{ opts["metadata"]["client"]["client_id"]}}
+              export OS_DISCOVERY_ENDPOINT={{ opts["metadata"]["provider"]["value_from"]["from_url"]["url"] }}
+              export OS_IDENTITY_PROVIDER={{ name }}
+            {%- endfor %}
+              {%- raw %}
+              {% endif %}
+              export OS_AUTH_TYPE=v3oidcpassword
+              {% endif %}
+              {%- endraw %}
+          {%- endif %}
+          local_settings:
+            custom_themes:
+{%- set horizon_themes = horizon_features.get('themes', []) %}
+{%- if OSVer[spec.openstack_version] >= OSVer.ussuri %}
+{%- do horizon_themes.append({'url': images["horizon_mirantis_theme_url"],
+                              'name': 'mirantis',
+                              'description': 'Mirantis',
+                              'sha256summ': images["horizon_mirantis_theme_sha256summ"]
+                             }) %}
+{%- endif %}
+{%- for theme in horizon_themes %}
+  {%- set theme_url = theme.url | substitute_local_proxy_hostname("${NODE_IP}") %}
+              {{ theme.name }}:
+                url: {{ theme_url }}
+                sha256summ: {{ theme.sha256summ }}
+                description: {{ theme.description }}
+{%- endfor %}
+            config:
+              raw:
+                DEFAULT_THEME: {{ horizon_features.get('default_theme', 'default') }}
+{%- if federation.get("openid", {}).get("enabled") %}
+{%- set sso_logout_url = "https://keystone." + spec.public_domain_name + "/v3/auth/OS-FEDERATION/identity_providers/keycloak/protocols/mapped/websso/?logout=https://horizon." + spec.public_domain_name + "/auth/logout" %}
+                LOGOUT_URL: {{ sso_logout_url }}
+                WEBSSO_DEFAULT_REDIRECT_LOGOUT: {{ sso_logout_url }}
+                WEBSSO_DEFAULT_REDIRECT_PROTOCOL: mapped
+{%- endif %}
+              horizon_secret_key: {{ credentials[0].secret_key }}
+
+              csrf_cookie_secure: "True"
+              session_cookie_secure: "True"
+              session_cookie_httponly: "True"
+              password_autocomplete: "off"
+              password_validator:
+                regex: '^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&+-_/]{8,}$'
+                help_text: 'Your password does not meet the requirements. Password must contain at least one letter, one number and be longer than eight characters.'
+              disallow_iframe_embed: "True"
+              horizon_images_upload_mode: 'direct'
+{%- if neutron_backend == 'tungstenfabric' %}
+              openstack_neutron_network:
+                enable_fip_topology_check: "False"
+{%- endif %}
+
+              secure_proxy_ssl_header: true
+{%- if federation.get("openid", {}).get("enabled") %}
+              auth:
+                idp_mapping:
+{%-   for name, opts in openid_providers.items() %}
+                - idp: {{ name }}
+                  label: {{ opts["description"] }}
+                  name: {{ name }}
+                  protocol: mapped
+{%-   endfor %}
+                sso:
+                  enabled: true
+                  initial_choice: {{ openid_providers.keys() | list | first }}
+              # Need to switch openstack keystone url to public endpoint for web single-sign-on authentication
+              # because the option WEBSSO_KEYSTONE_URL added in version Stein.
+              {%- if OSVer[spec.openstack_version] < OSVer.stein %}
+              keystone_url_endpoint_type: "public"
+              {%- endif %}
+{%- endif %}
+              tungstenfabric:
+                enabled: {{ neutron_backend == 'tungstenfabric' }}
+{%- if OSVer[spec.openstack_version] >= OSVer.caracal %}
+              cache:
+                backend: "django.core.cache.backends.memcached.PyMemcacheCache"
+{%- endif %}

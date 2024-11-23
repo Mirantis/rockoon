@@ -1,0 +1,133 @@
+{{- if .Values.exporter.enabled  }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: rockoon-exporter-account
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: "{{ .Values.osdpl.namespace }}"
+  name: "rockoon-exporter-role-{{ .Values.osdpl.namespace }}"
+rules:
+  # Application: certificate controller
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [list, get, watch]
+  # Application: nova audit collector
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [list, get, watch]
+  - apiGroups: [""]
+    resources: [pods/log]
+    verbs: [get]
+  - apiGroups: [batch]
+    resources: [jobs, cronjobs]
+    verbs: [list, get, watch]
+  # Application: read-only access for watching cluster-wide.
+  - apiGroups: [lcm.mirantis.com]
+    resources: [openstackdeployments]
+    verbs: [list, get, watch]
+  - apiGroups: [lcm.mirantis.com]
+    resources: [openstackdeploymentstatus]
+    verbs: [list, get, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: "{{ .Values.osdpl.namespace }}"
+  name: "rockoon-exporter-rolebinding-{{ .Values.osdpl.namespace }}"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: "rockoon-exporter-role-{{ .Values.osdpl.namespace }}"
+subjects:
+  - kind: ServiceAccount
+    name: rockoon-exporter-account
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "rockoon.fullname" . }}-exporter
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "rockoon.name" . }}-exporter
+    helm.sh/chart: {{ include "rockoon.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.exporter.replicaCount }}
+  # Make sure old operator gone to prevent that old version start
+  # handling resume event.
+  strategy:
+   type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "rockoon.name" . }}-exporter
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "rockoon.name" . }}-exporter
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        application: rockoon
+        component: exporter
+    spec:
+      serviceAccountName: rockoon-exporter-account
+      securityContext:
+        {{- toYaml .Values.exporter.pod.exporter.security_context | nindent 8 }}
+      containers:
+        - name: exporter
+          image: {{ tuple . .Values.image | include "getImageUrl" }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            {{- toYaml .Values.exporter.cmd | nindent 10 }}
+          securityContext:
+            {{- toYaml .Values.exporter.pod.exporter.exporter.security_context | nindent 12 }}
+          env:
+{{ tuple . | include "rockoon.common_env" | indent 12 }}
+            {{- range $optionName, $optionValue := .Values.exporter.settings.raw }}
+            - name: {{ $optionName }}
+              value: "{{ $optionValue }}"
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.exporter.settings.raw.OSCTL_EXPORTER_BIND_PORT }}
+            {{- toYaml .Values.exporter.pod.liveness.params | nindent 12}}
+          readinessProbe:
+            # NOTE(vsaienko): do tcp checks only to avoid starting polling functions.
+            tcpSocket:
+              port: {{ .Values.exporter.settings.raw.OSCTL_EXPORTER_BIND_PORT }}
+            {{- toYaml .Values.exporter.pod.readiness.params | nindent 12}}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: os-clouds
+              mountPath: /etc/openstack/
+            - name: exporter-etc
+              mountPath: /etc/rockoon/exporter
+      volumes:
+        - name: os-clouds
+          secret:
+            secretName: keystone-os-clouds
+            defaultMode: 365
+        - name: exporter-etc
+          secret:
+            secretName: {{ include "rockoon.fullname" . }}-exporter-etc
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+{{-  end }}

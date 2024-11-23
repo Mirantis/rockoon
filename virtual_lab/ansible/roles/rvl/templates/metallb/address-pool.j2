@@ -1,0 +1,11 @@
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  creationTimestamp: null
+  name: openstack-default
+  namespace: metallb
+spec:
+  addresses:
+  - 10.172.1.100-10.172.1.255
+  autoAssign: true
+  avoidBuggyIPs: true

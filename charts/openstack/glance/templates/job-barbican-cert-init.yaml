@@ -1,0 +1,119 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.job_barbican_cert_init }}
+{{- $envAll := . }}
+
+{{- $serviceAccountName := "glance-barbican-cert-init" }}
+{{ tuple $envAll "barbican_cert_init" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $serviceAccountName }}
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - create
+      - update
+      - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $serviceAccountName }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $serviceAccountName }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $serviceAccountName }}
+    namespace: {{ $envAll.Release.Namespace }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: glance-barbican-cert-init
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+spec:
+  backoffLimit: 20
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "glance" "barbican-cert-init" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+{{ dict "envAll" $envAll "podName" "glance-barbican-cert-init" "containerNames" (list "init" "glance-barbican-cert-init" ) | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "barbican-cert_init" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      restartPolicy: OnFailure
+      nodeSelector:
+        {{ .Values.labels.job.node_selector_key }}: {{ .Values.labels.job.node_selector_value }}
+      initContainers:
+{{ tuple $envAll "barbican_cert_init" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+      containers:
+        - name: glance-barbican-cert-init
+{{ tuple $envAll "glance_barbican_cert_init" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.barbican_cert_init | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "barbican_cert_init" "container" "glance_barbican_cert_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          env:
+            - name: SECRET_NAME
+              value: {{ .Values.conf.barbican_cert.secret_name }}
+            - name: SECRET_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: CERT_COMMON_NAME
+              value: {{ .Values.conf.barbican_cert.cert.common_name }}
+            - name: CERT_ORGANIZATION_NAME
+              value: {{ .Values.conf.barbican_cert.cert.organization_name }}
+            - name: CERT_ORGANIZATION_NAME
+              value: {{ .Values.conf.barbican_cert.cert.organization_unit_name }}
+            - name: CERT_NOT_VALID_AFTER
+              value: {{ .Values.conf.barbican_cert.cert.not_valid_after | squote }}
+            - name: CERT_KEY_SIZE
+              value: {{ .Values.conf.barbican_cert.cert.key_size | squote }}
+{{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" "glance" ) | indent 12 }}
+          command:
+            - /tmp/barbican-cert-init.py
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: glance-bin
+              mountPath: /tmp/barbican-cert-init.py
+              subPath: barbican-cert-init.py
+              readOnly: true
+            - name: os-clouds
+              mountPath: /etc/openstack/clouds.yaml
+              subPath: clouds.yaml
+              readOnly: true
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: glance-bin
+          configMap:
+            name: glance-bin
+            defaultMode: 504
+        - name: os-clouds
+          secret:
+            secretName: {{ .Chart.Name }}-os-clouds
+            defaultMode: 416
+{{- end }}

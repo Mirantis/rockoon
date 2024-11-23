@@ -1,0 +1,294 @@
+        gnocchi_resources: |
+          archive_policy_default: ceilometer-low
+          archive_policies:
+            - name: ceilometer-low
+              aggregation_methods:
+                - mean
+              back_window: 0
+              definition:
+                - granularity: 1 minutes
+                  timespan: 30 min
+            - name: ceilometer-low-rate
+              aggregation_methods:
+                - mean
+                - rate:mean
+              back_window: 0
+              definition:
+                - granularity: 1 minutes
+                  timespan: 30 min
+            - name: ceilometer-high-static
+              aggregation_methods:
+                - mean
+              back_window: 0
+              definition:
+                - granularity: 1 hour
+                  timespan: 1 day
+            - name: ceilometer-high-static-rate
+              aggregation_methods:
+                - mean
+                - rate:mean
+              back_window: 0
+              definition:
+                - granularity: 1 hour
+                  timespan: 1 day
+          resources:
+            - metrics:
+                - identity.authenticate.success
+                - identity.authenticate.pending
+                - identity.authenticate.failure
+                - identity.user.created
+                - identity.user.deleted
+                - identity.user.updated
+                - identity.group.created
+                - identity.group.deleted
+                - identity.group.updated
+                - identity.role.created
+                - identity.role.deleted
+                - identity.role.updated
+                - identity.project.created
+                - identity.project.deleted
+                - identity.project.updated
+                - identity.trust.created
+                - identity.trust.deleted
+                - identity.role_assignment.created
+                - identity.role_assignment.deleted
+              resource_type: identity
+            - metrics:
+                - radosgw.objects
+                - radosgw.objects.size
+                - radosgw.objects.containers
+                - radosgw.api.request
+                - radosgw.containers.objects
+                - radosgw.containers.objects.size
+              resource_type: ceph_account
+            - attributes:
+                launched_at: resource_metadata.launched_at
+                created_at: resource_metadata.created_at
+                deleted_at: resource_metadata.deleted_at
+                display_name: resource_metadata.display_name
+                flavor_id: resource_metadata.(instance_flavor_id|(flavor.id)|flavor_id)
+                flavor_name: resource_metadata.(instance_type|(flavor.name)|flavor_name)
+                server_group: resource_metadata.user_metadata.server_group
+                host: resource_metadata.(instance_host|host)
+                image_ref: resource_metadata.image_ref
+                server_group: resource_metadata.user_metadata.server_group
+              event_associated_resources:
+                instance_disk: '{"=": {"instance_id": "%s"}}'
+                instance_network_interface: '{"=": {"instance_id": "%s"}}'
+              event_attributes:
+                id: instance_id
+                display_name: display_name
+                host: host
+                availability_zone: availability_zone
+                flavor_id: instance_type_id
+                flavor_name: instance_type
+                user_id: user_id
+                project_id: project_id
+              event_delete: compute.instance.delete.start
+              event_create: compute.instance.create.end
+              metrics:
+                memory:
+                  archive_policy_name: ceilometer-high-static-rate
+                memory.usage:
+                  archive_policy_name: ceilometer-low
+                memory.resident:
+                  archive_policy_name: ceilometer-low
+                memory.swap.in:
+                  archive_policy_name: ceilometer-low
+                memory.swap.out:
+                  archive_policy_name: ceilometer-low
+                memory.bandwidth.total:
+                  archive_policy_name: ceilometer-low
+                memory.bandwidth.local:
+                  archive_policy_name: ceilometer-low
+                vcpus:
+                  archive_policy_name: ceilometer-high-static-rate
+                cpu:
+                  archive_policy_name: ceilometer-low-rate
+                cpu_l3_cache:
+                  archive_policy_name: ceilometer-low
+                disk.root.size:
+                  archive_policy_name: ceilometer-high-static-rate
+                disk.ephemeral.size:
+                  archive_policy_name: ceilometer-high-static-rate
+                disk.latency:
+                  archive_policy_name: ceilometer-low
+                disk.iops:
+                  archive_policy_name: ceilometer-low
+                disk.capacity:
+                  archive_policy_name: ceilometer-low
+                disk.allocation:
+                  archive_policy_name: ceilometer-low
+                disk.usage:
+                  archive_policy_name: ceilometer-low
+                compute.instance.booting.time:
+                  archive_policy_name: ceilometer-high-static-rate
+                perf.cpu.cycles:
+                  archive_policy_name: ceilometer-low
+                perf.instructions:
+                  archive_policy_name: ceilometer-low
+                perf.cache.references:
+                  archive_policy_name: ceilometer-low
+                perf.cache.misses:
+                  archive_policy_name: ceilometer-low
+                disk.root.size:
+                  archive_policy_name: ceilometer-high-static-rate
+                disk.ephemeral.size:
+                  archive_policy_name: ceilometer-high-static-rate
+              resource_type: instance
+            - attributes:
+                instance_id: resource_metadata.instance_id
+                name: resource_metadata.vnic_name
+              metrics:
+                - network.outgoing.packets.rate
+                - network.incoming.packets.rate
+                - network.outgoing.packets
+                - network.outgoing.packets.drop
+                - network.incoming.packets.drop
+                - network.outgoing.packets.error
+                - network.incoming.packets.error
+                - network.outgoing.bytes.rate
+                - network.incoming.bytes.rate
+                - network.outgoing.bytes
+                - network.incoming.bytes
+              resource_type: instance_network_interface
+            - attributes:
+                instance_id: resource_metadata.instance_id
+                name: resource_metadata.disk_name
+              metrics:
+                - disk.device.read.requests
+                - disk.device.read.requests.rate
+                - disk.device.write.requests
+                - disk.device.write.requests.rate
+                - disk.device.read.bytes
+                - disk.device.read.bytes.rate
+                - disk.device.write.bytes
+                - disk.device.write.bytes.rate
+                - disk.device.latency
+                - disk.device.iops
+                - disk.device.capacity
+                - disk.device.allocation
+                - disk.device.usage
+              resource_type: instance_disk
+            - attributes:
+                container_format: resource_metadata.container_format
+                disk_format: resource_metadata.disk_format
+                name: resource_metadata.name
+              event_attributes:
+                id: resource_id
+              event_delete: image.delete
+              metrics:
+                - image.size
+                - image.download
+                - image.serve
+              resource_type: image
+            - metrics:
+                - hardware.ipmi.node.power
+                - hardware.ipmi.node.temperature
+                - hardware.ipmi.node.inlet_temperature
+                - hardware.ipmi.node.outlet_temperature
+                - hardware.ipmi.node.fan
+                - hardware.ipmi.node.current
+                - hardware.ipmi.node.voltage
+                - hardware.ipmi.node.airflow
+                - hardware.ipmi.node.cups
+                - hardware.ipmi.node.cpu_util
+                - hardware.ipmi.node.mem_util
+                - hardware.ipmi.node.io_util
+              resource_type: ipmi
+            - event_delete: floatingip.delete.end
+              event_attributes:
+                id: resource_id
+              metrics:
+                - bandwidth
+                - network
+                - network.create
+                - network.update
+                - subnet
+                - subnet.create
+                - subnet.update
+                - port
+                - port.create
+                - port.update
+                - router
+                - router.create
+                - router.update
+                - ip.floating
+                - ip.floating.create
+                - ip.floating.update
+              resource_type: network
+            - metrics:
+                - stack.create
+                - stack.update
+                - stack.delete
+                - stack.resume
+                - stack.suspend
+              resource_type: stack
+            - metrics:
+                - storage.objects.incoming.bytes
+                - storage.objects.outgoing.bytes
+                - storage.api.request
+                - storage.objects.size
+                - storage.objects
+                - storage.objects.containers
+                - storage.containers.objects
+                - storage.containers.objects.size
+              resource_type: swift_account
+            - attributes:
+                display_name: resource_metadata.display_name
+                volume_type: resource_metadata.volume_type
+              event_delete: volume.delete.start
+              event_attributes:
+                id: resource_id
+              metrics:
+                - volume
+                - volume.size
+                - snapshot.size
+                - volume.snapshot.size
+                - volume.backup.size
+              resource_type: volume
+            - attributes:
+                host_name: resource_metadata.resource_url
+              metrics:
+                - hardware.cpu.load.1min
+                - hardware.cpu.load.5min
+                - hardware.cpu.load.15min
+                - hardware.cpu.util
+                - hardware.cpu.user
+                - hardware.cpu.nice
+                - hardware.cpu.system
+                - hardware.cpu.idle
+                - hardware.cpu.wait
+                - hardware.cpu.kernel
+                - hardware.cpu.interrupt
+                - hardware.memory.total
+                - hardware.memory.used
+                - hardware.memory.swap.total
+                - hardware.memory.swap.avail
+                - hardware.memory.buffer
+                - hardware.memory.cached
+                - hardware.network.ip.outgoing.datagrams
+                - hardware.network.ip.incoming.datagrams
+                - hardware.system_stats.cpu.idle
+                - hardware.system_stats.io.outgoing.blocks
+                - hardware.system_stats.io.incoming.blocks
+              resource_type: host
+            - attributes:
+                device_name: resource_metadata.device
+                host_name: resource_metadata.resource_url
+              metrics:
+                - hardware.disk.size.total
+                - hardware.disk.size.used
+                - hardware.disk.read.bytes
+                - hardware.disk.write.bytes
+                - hardware.disk.read.requests
+                - hardware.disk.write.requests
+              resource_type: host_disk
+            - attributes:
+                device_name: resource_metadata.name
+                host_name: resource_metadata.resource_url
+              metrics:
+                - hardware.network.incoming.bytes
+                - hardware.network.outgoing.bytes
+                - hardware.network.outgoing.errors
+              resource_type: host_network_interface

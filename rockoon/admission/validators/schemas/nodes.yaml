@@ -1,0 +1,304 @@
+type: object
+additionalProperties: False
+patternProperties:
+  ".*::.*":
+    type: object
+    additionalProperties: False
+    properties:
+      features:
+        additionalProperties: False
+        type: object
+        properties:
+          cinder:
+            type: object
+            additionalProperties: False
+            required:
+              - volume
+            properties:
+              volume:
+                type: object
+                additionalProperties: True
+                required:
+                  - backends
+                properties:
+                  backends:
+                    type: object
+                    additionalProperties: False
+                    patternProperties:
+                      ".*":
+                        type: object
+                        additionalProperties: False
+                        properties:
+                          lvm:
+                            type: object
+                            additionalProperties: True
+                            properties:
+                              volume_group:
+                                type: string
+                                description: >
+                                  Volume group used by lvm backend. Default to cinder-vol
+          nova:
+            type: object
+            additionalProperties: False
+            properties:
+              allocation_ratios:
+                type: object
+                additionalProperties: False
+                description: >
+                  Defines allowed compute resource overconsumption.
+                  For Queens and Rocky - these values are constantly enforced.
+                  For Stein and later - these values are set once for new compute
+                  nodes, further changes should be done via the Placement API.
+                properties:
+                  cpu:
+                    type: number
+                  disk:
+                    type: number
+                  ram:
+                    type: number
+              live_migration_interface:
+                type: string
+                description: "Physical interface used for live migration."
+              vcpu_type:
+                type: string
+                description: cpu mode and model to create instances with
+              images:
+                type: object
+                properties:
+                  backend:
+                    description: |
+                      Backend for nova images can be:
+                        - local: qcow2 image type. Option is deprecated and will be replaced to 'qcow2'
+                        - qcow2: qcow2 image type
+                        - ceph: rbd image type
+                        - lvm: lvm image type
+                        - raw: raw image type
+                    type: string
+                    enum:
+                      - local
+                      - qcow2
+                      - ceph
+                      - lvm
+                      - raw
+                  encryption:
+                    type: object
+                    properties:
+                      enabled:
+                        type: boolean
+                        description: Enable ephemeral disk encryption, only available with lvm backend.
+                      cipher:
+                        type: string
+                        description: Cipher-mode string to be used.
+                      key_size:
+                        type: integer
+                        description: Encryption key length in bits.
+                  lvm:
+                    type: object
+                    properties:
+                      volume_group:
+                        type: string
+                        description: >
+                          Volume group used when images backend is lvm. Default to nova-vol
+          neutron:
+            type: object
+            additionalProperties: False
+            properties:
+              tunnel_interface:
+                type: string
+                description: Physical interface used for tunnel traffic
+              sriov:
+                type: object
+                additionalProperties: False
+                required:
+                  - enabled
+                properties:
+                  additionalProperties: True
+                  enabled:
+                    type: boolean
+                    description: Trigger to enable sriov on the node.
+                  nics:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - device
+                        - num_vfs
+                        - physnet
+                      properties:
+                        additionalProperties: True
+                        device:
+                          type: string
+                          description: The name of sriov NIC
+                        num_vfs:
+                          type: integer
+                          description: The number of VF to activate
+                        hooks:
+                          type: object
+                          description: The pre init hooks
+                          properties:
+                            additionalProperties: False
+                            init:
+                              type: string
+                              description: The init hook for specific NIC.
+                        physnet:
+                          type: string
+                          description: The name of neutron physnet for SRIOV NIC.
+                        mtu:
+                          type: integer
+                          description: The NIC MTU
+                        trusted:
+                          type: string
+                          enum:
+                            - "true"
+                            - "false"
+                          description: Enable trusted mode on sriov VIF
+              dpdk:
+                type: object
+                additionalProperties: False
+                required:
+                  - enabled
+                  - driver
+                properties:
+                  additionalProperties: True
+                  enabled:
+                    type: boolean
+                    description: Trigger to enable dpdk on the node.
+                  driver:
+                    type: string
+                    description: The dpdk driver to use for NICs
+                  socket_memory:
+                    type: string
+                    description: "Memory to allocate for numa node, default: 1024 MB to first numa node"
+                  bridges:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - ip_address
+                        - name
+                      properties:
+                        name:
+                          type: string
+                          description: The name of dpdk bridge
+                        ip_address:
+                          type: string
+                          description: IP address to assign to the bridge.
+
+                  nics:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - name
+                        - pci_id
+                        - bridge
+                      properties:
+                        name:
+                          type: string
+                          description: The name of ovs port created for corresponding NIC
+                        pci_id:
+                          type: string
+                          description: The PCI id of NIC
+                        bridge:
+                          type: string
+                          description: The name of bridge to plug NIC
+                  bonds:
+                     type: array
+                     items:
+                       type: object
+                       required:
+                         - name
+                         - bridge
+                         - nics
+                       properties:
+                         name:
+                           type: string
+                           description: The name of dpdk bond.
+                         bridge:
+                           type: string
+                           description: The name of bridge to plug bond.
+                         ovs_options:
+                           type: string
+                           description: Bond openvswitch options, for example bond_mode=active-backup
+                         nics:
+                           type: array
+                           items:
+                             type: object
+                             required:
+                               - name
+                               - pci_id
+                             properties:
+                               name:
+                                 type: string
+                                 description: The name of ovs port created for corresponding NIC
+                               pci_id:
+                                 type: string
+                                 description: The PCI id of NIC
+                  hugepages:
+                    type: object
+                    properties:
+                      size:
+                        type: string
+                        description: The page size to use, default 2Mi
+                        enum:
+                          - 1Gi
+                          - 2Mi
+                      amount:
+                        type: string
+                        description: The amount of hugepages, default 1Gi
+              bgpvpn:
+                type: object
+                additionalProperties: False
+                required:
+                  - enabled
+                properties:
+                  enabled:
+                    type: boolean
+                    description: Enable BGPVPN plugin/service
+      services:
+        additionalProperties: False
+        type: object
+        properties:
+          load-balancer:
+            type: object
+            additionalProperties: False
+            properties:
+              octavia: &chart_override
+                type: object
+                additionalProperties: False
+                patternProperties:
+                  ".*":
+                    type: object
+                    additionalProperties: False
+                    properties:
+                      values:
+                        type: object
+                        additionalProperties: True
+          networking:
+            type: object
+            additionalProperties: False
+            properties:
+              openvswitch:
+                <<: *chart_override
+              neutron:
+                <<: *chart_override
+          metering:
+            type: object
+            additionalProperties: False
+            properties:
+              ceilometer:
+                <<: *chart_override
+          metric:
+            type: object
+            additionalProperties: False
+            properties:
+              gnocchi:
+                <<: *chart_override
+          compute:
+            type: object
+            additionalProperties: False
+            properties:
+              nova:
+                <<: *chart_override
+              libvirt:
+                <<: *chart_override

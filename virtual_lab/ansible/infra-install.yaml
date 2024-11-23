@@ -1,0 +1,97 @@
+---
+- name: Setup ansible dependencies
+  hosts: k8s_controllers[0]
+  become: true
+  become_user: root
+  tasks:
+    - name: install pre-requisites
+      pip:
+        name:
+          - kubernetes
+
+- name: Setup infrastructure requirements
+  hosts: k8s_controllers:controllers:computes
+  become: true
+  become_user: root
+  pre_tasks:
+    - name: Set node role fact
+      set_fact:
+        rvl_controller_node: "{%- if ansible_hostname in groups.controllers %}True{%- endif %}"
+        rvl_compute_node: "{%- if ansible_hostname in groups.computes %}True{%- endif %}"
+        rvl_controller_node_main: "{%- if ansible_hostname in groups.k8s_controllers[0] %}True{%- endif %}"
+    - name: Setup networking
+      include_role:
+        name: rvl
+        tasks_from: network
+
+- name: Deploy initial controllers
+  hosts: k8s_controllers[0]
+  become: true
+  become_user: root
+  pre_tasks:
+    - name: Set node role fact
+      set_fact:
+        rvl_controller_node: "{%- if ansible_hostname in groups.controllers %}True{%- endif %}"
+        rvl_compute_node: "{%- if ansible_hostname in groups.computes %}True{%- endif %}"
+        rvl_resolved_ip_address: "{{ hostvars[groups.k8s_controllers[0]]['ansible_default_ipv4']['address'] }}"
+      tags:
+        - all
+  tasks:
+  - name: Initialize clients
+    include_role:
+      name: rvl
+      tasks_from: clients
+  - name: Label nodes
+    include_role:
+      name: rvl
+      tasks_from: k8s-label-nodes
+  - name: Setup LVP
+    include_role:
+      name: rvl
+      tasks_from: lvp
+  - name: Setup Metallb
+    include_role:
+      name: rvl
+      tasks_from: metallb
+  - name: Setup osdpl certs
+    include_role:
+      name: rvl
+      tasks_from: certs
+  - name: Setup osdpl registry
+    include_role:
+      name: rvl
+      tasks_from: registry
+  - name: Prepare coredns configs
+    include_role:
+      name: rvl
+      tasks_from: dns/coredns
+    tags:
+      - dns
+    vars:
+      rvl_dns_discover_ingress_ip: false
+  - name: Setup coredns
+    include_role:
+      name: cloudalchemy.coredns
+    vars:
+      coredns_dns_port: 53
+      coredns_zone_files_paths:
+        - /src/coredns/it.just.works.db
+      coredns_config_file: /src/coredns/Corefile
+    tags:
+      - dns
+
+- name: Configure resolver
+  hosts: controllers:computes
+  become: true
+  become_user: root
+  pre_tasks:
+    - name: Set node role fact
+      set_fact:
+        rvl_resolved_ip_address: "{{ hostvars[groups.k8s_controllers[0]]['ansible_default_ipv4']['address'] }}"
+  tasks:
+    - name: Setup dns resolver
+      include_role:
+        name: rvl
+        tasks_from: dns/resolver
+  tags:
+    - dns
