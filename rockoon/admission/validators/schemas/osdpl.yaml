@@ -69,7 +69,7 @@ properties:
     description: |
       Default storage class with local volumes, used by services with built in clustering
       mechanism like mariadb, etcd, redis.
-      default: "rockoon-bind-mounts"
+      default: "openstack-operator-bind-mounts"
   persistent_volume_storage_class:
     type: string
     description: |
