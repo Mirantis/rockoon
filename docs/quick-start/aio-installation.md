@@ -16,6 +16,10 @@ Minimal VM requirements
 | CPU  | 8          |
 | DISK | 100Gb      |
 
+Supported operation systems
+
+* Ubuntu 22.04 (x86_64)
+
 
 ## Trigger Deployment
 
