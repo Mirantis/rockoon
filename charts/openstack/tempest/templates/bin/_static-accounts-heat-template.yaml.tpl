@@ -92,7 +92,8 @@ resources:
       enabled: true
       name: tempest-admin-manual-{{ $pr }}-{{ $usr }}
       password: tempest-admin-manual-password
-      roles: [{"role": admin, "project": { get_resource: tempest_project_{{ $pr }} } }]
+      roles: [{"role": admin, "project": { get_resource: tempest_project_{{ $pr }} } },
+              {"role": global-secret-decoder, "project": { get_resource: tempest_project_{{ $pr }} } }]
 
 {{ end }}
 
