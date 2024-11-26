@@ -1777,6 +1777,11 @@ properties:
                         description: |
                           Enable Manila backend to deploy
                           default: True
+                      create_share_type:
+                        type: boolean
+                        description: |
+                          Enable automatic share type creation for this backend
+                          default: True
                       type:
                         type: string
                         enum:

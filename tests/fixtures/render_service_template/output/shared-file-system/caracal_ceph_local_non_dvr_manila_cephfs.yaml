@@ -5,8 +5,10 @@ spec:
     values:
       bootstrap:
         share_types:
-          default:
+          cephfs:
             driver_handles_share_servers: false
+            extra_specs:
+              share_backend_name: cephfs
       overrides:
         manila_share_sts:
           cephfs:

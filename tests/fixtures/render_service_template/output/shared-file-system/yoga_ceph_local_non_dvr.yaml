@@ -3,10 +3,6 @@ spec:
   - chart: manila
     name: openstack-manila
     values:
-      bootstrap:
-        share_types:
-          default:
-            driver_handles_share_servers: true
       conf:
         aux_conf:
           policies:

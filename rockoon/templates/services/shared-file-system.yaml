@@ -17,6 +17,8 @@
 {%- set cadf_audit = spec.get('features', {}).get('logging', {}).get('cadf', {'enabled': false}) %}
 {%- set cadf_audit_driver = spec.get('features', {}).get('logging', {}).get('cadf', {}).get('driver', 'messagingv2') %}
 {%- set share_sts = {} %}
+{%- set share_bootstrap = {} %}
+{%- set share_types = {} %}
 {%- set share_backends = spec.get('features', {}).get('manila', {}).get('share', {}).get('backends', {}) %}
 
 {%- for sts_name, sts_opts in share_backends.items() %}
@@ -35,11 +37,23 @@
 {%-       do opts.update(sts_backend_opts) %}
           {# put result back into the values #}
 {%-       do sts_backend_opts.update(opts) %}
+          {# configuring share types #}
+{%-       if sts_opts.get("create_share_type", True) %}
+{%-         do share_types.update({sts_backend_opts['share_backend_name']: {
+              'driver_handles_share_servers': sts_backend_opts['driver_handles_share_servers'],
+              'extra_specs': {
+                'share_backend_name': sts_backend_opts['share_backend_name']
+              }
+            }}) %}
+{%-       endif %}
 {%-     endfor %}
         {# overwrite default options by user defined #}
 {%-     do share_sts.update({sts_name: {'values': sts_opts['values']}}) %}
 {%-   endif %}
 {%-   endfor %}
+{%- if share_types %}
+{%-   do share_bootstrap.update({'share_types': share_types}) %}
+{%- endif %}
 
 spec:
   releases:
@@ -69,10 +83,10 @@ spec:
           {{ image }}: {{ images[image] }}
         {%- endif %}
 {%- endfor %}
+{%- if share_bootstrap %}
       bootstrap:
-        share_types:
-          default:
-            driver_handles_share_servers: {{ not is_ceph_enabled }}
+        {{ share_bootstrap | toyaml | indent(10) }}
+{%- endif %}
       endpoints:
         cluster_domain_suffix: {{ spec.internal_domain_name }}
 {% include 'base/_admin_identity.yaml' %}
