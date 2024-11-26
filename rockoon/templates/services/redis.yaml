@@ -67,14 +67,14 @@ spec:
               keepAfterDeletion: true
               persistentVolumeClaim:
                 metadata:
-                  name: {{ spec.get('local_volume_storage_class', 'rockoon-bind-mounts') }}
+                  name: {{ spec.get('local_volume_storage_class', 'openstack-operator-bind-mounts') }}
                 spec:
                   accessModes:
                   - ReadWriteOnce
                   resources:
                     requests:
                       storage: 1Gi
-                  storageClassName: {{ spec.get('local_volume_storage_class', 'rockoon-bind-mounts') }}
+                  storageClassName: {{ spec.get('local_volume_storage_class', 'openstack-operator-bind-mounts') }}
           sentinel:
             rollingUpdate:
               maxSurge: 0

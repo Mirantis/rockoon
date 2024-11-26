@@ -210,7 +210,7 @@ spec:
           ovn-openflow-probe-interval: 60
       volume:
         ovn_db:
-          class_name: {{ spec.get('local_volume_storage_class', 'rockoon-bind-mounts') }}
+          class_name: {{ spec.get('local_volume_storage_class', 'openstack-operator-bind-mounts') }}
       {%- if spec.get('features', {}).get('neutron', {}).get('tunnel_interface') %}
       network:
         interface:

@@ -36,7 +36,7 @@ spec:
 {%- if is_ceph_enabled %}
         storage_class: {{ spec.get('persistent_volume_storage_class', 'default') }}
 {%- else %}
-        storage_class: {{ spec.get('local_volume_storage_class', 'rockoon-bind-mounts') }}
+        storage_class: {{ spec.get('local_volume_storage_class', 'openstack-operator-bind-mounts') }}
 {%- endif %}
       endpoints:
         cluster_domain_suffix: {{ spec.internal_domain_name }}

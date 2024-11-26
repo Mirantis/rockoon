@@ -38,5 +38,5 @@ spec:
             type:
               default: requiredDuringSchedulingIgnoredDuringExecution
       volume:
-        class_name: {{ spec.get('local_volume_storage_class', 'rockoon-bind-mounts') }}
+        class_name: {{ spec.get('local_volume_storage_class', 'openstack-operator-bind-mounts') }}
 
