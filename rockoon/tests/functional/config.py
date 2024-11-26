@@ -27,6 +27,7 @@ class Config(metaclass=SingletonMeta):
         self.TEST_FLAVOR_SMALL_NAME = "m1.small"
         self.TEST_FLAVOR_NAME = "m1.extra_tiny_test"
         self.TEST_SUBNET_RANGE = "10.20.30.0/24"
+        self.TEST_SUBNET_RANGE_ALT = "10.20.31.0/24"
         self.TEST_IPV6_SUBNET_RANGE = "2001:db8::/48"
         self.TEST_LB_SUBNET_RANGE = "192.168.0.0/24"
         self.PUBLIC_NETWORK_NAME = "public"
