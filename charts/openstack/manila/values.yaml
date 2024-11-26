@@ -174,8 +174,12 @@ pod:
         fsGroup: 42424
       container:
         manila_share:
-          privileged: true
+          privileged: false
           readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
         manila_share_uuids:
           capabilities:
             drop:

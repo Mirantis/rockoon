@@ -257,3 +257,11 @@ spec:
           share: true
         useHostNetwork:
           share: true
+        security_context:
+          manila_share:
+            container:
+              manila_share:
+                privileged: true
+                allowPrivilegeEscalation: true
+                capabilities:
+                  drop: []
