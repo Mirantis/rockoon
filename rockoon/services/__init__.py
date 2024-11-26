@@ -352,7 +352,7 @@ class Redis(Service, MaintenanceApiMixin):
 
     @property
     def health_groups(self):
-        return ["redis"]
+        return []
 
     def template_args(self):
         redis_secret = secrets.RedisSecret(self.namespace)
