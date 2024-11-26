@@ -1,13 +1,13 @@
 - name: Make openstack controller chart dependencies
   ansible.builtin.shell:
     cmd: helm dep up
-    chdir: /root/rockoon/charts/rockoon
+    chdir: "{{ rvl_directory }}/charts/rockoon"
 
 - name: Deploy rockoon
   kubernetes.core.helm:
     kubeconfig: "{{ kubeconfig }}"
     name: rockoon
-    chart_ref: /root/rockoon/charts/rockoon
+    chart_ref: "{{ rvl_directory }}/charts/rockoon"
     release_namespace: osh-system
     create_namespace: true
     values:

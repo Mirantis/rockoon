@@ -1,13 +1,13 @@
 - name: Make lvp chart dependencies
   ansible.builtin.shell:
     cmd: helm dep up
-    chdir: /root/rockoon/charts/infra/local-volume-provisioner
+    chdir: "{{ rvl_directory }}/charts/infra/local-volume-provisioner"
 
 - name: Deploy local volume provisioner chart from local path
   kubernetes.core.helm:
     kubeconfig: "{{ kubeconfig }}"
     name: local-volume-provisioner
-    chart_ref: /root/rockoon/charts/infra/local-volume-provisioner
+    chart_ref: "{{ rvl_directory }}/charts/infra/local-volume-provisioner"
     release_namespace: lvp
     create_namespace: true
     values:
