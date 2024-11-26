@@ -137,7 +137,10 @@ class NetworkFeatureEnabled(base_section.BaseSection):
                 ):
                     api_extensions_default.append("vlan-transparent")
         if self.os_version_compare("caracal", "ge"):
-            api_extensions_default.extend(["security-groups-default-rules"])
+            if not self.tf_enabled():
+                api_extensions_default.extend(
+                    ["security-groups-default-rules"]
+                )
 
         if self.get_spec_item("features.neutron.bgpvpn.enabled"):
             api_extensions_default.extend(
