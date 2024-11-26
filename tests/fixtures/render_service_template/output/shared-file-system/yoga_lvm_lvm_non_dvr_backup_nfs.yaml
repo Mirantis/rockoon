@@ -230,3 +230,8 @@ spec:
           public: 'MANILA TEST SSH PUBLIC KEY
 
           '
+      pod:
+        useHostIPC:
+          share: true
+        useHostNetwork:
+          share: true

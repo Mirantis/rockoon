@@ -68,9 +68,13 @@ spec:
         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
         endpoints-hash: {{ .Values.endpoints | include "helm-toolkit.utils.get_hash" }}
     spec:
-      dnsPolicy: ClusterFirstWithHostNet
+{{- if .Values.pod.useHostIPC.share }}
       hostIPC: true
+{{- end }}
+{{- if .Values.pod.useHostNetwork.share }}
       hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+{{- end }}
       serviceAccountName: {{ $serviceAccountName }}
 {{ dict "envAll" $envAll "application" "manila_share" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
       affinity:
