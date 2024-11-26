@@ -188,6 +188,7 @@ conf:
       - creator
     admin_roles:
       - admin
+      - global-secret-decoder
     quotas:
       cores: -1
       instances: -1
