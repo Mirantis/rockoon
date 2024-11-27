@@ -223,6 +223,9 @@ iam:
 #  client: os
 #  oidcCASecret: oidc-cert
 #  url: https://172.16.43.149
+#
+remove_legacy_finalizer:
+  enabled: true
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
