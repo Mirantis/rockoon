@@ -1,7 +1,6 @@
-# What is OpenStack Controller
+# What is Rockoon
 
-OpenStack Controller is Kubernetes controller that provides Life Cycle Management
-for OpenStack services.
+Rockoon is Kubernetes controller that provides Life Cycle Management for OpenStack services.
 
 [OpenStack](https://www.openstack.org/) is a free, open standard cloud computing platform.
 It is mostly deployed as infrastructure-as-a-service (IaaS) in both public and private clouds
@@ -10,7 +9,7 @@ consists of interrelated components that control diverse, multi-vendor hardware 
 processing, storage, and networking resources throughout a data center. Users manage it either
 through a web-based dashboard, through command-line tools, or through RESTful web services.
 
-OpenStack Controller automates deployment and management of OpenStack to provide self-managing,
+Rockoon automates deployment and management of OpenStack to provide self-managing,
 self-scaling and self-healing services.
 
 # Getting Started and Documentation
