@@ -75,6 +75,15 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.osdpl.pod.controller.check_osdplsecrets.security_context | nindent 12 }}
+{{ if .Values.remove_legacy_finalizer.enabled }}
+        - name: remove-legacy-finalizer
+          command:
+          - osctl-remove-legacy-finalizer
+          env:
+{{ tuple . | include "rockoon.common_env" | indent 12 }}
+          image: {{ tuple . .Values.image | include "getImageUrl" }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+{{ end }}
       containers:
         - name: osdpl
           image: {{ tuple . .Values.image | include "getImageUrl" }}

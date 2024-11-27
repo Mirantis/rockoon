@@ -1156,6 +1156,13 @@ class OpenStackDeploymentStatus(pykube.objects.NamespacedAPIObject):
     endpoint = "openstackdeploymentstatus"
 
 
+class NodeDisableNotification(pykube.objects.APIObject):
+    version = "lcm.mirantis.com/v1alpha1"
+    endpoint = "nodedisablenotifications"
+    kind = "NodeDisableNotification"
+    kopf_on_args = *version.split("/"), endpoint
+
+
 def resource(data):
     kube_api = kube_client()
     return object_factory(kube_api, data["apiVersion"], data["kind"])(
