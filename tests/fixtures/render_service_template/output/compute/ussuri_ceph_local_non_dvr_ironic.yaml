@@ -157,8 +157,6 @@ spec:
             reserved_host_disk_mb: 0
           filter_scheduler:
             track_instance_changes: false
-          scheduler:
-            discover_hosts_in_cells_interval: 120
           ironic:
             status_code_retries: 15
             status_code_retry_delay: 15
