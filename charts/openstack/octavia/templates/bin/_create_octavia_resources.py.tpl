@@ -101,6 +101,8 @@ def wait_neutron_resources(namespace):
         if dhcp_pods_status and all(dhcp_pods_status):
             LOG.info("All dhcp pods are ready")
             break
+        not_ready_pods = [pod.name for pod in dhcp_pods if not pod.ready]
+        LOG.info(f"Some dhcp pods are not yet ready {not_ready_pods}")
         time.sleep(5)
     octavia_hosts = [
         node.name
@@ -111,6 +113,7 @@ def wait_neutron_resources(namespace):
     ready_hosts = []
     LOG.info("Waiting for neutron ovs agents.")
     while set(octavia_hosts) - set(ready_hosts):
+        LOG.info(f"Octavia hosts: {octavia_hosts}, ready hosts: {ready_hosts}")
         time.sleep(5)
         ovs_pods = pykube.Pod.objects(kube).filter(
             namespace=namespace,
