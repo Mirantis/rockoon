@@ -25,7 +25,13 @@ export HOME=/tmp
   {{- range $name, $properties := .Values.bootstrap.share_types }}
 openstack share type show {{ $name }} || \
   openstack share type create {{ $name }} \
-    {{ or $properties.driver_handles_share_servers "True" }}
+    {{ $properties.driver_handles_share_servers }} {{- if $properties.extra_specs }} \
+    {{- $extraSpecs := list -}}
+    {{- range $key, $value := $properties.extra_specs -}}
+    {{- $extraSpecs = append $extraSpecs (printf "%s=%s" $key $value) -}}
+    {{- end }}
+    --extra-specs {{ join " " $extraSpecs }}
+    {{- end }}
   {{- end }}
 
 {{- /* Check share type and properties were added */}}
