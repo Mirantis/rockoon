@@ -117,6 +117,9 @@ spec:
 {%- if spec.features.get("policies", {}).get("strict_admin", {}).get("enabled", False) %}
           ROLE_ADMIN: service
 {%- endif %}
+{%- if spec.features.get("horizon", {}).get("motd", {}) %}
+          MESSAGE_OF_THE_DAY: '{{ spec.features.horizon.motd | tojson }}'
+{%- endif %}
           HORIZON_TEST_IMAGE_CIRROS: {{ cirros_image_name }}
 {%- set public_network_name = "public" %}
 {%- if spec.features.neutron.get('floating_network', {}).get('enabled', true) %}
