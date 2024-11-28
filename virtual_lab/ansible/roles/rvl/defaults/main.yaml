@@ -14,8 +14,8 @@ rvl_sources_charts: /src/sources/charts/
 rvl_directory: "{{ playbook_dir }}/../../"
 rvl_clients_helm_release: v3.16.1
 rvl_clients_kubectl_release: v1.31.0
-rvl_osdpl_live_migration_interface: ens3
-rvl_osdpl_tunnel_interface: ens3
+rvl_osdpl_live_migration_interface: "{{ ansible_default_ipv4.interface }}"
+rvl_osdpl_tunnel_interface: "{{ ansible_default_ipv4.interface }}"
 rvl_osdpl_floating_network:
   enabled: True
   physnet: physnet1
