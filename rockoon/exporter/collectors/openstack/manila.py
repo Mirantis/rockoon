@@ -26,6 +26,7 @@ class OsdplManilaMetricCollector(base.OpenStackBaseMetricCollector):
     _name = "osdpl_manila"
     _description = "OpenStack Shared file system service metrics"
     _os_service_types = ["shared-file-system", "sharev2", "share"]
+    _osdpl_service_name = "shared-file-system"
 
     @utils.timeit
     def init_families(self):

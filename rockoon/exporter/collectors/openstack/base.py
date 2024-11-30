@@ -26,6 +26,7 @@ LOG = utils.get_logger(__name__)
 class OpenStackBaseMetricCollector(base.BaseMetricsCollector):
     # Service type to check for presence is catalog
     _os_service_types = []
+    _osdpl_service_name = ""
 
     def __init__(self):
         super().__init__()
@@ -62,4 +63,9 @@ class OpenStackBaseMetricCollector(base.BaseMetricsCollector):
             return False
         if not self.is_service_available:
             return False
+        if self._osdpl_service_name:
+            if self._osdpl_service_name not in self.osdpl.obj["spec"][
+                "features"
+            ].get("services", []):
+                return False
         return True

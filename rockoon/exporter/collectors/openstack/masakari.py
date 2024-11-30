@@ -26,6 +26,7 @@ class OsdplMasakariMetricCollector(base.OpenStackBaseMetricCollector):
     _name = "osdpl_masakari"
     _description = "OpenStack Instance HA service metrics"
     _os_service_types = ["instance-ha", "ha"]
+    _osdpl_service_name = "instance-ha"
 
     @utils.timeit
     def init_families(self):

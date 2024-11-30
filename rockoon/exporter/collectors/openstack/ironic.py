@@ -27,6 +27,7 @@ class OsdplIronicMetricCollector(base.OpenStackBaseMetricCollector):
     _name = "osdpl_ironic"
     _description = "OpenStack Baremetal service metrics"
     _os_service_types = ["baremetal"]
+    _osdpl_service_name = "baremetal"
 
     @utils.timeit
     def init_families(self):
