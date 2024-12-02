@@ -2,6 +2,7 @@ import unittest
 
 import pytest
 
+from rockoon.exporter import constants
 from rockoon.tests.functional.exporter import base
 from rockoon.tests.functional import config
 
@@ -449,8 +450,34 @@ class NeutronAvailabilityZoneTestCase(base.BaseFunctionalExporterTestCase):
             )
 
 
+@pytest.mark.xdist_group("exporter-compute-network")
 class NeutronIPsCapacityTestCase(base.BaseFunctionalExporterTestCase):
     scrape_collector = "osdpl_neutron"
+    collect_metrics_tag = constants.NEUTRON_NETWORK_IP_METRICS_TAG
+    known_metrics = {
+        "osdpl_neutron_network_total_ips": {
+            "labels": ["network_name", "network_id"]
+        },
+        "osdpl_neutron_network_free_ips": {
+            "labels": ["network_name", "network_id"]
+        },
+        "osdpl_neutron_subnet_total_ips": {
+            "labels": [
+                "network_name",
+                "network_id",
+                "subnet_name",
+                "subnet_id",
+            ]
+        },
+        "osdpl_neutron_subnet_free_ips": {
+            "labels": [
+                "network_name",
+                "network_id",
+                "subnet_name",
+                "subnet_id",
+            ]
+        },
+    }
 
     def test_neutron_network_capacity_default_networks(self):
         """Validate that all default networks are present in the metrics.
@@ -472,16 +499,92 @@ class NeutronIPsCapacityTestCase(base.BaseFunctionalExporterTestCase):
                 provider_network_type=["vlan", "flat"],
             )
         )
+        metrics = self.get_collector_metrics(self.scrape_collector)
         for metric_name in metrics_to_check:
-            metric = self.get_metric_after_refresh(
-                metric_name, self.scrape_collector
-            )
-            sample_network_ids = {
-                sample.labels["network_id"] for sample in metric.samples
-            }
+            metric = self.get_metric(metric_name, metrics)
             for network in default_networks:
-                self.assertIn(
-                    network.id,
-                    sample_network_ids,
-                    f"Network:{network.id} is missing in the metric samples.",
+                labels = {"network_id": network["id"]}
+                samples = self.filter_metric_samples(metric, labels)
+                self.assertEqual(
+                    1,
+                    len(samples),
+                    f"Network:{network} is missing in the metric {metric_name} samples.",
                 )
+
+    def test_neutron_network_capacity_tags(self):
+        """Validate that networks with collect tag are present in the metrics.
+
+        **Steps**
+
+        #. Create test network without tag
+        #. Check that no samples exists with the test network
+        #. Assign tag to the test network
+        #. Verify that tagged network appears in the metric samples
+        """
+        metrics_to_check = [
+            "osdpl_neutron_network_total_ips",
+            "osdpl_neutron_network_free_ips",
+        ]
+        network = self.network_create()
+        labels = {"network_id": network["id"]}
+        metrics = self.get_collector_metrics(self.scrape_collector)
+        for metric_name in metrics_to_check:
+            metric = self.get_metric(metric_name, metrics)
+            samples = self.filter_metric_samples(metric, labels)
+            self.assertEqual(
+                0,
+                len(samples),
+                f"The untagged network:{network} appears in the metric {metric_name} samples.",
+            )
+        self.ocm.oc.network.set_tags(network, [self.collect_metrics_tag])
+        metrics = self.get_collector_metrics(self.scrape_collector)
+        for metric_name in metrics_to_check:
+            metric = self.get_metric(metric_name, metrics)
+            samples = self.filter_metric_samples(metric, labels)
+            self.assertEqual(
+                1,
+                len(samples),
+                f"Network:{network} is missing in the metric {metric_name} samples.",
+            )
+
+    def test_neutron_subnet_capacity_tags(self):
+        """Validate that subnets with collect tag are present in the metrics.
+
+        **Steps**
+
+        #. Create test subnets, both with and without collect tag
+        #. Verify that only tagged subnet appears in the metric samples
+        """
+        metrics_to_check = [
+            "osdpl_neutron_subnet_total_ips",
+            "osdpl_neutron_subnet_free_ips",
+        ]
+        network = self.network_create()
+        subnet_with_tag = self.subnet_create(
+            cidr=CONF.TEST_SUBNET_RANGE, network_id=network["id"]
+        )
+        self.ocm.oc.network.set_tags(
+            subnet_with_tag, [self.collect_metrics_tag]
+        )
+        subnet_without_tag = self.subnet_create(
+            cidr=CONF.TEST_SUBNET_RANGE_ALT, network_id=network["id"]
+        )
+        metrics = self.get_collector_metrics(self.scrape_collector)
+        for metric_name in metrics_to_check:
+            metric = self.get_metric(metric_name, metrics)
+            samples = self.filter_metric_samples(
+                metric, {"subnet_id": subnet_without_tag["id"]}
+            )
+            self.assertEqual(
+                0,
+                len(samples),
+                f"The untagged subnet:{subnet_without_tag} appears in the metric {metric_name} samples.",
+            )
+            samples = self.filter_metric_samples(
+                metric, {"subnet_id": subnet_with_tag["id"]}
+            )
+            self.assertEqual(
+                1,
+                len(samples),
+                f"Subnet:{subnet_with_tag} is missing in the metric {metric_name} samples.",
+            )
