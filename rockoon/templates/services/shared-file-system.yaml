@@ -245,13 +245,21 @@ spec:
       network_policy:
 {% include 'base/network_policies/shared-file-system.yaml' %}
 {%- endif %}
-{# for backward compatibility run statefulsets with host network, remove when support for standalone statefulsets is removed #}
+{# for backward compatibility run statefulsets with host network and privileged, remove when support for standalone statefulsets is removed #}
 {%- if not share_backends %}
       pod:
         useHostIPC:
           share: true
         useHostNetwork:
           share: true
+        security_context:
+          manila_share:
+            container:
+              manila_share:
+                privileged: true
+                allowPrivilegeEscalation: true
+                capabilities:
+                  drop: []
 {%- endif%}
       manifests:
         secret_ca_bundle: true
