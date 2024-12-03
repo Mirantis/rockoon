@@ -73,6 +73,24 @@ def node_status_update_handler(name, body, old, new, reason, **kwargs):
         ostutils.handle_masakari_host_down(node)
 
 
+def ensure_internal_labels(node):
+    need_update = False
+    for role in const.NodeRole:
+        int_labels = settings.OSCTL_OPENSTACK_NODE_LABELS_INTERNAL[role]
+        if node.has_role(role):
+            for int_label, int_label_value in int_labels.items():
+                if int_label not in node.labels:
+                    node.labels[int_label] = int_label_value
+                    need_update = True
+        else:
+            for int_label, int_label_value in int_labels.items():
+                if int_label in node.labels:
+                    node.labels[int_label] = None
+                    need_update = True
+    if need_update:
+        node.update()
+
+
 # NOTE(avolkov): watching for update events covers
 # the case when node is relabeled and NodeWorkloadLock
 # has to be created/deleted accordingly
@@ -86,6 +104,7 @@ def node_change_handler(body, reason, **kwargs):
 
     kube_api = kube.kube_client()
     node = kube.Node(kube_api, body)
+    ensure_internal_labels(node)
     nwl = maintenance.NodeWorkloadLock.get_by_node(name)
     if nwl.required_for_node(node.name):
         nwl.present()

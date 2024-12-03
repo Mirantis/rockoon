@@ -147,14 +147,14 @@ spec:
         openvswitch_ovn-controller:
           overrides_default: false
           labels:
-            openstack-compute-node::enabled:
+            rockoon-openstack-compute-node::controller:
               values:
                 conf:
                   ovs_bridges:
                     br-ex:
                       nics:
                       - name: veth-phy
-            openstack-gateway::enabled:
+            rockoon-openstack-gateway::controller:
               values:
                 conf:
                   external-ids:

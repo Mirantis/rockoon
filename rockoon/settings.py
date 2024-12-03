@@ -231,8 +231,10 @@ def _parse_node_roles_from_env():
 
     parsed_roles = {const.NodeRole[k]: v for k, v in roles.items()}
     for d in parsed_roles.values():
-        for x, y in d.items():
-            pass  # simple test on structure
+        if len(d.keys()) != 1:
+            raise kopf.PermanentError(
+                "OSCTL_OPENSTACK_NODE_LABELS expect 1 label key"
+            )
     return parsed_roles
 
 
@@ -244,6 +246,18 @@ except Exception as exc:
     raise kopf.PermanentError(
         f"OSCTL_OPENSTACK_NODE_LABELS invalid format - {exc}"
     )
+
+
+def _get_internal_labels():
+
+    int_labels = {}
+    for role_name, role_labels in OSCTL_OPENSTACK_NODE_LABELS.items():
+        for label_name in role_labels.keys():
+            int_labels[role_name] = {f"rockoon-{label_name}": "controller"}
+    return int_labels
+
+
+OSCTL_OPENSTACK_NODE_LABELS_INTERNAL = _get_internal_labels()
 
 # The dict defining proxy settings
 OSCTL_PROXY_DATA = json_from_env("OSCTL_PROXY_DATA", {"enabled": False})

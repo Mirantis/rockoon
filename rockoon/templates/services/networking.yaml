@@ -334,7 +334,7 @@ spec:
         openvswitch_ovn-controller:
           overrides_default: false
           labels:
-            openstack-gateway::enabled:
+            rockoon-openstack-gateway::controller:
               values:
                 conf:
                   external-ids:
@@ -345,7 +345,7 @@ spec:
                       nics:
                         - name: {{ network.interface }}
       {%- endfor %}
-            openstack-compute-node::enabled:
+            rockoon-openstack-compute-node::controller:
               values:
                 conf:
                   ovs_bridges:
@@ -1060,7 +1060,7 @@ spec:
       {%- if spec.get('features', {}).get('neutron', {}).get('dvr', {}).get('enabled', False) %}
         neutron_l3-agent:
           labels:
-            openstack-compute-node::enabled:
+            rockoon-openstack-compute-node::controller:
               values:
                 pod:
                   lifecycle:
