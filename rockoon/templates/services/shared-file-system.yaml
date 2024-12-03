@@ -263,7 +263,7 @@ spec:
 {%- endif%}
       manifests:
         secret_ca_bundle: true
-        cron_job_db_purge: {{ manila_db_cleanup.enabled }}
+        cron_job_db_purge: true
         daemonset_share: {{ not share_backends }}
         service_instance_ssh_key: true
         network_policy: {{ spec.features.network_policies.enabled }}
