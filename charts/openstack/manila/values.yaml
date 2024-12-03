@@ -80,6 +80,10 @@ jobs:
         manila-manage db purge ${age}
 
 pod:
+  useHostIPC:
+    share: false
+  useHostNetwork:
+    share: false
   probes:
     rpc_timeout: 30
     api:
