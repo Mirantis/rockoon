@@ -167,6 +167,7 @@ spec:
                 enabled: true
                 hash_method: SHA-256
 {%- endif %}
+{%- if "load-balancer" in spec.features.services %}
             amphora-x64-haproxy:
               container_format: bare
               image_type: qcow2
@@ -181,6 +182,7 @@ spec:
               signature:
                 enabled: true
                 hash_method: SHA-256
+{%- endif %}
 {%- endif %}
 {%- if "shared-file-system" in spec.features.services %}
             manila-service-image:

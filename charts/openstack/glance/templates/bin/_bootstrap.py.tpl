@@ -136,7 +136,7 @@ ost = openstack.connect()
 for image_name, image in STRUCTURED_IMAGES.items():
     image_name = image.pop("name", image_name)
     if not image.get("enabled", True):
-        LOG.info("Skipping handling image {image_name} as its not enabled.")
+        LOG.info(f"Skipping handling image {image_name} as its not enabled.")
         continue
     LOG.info(f"Handling image: {image_name}")
 
