@@ -86,3 +86,13 @@ spec:
               filter_scheduler:
                 enabled_filters:
                   - "~AvailabilityZoneFilter"
+    image:
+      glance:
+        values:
+          bootstrap:
+            structured:
+              images:
+                fedora:
+                  enabled: False
+                ubuntu:
+                  enabled: False
