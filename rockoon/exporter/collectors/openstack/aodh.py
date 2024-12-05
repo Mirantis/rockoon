@@ -26,6 +26,7 @@ class OsdplAodhMetricCollector(base.OpenStackBaseMetricCollector):
     _name = "osdpl_aodh"
     _description = "OpenStack Orchestration service metrics"
     _os_service_types = ["alarm", "alarming"]
+    _osdpl_service_name = "alarming"
 
     @utils.timeit
     def init_families(self):
