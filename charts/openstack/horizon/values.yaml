@@ -820,11 +820,6 @@ conf:
                     'level': '{{ .Values.conf.horizon.local_settings.config.log_level }}',
                     'propagate': False,
                 },
-                'glanceclient': {
-                    'handlers': ['console'],
-                    'level': '{{ .Values.conf.horizon.local_settings.config.log_level }}',
-                    'propagate': False,
-                },
                 'neutronclient': {
                     'handlers': ['console'],
                     'level': '{{ .Values.conf.horizon.local_settings.config.log_level }}',
