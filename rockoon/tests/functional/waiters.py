@@ -188,3 +188,70 @@ def wait_for_instance_migration(openstack_client, server):
             )
             LOG.error(message)
             raise TimeoutError(message)
+
+
+def wait_nwl_state(nwl, state):
+    start_time = time.time()
+    timeout = CONF.NWL_STATE_TIMEOUT
+
+    while int(time.time()) - start_time <= timeout:
+        nwl.reload()
+        if nwl.obj["status"].get("state", "active") == state:
+            return
+        time.sleep(10)
+    raise TimeoutError(
+        f"Timed out waiting nwl {nwl.name} to be in {state} after {timeout}."
+    )
+
+
+def wait_k8s_obj_absent(obj):
+    start_time = time.time()
+    timeout = CONF.NWL_STATE_TIMEOUT
+
+    while int(time.time()) - start_time <= timeout:
+        if not obj or not obj.exists():
+            return
+        time.sleep(10)
+    raise TimeoutError(
+        f"Timed out waiting k8s obj {obj.kind}/{obj.name} is absent after {timeout}."
+    )
+
+
+def wait_compute_is_empty(oc, host, timeout=60):
+    start_time = time.time()
+    timeout = CONF.NWL_STATE_TIMEOUT
+    while int(time.time()) - start_time <= timeout:
+        if (
+            len(
+                list(
+                    oc.compute.servers(
+                        all_projects=True, filters={"compute_host": host}
+                    )
+                )
+            )
+            == 0
+        ):
+            return
+        time.sleep(10)
+    raise TimeoutError(
+        f"Timeoud out waiting for hypervisor {host} is empty after {timeout}."
+    )
+
+
+def wait_compute_service_state(
+    oc, host, state, status, binary="nova-compute", timeout=60
+):
+    start_time = time.time()
+    timeout = CONF.NWL_STATE_TIMEOUT
+    services = []
+    while int(time.time()) - start_time <= timeout:
+        services = list(oc.compute.services(host=host, binary=binary))
+        expected = [
+            x["state"] == state and x["status"] == status for x in services
+        ]
+        if expected and all(expected):
+            return
+        time.sleep(10)
+    raise TimeoutError(
+        f"Timeoud out waiting for compute {binary} service on {host} is in state: {state}/status: {status} after {timeout}. Last services: {services}"
+    )

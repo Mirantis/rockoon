@@ -1172,10 +1172,12 @@ def resource(data):
 
 def dummy(klass, name, namespace=None):
     meta = {"name": name}
-    kube_api = kube_client()
     if namespace:
         meta["namespace"] = namespace
-    return klass(kube_api, {"metadata": meta})
+    kube_api = kube_client()
+
+    obj = {"apiVersion": klass.version, "kind": klass.kind, "metadata": meta}
+    return klass(kube_api, obj)
 
 
 def find(klass, name, namespace=None, silent=False, cluster=False):

@@ -45,6 +45,9 @@ LOGGING_CONFIG = {
         "urllib3": {
             "level": "INFO",
         },
+        "pykube": {
+            "level": "INFO",
+        },
     },
     "root": {
         "handlers": ["default", "file"],
@@ -76,7 +79,9 @@ class BaseFunctionalTestCase(TestCase):
 
     def setUp(self):
         self.kube_api = kube.kube_client()
+        self.logger = LOG
         self.setup_logging()
+        super().setUp()
 
     def setup_logging(self):
         logging.setLogRecordFactory(self.logging_record_factory)

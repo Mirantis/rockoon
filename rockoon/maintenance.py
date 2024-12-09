@@ -29,6 +29,15 @@ MAINTENANCE_DEFAULT_NODE_CONFIG = {
     "instance_migration_attempts": {"default": "3", "type": "int"},
 }
 
+NODE_MAINTENANCE_TO_INSTANCE_MAINTENANCE = {
+    "skip": "poweroff",
+    "manual": "notify",
+    "live": "live_migrate",
+}
+INSTANCE_MAINTENANCE_ACTION_TAG = (
+    "openstack.lcm.mirantis.com:maintenance_action"
+)
+
 
 # Maximum number of nodes upgraded in parallel.
 def get_max_parallel_by_role(role):

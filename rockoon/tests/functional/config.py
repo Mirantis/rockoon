@@ -120,6 +120,11 @@ class Config(metaclass=SingletonMeta):
             "k2": {"username": "writer2", "password": "password"},
         }
 
+        # Timeout for handling nodemaintenancerequest operations
+        # do not set to high, we have negative tests that will wait
+        # for this timeout.
+        self.NWL_STATE_TIMEOUT = 180
+
         configmap = kube.find(
             pykube.ConfigMap,
             "rockoon-functional-config",

@@ -1763,7 +1763,7 @@ class Nova(OpenStackServiceWithCeph, MaintenanceApiMixin):
             raise kopf.TemporaryError(msg)
 
     async def _migrate_servers(self, os_client, host, cfg, nwl, concurrency=1):
-        async def _check_migration_completed():
+        async def _check_migration_completed(node_migration_mode):
             all_servers = os_client.compute_get_all_servers(host=host)
             all_servers = [
                 s
@@ -1779,16 +1779,43 @@ class Nova(OpenStackServiceWithCeph, MaintenanceApiMixin):
                 if s.power_state
                 not in openstack_utils.SERVER_STOPPED_POWER_STATES
             ]
+
+            # Exclude servers that can be powered off
+            all_servers = [
+                s
+                for s in all_servers
+                if os_client.compute_get_server_maintenance_action(
+                    s, node_migration_mode
+                )
+                != "poweroff"
+            ]
             if all_servers:
-                servers_out = {s.id: s.status for s in all_servers}
-                msg = f"Some servers {servers_out} are still present on host {host}. Waiting unless all of them are migrated manually or instance_migration_mode is set to 'skip'"
+                to_notify = []
+                other_servers = []
+                for s in all_servers:
+                    server_maintenance_action = (
+                        os_client.compute_get_server_maintenance_action(
+                            s, node_migration_mode
+                        )
+                    )
+                    if server_maintenance_action == "notify":
+                        to_notify.append(s.id)
+                    else:
+                        other_servers.append(s.id)
+                msg = "Some servers are still present on the host."
+                if to_notify:
+                    msg += (
+                        f" Notify owners of the following server: {to_notify}"
+                    )
+                if other_servers:
+                    msg += f" Servers with unset maintenance action: {other_servers}"
                 nwl.set_error_message(msg)
                 raise kopf.TemporaryError(msg)
 
-        async def _do_servers_migration():
+        async def _do_servers_migration(node_migration_mode):
             servers_to_migrate = (
                 os_client.compute_get_servers_valid_for_live_migration(
-                    host=host
+                    host=host, node_migration_mode=node_migration_mode
                 )
             )
             servers_migrating_count = {}
@@ -1830,7 +1857,7 @@ class Nova(OpenStackServiceWithCeph, MaintenanceApiMixin):
                 ]
                 servers_to_migrate = (
                     os_client.compute_get_servers_valid_for_live_migration(
-                        host=host
+                        host=host, node_migration_mode=node_migration_mode
                     )
                 )
                 servers_to_migrate = [
@@ -1839,13 +1866,8 @@ class Nova(OpenStackServiceWithCeph, MaintenanceApiMixin):
                     if srv.id not in servers_migrating_skip
                 ]
 
-        if cfg.instance_migration_mode == "skip":
-            LOG.info(f"Skip intance migration for node {host}")
-            return
-        elif cfg.instance_migration_mode == "live":
-            await _do_servers_migration()
-
-        await _check_migration_completed()
+        await _do_servers_migration(cfg.instance_migration_mode)
+        await _check_migration_completed(cfg.instance_migration_mode)
 
     async def prepare_node_for_reboot(self, node):
         nwl = maintenance.NodeWorkloadLock.get_by_node(node.name)
