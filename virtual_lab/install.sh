@@ -36,3 +36,4 @@ ansible-playbook -i  ${INVENTORY_FILE} infra-install.yaml -vvv
 ansible-playbook -i  ${INVENTORY_FILE} build-images.yaml -vvv
 ansible-playbook -i  ${INVENTORY_FILE} oc-install.yaml -vvv
 ansible-playbook -i  ${INVENTORY_FILE} oc-install.yaml -vvv --tags wait
+ansible-playbook -i  ${INVENTORY_FILE} deployment-info.yaml 

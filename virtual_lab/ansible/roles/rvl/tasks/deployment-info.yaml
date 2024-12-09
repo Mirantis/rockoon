@@ -1,0 +1,63 @@
+- name: Install jmespath Python package
+  ansible.builtin.pip:
+    name: jmespath
+
+- name: Get OpenStackDeploymentStatus
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    namespace: openstack
+    api_version: lcm.mirantis.com/v1alpha1
+    kind: OpenStackDeploymentStatus
+  register: deployment_status
+
+- name: Get the secret keystone-os-clouds
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    namespace: osh-system
+    kind: Secret
+    name: keystone-os-clouds
+  register: keystone_secret
+
+- name: Decode Base64 data from secret
+  set_fact:
+    decoded_keystone_secret: |
+      {%- set decoded = {} -%}
+      {%- for key, value in keystone_secret.resources[0].data.items() -%}
+      {%- set _ = decoded.update({key: value | b64decode}) -%}
+      {%- endfor -%}
+      {{ decoded }}
+
+- name: Extract usernames and passwords from clouds.yaml
+  set_fact:
+    admin_credentials: >
+      {{
+        {
+          'username': (decoded_keystone_secret['clouds.yaml'] | from_yaml)['clouds']['admin']['auth']['username'],
+          'password': (decoded_keystone_secret['clouds.yaml'] | from_yaml)['clouds']['admin']['auth']['password']
+        }
+      }}
+
+- name: Write information to MOTD
+  copy:
+    dest: /etc/rvl-info
+    content: |
+       OS_FAMILY: {{ ansible_facts['os_family'] }}
+       OS_DISTRO: {{ ansible_facts['distribution'] }}
+       OS_DISTRO_VERSION: {{ ansible_facts['distribution_version'] }}
+       OPENSTACK_VERSION: {{ deployment_status.resources | json_query('[].status.services.compute.openstack_version') | join(', ') }}
+       ROCKOON_VERSION: {{ deployment_status.resources | json_query('[].status.services.compute.controller_version') | join(', ') }}
+       ADMIN_USERNAME: {{ admin_credentials.username }}
+       ADMIN_PASSWORD: {{ admin_credentials.password }}
+    mode: '0644'
+    owner: root
+    group: root
+
+- name: Write information to MOTD
+  copy:
+    dest: /etc/update-motd.d/99-rvl-info
+    content: |
+      #!/bin/bash
+      cat  /etc/rvl-info
+    mode: '0755'
+    owner: root
+    group: root
