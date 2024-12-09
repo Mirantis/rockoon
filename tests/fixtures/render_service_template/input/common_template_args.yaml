@@ -128,7 +128,7 @@ images:
   manila_db_purge: manila:latest
   manila_scheduler: manila:latest
   manila_share: manila:latest
-  manila_service_image: https://manila-service-image-url/latest
+  manila_service_image: https://manila-service-image-url/manila-latest
   manila-uuids-init: heat:latest
   mariadb: mariadb:latest
   mariadb_backup: mariadb-backup:latest
@@ -169,7 +169,7 @@ images:
   nova_scheduler: nova-scheduler:latest
   nova_service_cleaner: nova-service-cleaner:latest
   nova_spiceproxy: nova-spiceproxy:latest
-  octavia_amphora: https://amphora-image-url/latest
+  octavia_amphora: https://amphora-image-url/amphora-latest
   octavia_amphora_checksum: md5summ
   octavia_api: octavia-api:latest
   octavia_db_sync: octavia-db-sync:latest
@@ -215,10 +215,18 @@ images:
   openvswitch_ovn_vswitchd: openvswitch-ovn-vswitchd:latest
   openvswitch_ovn_db: openvswitch-ovn-db:latest
   openvswitch_ovn_controller: openvswitch-ovn-controller:latest
-  cirros_checksum: 050056e630cf
-  cirros_raw_checksum: 479256d697ca
-  fedora_checksum: 8bc56d70a3e2
-  ubuntu_checksum: 3fb7422b5843
+  os_image_cirros_051: https://cirros-image-url/cirros051-latest
+  os_image_cirros_051_checksum: 050056e630cf
+  os_image_cirros_051_raw: https://cirros-raw-image-url/cirros051-raw-latest
+  os_image_cirros_051_raw_checksum: 479256d697ca
+  os_image_cirros_060: https://cirros-image-url/cirros060-latest
+  os_image_cirros_060_checksum: f4027b89e99e
+  os_image_cirros_060_raw: https://cirros-raw-image-url/cirros060-raw-latest
+  os_image_cirros_060_raw_checksum: f756328a32fa
+  os_image_fedora_2716: https://fedora-image-url/fedora2716-latest
+  os_image_fedora_2716_checksum: 8bc56d70a3e2
+  os_image_ubuntu_1804: https://ubuntu-image-url/ubuntu1804-latest
+  os_image_ubuntu_1804_checksum: 3fb7422b5843
   redis-operator: redis-operator:latest
 proxy_vars:
   HTTP_PROXY: http://127.0.0.1:3128

@@ -210,10 +210,6 @@ ironic_agent_initramfs_checksum: 6ea460c7b5e71f682819134c716bd55e
 ironic_update_nodes_metadata: '{{ images_base_url }}/openstack/openstack-tools:yoga-jammy-20241120070553'
 ironic_pxe_http: '{{ images_base_url }}/openstack/extra/nginx:1.27.2-20241024065919'
 ingress_tls_proxy: '{{ images_base_url }}/openstack/tls-proxy:jammy-fipster-1.0.0.dev2'
-cirros_checksum: 1d3062cd89af34e419f7100277f38b2b
-cirros_raw_checksum: 01e7d1515ee776be3228673441d449e6
-fedora_checksum: e0713a4f26427691da90701ff7a823da
-ubuntu_checksum: 30d459e0dc0562e629d3683970e55efa
 manila_service_image: '{{ binary_base_url }}/openstack/bin/manila/manila-service-image-20241024092252.qcow2'
 manila-uuids-init: '{{ images_base_url }}/openstack/openstack-tools:yoga-jammy-20241120070553'
 neutron_dr: '{{ images_base_url }}/openstack/neutron:stein-bionic-20230227093206'
