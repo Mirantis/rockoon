@@ -156,20 +156,51 @@ class OpenStackClientManager:
     def compute_get_all_servers(self, host=None, status=None):
         filters = {}
         if host:
-            filters["host"] = host
+            filters["compute_host"] = host
         if status:
             filters["status"] = status
         return self.oc.list_servers(
             detailed=False, all_projects=True, filters=filters
         )
 
-    def compute_get_servers_valid_for_live_migration(self, host=None):
+    def compute_get_server_maintenance_action(
+        self, server, node_migration_mode
+    ):
+        seen_tags = []
+        for (
+            action
+        ) in maintenance.NODE_MAINTENANCE_TO_INSTANCE_MAINTENANCE.values():
+            tag = f"{maintenance.INSTANCE_MAINTENANCE_ACTION_TAG}={action}"
+            if tag in server.tags:
+                seen_tags.append(action)
+        if len(seen_tags) == 1:
+            return seen_tags[0]
+        elif len(seen_tags) > 1:
+            LOG.warning(
+                f"Instance {server.id} has multiple {maintenance.INSTANCE_MAINTENANCE_ACTION_TAG} tags: {seen_tags}. Fallback to the default action."
+            )
+        return maintenance.NODE_MAINTENANCE_TO_INSTANCE_MAINTENANCE[
+            node_migration_mode
+        ]
+
+    def compute_get_servers_valid_for_live_migration(
+        self, host, node_migration_mode
+    ):
         servers = []
         for status in ["ACTIVE", "PAUSED"]:
             servers.extend(
                 list(self.compute_get_all_servers(host=host, status=status))
             )
-        servers = [s for s in servers if s.task_state != "migrating"]
+        servers = [
+            s
+            for s in servers
+            if s.task_state != "migrating"
+            and self.compute_get_server_maintenance_action(
+                s, node_migration_mode
+            )
+            == "live_migrate"
+        ]
+
         return servers
 
     def compute_get_servers_in_migrating_state(self, host=None):

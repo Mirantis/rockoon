@@ -115,6 +115,10 @@ class Service:
         return res
 
     @property
+    def enabled(self):
+        return self.service in self.mspec["features"]["services"]
+
+    @property
     def health_groups(self):
         return []
 

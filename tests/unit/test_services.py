@@ -1164,11 +1164,19 @@ async def test_nova_migrate_servers_skip(
 ):
     osdplstmock = mock.Mock()
     node_maintenance_config.instance_migration_mode = "skip"
+    openstack_client.compute_get_server_maintenance_action.return_value = (
+        "poweroff"
+    )
+    server = _get_server_obj()
+    openstack_client.compute_get_servers_valid_for_live_migration.return_value = (
+        []
+    )
+    openstack_client.compute_get_all_servers.return_value = [server]
     await services.Nova(
         openstackdeployment_mspec, logging, osdplstmock, child_view
     )._migrate_servers(openstack_client, "host1", node_maintenance_config, 1)
-    openstack_client.compute_get_all_servers.assert_not_called()
-    openstack_client.compute_get_servers_valid_for_live_migration.assert_not_called()
+    openstack_client.compute_get_all_servers.assert_called_once()
+    openstack_client.compute_get_servers_valid_for_live_migration.assert_called_once()
     openstack_client.compute_get_servers_in_migrating_state.assert_not_called()
 
 
@@ -1239,6 +1247,9 @@ async def test_nova_migrate_servers_manual_one_server(
     openstack_client.compute_get_all_servers.return_value = [_get_server_obj()]
 
     node_maintenance_config.instance_migration_mode = "manual"
+    openstack_client.compute_get_server_maintenance_action.return_value = (
+        "notify"
+    )
     nwl = mock.Mock()
     mocker.patch.object(
         maintenance.NodeWorkloadLock, "get_by_node", return_value=nwl
@@ -1251,7 +1262,7 @@ async def test_nova_migrate_servers_manual_one_server(
         )
     nwl.set_error_message.assert_called_once()
     openstack_client.compute_get_all_servers.assert_called_once()
-    openstack_client.compute_get_servers_valid_for_live_migration.assert_not_called()
+    openstack_client.compute_get_servers_valid_for_live_migration.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -1343,6 +1354,9 @@ async def test_nova_migrate_servers_live_one_power_unknown(
     ]
 
     node_maintenance_config.instance_migration_mode = "live"
+    openstack_client.compute_get_server_maintenance_action.return_value = (
+        "live_migrate"
+    )
     nwl = mock.Mock()
     mocker.patch.object(
         maintenance.NodeWorkloadLock, "get_by_node", return_value=nwl

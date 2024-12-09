@@ -65,7 +65,7 @@ async def _node_maintenance_request_change_handler(body, **kwargs):
         services_can_handle_nmr = {}
         for service_name, service_class in services.ORDERED_SERVICES:
             service = service_class(mspec, LOG, osdplst, child_view)
-            if service.maintenance_api:
+            if service.maintenance_api and service.enabled:
                 services_can_handle_nmr[service_name] = (
                     await service.can_handle_nmr(node, active_locks)
                 )
@@ -77,7 +77,7 @@ async def _node_maintenance_request_change_handler(body, **kwargs):
         nwl.set_inner_state_active()
         for service, service_class in services.ORDERED_SERVICES:
             service = service_class(mspec, LOG, osdplst, child_view)
-            if service.maintenance_api:
+            if service.maintenance_api and service.enabled:
                 LOG.info(
                     f"Got moving node {node_name} into maintenance for {service_class.service}"
                 )
@@ -152,7 +152,7 @@ async def _node_maintenance_request_delete_handler(body, **kwargs):
 
             for service, service_class in reversed(services.ORDERED_SERVICES):
                 service = service_class(mspec, LOG, osdplst, child_view)
-                if service.maintenance_api:
+                if service.maintenance_api and service.enabled:
                     LOG.info(
                         f"Moving node {node_name} to operational state for {service_class.service}"
                     )
@@ -258,7 +258,7 @@ async def _node_deletion_request_change_handler(body, **kwargs):
         if node.exists():
             for service, service_class in reversed(services.ORDERED_SERVICES):
                 service = service_class(mspec, LOG, osdplst, child_view)
-                if service.maintenance_api:
+                if service.maintenance_api and service.enabled:
                     LOG.info(
                         f"Handling node deletion for {node_name} by service {service_class.service}"
                     )
@@ -311,7 +311,7 @@ async def _node_workloadlock_request_delete_handler(body, **kwargs):
 
     for service, service_class in reversed(services.ORDERED_SERVICES):
         service = service_class(mspec, LOG, osdplst, child_view)
-        if service.maintenance_api:
+        if service.maintenance_api and service.enabled:
             LOG.info(f"Cleaning metadata for {service.service} on node {name}")
             await service.cleanup_metadata(nwl)
             LOG.info(
