@@ -15,6 +15,7 @@
 {%- endif  %}
 {%- set masakari_db_cleanup = spec.get('features', {}).get('database', {}).get('cleanup', {}).get('masakari', {'enabled': true}) %}
 {%- set libvirt_server_tls_enabled = spec.get('features', {}).get('nova', {}).get('libvirt', {}).get('tls', {}).get('enabled', false) %}
+{%- set introspective_monitors_enabled = spec.get('features', {}).get('masakari', {}).get('monitors', {}).get('introspective', {}).get('enabled', false) %}
 {%- from 'macros/etcd3.j2' import get_etcd3_endpoint %}
 
 spec:
@@ -68,6 +69,9 @@ spec:
             evacuate_all_instances: false
             ignore_instances_in_error_state: true
 {% include 'base/_oslo_policy_enforce_defaults.yaml' %}
+        monitors:
+          introspective:
+            enabled: {{ introspective_monitors_enabled }}
         logging:
           logger_masakari:
             level: {{ spec.get('features', {}).get('logging', {}).get('masakari', {}).get('level', 'INFO') }}

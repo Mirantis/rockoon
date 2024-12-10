@@ -27,6 +27,9 @@ spec:
           host_failure:
             evacuate_all_instances: false
             ignore_instances_in_error_state: true
+        monitors:
+          introspective:
+            enabled: false
         logging:
           logger_masakari:
             level: INFO
