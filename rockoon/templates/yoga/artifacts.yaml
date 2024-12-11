@@ -102,7 +102,7 @@ prometheus_mysql_exporter_helm_tests: '{{ images_base_url }}/openstack/heat:yoga
 mariadb_backup: '{{ images_base_url }}/general/mariadb:10.6.20-jammy-20241104184039'
 mariadb_scripted_test: '{{ images_base_url }}/general/mariadb:10.6.20-jammy-20241104184039'
 rabbit_init: '{{ images_base_url }}/openstack/extra/rabbitmq-management:3.12.12-jammy-20240829072728'
-powerdns: '{{ images_base_url }}/openstack/extra/powerdns:4.8-alpine-20241024073159'
+powerdns: '{{ images_base_url }}/openstack/extra/powerdns:4.8-alpine-20241120110423'
 prometheus_rabbitmq_exporter_helm_tests: '{{ images_base_url }}/openstack/heat:yoga-jammy-20241120070553'
 rabbitmq_init: '{{ images_base_url }}/openstack/heat:yoga-jammy-20241120070553'
 rabbitmq: '{{ images_base_url }}/openstack/extra/rabbitmq:3.12.12-jammy-20240829072728'
@@ -121,7 +121,7 @@ ironic_api: '{{ images_base_url }}/openstack/ironic:yoga-jammy-20241120070553'
 ironic_conductor: '{{ images_base_url }}/openstack/ironic:yoga-jammy-20241120070553'
 ironic_pxe: '{{ images_base_url }}/openstack/ironic:yoga-jammy-20241120070553'
 ironic_pxe_init: '{{ images_base_url }}/openstack/ironic:yoga-jammy-20241120070553'
-powerdns_db_sync: '{{ images_base_url }}/openstack/extra/powerdns:4.8-alpine-20241024073159'
+powerdns_db_sync: '{{ images_base_url }}/openstack/extra/powerdns:4.8-alpine-20241120110423'
 neutron_ironic_agent: '{{ images_base_url }}/openstack/neutron:yoga-jammy-20241120070553'
 neutron_bagpipe_bgp: '{{ images_base_url }}/openstack/neutron:yoga-jammy-20241120070553'
 neutron_l2gw: '{{ images_base_url }}/openstack/neutron:yoga-jammy-20241120070553'
@@ -238,3 +238,11 @@ neutron_ovn_db_sync_migrate: '{{ images_base_url }}/openstack/neutron:yoga-jammy
 redis-operator: '{{ images_base_url }}/openstack/extra/redis-operator:v1.2.4-20241024111938'
 designate_zone_setup: '{{ images_base_url }}/openstack/openstack-tools:yoga-jammy-20241120070553'
 nova_placement_audit: '{{ images_base_url }}/openstack/nova:yoga-jammy-20241120070553'
+os_image_fedora_2716: '{{ binary_base_url }}/openstack/bin/Fedora/27/Fedora-Cloud-Base-27-1.6.x86_64.qcow2'
+os_image_ubuntu_1804: '{{ binary_base_url }}/openstack/bin/ubuntu/18.04/bionic-server-cloudimg-amd64.img'
+os_image_cirros_060: '{{ binary_base_url }}/openstack/bin/cirros/0.6.0/cirros-0.6.0-x86_64-disk.img'
+os_image_cirros_060_raw: '{{ binary_base_url }}/openstack/bin/cirros/0.6.0/cirros-0.6.0-x86_64-disk.raw'
+os_image_fedora_2716_checksum: e0713a4f26427691da90701ff7a823da
+os_image_ubuntu_1804_checksum: 30d459e0dc0562e629d3683970e55efa
+os_image_cirros_060_checksum: f4027b89e99e238184e13089a3155b74
+os_image_cirros_060_raw_checksum: f756328a32fad36f7239223b030caab5
