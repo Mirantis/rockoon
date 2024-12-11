@@ -48,8 +48,9 @@ class Image(base_section.BaseSection):
         images = self.get_values_item("glance", "bootstrap.structured.images")
         if images:
             image = list(images.values())[0]
-            url = image["source_url"] + image["image_file"]
-            url = substitute_local_proxy_hostname(url, os.environ["NODE_IP"])
+            url = substitute_local_proxy_hostname(
+                image["source_url"], os.environ["NODE_IP"]
+            )
             return url
 
     @property

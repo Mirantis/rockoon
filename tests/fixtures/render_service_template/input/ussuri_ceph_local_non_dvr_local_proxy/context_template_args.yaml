@@ -70,7 +70,7 @@ images:
   horizon_clean_cache: horizon-clean-cache:latest
   horizon_db_sync: horizon-db-sync:latest
   horizon_mirantis_theme_sha256summ: horizon-mirantis-theme-sha256summ
-  horizon_mirantis_theme_url: http://127.0.0.1:8282/bin/latest
+  horizon_mirantis_theme_url: http://127.0.0.1:8282/bin/horizon-theme-latest
   image_repo_sync: image-repo-sync:latest
   ingress: ingress:latest
   ingress_module_init: ingress-module-init:latest
@@ -147,7 +147,7 @@ images:
   nova_scheduler: nova-scheduler:latest
   nova_service_cleaner: nova-service-cleaner:latest
   nova_spiceproxy: nova-spiceproxy:latest
-  octavia_amphora:  http://127.0.0.1:8282/bin/latest
+  octavia_amphora:  http://127.0.0.1:8282/bin/amphora-latest
   octavia_amphora_checksum: md5summ
   octavia_api: octavia-api:latest
   octavia_db_sync: octavia-db-sync:latest
@@ -193,10 +193,14 @@ images:
   openvswitch_ovn_vswitchd: openvswitch-ovn-vswitchd:latest
   openvswitch_ovn_db: openvswitch-ovn-db:latest
   openvswitch_ovn_controller: openvswitch-ovn-controller:latest
-  cirros_checksum: 050056e630cf
-  cirros_raw_checksum: 479256d697ca
-  fedora_checksum: 8bc56d70a3e2
-  ubuntu_checksum: 3fb7422b5843
+  os_image_cirros_051: http://127.0.0.1:8282/bin/cirros051-latest
+  os_image_cirros_051_checksum: 050056e630cf
+  os_image_cirros_051_raw: http://127.0.0.1:8282/bin/cirros051-raw-latest
+  os_image_cirros_051_raw_checksum: 479256d697ca
+  os_image_fedora_2716: http://127.0.0.1:8282/bin/fedora2716-latest
+  os_image_fedora_2716_checksum: 8bc56d70a3e2
+  os_image_ubuntu_1804: http://127.0.0.1:8282/bin/ubuntu1804-latest
+  os_image_ubuntu_1804_checksum: 3fb7422b5843
 proxy_settings:
   proxy_ca_certificate: |
     PROXY CA

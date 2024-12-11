@@ -9,60 +9,55 @@ spec:
         structured:
           images:
             cirros-6.0:
-              checksum: 050056e630cf
+              checksum: f4027b89e99e
               container_format: bare
-              image_file: cirros-0.6.0-x86_64-disk.img
               image_type: qcow2
               min_disk: 1
               name: Cirros-6.0
               private: false
               properties:
                 os_distro: cirros
-              source_url: https://artifactory.mcp.mirantis.net/binary-dev-kaas-local/openstack/bin/cirros/0.6.0/
+              source_url: https://cirros-image-url/cirros060-latest
             cirros-6.0.alt:
-              checksum: 050056e630cf
+              checksum: f4027b89e99e
               container_format: bare
-              image_file: cirros-0.6.0-x86_64-disk.img
               image_type: qcow2
               min_disk: 1
               name: Cirros-6.0.alt
               private: false
               properties:
                 os_distro: cirros
-              source_url: https://artifactory.mcp.mirantis.net/binary-dev-kaas-local/openstack/bin/cirros/0.6.0/
+              source_url: https://cirros-image-url/cirros060-latest
             cirros-6.0.raw:
-              checksum: 479256d697ca
+              checksum: f756328a32fa
               container_format: bare
-              image_file: cirros-0.6.0-x86_64-disk.raw
               image_type: raw
               min_disk: 1
               name: Cirros-6.0.raw
               private: false
               properties:
                 os_distro: cirros
-              source_url: https://artifactory.mcp.mirantis.net/binary-dev-kaas-local/openstack/bin/cirros/0.6.0/
+              source_url: https://cirros-raw-image-url/cirros060-raw-latest
             fedora:
               checksum: 8bc56d70a3e2
               container_format: bare
-              image_file: Fedora-Cloud-Base-27-1.6.x86_64.qcow2
               image_type: qcow2
               min_disk: 1
               name: Fedora-27-1.6
               private: false
               properties:
                 os_distro: fedora
-              source_url: https://artifactory.mcp.mirantis.net/binary-dev-kaas-local/openstack/bin/Fedora/27/
+              source_url: 'https://fedora-image-url/fedora2716-latest'
             ubuntu:
               checksum: 3fb7422b5843
               container_format: bare
-              image_file: bionic-server-cloudimg-amd64.img
               image_type: qcow2
               min_disk: 1
               name: Ubuntu-18.04
               private: false
               properties:
                 os_distro: ubuntu
-              source_url: https://artifactory.mcp.mirantis.net/binary-dev-kaas-local/openstack/bin/ubuntu/18.04/
+              source_url: 'https://ubuntu-image-url/ubuntu1804-latest'
             amphora-x64-haproxy:
               checksum: md5summ
               container_format: bare
@@ -71,7 +66,7 @@ spec:
               private: true
               properties:
                 os_distro: ubuntu
-              source_url: 'https://amphora-image-url/latest'
+              source_url: 'https://amphora-image-url/amphora-latest'
               tags:
                 - amphora
             manila-service-image:
@@ -81,7 +76,7 @@ spec:
               properties:
                 os_distro: ubuntu
               private: true
-              source_url: 'https://manila-service-image-url/latest'
+              source_url: 'https://manila-service-image-url/manila-latest'
       network:
         api:
           ingress:

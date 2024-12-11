@@ -94,24 +94,23 @@ spec:
         structured:
           images:
             {%- if OSVer[spec.openstack_version] >= OSVer.yoga %}
-                {%- set cirros_version = "0.6.0" %}
+                {%- set cirros_image_key = "os_image_cirros_060" %}
                 {%- set cirros_image_name = "Cirros-6.0" %}
             {%- else %}
-                {%- set cirros_version = "0.5.1" %}
+                {%- set cirros_image_key = "os_image_cirros_051" %}
                 {%- set cirros_image_name = "Cirros-5.1" %}
             {%- endif %}
             {%- for image_name in [cirros_image_name, cirros_image_name ~ '.alt'] %}
             {{ image_name | lower }}:
               container_format: bare
-              image_file: cirros-{{ cirros_version }}-x86_64-disk.img
               image_type: qcow2
               min_disk: 1
               name: {{ image_name }}
               private: false
               properties:
                 os_distro: cirros
-              source_url: {{ spec.artifacts.binary_base_url }}/openstack/bin/cirros/{{ cirros_version }}/
-              checksum: {{ images["cirros_checksum"] }}
+              source_url: {{ images[cirros_image_key] }}
+              checksum: {{ images[cirros_image_key ~ '_checksum'] }}
               {%- if signature.enabled %}
               signature:
                 enabled: true
@@ -121,15 +120,14 @@ spec:
             {%- set cirros_raw_image_name = cirros_image_name ~ '.raw' %}
             {{ cirros_raw_image_name | lower }}:
               container_format: bare
-              image_file: cirros-{{ cirros_version }}-x86_64-disk.raw
               image_type: raw
               min_disk: 1
               name: {{ cirros_raw_image_name }}
               private: false
               properties:
                 os_distro: cirros
-              source_url: {{ spec.artifacts.binary_base_url }}/openstack/bin/cirros/{{ cirros_version }}/
-              checksum: {{ images["cirros_raw_checksum"] }}
+              source_url: {{ images[cirros_image_key ~ '_raw'] }}
+              checksum: {{ images[cirros_image_key ~ '_raw_checksum'] }}
               {%- if signature.enabled %}
               signature:
                 enabled: true
@@ -137,15 +135,14 @@ spec:
               {%- endif %}
             fedora:
               container_format: bare
-              image_file: Fedora-Cloud-Base-27-1.6.x86_64.qcow2
               image_type: qcow2
               min_disk: 1
               name: Fedora-27-1.6
               private: false
               properties:
                 os_distro: fedora
-              source_url: {{ spec.artifacts.binary_base_url }}/openstack/bin/Fedora/27/
-              checksum: {{ images["fedora_checksum"] }}
+              source_url: {{ images["os_image_fedora_2716"] }}
+              checksum: {{ images["os_image_fedora_2716_checksum"] }}
 {%- if signature.enabled %}
               signature:
                 enabled: true
@@ -153,15 +150,14 @@ spec:
 {%- endif %}
             ubuntu:
               container_format: bare
-              image_file: bionic-server-cloudimg-amd64.img
               image_type: qcow2
               min_disk: 1
               name: Ubuntu-18.04
               private: false
               properties:
                 os_distro: ubuntu
-              source_url: {{ spec.artifacts.binary_base_url }}/openstack/bin/ubuntu/18.04/
-              checksum: {{ images["ubuntu_checksum"] }}
+              source_url: {{ images["os_image_ubuntu_1804"] }}
+              checksum: {{ images["os_image_ubuntu_1804_checksum"] }}
 {%- if signature.enabled %}
               signature:
                 enabled: true
