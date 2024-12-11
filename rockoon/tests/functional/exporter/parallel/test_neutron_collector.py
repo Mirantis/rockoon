@@ -1,3 +1,5 @@
+import ipaddress
+import time
 import unittest
 
 import pytest
@@ -479,6 +481,31 @@ class NeutronIPsCapacityTestCase(base.BaseFunctionalExporterTestCase):
         },
     }
 
+    def setUp(self):
+        super().setUp()
+        if self.osdpl.obj["spec"]["preset"] == "compute-tf":
+            raise unittest.SkipTest(
+                "Tungsten Fabric doesn't support neutron IP's capacity "
+                "metrics collection"
+            )
+
+    def get_total_ips_in_subnet(self, subnet):
+        """Total number of IP addresses in a subnet."""
+        subnet_ip = ipaddress.IPv4Network(subnet["cidr"], strict=False)
+        # Reserved addresses for network, broadcast, gateway address
+        reserved_addresses = 3
+        return subnet_ip.num_addresses - reserved_addresses
+
+    def get_allocated_ports_in_subnet(self, subnet):
+        """Count the number of allocated ports in a subnet."""
+        fixed_ips = f"subnet_id={subnet['id']}"
+        ports = list(
+            self.ocm.oc.network.ports(
+                fixed_ips=fixed_ips,
+            )
+        )
+        return len(ports)
+
     def test_neutron_network_capacity_default_networks(self):
         """Validate that all default networks are present in the metrics.
 
@@ -588,3 +615,147 @@ class NeutronIPsCapacityTestCase(base.BaseFunctionalExporterTestCase):
                 len(samples),
                 f"Subnet:{subnet_with_tag} is missing in the metric {metric_name} samples.",
             )
+
+    def test_neutron_network_capacity_values(self):
+        """Verify that the network metrics contain the exact IP capacity values.
+
+        **Steps**
+
+        #. Create test network with the collect metrics tag
+        #. Add two subnets
+        #. Count ip capacity and number of allocated ports of this subnets
+        #. Ensure that the network metrics contain correct values
+        #. Add port to the test subnet
+        #. Check metrics values after port creation
+        """
+        metric_name_total_ips = "osdpl_neutron_network_total_ips"
+        metric_name_free_ips = "osdpl_neutron_network_free_ips"
+        network = self.network_create()
+        labels = {"network_id": network["id"]}
+        self.ocm.oc.network.set_tags(network, [self.collect_metrics_tag])
+
+        subnet_cidrs = [CONF.TEST_SUBNET_RANGE, CONF.TEST_SUBNET_RANGE_ALT]
+        subnets = []
+        for cidr in subnet_cidrs:
+            subnet = self.subnet_create(cidr=cidr, network_id=network["id"])
+            subnets.append(subnet)
+        # Wait for Neutron initialize the service ports in the subnets.
+        time.sleep(10)
+        expected_total_ips = 0
+        expected_free_ips = 0
+        for subnet in subnets:
+            total_ips = self.get_total_ips_in_subnet(subnet)
+            allocated_ports = self.get_allocated_ports_in_subnet(subnet)
+            free_ips = total_ips - allocated_ports
+            expected_total_ips += total_ips
+            expected_free_ips += free_ips
+
+        metrics = self.get_collector_metrics(self.scrape_collector)
+        metric_total_ips = self.get_metric(metric_name_total_ips, metrics)
+        samples_total_ips = self.filter_metric_samples(
+            metric_total_ips, labels
+        )
+        self.assertEqual(
+            expected_total_ips,
+            samples_total_ips[0].value,
+            f"Total IPs for network {network['id']} is incorrect.",
+        )
+        metric_free_ips = self.get_metric(metric_name_free_ips, metrics)
+        samples_free_ips = self.filter_metric_samples(metric_free_ips, labels)
+        self.assertEqual(
+            expected_free_ips,
+            samples_free_ips[0].value,
+            f"Free IPs for network {network['id']} is incorrect.",
+        )
+
+        fixed_ips = [{"subnet_id": subnets[0]["id"]}]
+        self.port_create(network["id"], fixed_ips=fixed_ips)
+        metric_after_add_port = self.get_metric_after_refresh(
+            metric_name_total_ips, self.scrape_collector
+        )
+        samples_total_ips = self.filter_metric_samples(
+            metric_after_add_port, labels
+        )
+        self.assertEqual(
+            expected_total_ips,
+            samples_total_ips[0].value,
+            f"Total IPs for network {network['id']} after port creation is incorrect.",
+        )
+        metric_after_add_port = self.get_metric_after_refresh(
+            metric_name_free_ips, self.scrape_collector
+        )
+        samples_free_ips = self.filter_metric_samples(
+            metric_after_add_port, labels
+        )
+        self.assertEqual(
+            expected_free_ips - 1,
+            samples_free_ips[0].value,
+            f"Free IPs for network {network['id']} after port creation is incorrect.",
+        )
+
+    def test_neutron_subnet_capacity_values(self):
+        """Verify that the subnet metrics contain the exact IP capacity values.
+
+        **Steps**
+
+        #. Create test subnet with the collect metrics tag
+        #. Count ip capacity and number of allocated ports of this subnet
+        #. Ensure that the subnet metrics contain correct values
+        #. Add port to the test subnet
+        #. Check metrics values after port creation
+        """
+        metric_name_total_ips = "osdpl_neutron_subnet_total_ips"
+        metric_name_free_ips = "osdpl_neutron_subnet_free_ips"
+        network = self.network_create()
+        subnet = self.subnet_create(
+            cidr=CONF.TEST_SUBNET_RANGE, network_id=network["id"]
+        )
+        self.ocm.oc.network.set_tags(subnet, [self.collect_metrics_tag])
+        labels = {"subnet_id": subnet["id"]}
+        # Wait for Neutron to initialize the service ports in the subnet.
+        time.sleep(10)
+        expected_total_ips = self.get_total_ips_in_subnet(subnet)
+        allocated_ports = self.get_allocated_ports_in_subnet(subnet)
+        expected_free_ips = expected_total_ips - allocated_ports
+
+        metrics = self.get_collector_metrics(self.scrape_collector)
+        metric_total_ips = self.get_metric(metric_name_total_ips, metrics)
+        samples_total_ips = self.filter_metric_samples(
+            metric_total_ips, labels
+        )
+        self.assertEqual(
+            expected_total_ips,
+            samples_total_ips[0].value,
+            f"Total IPs for subnet {subnet['id']} is incorrect.",
+        )
+        metric_free_ips = self.get_metric(metric_name_free_ips, metrics)
+        samples_free_ips = self.filter_metric_samples(metric_free_ips, labels)
+        self.assertEqual(
+            expected_free_ips,
+            samples_free_ips[0].value,
+            f"Free IPs for subnet {subnet['id']} is incorrect.",
+        )
+        fixed_ips = [{"subnet_id": subnet["id"]}]
+        self.port_create(network["id"], fixed_ips=fixed_ips)
+        metric_after_add_port = self.get_metric_after_refresh(
+            metric_name_total_ips, self.scrape_collector
+        )
+        samples_total_ips = self.filter_metric_samples(
+            metric_after_add_port, labels
+        )
+        self.assertEqual(
+            expected_total_ips,
+            samples_total_ips[0].value,
+            f"Total IPs for subnet {subnet['id']} after port creation is incorrect.",
+        )
+        metric_after_add_port = self.get_metric_after_refresh(
+            metric_name_free_ips, self.scrape_collector
+        )
+        samples_free_ips = self.filter_metric_samples(
+            metric_after_add_port, labels
+        )
+        self.assertEqual(
+            expected_free_ips - 1,
+            samples_free_ips[0].value,
+            f"Free IPs for subnet {subnet['id']} after port creation is incorrect.",
+        )
