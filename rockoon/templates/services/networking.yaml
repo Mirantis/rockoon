@@ -781,7 +781,7 @@ spec:
       {%- if ovn_enabled %}
         {%- do neutron_backends.extend(["ovn"]) %}
       {%- else %}
-        {%- do neutron_backends.extend(["openvswitch"]) %}
+        {%- do neutron_backends.extend(["openvswitch", "l2population"]) %}
       {%- endif %}
       {%- if baremetal_enabled %}
           {%- do neutron_backends.extend(["baremetal", "genericswitch"]) %}
@@ -942,8 +942,8 @@ spec:
               vni_ranges: 1:65536
             {%- endif %}
             ml2:
+              mechanism_drivers: {{ ','.join(neutron_backends) }}
             {%- if ovn_enabled %}
-              mechanism_drivers: ovn
               type_drivers: local,flat,vlan,geneve,vxlan
             {%- endif %}
             {%- if physnet_mtus %}

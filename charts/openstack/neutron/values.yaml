@@ -192,6 +192,7 @@ dependencies:
       baremetal: {}
       sriovnicswitch: {}
       ovn: {}
+      l2population: {}
       openvswitch:
         dhcp:
           pod:

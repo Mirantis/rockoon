@@ -157,13 +157,6 @@ just set it along with nova_metadata_host.
 {{- end -}}
 {{- $_ := set $envAll.Values.conf.l3_agent.DEFAULT "interface_driver" $envAll.Values.__interface_driver -}}
 {{- end -}}
-
-{{- if empty $envAll.Values.conf.plugins.ml2_conf.ml2.mechanism_drivers -}}
-{{- if (contains "vxlan" $envAll.Values.conf.plugins.ml2_conf.ml2.tenant_network_types) -}}
-{{- $_ := set $envAll.Values "__mechanism_drivers" (append $envAll.Values.network.backend "l2population") -}}
-{{- end -}}
-{{- $_ := set $envAll.Values.conf.plugins.ml2_conf.ml2 "mechanism_drivers" ($envAll.Values.__mechanism_drivers | default $envAll.Values.network.backend | uniq) -}}
-{{- end -}}
 {{- end -}}
 
 {{- if empty .Values.conf.neutron.DEFAULT.bind_port -}}

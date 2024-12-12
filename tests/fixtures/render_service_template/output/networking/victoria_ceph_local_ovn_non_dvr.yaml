@@ -338,8 +338,8 @@ spec:
               - qos
               - dns_domain_ports
               tenant_network_types: geneve
+              mechanism_drivers: 'ovn'
               type_drivers: 'local,flat,vlan,geneve,vxlan'
-              mechanism_drivers: ovn
             ml2_type_flat:
               flat_networks: physnet1
             ml2_type_geneve:

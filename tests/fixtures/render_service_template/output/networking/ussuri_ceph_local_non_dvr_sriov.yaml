@@ -246,6 +246,7 @@ spec:
               - qos
               - dns_domain_ports
               tenant_network_types: vxlan
+              mechanism_drivers: 'openvswitch,l2population,sriovnicswitch'
             ml2_type_flat:
               flat_networks: physnet1
             ml2_type_vlan:
@@ -451,6 +452,7 @@ spec:
           tunnel: ens3
         backend:
         - openvswitch
+        - l2population
         - sriovnicswitch
       overrides:
         neutron_ovs-agent:
