@@ -243,6 +243,7 @@ spec:
               - qos
               - dns_domain_ports
               tenant_network_types: vxlan
+              mechanism_drivers: 'openvswitch,l2population,baremetal,genericswitch'
             ml2_type_flat:
               flat_networks: physnet1,ironic
           openvswitch_agent:
@@ -446,6 +447,7 @@ spec:
           tunnel: ens3
         backend:
         - openvswitch
+        - l2population
         - baremetal
         - genericswitch
       overrides:

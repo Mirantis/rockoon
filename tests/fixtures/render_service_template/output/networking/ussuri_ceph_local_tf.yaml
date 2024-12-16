@@ -185,6 +185,7 @@ spec:
               - qos
               - dns_domain_ports
               tenant_network_types: vxlan
+              mechanism_drivers: 'openvswitch,l2population'
             ml2_type_flat:
               flat_networks: ~
           openvswitch_agent:
@@ -434,6 +435,7 @@ spec:
           tunnel: ens3
         backend:
           - openvswitch
+          - l2population
       overrides:
         neutron_ovs-agent:
           labels: null
