@@ -612,11 +612,44 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#host" class="md-nav__link">
+    <span class="md-ellipsis">
+      Host
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#prepare-vm" class="md-nav__link">
     <span class="md-ellipsis">
       Prepare VM
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Prepare VM">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-command-to-create-an-appropriate-kvm-vm-on-linux-with-virt-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example command to create an appropriate kvm VM on Linux with virt-manager
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-command-to-create-an-appropriate-qemu-vm-on-macos-with-lima" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example command to create an appropriate qemu VM on MacOS with lima
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -817,11 +850,44 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#host" class="md-nav__link">
+    <span class="md-ellipsis">
+      Host
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#prepare-vm" class="md-nav__link">
     <span class="md-ellipsis">
       Prepare VM
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Prepare VM">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-command-to-create-an-appropriate-kvm-vm-on-linux-with-virt-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example command to create an appropriate kvm VM on Linux with virt-manager
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-command-to-create-an-appropriate-qemu-vm-on-macos-with-lima" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example command to create an appropriate qemu VM on MacOS with lima
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -856,6 +922,10 @@
 <p>This paragraph provides a guide how to deploy single node deployment with
 <a href="https://docs.k0sproject.io/stable/">k0s</a> based Kubernetes cluster and
 openstack deployed by Rockoon controller.</p>
+<h2 id="host">Host<a class="headerlink" href="#host" title="Permanent link">#</a></h2>
+<p>At the moment hosts with non-x86_64 CPU (like Apple Silicon) are not supported.
+The required full CPU emulation for virtual machine introduces
+too much overhead, making the system too slow and unusable.</p>
 <h2 id="prepare-vm">Prepare VM<a class="headerlink" href="#prepare-vm" title="Permanent link">#</a></h2>
 <p>For the deployment we will need Virtual Machine with following minimal requirements.</p>
 <p>Minimal VM requirements</p>
@@ -885,6 +955,46 @@ openstack deployed by Rockoon controller.</p>
 <ul>
 <li>Ubuntu 22.04 (x86_64)</li>
 </ul>
+<h3 id="example-command-to-create-an-appropriate-kvm-vm-on-linux-with-virt-manager">Example command to create an appropriate kvm VM on Linux with <code>virt-manager</code><a class="headerlink" href="#example-command-to-create-an-appropriate-kvm-vm-on-linux-with-virt-manager" title="Permanent link">#</a></h3>
+<p>Needs <code>virt-manager</code>, <code>libvirt</code>, and <code>qemu-kvm</code> installed.</p>
+<p>Change the path to the public SSH key as you need, the user in the image is
+<code>ubuntu</code>.</p>
+<p><div class="highlight"><pre><span></span><code>wget<span class="w"> </span>https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img
+qemu-img<span class="w"> </span>create<span class="w"> </span>-F<span class="w"> </span>qcow2<span class="w"> </span>-f<span class="w"> </span>qcow2<span class="w"> </span>-b<span class="w"> </span>jammy-server-cloudimg-amd64.img<span class="w"> </span>rockoon.qcow2<span class="w"> </span>100G
+virt-install<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--name<span class="w"> </span>rockoon<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--import<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--disk<span class="w"> </span><span class="nv">path</span><span class="o">=</span><span class="nv">$PWD</span>/rockoon.qcow2,format<span class="o">=</span>qcow2<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--vcpus<span class="o">=</span><span class="m">8</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--memory<span class="o">=</span><span class="m">16384</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--network<span class="w"> </span><span class="s2">&quot;network=default,model=virtio&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--osinfo<span class="w"> </span><span class="s2">&quot;ubuntu-22&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--arch<span class="w"> </span>x86_64<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--graphics<span class="w"> </span>vnc,listen<span class="o">=</span><span class="m">0</span>.0.0.0<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--cloud-init<span class="w"> </span>clouduser-ssh-key<span class="o">=</span><span class="nv">$HOME</span>/.ssh/id_rsa.pub<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--virt-type<span class="w"> </span>kvm<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--watchdog<span class="o">=</span>default<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--noautoconsole
+</code></pre></div>
+Once the VM is running, run <code>virsh domifaddr rockoon</code> to find the IP address
+of the VM to SSH to.</p>
+<h3 id="example-command-to-create-an-appropriate-qemu-vm-on-macos-with-lima">Example command to create an appropriate qemu VM on MacOS with <code>lima</code><a class="headerlink" href="#example-command-to-create-an-appropriate-qemu-vm-on-macos-with-lima" title="Permanent link">#</a></h3>
+<p>As mentioned, only Intel-based Macs are currently supported.</p>
+<div class="highlight"><pre><span></span><code>brew<span class="w"> </span>install<span class="w"> </span>lima
+limactl<span class="w"> </span>create<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--name<span class="o">=</span>rockoon<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--tty<span class="o">=</span><span class="nb">false</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--cpus<span class="w"> </span><span class="m">8</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--disk<span class="w"> </span><span class="m">100</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--memory<span class="w"> </span><span class="m">16</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--plain<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--arch<span class="w"> </span>x86_64<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--vm-type<span class="w"> </span>qemu<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--set<span class="w"> </span><span class="s1">&#39;.cpuType.x86_64 = &quot;host&quot;&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>template://ubuntu-22.04
+limactl<span class="w"> </span>start<span class="w"> </span>rockoon
+ssh<span class="w"> </span>-F<span class="w"> </span>~/.lima/rockoon/ssh.config<span class="w"> </span>lima-rockoon
+</code></pre></div>
 <h2 id="trigger-deployment">Trigger Deployment<a class="headerlink" href="#trigger-deployment" title="Permanent link">#</a></h2>
 <ol>
 <li>
@@ -895,7 +1005,7 @@ openstack deployed by Rockoon controller.</p>
 <li>
 <p>Trigger deployment
   <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>rockoon/virtual_lab/
-bash<span class="w"> </span>install.sh
+sudo<span class="w"> </span>bash<span class="w"> </span>install.sh
 </code></pre></div></p>
 </li>
 </ol>
