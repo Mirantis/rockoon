@@ -1804,6 +1804,23 @@ properties:
                           pod:
                             type: object
                             additionalProperties: True
+      masakari:
+        type: object
+        additionalProperties: false
+        properties:
+          monitors:
+            type: object
+            additionalProperties: false
+            properties:
+              introspective:
+                type: object
+                additionalProperties: false
+                properties:
+                  enabled:
+                    type: boolean
+                    description: |
+                      Enable instance introspection monitor
+                      default: false
       logging:
         type: object
         additionalProperties: false
