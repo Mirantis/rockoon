@@ -39,10 +39,17 @@
 
 {%- do service_plugins.append('bgpvpn') if bgpvpn.enabled %}
 {%- do service_providers.append("BGPVPN:BaGPipe:networking_bgpvpn.neutron.services.service_drivers.bagpipe.bagpipe_v2.BaGPipeBGPVPNDriver:default") if bgpvpn.enabled %}
-{%- do service_plugins.append('vpnaas') if vpnaas.enabled %}
-{%- do service_providers.append("VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ipsec.IPsecVPNDriver:default") if vpnaas.enabled %}
+{%- if vpnaas.enabled %}
+  {%- if ovn_enabled %}
+    {%- do service_providers.append("VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ovn_ipsec.IPsecOvnVPNDriver:default") %}
+    {%- do service_plugins.append("ovn-vpnaas") %}
+  {%- else %}
+    {%- do service_providers.append("VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ipsec.IPsecVPNDriver:default") %}
+    {%- do service_plugins.append("vpnaas") %}
+    {%- do l3_agent_extensions.append("vpnaas") %}
+  {%- endif %}
+{%- endif %}
 {%- do service_plugins.append('bgp') if dynamic_routing.enabled %}
-{%- do l3_agent_extensions.append("vpnaas") if  vpnaas.enabled %}
 {%- do service_plugins.append('portprober') if portprober_enabled %}
 {%- do service_plugins.append('trunk') if trunk.enabled %}
 {%- do notification_topics.append('stacklight_notifications') if stacklight_enabled %}
@@ -478,6 +485,7 @@ spec:
     "neutron_server",
     "neutron_rpc_server",
     "neutron_portprober_agent",
+    "neutron_ovn_vpn_agent",
     "purge_test",
     "test",] %}
         {%- if image in images %}
@@ -763,6 +771,9 @@ spec:
       {%- if portprober_enabled %}
         daemonset_portprober_agent: true
       {%- endif %}
+      {%- if vpnaas.enabled and ovn_enabled %}
+        daemonset_ovn_vpn_agent: true
+      {%- endif %}
       network:
         server:
           ingress:
@@ -1005,6 +1016,15 @@ spec:
           linuxbridge_agent:
             linux_bridge:
               bridge_mappings: {{ ','.join(bridge_mappings) }}
+          {%- if vpnaas.enabled and ovn_enabled %}
+          ovn_vpn_agent:
+            ovs:
+              ovsdb_connection: tcp:127.0.0.1:6640
+            vpnagent:
+              vpn_device_driver: neutron_vpnaas.services.vpn.device_drivers.ovn_ipsec.OvnStrongSwanDriver
+            DEFAULT:
+              interface_driver: openvswitch
+          {%- endif %}
         auto_bridge_add:
 {%- for network in spec.features.neutron.external_networks %}
           {{ network.bridge }}: {{ network.interface }}

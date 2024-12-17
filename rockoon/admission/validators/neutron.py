@@ -105,6 +105,14 @@ class NeutronValidator(base.BaseValidator):
                 raise exception.OsDplValidationFailed(
                     "IPSEC and OVN are not supported."
                 )
+            if vpnaas["enabled"]:
+                if (
+                    constants.OpenStackVersion[openstack_version].value
+                    < constants.OpenStackVersion["caracal"]
+                ):
+                    raise exception.OsDplValidationFailed(
+                        "VPNaaS with OVN is supported from Caracal release."
+                    )
         if vpnaas["enabled"]:
             if (
                 constants.OpenStackVersion[openstack_version].value

@@ -315,6 +315,7 @@ data:
   openvswitch_agent.ini: {{ include "helm-toolkit.utils.to_oslo_conf" $envAll.Values.conf.plugins.openvswitch_agent | b64enc }}
   portprober_agent.ini: {{ include "helm-toolkit.utils.to_oslo_conf" $envAll.Values.conf.plugins.portprober_agent | b64enc }}
   sriov_agent.ini: {{ include "helm-toolkit.utils.to_oslo_conf" $envAll.Values.conf.plugins.sriov_agent | b64enc }}
+  ovn_vpn_agent.ini: {{ include "helm-toolkit.utils.to_oslo_conf" $envAll.Values.conf.plugins.ovn_vpn_agent | b64enc }}
   l2gw_agent.ini: {{ default "\"\"" (include "helm-toolkit.utils.to_oslo_conf" .Values.conf.l2gateway_agent | b64enc) }}
   bagpipe_bgp.conf: {{ default "\"\"" (include "helm-toolkit.utils.to_oslo_conf" .Values.conf.bagpipe_bgp | b64enc) }}
   dr_agent.ini: {{ default "\"\"" (include "helm-toolkit.utils.to_oslo_conf" .Values.conf.dr_agent | b64enc) }}

@@ -127,6 +127,7 @@ neutron_bagpipe_bgp: '{{ images_base_url }}/openstack/neutron:xena-focal-2024011
 neutron_l2gw: '{{ images_base_url }}/openstack/neutron:xena-focal-20240112082932'
 neutron_sriov_agent: '{{ images_base_url }}/openstack/neutron:xena-focal-20240112082932'
 neutron_sriov_agent_init: '{{ images_base_url }}/openstack/neutron:xena-focal-20240112082932'
+neutron_ovn_vpn_agent: '{{ images_base_url }}/openstack/neutron:xena-focal-20240112082932'
 ingress_module_init: '{{ images_base_url }}/openstack/neutron:xena-focal-20240112082932'
 ingress_routed_vip: '{{ images_base_url }}/openstack/neutron:xena-focal-20240112082932'
 octavia_health_manager_init: '{{ images_base_url }}/openstack/octavia:xena-focal-20240112082932'

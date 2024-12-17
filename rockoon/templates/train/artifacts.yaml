@@ -126,6 +126,7 @@ neutron_bagpipe_bgp: '{{ images_base_url }}/openstack/neutron:train-bionic-20230
 neutron_l2gw: '{{ images_base_url }}/openstack/neutron:train-bionic-20230227093206'
 neutron_sriov_agent: '{{ images_base_url }}/openstack/neutron:train-bionic-20230227093206'
 neutron_sriov_agent_init: '{{ images_base_url }}/openstack/neutron:train-bionic-20230227093206'
+neutron_ovn_vpn_agent: '{{ images_base_url }}/openstack/neutron:train-bionic-20230227093206'
 ingress_module_init: '{{ images_base_url }}/openstack/neutron:train-bionic-20230227093206'
 ingress_routed_vip: '{{ images_base_url }}/openstack/neutron:train-bionic-20230227093206'
 octavia_health_manager_init: '{{ images_base_url }}/openstack/octavia:train-bionic-20230227093206'
