@@ -96,6 +96,8 @@ data:
 {{ tuple "bin/_neutron-sriov-agent.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   neutron-sriov-agent-init.sh: |
 {{ tuple "bin/_neutron-sriov-agent-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  neutron-ovn-vpn-agent.sh: |
+{{ tuple "bin/_neutron-ovn-vpn-agent.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   neutron-l2gw-agent.sh: |
 {{ tuple "bin/_neutron-l2gw-agent.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   neutron-bagpipe-bgp.sh: |

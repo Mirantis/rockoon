@@ -41,6 +41,7 @@ images:
     neutron_linuxbridge_agent: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
     neutron_sriov_agent: docker.io/openstackhelm/neutron:stein-18.04-sriov
     neutron_sriov_agent_init: docker.io/openstackhelm/neutron:stein-18.04-sriov
+    neutron_ovn_vpn_agent: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
     neutron_bagpipe_bgp: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
     neutron_dr: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
     neutron_ironic_agent: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
@@ -112,6 +113,9 @@ labels:
     node_selector_value: enabled
   sriov:
     node_selector_key: sriov
+    node_selector_value: enabled
+  ovn_vpn:
+    node_selector_key: openstack-gateway
     node_selector_value: enabled
   bagpipe_bgp:
     node_selector_key: openstack-compute-node
@@ -193,6 +197,7 @@ dependencies:
       sriovnicswitch: {}
       ovn: {}
       l2population: {}
+      ovn_vpn: {}
       openvswitch:
         dhcp:
           pod:
@@ -519,6 +524,20 @@ pod:
             initialDelaySeconds: 30
             periodSeconds: 190
             timeoutSeconds: 185
+    ovn_vpn_agent:
+      ovn_vpn_agent:
+        readiness:
+          enabled: true
+          params:
+            initialDelaySeconds: 30
+            periodSeconds: 190
+            timeoutSeconds: 185
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 30
+            periodSeconds: 190
+            timeoutSeconds: 185
     bagpipe_bgp:
       bagpipe_bgp:
         readiness:
@@ -797,6 +816,14 @@ pod:
         neutron_sriov_agent:
           readOnlyRootFilesystem: true
           privileged: true
+    ovn_vpn_agent:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+      container:
+        ovn_vpn_agent:
+          readOnlyRootFilesystem: true
+          privileged: true
     neutron_ironic_agent:
       pod:
         fsGroup: 42424
@@ -966,6 +993,11 @@ pod:
       neutron_sriov_agent:
         volumeMounts:
         volumes:
+    ovn_vpn_agent:
+      init_container: null
+      ovn_vpn_agent:
+        volumeMounts:
+        volumes:
     neutron_l2gw_agent:
       init_container: null
       neutron_l2gw_agent:
@@ -1065,6 +1097,10 @@ pod:
           enabled: true
           min_ready_seconds: 0
           max_unavailable: 1
+        ovn_vpn_agent:
+          enabled: true
+          min_ready_seconds: 0
+          max_unavailable: 1
         netns_cleanup_cron:
           enabled: true
           min_ready_seconds: 0
@@ -1122,6 +1158,13 @@ pod:
           memory: "1024Mi"
           cpu: "2000m"
       sriov:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      ovn_vpn:
         requests:
           memory: "128Mi"
           cpu: "100m"
@@ -1656,6 +1699,7 @@ conf:
         - ovs_agent
         - portprober_agent
         - sriov_agent
+        - ovn_vpn_agent
       content: |
         # neutron-rootwrap command filters for nodes on which neutron is
         # expected to control network
@@ -1683,6 +1727,7 @@ conf:
         - metadata_agent
         - ovs_agent
         - sriov_agent
+        - ovn_vpn_agent
       content: |
         # neutron-rootwrap command filters for nodes on which neutron is
         # expected to control network
@@ -1708,6 +1753,7 @@ conf:
         - metadata_agent
         - ovs_agent
         - sriov_agent
+        - ovn_vpn_agent
       content: |
         # neutron-rootwrap command filters for nodes on which neutron is
         # expected to control network
@@ -1729,6 +1775,7 @@ conf:
         - metadata_agent
         - ovs_agent
         - sriov_agent
+        - ovn_pvn_agent
       content: |
         # neutron-rootwrap command filters for nodes on which neutron is
         # expected to control network
@@ -1890,6 +1937,7 @@ conf:
         - metadata_agent
         - ovs_agent
         - sriov_agent
+        - ovn_vpn_agent
       content: |
         # neutron-rootwrap command filters for nodes on which neutron is
         # expected to control network
@@ -1910,6 +1958,7 @@ conf:
         - metadata_agent
         - ovs_agent
         - sriov_agent
+        - ovn_vpn_agent
       content: |
         # neutron-rootwrap command filters for nodes on which neutron is
         # expected to control network
@@ -1983,6 +2032,7 @@ conf:
         - metadata_agent
         - ovs_agent
         - sriov_agent
+        - ovn_vpn_agent
       content: |
         # neutron-rootwrap command filters for nodes on which neutron is
         # expected to control network
@@ -2020,6 +2070,7 @@ conf:
         - metadata_agent
         - ovs_agent
         - sriov_agent
+        - ovn_vpn_agent
         - netns_cleanup_cron
         - portprober_agent
       content: |
@@ -2344,6 +2395,13 @@ conf:
       sriov_nic:
         # NOTE: do not use null here, use an empty string
         exclude_devices: ""
+    ovn_vpn_agent:
+      ovs:
+        ovsdb_connection: tcp:127.0.0.1:6640
+      vpnagent:
+        vpn_device_driver: neutron_vpnaas.services.vpn.device_drivers.ovn_ipsec.OvnStrongSwanDriver
+      DEFAULT:
+        interface_driver: openvswitch
   dhcp_agent:
     DEFAULT:
       # (NOTE)portdirect: if unset this is populated dyanmicly from the value in
@@ -2860,7 +2918,8 @@ manifests:
   daemonset_metadata_agent: true
   daemonset_ovs_agent: true
   daemonset_portprober_agent: false
-  daemonset_sriov_agent: true
+  daemonset_sriov_agent: false
+  daemonset_ovn_vpn_agent: false
   daemonset_l2gw_agent: false
   daemonset_bagpipe_bgp: false
   daemonset_dragent: false
