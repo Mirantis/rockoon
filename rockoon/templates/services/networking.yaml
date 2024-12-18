@@ -363,8 +363,8 @@ spec:
       {%- endfor %}
     {%- endif %}
     # TODO(vsaienko): implement ovn + dpdk support
-    {%- if dpdk.enabled %}
-       openvswitch_openvswitch-vswitchd:
+    {%- if dpdk.enabled and neutron_node_specific%}
+        openvswitch_openvswitch-vswitchd:
           labels:
     {%- for label, override in neutron_node_specific.items() %}
       {%- if override.get("dpdk", {}).get("enabled", False) %}
