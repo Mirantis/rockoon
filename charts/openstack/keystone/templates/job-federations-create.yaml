@@ -68,15 +68,16 @@ spec:
           env:
 {{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" "admin" ) | indent 12 }}
           command:
-            - /tmp/keystone-federations-create.sh
+            - python
+            - /tmp/keystone-federations-create.py
           volumeMounts:
             - name: pod-tmp
               mountPath: /tmp
             - name: etckeystone
               mountPath: /etc/keystone
             - name: keystone-bin
-              mountPath: /tmp/keystone-federations-create.sh
-              subPath: keystone-federations-create.sh
+              mountPath: /tmp/keystone-federations-create.py
+              subPath: keystone-federations-create.py
               readOnly: true
             - name: keystone-etc
               mountPath: /etc/keystone/keystone.conf
@@ -92,10 +93,10 @@ spec:
               subPath: {{ base .Values.conf.keystone.DEFAULT.log_config_append }}
               readOnly: true
             {{- end }}
-{{- range $k, $v := .Values.conf.ks_federations }}
+{{- if .Values.conf.ks_federations }}
             - name: keystone-etc
-              mountPath: {{ $envAll.Values.conf.keystone.identity.domain_config_dir | default "/etc/keystonedomains" }}/keystone-federations-mapping.{{ $k }}.json
-              subPath: keystone-federations-mapping.{{ $k }}.json
+              mountPath: /etc/keystone/keystone-federations.json
+              subPath: keystone-federations.json
               readOnly: true
 {{- end }}
 {{- if eq .Values.conf.keystone.token.provider "fernet" }}

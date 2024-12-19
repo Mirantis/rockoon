@@ -71,8 +71,8 @@ data:
   keystone.{{ $k }}.json: {{ toJson $v | b64enc }}
   keystone.{{ $k }}.conf: {{ include "helm-toolkit.utils.to_oslo_conf" $v | b64enc }}
 {{- end }}
-{{- range $k, $v := .Values.conf.ks_federations }}
-  keystone-federations-mapping.{{ $k }}.json: {{ toJson $v.mapping.rules | b64enc }}
+{{- if .Values.conf.ks_federations }}
+  keystone-federations.json: {{ toJson .Values.conf.ks_federations | b64enc }}
 {{- end }}
 {{- if .Values.conf.security }}
 {{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.security "key" "security.conf" "format" "Secret" ) | indent 2 }}

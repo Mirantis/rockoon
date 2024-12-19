@@ -63,6 +63,6 @@ data:
 {{- include "helm-toolkit.scripts.rabbit_init" . | indent 4 }}
   keystone-federations-create-init.sh: |
 {{ tuple "bin/_keystone-federations-create-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-  keystone-federations-create.sh: |
-{{ tuple "bin/_keystone-federations-create.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  keystone-federations-create.py: |
+{{ tuple "bin/_keystone-federations-create.py.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
 {{- end }}
