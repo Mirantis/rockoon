@@ -541,7 +541,6 @@ spec:
         daemonset_l3_agent: false
         daemonset_lb_agent: false
         daemonset_ovs_agent: false
-        daemonset_sriov_agent: false
         pod_rally_test: false
         daemonset_netns_cleanup_cron: false
       network:

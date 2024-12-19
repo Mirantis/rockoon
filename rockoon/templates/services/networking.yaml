@@ -363,7 +363,7 @@ spec:
       {%- endfor %}
     {%- endif %}
     # TODO(vsaienko): implement ovn + dpdk support
-    {%- if dpdk.enabled and neutron_node_specific%}
+    {%- if dpdk.enabled and neutron_node_specific %}
         openvswitch_openvswitch-vswitchd:
           labels:
     {%- for label, override in neutron_node_specific.items() %}
@@ -754,7 +754,6 @@ spec:
         daemonset_l3_agent: false
         daemonset_lb_agent: false
         daemonset_ovs_agent: false
-        daemonset_sriov_agent: false
         daemonset_netns_cleanup_cron: false
         pod_rally_test: false
       {%- endif %}
