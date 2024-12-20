@@ -261,6 +261,7 @@ pod:
     anti:
       type:
         default: preferredDuringSchedulingIgnoredDuringExecution
+        controller: requiredDuringSchedulingIgnoredDuringExecution
       topologyKey:
         default: kubernetes.io/hostname
       weight:
@@ -270,7 +271,7 @@ pod:
     ingress: 2
     error_page: 1
     prometheus_mysql_exporter: 1
-    controller: 1
+    controller: 2
   lifecycle:
     upgrades:
       deployments:
