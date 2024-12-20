@@ -27,6 +27,7 @@ services:
                 min_available: 0
           replicas:
             server: 1
+            controller: 1
         conf:
           ingress_conf:
             proxy-buffer-size: "20m"
