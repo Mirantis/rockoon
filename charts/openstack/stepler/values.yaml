@@ -42,8 +42,8 @@ bootstrap:
 
 jobs:
   run_tests:
-    backoffLimit: 6
-    restartPolicy: OnFailure
+    backoffLimit: 0
+    restartPolicy: Never
 
 pod:
   user:
