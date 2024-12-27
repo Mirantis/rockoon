@@ -493,6 +493,8 @@ conf:
     # For gateway node
     #ovn-cms-options="enable-chassis-as-gw"
     ovn-encap-type: geneve
+  ovn_controller:
+    generate_ovn_chassis_mac_mappings: false
   neutron:
     DEFAULT:
       support_sync_ovs_info: true

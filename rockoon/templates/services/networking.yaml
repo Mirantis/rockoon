@@ -355,6 +355,8 @@ spec:
             rockoon-openstack-compute-node::controller:
               values:
                 conf:
+                  ovn_controller:
+                    generate_ovn_chassis_mac_mappings: true
                   ovs_bridges:
       {%- for network in spec.features.neutron.external_networks %}
                     {{ network.bridge }}:

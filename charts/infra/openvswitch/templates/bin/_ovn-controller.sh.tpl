@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */}}
 
+{{- $envAll := . }}
 set -ex
 COMMAND="${@:-start}"
 
@@ -44,9 +45,24 @@ function start () {
   ovs-vsctl --db=unix:${OVS_DB_SOCK} --no-wait set Open_vSwitch . external-ids:ovn-encap-ip=${tunnel_ip_addr}
   ovs-vsctl --db=unix:${OVS_DB_SOCK} --no-wait set Open_vSwitch . external-ids:system-id="$SYSTEM_ID"
 
+  local ovn_cm=""
   {{- range $option, $value := index .Values.conf "external-ids" }}
     {{- if $value }}
   ovs-vsctl --db=unix:${OVS_DB_SOCK} --no-wait set Open_vSwitch . external-ids:{{ $option }}={{ $value }}
+    {{- end }}
+
+    {{- if and (eq $option "ovn-bridge-mappings") $envAll.Values.conf.ovn_controller.generate_ovn_chassis_mac_mappings }}
+      {{- range $physnet_item := splitList "," $value }}
+        {{- $int_name := index (splitList ":" $physnet_item ) 1 }}
+        {{- $physnet_name := index (splitList ":" $physnet_item ) 0 }}
+        mac_address=$(cat /sys/class/net/{{ $int_name }}/address)
+        if [[ -n "$ovn_cm" ]]; then
+          ovn_cm="${ovn_cm},{{ $physnet_name }}:${mac_address}"
+        else
+          ovn_cm="{{ $physnet_name }}:${mac_address}"
+        fi
+      {{- end }}
+    ovs-vsctl --db=unix:${OVS_DB_SOCK} --no-wait set Open_vSwitch . external-ids:ovn-chassis-mac-mappings=$ovn_cm
     {{- end }}
   {{- end }}
 
