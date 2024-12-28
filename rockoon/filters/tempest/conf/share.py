@@ -1,3 +1,4 @@
+from rockoon.constants import OpenStackVersion
 from rockoon.filters.tempest import base_section
 
 
@@ -248,6 +249,22 @@ class Share(base_section.BaseSection):
     @property
     def run_share_group_tests(self):
         pass
+
+    @property
+    def run_share_group_snapshot_tests(self):
+        if (
+            OpenStackVersion[self.spec["openstack_version"]]
+            >= OpenStackVersion["wallaby"]
+        ):
+            enabled_protocols = self.get_values_item(
+                "manila", "conf.manila.DEFAULT.enabled_share_protocols"
+            )
+            if (
+                enabled_protocols
+                and "cephfs" in enabled_protocols.lower().split(",")
+            ):
+                return False
+        return True
 
     @property
     def run_revert_to_snapshot_tests(self):
