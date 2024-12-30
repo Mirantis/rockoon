@@ -152,6 +152,7 @@ class Share(base_section.BaseSection):
         "run_manage_unmanage_snapshot_tests",
         "run_manage_unmanage_tests",
         "run_share_group_tests",
+        "run_share_group_snapshot_tests",
         "run_revert_to_snapshot_tests",
         "run_snapshot_tests",
         "run_shrink_tests",
