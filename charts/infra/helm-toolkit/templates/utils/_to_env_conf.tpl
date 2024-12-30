@@ -28,9 +28,13 @@ return: |
 */}}
 
 {{- define "helm-toolkit.utils.to_env_conf" -}}
-{{- range $key, $value := . -}}
-{{- if not (eq (toString $value) "<None>") -}}
+{{-   range $key, $value := . -}}
+{{-     if not (eq (toString $value) "<None>") -}}
+{{-       if kindIs "map" $value }}
 export {{ $key }}={{ $value }}
-{{ end -}}
-{{ end -}}
+{{-       else}}
+export {{ $key }}='{{ $value }}'
+{{-       end }}
+{{      end -}}
+{{    end -}}
 {{- end -}}
