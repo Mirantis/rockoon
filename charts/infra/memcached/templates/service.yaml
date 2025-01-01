@@ -22,7 +22,8 @@ metadata:
 spec:
   sessionAffinity: ClientIP
   ports:
-    - port: {{ tuple "oslo_cache" "internal" "memcache" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+    - name: memcache
+      port: {{ tuple "oslo_cache" "internal" "memcache" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
   selector:
 {{ tuple $envAll "memcached" "server" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
 {{ .Values.network.memcached | include "helm-toolkit.snippets.service_params" | indent 2 }}

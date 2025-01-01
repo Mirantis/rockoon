@@ -12,9 +12,7 @@ spec:
           memcached: memcached:latest
           prometheus_memcached_exporter: prometheus-memcached-exporter:latest
       manifests:
-        deployment: false
         network_policy: true
-        statefulset: true
       network_policy:
         server:
           spec:

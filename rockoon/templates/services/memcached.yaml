@@ -26,8 +26,6 @@ spec:
   {%- endif %}
       manifests:
         network_policy: {{ spec.features.network_policies.enabled }}
-        statefulset: true
-        deployment: false
 {%- if spec.features.network_policies.enabled %}
       network_policy:
 {% include 'base/network_policies/memcached.yaml' %}

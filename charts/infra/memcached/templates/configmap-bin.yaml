@@ -12,9 +12,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */}}
 
+{{- if (.Values.global).subchart_release_name }}
+{{- $_ := set . "deployment_name" .Chart.Name }}
+{{- else }}
+{{- $_ := set . "deployment_name" .Release.Name }}
+{{- end }}
+
 {{- if .Values.manifests.configmap_bin }}
 {{- $envAll := . }}
-{{- $configMapBinName := printf "%s-%s" $envAll.Release.Name "memcached-bin"  }}
+{{- $configMapBinName := printf "%s-%s" $envAll.deployment_name "memcached-bin"  }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -28,5 +34,5 @@ data:
   memcached.sh: |
 {{ tuple "bin/_memcached.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   memcached-exporter.sh: |
-{{ tuple "bin/_prometheus-memcached-exporter.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{ tuple "bin/_memcached-exporter.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
 {{- end }}
