@@ -28,6 +28,11 @@ spec:
           host_failure:
             evacuate_all_instances: false
             ignore_instances_in_error_state: true
+        masakarimonitors:
+          introspectiveinstancemonitor:
+            guest_monitoring_interval: 10
+            guest_monitoring_timeout: 2
+            guest_monitoring_failure_threshold: 3
         monitors:
           introspective:
             enabled: false
