@@ -10,6 +10,7 @@ from rockoon import services
 from rockoon import maintenance
 from rockoon import osdplstatus
 from rockoon import resource_view
+from rockoon import version
 
 
 LOG = utils.get_logger(__name__)
@@ -17,6 +18,13 @@ LOG = utils.get_logger(__name__)
 
 def maintenance_node_name(body):
     return body["spec"]["nodeName"].split(".")[0]
+
+
+def check_release_matching(mr_release, wl):
+    if mr_release and settings.OSCTL_CLUSTER_RELEASE != mr_release:
+        msg = f"Current maintenancerequest {mr_release} release does not match ours {settings.OSCTL_CLUSTER_RELEASE}. Skipping handling."
+        wl.set_error_message(msg)
+        raise kopf.TemporaryError(msg)
 
 
 @kopf.on.create(*maintenance.NodeMaintenanceRequest.kopf_on_args)
@@ -41,6 +49,8 @@ async def _node_maintenance_request_change_handler(body, **kwargs):
         return
 
     nwl.present()
+
+    check_release_matching(body["spec"].get("release"), nwl)
 
     # NOTE(vsaienko): check if current node is in maintenance to let
     # retry on Exception here.
@@ -189,10 +199,19 @@ def cluster_maintenance_request_change_handler(body, **kwargs):
     child_view = resource_view.ChildObjectView(mspec)
     cwl = maintenance.ClusterWorkloadLock.get_by_osdpl(osdpl_name)
 
+    check_release_matching(body["spec"].get("release"), cwl)
+
     # Do not handle CMR while CWL release string contains old release.
     if cwl.get_release() != settings.OSCTL_CLUSTER_RELEASE:
         msg = (
             f"Waitinging for cwl release is {settings.OSCTL_CLUSTER_RELEASE}."
+        )
+        cwl.set_error_message(msg)
+        raise kopf.TemporaryError(msg)
+
+    if osdplst.get_osdpl_controller_version() != version.release_string:
+        msg = (
+            "OpenStackDeploymentStatus controller version is not updated yet."
         )
         cwl.set_error_message(msg)
         raise kopf.TemporaryError(msg)
