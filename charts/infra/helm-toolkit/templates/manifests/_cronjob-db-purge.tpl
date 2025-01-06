@@ -108,7 +108,7 @@ spec:
             - name: db-purge-script
               configMap:
                 name: {{ $configMapAuxiliary | quote }}
-                defaultMode: 504
+                defaultMode: 360
             - name: etc-service
               emptyDir: {}
             - name: service-conf

@@ -82,7 +82,7 @@ spec:
         - name: drb-controller-bin
           configMap:
             name: drb-controller-bin
-            defaultMode: 504
+            defaultMode: 360
         - name: os-clouds
           secret:
             secretName: {{ .Chart.Name }}-os-clouds

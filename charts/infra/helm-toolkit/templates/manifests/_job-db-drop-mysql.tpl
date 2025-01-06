@@ -123,7 +123,7 @@ spec:
 {{- else }}
           configMap:
             name: {{ $configMapBin | quote }}
-            defaultMode: 504
+            defaultMode: 360
 {{- end }}
 {{- $local := dict "configMapBinFirst" true -}}
 {{- range $key1, $dbToDrop := $dbsToDrop }}
