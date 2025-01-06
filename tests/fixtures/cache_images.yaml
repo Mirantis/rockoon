@@ -13,25 +13,8 @@ spec:
       labels:
         app.kubernetes.io/name: cache
     spec:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: openstack-control-plane
-                operator: In
-                values:
-                - enabled
-            - matchExpressions:
-              - key: openstack-compute-node
-                operator: In
-                values:
-                - enabled
-            - matchExpressions:
-              - key: openvswitch
-                operator: In
-                values:
-                - enabled
+      nodeSelector:
+        node: one
       containers:
       - command:
         - /bin/sleep
@@ -47,7 +30,7 @@ spec:
             command:
             - "true"
           periodSeconds: 20
-        name: image-precaching-neutron-db-sync
+        name: neutron-db-sync
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -67,7 +50,7 @@ spec:
             command:
             - "true"
           periodSeconds: 20
-        name: image-precaching-nova-api
+        name: nova-api
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -87,7 +70,7 @@ spec:
             command:
             - "true"
           periodSeconds: 20
-        name: image-precaching-libvirt
+        name: libvirt
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -107,7 +90,7 @@ spec:
             command:
             - "true"
           periodSeconds: 20
-        name: image-precaching-openvswitch
+        name: openvswitch
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

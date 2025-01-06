@@ -133,18 +133,6 @@ async def run_task(task_def):
         raise permanent_exception
 
 
-def discover_images(mspec, logger):
-    cache_images = set(layers.render_cache_images() or [])
-    images = {}
-    for name, url in layers.render_artifacts(mspec).items():
-        images.setdefault(url, []).append(name)
-    return {
-        names[0].replace("_", "-"): url
-        for url, names in images.items()
-        if set(names) & cache_images
-    }
-
-
 def cleanup_helm_cache():
     LOG.info(f"Cleaning helm cache in {settings.HELM_REPOSITORY_CACHE}")
     for root, dirs, files in os.walk(settings.HELM_REPOSITORY_CACHE):
@@ -292,10 +280,7 @@ async def _handle(body, meta, spec, logger, reason, **kwargs):
 
     kwargs["patch"]["status"]["fingerprint"] = layers.spec_hash(mspec)
 
-    images = discover_images(mspec, logger)
-    if images != cache.images(meta["namespace"]):
-        cache.restart(images, body, mspec)
-    cache.wait_ready(meta["namespace"])
+    cache.ensure(body, mspec)
 
     update, delete = layers.services(mspec, logger, **kwargs)
 

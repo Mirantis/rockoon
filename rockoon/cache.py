@@ -5,76 +5,85 @@ from . import constants
 from . import kube
 from . import layers
 from . import utils
+from . import settings
 
 
 LOG = utils.get_logger(__name__)
 
 
-def _get(namespace, i):
+def _get(namespace, role):
     try:
         return kube.find(
-            pykube.DaemonSet, f"{constants.CACHE_NAME}-{i}", namespace
+            pykube.DaemonSet, f"{constants.CACHE_NAME}-{role}", namespace
         )
     except pykube.exceptions.PyKubeError:
         return None
 
 
-def _list(namespace):
-    return kube.resource_list(
-        pykube.DaemonSet, {"k8s-app__in": {"image-precaching"}}, namespace
-    )
+def cleanup_legacy_cache(namespace):
+    try:
+        cache = kube.find(
+            pykube.DaemonSet, f"{constants.CACHE_NAME}-0", namespace
+        )
+        cache.delete()
+    except pykube.exceptions.PyKubeError:
+        pass
 
 
-def images(namespace):
+def get_running_images(namespace, role):
     images = {}
-    daemons = _list(namespace)
-    for ds in daemons:
+    daemon = _get(namespace, role)
+    if daemon:
         images.update(
             {
-                i["name"].replace("image-precaching-", ""): i["image"]
-                for i in ds.obj["spec"]["template"]["spec"]["containers"]
+                i["name"].replace("_", "-"): i["image"]
+                for i in daemon.obj["spec"]["template"]["spec"]["containers"]
             }
         )
-    LOG.debug(
-        f"Checking cached images. Daemons inspected: {len(daemons)}, images found: {len(images)}"
-    )
+    LOG.debug(f"Checking cached images. {len(images)}")
     return images
 
 
-def restart(images, osdpl, mspec):
+def get_expected_images(mspec, role):
+    cache_images = set(layers.render_cache_images(role) or [])
+    images = {}
+    for name, url in layers.render_artifacts(mspec).items():
+        images.setdefault(url, []).append(name)
+    return {
+        names[0].replace("_", "-"): url
+        for url, names in images.items()
+        if set(names) & cache_images
+    }
+
+
+def ensure(osdpl, mspec):
     namespace = osdpl["metadata"]["namespace"]
-    log_showed = False
-    for ds in _list(namespace):
-        ds.delete()
-        if not log_showed:
-            LOG.info("Stopping cache ...")
-            log_showed = True
-        # TODO(avolkov): wait for delete completion
-    image_groups = []
-    if not images:
-        LOG.info("No images to cache. Skip caching")
-    else:
-        image_list = list(images.items())
-        # NOTE(avolkov): images_per_daemon determines how many
-        #   daemonsets start depending on total number of images we
-        #   need to cache.
-        images_per_daemon = 50
-        image_groups = [
-            dict(image_list[i : i + images_per_daemon])
-            for i in range(0, len(image_list), images_per_daemon)
-        ]
-        LOG.info(
-            f"Starting cache (images: {len(images)}, instances: {len(image_groups)}) ..."
-        )
-        for i in range(len(image_groups)):
+    to_wait = []
+    # TODO(vsaienko): remove in 25.2
+    cleanup_legacy_cache(namespace)
+    for role in constants.NodeRole:
+        node_selector = settings.OSCTL_OPENSTACK_NODE_LABELS[role]
+        role = role.value
+        expected_images = get_expected_images(mspec, role)
+        running_images = get_running_images(namespace, role)
+
+        if expected_images != running_images:
+            LOG.info(f"Starting cache for {role} ...")
             cache = layers.render_cache_template(
-                mspec, f"{constants.CACHE_NAME}-{i}", image_groups[i]
+                mspec,
+                f"{constants.CACHE_NAME}-{role}",
+                expected_images,
+                node_selector=node_selector,
             )
             kopf.adopt(cache, osdpl)
-            kube.resource(cache).create()
-    return len(image_groups)
-
-
-def wait_ready(namespace):
-    for ds in _list(namespace):
-        kube.wait_for_daemonset_ready(ds.obj["metadata"]["name"], namespace)
+            res = kube.resource(cache)
+            if res and res.exists():
+                res.delete()
+            res.create()
+            to_wait.append(res)
+        else:
+            LOG.info(f"Cache for role {role} is in required state.")
+    for ds in to_wait:
+        image_cache_name = ds.obj["metadata"]["name"]
+        LOG.info(f"Waiting image cache: {image_cache_name}")
+        kube.wait_for_daemonset_ready(image_cache_name, namespace)

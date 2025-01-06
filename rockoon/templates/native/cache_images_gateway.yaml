@@ -1,0 +1,6 @@
+- openvswitch_db_server
+- openvswitch_vswitchd
+- ingress
+- neutron_openvswitch_agent
+- neutron_l3
+- entrypoint

@@ -366,16 +366,21 @@ def merge_spec(spec, logger):
     return merger.merge(base, spec)
 
 
-def render_cache_template(mspec, name, images):
+def render_cache_template(mspec, name, images, node_selector):
     artifacts = render_artifacts(mspec)
     tpl = ENV.get_template("native/cache.yaml")
-    text = tpl.render(images=images, name=name, pause_image=artifacts["pause"])
+    text = tpl.render(
+        images=images,
+        name=name,
+        pause_image=artifacts["pause"],
+        node_selector=node_selector,
+    )
     return yaml.safe_load(text)
 
 
-def render_cache_images():
+def render_cache_images(role):
     return yaml.safe_load(
-        ENV.get_template("native/cache_images.yaml").render()
+        ENV.get_template(f"native/cache_images_{role}.yaml").render()
     )
 
 

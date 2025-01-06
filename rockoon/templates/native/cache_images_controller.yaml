@@ -1,11 +1,9 @@
-- openvswitch_db_server
-- openvswitch_vswitchd
-- nova_compute
 - mariadb
 - ingress
-- libvirt
-- neutron_openvswitch_agent
 - neutron_server
 - neutron_l3
 # PRODX-34488: for fast cold start we need to cache redis image
 - redis-failover
+- rabbitmq
+- rabbit_init
+- entrypoint
