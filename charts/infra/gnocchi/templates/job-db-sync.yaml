@@ -71,7 +71,7 @@ spec:
         - name: gnocchi-bin
           configMap:
             name: gnocchi-bin
-            defaultMode: 504
+            defaultMode: 360
 {{- if eq $storageDriver "ceph" }}
         - name: ceph-etc
           configMap:

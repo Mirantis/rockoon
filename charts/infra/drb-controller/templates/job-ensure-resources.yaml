@@ -102,5 +102,5 @@ spec:
       - name: deploy-resources-bin
         configMap:
           name: drb-controller-deploy-resources-bin
-          defaultMode: 504
+          defaultMode: 360
 {{- end }}

@@ -127,7 +127,7 @@ spec:
         - name: gnocchi-bin
           configMap:
             name: gnocchi-bin
-            defaultMode: 504
+            defaultMode: 360
         - name: gnocchi-oslo-policy
           secret:
             secretName: gnocchi-oslo-policy

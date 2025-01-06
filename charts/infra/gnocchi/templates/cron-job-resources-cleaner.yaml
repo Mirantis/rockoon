@@ -102,10 +102,10 @@ spec:
             - name: gnocchi-bin
               configMap:
                 name: gnocchi-bin
-                defaultMode: 504
+                defaultMode: 360
             - name: os-clouds
               secret:
                 secretName: {{ $envAll.Chart.Name }}-os-clouds
-                defaultMode: 504
+                defaultMode: 360
 {{ if $mounts_gnocchi_resources_cleaner.volumes }}{{ toYaml $mounts_gnocchi_resources_cleaner.volumes | indent 12 }}{{ end }}
 {{- end }}

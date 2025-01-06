@@ -97,7 +97,7 @@ spec:
         - name: db-general-sh
           configMap:
             name: {{ $configMapBin | quote }}
-            defaultMode: 504
+            defaultMode: 360
         - name: etc-service
           emptyDir: {}
         - name: db-general-conf

@@ -118,7 +118,7 @@ spec:
         - name: ceph-rgw-bin
           configMap:
             name: ceph-rgw-bin
-            defaultMode: 504
+            defaultMode: 360
         - name: ceph-rgw-etc
           configMap:
             name: {{ .Values.ceph_client.configmap }}

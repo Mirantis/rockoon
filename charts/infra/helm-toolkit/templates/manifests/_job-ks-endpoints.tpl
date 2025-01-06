@@ -133,7 +133,7 @@ spec:
 {{- else }}
           configMap:
             name: {{ $configMapBin | quote }}
-            defaultMode: 504
+            defaultMode: 360
 {{- end }}
 {{- dict "enabled" true "name" $tlsSecret | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
 {{- end }}
