@@ -1484,6 +1484,17 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
                         )
 
         await super().apply(event, **kwargs)
+        if utils.get_in(
+            self.mspec["features"], ["neutron", "backend"]
+        ) == "ml2" and self.service in utils.get_in(
+            self.mspec["features"],
+            ["messaging", "components_with_dedicated_messaging"],
+            [],
+        ):
+            rabbitmq_sts = self.get_child_object(
+                "StatefulSet", "openstack-neutron-rabbitmq-rabbitmq"
+            )
+            await rabbitmq_sts.wait_ready(interval=30)
         cmr = kube.ClusterMaintenanceRequest.objects(
             kube.kube_client()
         ).get_or_none()
