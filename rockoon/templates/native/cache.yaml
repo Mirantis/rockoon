@@ -13,28 +13,10 @@ spec:
       labels:
         app.kubernetes.io/name: cache
     spec:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: openstack-control-plane
-                operator: In
-                values:
-                - enabled
-            - matchExpressions:
-              - key: openstack-compute-node
-                operator: In
-                values:
-                - enabled
-            - matchExpressions:
-              - key: openvswitch
-                operator: In
-                values:
-                - enabled
+      nodeSelector: {{ node_selector }}
       containers:
 {%- for name, url in images.items() %}
-      - name: image-precaching-{{ name | replace("_", "-") }}
+      - name: {{ name | replace("_", "-") }}
         image: {{ url }}
 {# not all images support "/bin/sleep infinity" #}
         command: ["/bin/sleep", "86400000"]

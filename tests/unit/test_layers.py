@@ -571,7 +571,10 @@ def test_render_cache_template(
         "openvswitch": "openvswitch:latest",
     }
     cache = layers.render_cache_template(
-        openstackdeployment_mspec, f"{constants.CACHE_NAME}-0", images
+        openstackdeployment_mspec,
+        f"{constants.CACHE_NAME}-0",
+        images,
+        {"node": "one"},
     )
     with open("tests/fixtures/cache_images.yaml") as f:
         expected = yaml.safe_load(f)
