@@ -1821,6 +1821,21 @@ properties:
                     description: |
                       Enable instance introspection monitor
                       default: false
+                  guest_monitoring_interval:
+                    type: integer
+                    description: |
+                      Guest monitoring interval of VM status (in seconds)
+                      default: 10
+                  guest_monitoring_timeout:
+                    type: integer
+                    description: |
+                      Guest monitoring timeout (in seconds)
+                      default: 2
+                  guest_monitoring_failure_threshold:
+                    type: integer
+                    description: |
+                      Failure threshold before sending notification
+                      default: 3
       logging:
         type: object
         additionalProperties: false
