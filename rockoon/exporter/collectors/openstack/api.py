@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from concurrent.futures import ThreadPoolExecutor, ALL_COMPLETED, wait
 import requests
 from urllib3.exceptions import InsecureRequestWarning
 
@@ -23,6 +24,33 @@ from rockoon.exporter.collectors.openstack import base
 
 
 LOG = utils.get_logger(__name__)
+
+
+def check_endpoint(url, service_type, service_name, headers):
+    result = {"success": True}
+    # TODO(vsaienko): mount ssl ca_cert from osdpl and use here.
+    try:
+        requests.packages.urllib3.disable_warnings(
+            category=InsecureRequestWarning
+        )
+        resp = requests.get(url, timeout=10, verify=False, headers=headers)
+        if resp.status_code >= 500:
+            LOG.warning(
+                f"Got bad responce code {resp.status_code} from {url}."
+            )
+            result["success"] = False
+        result["status"] = (
+            [url, service_type, service_name],
+            resp.status_code,
+        )
+        result["latency"] = (
+            [url, service_type, service_name],
+            resp.elapsed.microseconds,
+        )
+    except Exception as e:
+        LOG.warning(f"Failed to get responce from {url}. Error: {e}")
+        result["success"] = False
+    return result
 
 
 class OsdplApiMetricCollector(base.OpenStackBaseMetricCollector):
@@ -54,47 +82,54 @@ class OsdplApiMetricCollector(base.OpenStackBaseMetricCollector):
         statuses = []
         latencies = []
         successes = []
-        for endpoint in self.oc.oc.identity.endpoints(interface="public"):
-            service = self.oc.oc.identity.get_service(endpoint.service_id)
-            service_type = self.oc.service_type_manager.get_service_type(
-                service.type
-            )
-            service_name = service["name"]
-            if not service_type:
-                LOG.warning(
-                    f"Failed to get service_type for service {service}"
+        endpoints = list(self.oc.oc.identity.endpoints(interface="public"))
+        max_workers = min(20, len(endpoints))
+        future_results = {}
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            for endpoint in endpoints:
+                service = self.oc.oc.identity.get_service(endpoint.service_id)
+                service_type = self.oc.service_type_manager.get_service_type(
+                    service.type
                 )
-                continue
-            url = endpoint["url"].split("%")[0]
-            success = True
-            token = self.oc.oc.auth_token
-            headers = {"X-Auth-Token": token}
-            try:
-                # TODO(vsaienko): mount ssl ca_cert from osdpl and use here.
-                requests.packages.urllib3.disable_warnings(
-                    category=InsecureRequestWarning
-                )
-                resp = requests.get(
-                    url, timeout=30, verify=False, headers=headers
-                )
-                statuses.append(
-                    ([url, service_type, service_name], resp.status_code)
-                )
-                latencies.append(
-                    (
-                        [url, service_type, service_name],
-                        resp.elapsed.microseconds,
-                    )
-                )
-                if resp.status_code >= 500:
+                service_name = service["name"]
+                if not service_type:
                     LOG.warning(
-                        f"Got bad responce code {resp.status_code} from {url}."
+                        f"Failed to get service_type for service {service}"
                     )
-                    success = False
-            except Exception as e:
-                LOG.warning(f"Failed to get responce from {url}. Error: {e}")
-                success = False
-            successes.append(([url, service_type, service_name], int(success)))
+                    continue
+                url = endpoint["url"].split("%")[0]
+                token = self.oc.oc.auth_token
+                headers = {"X-Auth-Token": token}
+                future = executor.submit(
+                    check_endpoint,
+                    url=url,
+                    service_type=service_type,
+                    service_name=service_name,
+                    headers=headers,
+                )
+                future_results[(url, service_type, service_name)] = future
+        done, not_done = wait(
+            future_results.values(),
+            return_when=ALL_COMPLETED,
+            timeout=30,
+        )
+        for endpoint_data, future in future_results.items():
+            url, service_type, service_name = endpoint_data
+            if endpoint_data in not_done:
+                successes.append(
+                    ([url, service_type, service_name], int(False))
+                )
+            else:
+                result = future.result()
+                successes.append(
+                    ([url, service_type, service_name], int(result["success"]))
+                )
+                if "status" in result:
+                    statuses.append(result["status"])
+                if "latency" in result:
+                    latencies.append(result["latency"])
+
         self.set_samples("status", statuses)
         self.set_samples("latency", latencies)
         self.set_samples("success", successes)
