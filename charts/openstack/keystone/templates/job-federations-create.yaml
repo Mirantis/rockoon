@@ -68,7 +68,6 @@ spec:
           env:
 {{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" "admin" ) | indent 12 }}
           command:
-            - python
             - /tmp/keystone-federations-create.py
           volumeMounts:
             - name: pod-tmp

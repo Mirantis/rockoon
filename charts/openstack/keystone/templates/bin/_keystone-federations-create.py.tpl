@@ -25,33 +25,6 @@ logging.basicConfig(format=LOG_FORMAT, datefmt=LOG_DATEFMT)
 LOG = logging.getLogger("keystone-federations-create")
 LOG.setLevel(logging.INFO)
 FEDERATION_DATA_FILE_PATH="/etc/keystone/keystone-federations.json"
-OLD_DEFAULT_MAPPING = [
-    {
-        "local": [
-            {"user": {"name": "{0}", "email": "{1}", "domain": {"name": "Default"}}},
-            {"groups": "{2}", "domain": {"name": "Default"}},
-            {"domain": {"name": "Default"}},
-        ],
-        "remote": [
-            {"type": "OIDC-iam_username"},
-            {"type": "OIDC-email"},
-            {"type": "OIDC-iam_roles"},
-        ],
-    }
-]
-NEW_DEFAULT_MAPPING = [
-    {
-        "local": [
-            {"user": {"name": "{0}", "email": "{1}"}},
-            {"groups": "{2}", "domain": {"name": "Default"}},
-        ],
-        "remote": [
-            {"type": "OIDC-iam_username"},
-            {"type": "OIDC-email"},
-            {"type": "OIDC-iam_roles"},
-        ],
-    }
-]
 
 
 def ensure_identity_provider(cloud, name, domain, remote_ids):
@@ -87,12 +60,9 @@ def ensure_mapping(cloud, name, rules):
         cloud.identity.create_mapping(id=name, rules=rules)
     else:
         LOG.info("Mapping %s already exists" % name)
-        if mapping.rules == OLD_DEFAULT_MAPPING:
-            LOG.warning(
-                "Existing mapping %s is identical to old MOSK default. "
-                "Removing erroneous domain specs from the mapping." % name
-            )
-            cloud.identity.update_mapping(mapping, rules=NEW_DEFAULT_MAPPING)
+        if mapping.rules != rules:
+            LOG.info("Rules are changed, updating.")
+            cloud.identity.update_mapping(mapping, rules=rules)
 
 
 def ensure_protocol(cloud, name, idp, mapping):
