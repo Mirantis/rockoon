@@ -370,14 +370,21 @@ class Redis(Service, MaintenanceApiMixin):
         if await helm_manager.exist("os-redis-operator"):
             LOG.info(f"Purging os-redis-operator helm release")
             await helm_manager.delete("os-redis-operator")
-            redis_failover = kube.find(
-                kube.RedisFailover,
-                "openstack-redis",
-                settings.OSCTL_REDIS_NAMESPACE,
-                silent=True,
-            )
-            if redis_failover and redis_failover.exists():
-                redis_failover.delete()
+        redis_failover = kube.find(
+            kube.RedisFailover,
+            "openstack-redis",
+            settings.OSCTL_REDIS_NAMESPACE,
+            silent=True,
+        )
+        if (
+            redis_failover
+            and redis_failover.exists()
+            and redis_failover.obj["metadata"]
+            .get("labels", {})
+            .get("app.kubernetes.io/managed-by")
+            != "Helm"
+        ):
+            redis_failover.delete()
 
         rfs_deployment = kube.find(
             kube.Deployment,
