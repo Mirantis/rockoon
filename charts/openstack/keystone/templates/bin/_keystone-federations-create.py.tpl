@@ -26,6 +26,34 @@ LOG = logging.getLogger("keystone-federations-create")
 LOG.setLevel(logging.INFO)
 FEDERATION_DATA_FILE_PATH="/etc/keystone/keystone-federations.json"
 
+OLD_DEFAULT_MAPPING = [
+    {
+        "local": [
+            {"user": {"name": "{0}", "email": "{1}", "domain": {"name": "Default"}}},
+            {"groups": "{2}", "domain": {"name": "Default"}},
+            {"domain": {"name": "Default"}},
+        ],
+        "remote": [
+            {"type": "OIDC-iam_username"},
+            {"type": "OIDC-email"},
+            {"type": "OIDC-iam_roles"},
+        ],
+    }
+]
+
+DEFAULT_MAPPING = [
+    {
+        "local": [
+            {"user": {"email": "{1}", "name": "{0}"}},
+            {"domain": {"name": "Default"}, "groups": "{2}"},
+        ],
+        "remote": [
+            {"type": "OIDC-iam_username"},
+            {"type": "OIDC-email"},
+            {"type": "OIDC-iam_roles"},
+        ],
+    }
+]
 
 def ensure_identity_provider(cloud, name, domain, remote_ids):
     """Ensure idp exists with the remote_ids provided"""
@@ -61,8 +89,12 @@ def ensure_mapping(cloud, name, rules):
     else:
         LOG.info("Mapping %s already exists" % name)
         if mapping.rules != rules:
-            LOG.info("Rules are changed, updating.")
-            cloud.identity.update_mapping(mapping, rules=rules)
+            # NOTE(vsaienko): this is safe check to do not override mapping that was
+            # set explicitly after deployment but not change in the osdpl.
+            # Update only old defaults or when mapping is set explicitly in osdpl.
+            if mapping.rules == OLD_DEFAULT_MAPPING or rules != DEFAULT_MAPPING:
+                LOG.info("Rules are changed, updating.")
+                cloud.identity.update_mapping(mapping, rules=rules)
 
 
 def ensure_protocol(cloud, name, idp, mapping):
