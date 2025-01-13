@@ -45,7 +45,7 @@ def main():
                 )
 
                 if action == "create":
-                    if obj.exists():
+                    if obj and obj.exists():
                         if (
                             document["metadata"]
                             .get("annotations", {})
@@ -66,3 +66,6 @@ def main():
                         _wait_for_obj(obj)
                 elif action == "wait":
                     _wait_for_obj(obj)
+                elif action == "delete":
+                    if obj and obj.exists():
+                        obj.delete()

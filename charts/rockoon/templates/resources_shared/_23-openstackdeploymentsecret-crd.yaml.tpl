@@ -1,6 +1,8 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
+  annotations:
+    "openstackdeployments.lcm.mirantis.com/shared_resource_action": "delete"
   # name must match the spec fields below, and be in the form: <plural>.<group>
   name: openstackdeploymentsecrets.lcm.mirantis.com
 spec:

@@ -127,24 +127,6 @@ class OpenStackDeployment(pykube.objects.NamespacedAPIObject):
         LOG.info(f"{self.kind}/{self.name} is applied")
 
 
-class OpenStackDeploymentSecret(pykube.objects.NamespacedAPIObject):
-    version = "lcm.mirantis.com/v1alpha1"
-    kind = "OpenStackDeploymentSecret"
-    endpoint = "openstackdeploymentsecrets"
-    kopf_on_args = *version.split("/"), endpoint
-
-    def __init__(self, name, namespace, *args, **kwargs):
-        self.dummy = {
-            "apiVersion": self.version,
-            "kind": self.kind,
-            "metadata": {"name": name, "namespace": namespace},
-            "spec": {},
-            "status": {},
-        }
-        kube_api = kube_client()
-        return super().__init__(kube_api, self.dummy)
-
-
 class HelmBundle(pykube.objects.NamespacedAPIObject):
     version = "lcm.mirantis.com/v1alpha1"
     kind = "HelmBundle"
