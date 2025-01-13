@@ -138,7 +138,6 @@ manifests:
   job_image_repo_sync: true
   network_policy: false
   service: true
-  service_external: false
   secret_registry: true
 
 pod:
