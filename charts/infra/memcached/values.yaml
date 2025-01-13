@@ -106,7 +106,12 @@ endpoints:
 network:
   memcached: {}
 
-network_policy: {}
+network_policy:
+   memcached:
+     ingress:
+       - {}
+     egress:
+       - {}
 
 monitoring:
   prometheus:
