@@ -420,6 +420,12 @@ pod:
         default: 10
   useHostNetwork:
     volume: false
+    volume_daemonset: true
+  useHostIPC:
+    volume: false
+    volume_daemonset: true
+  useHostPID:
+    volume: false
     volume_daemonset: false
   mounts:
     cinder_api:

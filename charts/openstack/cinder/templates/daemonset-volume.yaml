@@ -70,11 +70,13 @@ spec:
 {{ tuple $envAll "cinder" "volume_daemonset" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
       nodeSelector:
         {{ .Values.labels.volume_daemonset.node_selector_key }}: {{ .Values.labels.volume_daemonset.node_selector_value }}
+{{- if .Values.pod.useHostNetwork.volume_daemonset }}
       hostNetwork: true
-      hostPID: false
-      # To let udev work
-      hostIPC: true
       dnsPolicy: ClusterFirstWithHostNet
+{{- end }}
+      hostPID: {{ .Values.pod.useHostPID.volume_daemonset | default false }}
+      # To let udev work must be true
+      hostIPC: {{ .Values.pod.useHostIPC.volume_daemonset | default false }}
       initContainers:
 {{ tuple $envAll "volume_daemonset" $mounts_cinder_volume_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
         - name: cinder-volume-init

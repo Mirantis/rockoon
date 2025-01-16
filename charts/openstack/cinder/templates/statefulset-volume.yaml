@@ -77,6 +77,8 @@ spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
 {{- end }}
+      hostPID: {{ .Values.pod.useHostPID.volume | default false }}
+      hostIPC: {{ .Values.pod.useHostIPC.volume | default false }}
       initContainers:
 {{ tuple $envAll "volume" $mounts_cinder_volume_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
         - name: lock-perms
