@@ -1135,7 +1135,11 @@ class Keystone(OpenStackService, FederationMixin):
 
     def _get_federation_args(self):
         federation = self.get_federation_args()
-        providers = federation.get("providers", {})
+        providers = (
+            federation.get("federation", {})
+            .get("openid", {})
+            .get("providers", {})
+        )
         if providers.get("keycloak", {}).get("enabled"):
             public_domain = self.mspec["public_domain_name"]
             redirect_uris_keycloak = [
