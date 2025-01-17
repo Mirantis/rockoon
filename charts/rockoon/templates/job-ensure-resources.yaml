@@ -19,7 +19,7 @@ metadata:
 rules:
   - apiGroups: [apiextensions.k8s.io]
     resources: [customresourcedefinitions]
-    verbs: [get, create, patch]
+    verbs: [get, create, patch, delete]
   - apiGroups: [zalando.org]
     resources: [clusterkopfpeerings]
     verbs: [get, create, patch]
