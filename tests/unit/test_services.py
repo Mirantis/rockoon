@@ -1516,6 +1516,7 @@ async def test_nova_process_ndr_controller(
     openstackdeployment_mspec,
     child_view,
     nwl,
+    mock_kube_get_osdpl,
 ):
     osdplstmock = mock.Mock()
     node3 = kube.Node(
@@ -1534,6 +1535,7 @@ async def test_nova_process_ndr_compute_1instance(
     openstackdeployment_mspec,
     child_view,
     nwl,
+    mock_kube_get_osdpl,
 ):
     osdplstmock = mock.Mock()
     node3 = kube.Node(
@@ -1551,7 +1553,12 @@ async def test_nova_process_ndr_compute_1instance(
 
 @pytest.mark.asyncio
 async def test_nova_process_ndr_compute_no_instances(
-    mocker, openstack_client, openstackdeployment_mspec, child_view, nwl
+    mocker,
+    openstack_client,
+    openstackdeployment_mspec,
+    child_view,
+    nwl,
+    mock_kube_get_osdpl,
 ):
     osdplstmock = mock.Mock()
     nwl = mock.Mock()
@@ -1569,7 +1576,12 @@ async def test_nova_process_ndr_compute_no_instances(
 
 @pytest.mark.asyncio
 async def test_nova_process_ndr_compute_1instance_ndr_skip_instance_check(
-    mocker, openstack_client, openstackdeployment_mspec, child_view, nwl
+    mocker,
+    openstack_client,
+    openstackdeployment_mspec,
+    child_view,
+    nwl,
+    mock_kube_get_osdpl,
 ):
     osdplstmock = mock.Mock()
     nwl = mock.Mock()
@@ -1590,7 +1602,12 @@ async def test_nova_process_ndr_compute_1instance_ndr_skip_instance_check(
 
 @pytest.mark.asyncio
 async def test_nova_cleanup_metadata_controller(
-    mocker, openstack_client, openstackdeployment_mspec, nwl, child_view
+    mocker,
+    openstack_client,
+    openstackdeployment_mspec,
+    nwl,
+    child_view,
+    mock_kube_get_osdpl,
 ):
     osdplstmock = mock.Mock()
     nwl.obj = _get_nwl_obj("openstack", "host1")
@@ -1609,6 +1626,7 @@ async def test_nova_cleanup_metadata_compute(
     openstackdeployment_mspec,
     nwl,
     child_view,
+    mock_kube_get_osdpl,
 ):
     osdplstmock = mock.Mock()
     nwl.obj = _get_nwl_obj("openstack", "host1")
@@ -1622,7 +1640,12 @@ async def test_nova_cleanup_metadata_compute(
 
 @pytest.mark.asyncio
 async def test_neutron_cleanup_metadata_compute(
-    mocker, openstack_client, openstackdeployment_mspec, nwl, child_view
+    mocker,
+    openstack_client,
+    openstackdeployment_mspec,
+    nwl,
+    child_view,
+    mock_kube_get_osdpl,
 ):
     osdplstmock = mock.Mock()
     nwl.obj = _get_nwl_obj("openstack", "host1")
@@ -1639,8 +1662,9 @@ async def test_cinder_cleanup_metadata(
     openstack_client,
     openstackdeployment_mspec,
     nwl,
-    kube_resource_list,
     child_view,
+    kube_resource_list,
+    mock_kube_get_osdpl,
 ):
     osdplstmock = mock.Mock()
     nwl.obj = _get_nwl_obj("openstack", "host1")
@@ -1664,8 +1688,9 @@ async def test_cinder_cleanup_metadata_retry(
     openstack_client,
     openstackdeployment_mspec,
     nwl,
-    kube_resource_list,
     child_view,
+    kube_resource_list,
+    mock_kube_get_osdpl,
 ):
     osdplstmock = mock.Mock()
     nwl.obj = _get_nwl_obj("openstack", "host1")
@@ -1691,6 +1716,7 @@ async def test_volume_remove_node_from_scheduling_no_service(
     openstack_client,
     openstackdeployment_mspec,
     child_view,
+    mock_kube_get_osdpl,
 ):
     osdplstmock = mock.Mock()
     node3 = kube.Node(
@@ -1709,6 +1735,7 @@ async def test_volume_remove_node_from_scheduling_one_service(
     openstack_client,
     openstackdeployment_mspec,
     child_view,
+    mock_kube_get_osdpl,
 ):
     osdplstmock = mock.Mock()
     node3 = kube.Node(
@@ -1730,6 +1757,7 @@ async def test_volume_remove_node_from_scheduling_one_service_exception(
     openstackdeployment_mspec,
     child_view,
     nwl,
+    mock_kube_get_osdpl,
 ):
     osdplstmock = mock.Mock()
     node3 = kube.Node(
@@ -1751,6 +1779,7 @@ async def test_volume_add_node_to_scheduling_one_service(
     openstack_client,
     openstackdeployment_mspec,
     child_view,
+    mock_kube_get_osdpl,
 ):
     osdplstmock = mock.Mock()
     node3 = kube.Node(
@@ -1776,6 +1805,7 @@ async def test_volume_add_node_to_scheduling_no_service(
     openstack_client,
     openstackdeployment_mspec,
     child_view,
+    mock_kube_get_osdpl,
 ):
     osdplstmock = mock.Mock()
     node3 = kube.Node(
@@ -1794,6 +1824,7 @@ async def test_volume_add_node_to_scheduling_manually_disabled_service(
     openstack_client,
     openstackdeployment_mspec,
     child_view,
+    mock_kube_get_osdpl,
 ):
     osdplstmock = mock.Mock()
     node3 = kube.Node(
@@ -1812,7 +1843,11 @@ async def test_volume_add_node_to_scheduling_manually_disabled_service(
 
 @pytest.mark.asyncio
 async def test_volume_process_ndr_compute_1volume(
-    mocker, openstack_client, openstackdeployment_mspec, child_view
+    mocker,
+    openstack_client,
+    openstackdeployment_mspec,
+    child_view,
+    mock_kube_get_osdpl,
 ):
     osdplstmock = mock.Mock()
     nwl = mock.Mock()
@@ -1838,6 +1873,7 @@ async def test_volume_process_ndr_compute_0volumes(
     openstack_client,
     openstackdeployment_mspec,
     child_view,
+    mock_kube_get_osdpl,
 ):
     osdplstmock = mock.Mock()
     nwl = mock.Mock()
@@ -1864,6 +1900,7 @@ async def test_clustered_cleanup_persisent_data_locked(
     child_view,
     mock_sts,
     service_class,
+    mock_kube_get_osdpl,
 ):
     osdplstmock = mock.Mock()
     nwl.obj = _get_nwl_obj("openstack", "host1")
@@ -1891,6 +1928,7 @@ async def test_clustered_cleanup_persisent_data_not_locked(
     child_view,
     mock_sts,
     service_class,
+    mock_kube_get_osdpl,
 ):
     osdplstmock = mock.Mock()
     nwl.obj = _get_nwl_obj("openstack", "host1")
@@ -1917,6 +1955,7 @@ async def test_redis_cleanup_persisent_data_locked(
     child_view,
     mock_sts,
     kube_find,
+    mock_kube_get_osdpl,
 ):
     osdplstmock = mock.Mock()
     nwl.obj = _get_nwl_obj("openstack", "host1")
@@ -1940,6 +1979,7 @@ async def test_redis_cleanup_persisent_data_not_locked(
     child_view,
     mock_sts,
     kube_find,
+    mock_kube_get_osdpl,
 ):
     osdplstmock = mock.Mock()
     nwl.obj = _get_nwl_obj("openstack", "host1")
