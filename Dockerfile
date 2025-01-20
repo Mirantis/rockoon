@@ -80,7 +80,6 @@ COPY --from=builder /opt/operator/charts/openstack/ /opt/operator/charts/opensta
 COPY --from=builder /opt/operator/charts/infra/ /opt/operator/charts/infra/
 COPY --from=builder /usr/local/bin/helm3 /usr/local/bin/helm3
 
-ADD kopf-patches /tmp/kopf-patches
 RUN apt-get update; \
     apt-get -y upgrade
 # NOTE(pas-ha) apt-get download + dpkg-deb -x is a dirty hack
@@ -109,15 +108,9 @@ RUN set -ex; \
         OPENSTACK_CONTROLLER_PKG=rockoon[test]; \
     fi; \
     pip install --no-index --no-cache --find-links /opt/wheels ${OPENSTACK_CONTROLLER_PKG}; \
-    cd /usr/local/lib/python3.10/dist-packages; \
-    for p in $(ls /tmp/kopf-patches/*.patch); do \
-         patch -p1 < $p; \
-    done;  \
-    cd -; \
     groupadd -g ${UID} ${USER}; \
     useradd -u ${UID} -g ${USER} -m -d /var/lib/${USER} -c "${USER} user" ${USER}
 
-RUN rm -rvf /tmp/kopf-patches
 RUN rm -rvf /opt/wheels; \
     apt-get -q clean; \
     rm -rvf /var/lib/apt/lists/*; \
