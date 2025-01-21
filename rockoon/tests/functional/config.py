@@ -31,6 +31,7 @@ class Config(metaclass=SingletonMeta):
         self.TEST_IPV6_SUBNET_RANGE = "2001:db8::/48"
         self.TEST_LB_SUBNET_RANGE = "192.168.0.0/24"
         self.PUBLIC_NETWORK_NAME = "public"
+        self.EXTERNAL_ROUTER = "r1"
 
         # Time in seconds to wait for a compute operation to complete. Default is 120 seconds.
         self.COMPUTE_TIMEOUT = 60 * 2
@@ -124,6 +125,8 @@ class Config(metaclass=SingletonMeta):
         # do not set to high, we have negative tests that will wait
         # for this timeout.
         self.NWL_STATE_TIMEOUT = 180
+
+        self.MASAKARI_NOTIFICATION_TIMEOUT = 600
 
         configmap = kube.find(
             pykube.ConfigMap,

@@ -1,7 +1,7 @@
 import os
 import time
 import logging
-
+from datetime import datetime
 import openstack
 
 from rockoon.tests.functional import config
@@ -255,3 +255,43 @@ def wait_compute_service_state(
     raise TimeoutError(
         f"Timeoud out waiting for compute {binary} service on {host} is in state: {state}/status: {status} after {timeout}. Last services: {services}"
     )
+
+
+def wait_masakari_notification(
+    fetch_function,
+    server_uuid,
+    start_timestamp,
+    notification_type,
+    status="finished",
+    event="LIFECYCLE",
+    timeout=CONF.MASAKARI_NOTIFICATION_TIMEOUT,
+):
+    start_time = int(time.time())
+    while int(time.time()) - start_time <= timeout:
+        notifications = fetch_function()
+
+        relevant_notifications = []
+        for notification in notifications:
+            created_time = notification.get("created_at")
+            notification_timestamp = int(
+                datetime.strptime(
+                    created_time, "%Y-%m-%dT%H:%M:%S.%f"
+                ).timestamp()
+            )
+            if notification_timestamp > start_timestamp:
+                relevant_notifications.append(notification)
+
+        for notification in relevant_notifications:
+            if (
+                notification["payload"]["instance_uuid"] == server_uuid
+                and notification["type"] == notification_type
+                and notification["status"] == status
+                and notification["payload"]["event"] == event
+            ):
+                return True
+        time.sleep(30)
+        timed_out = int(time.time()) - start_time
+        message = f"Number of Masakari notifications didn't change during {timeout} sec"
+        if timed_out >= timeout:
+            LOG.error(message)
+            raise TimeoutError(message)

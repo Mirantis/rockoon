@@ -1,18 +1,22 @@
 import logging
+import exec_helpers
+import paramiko
 
 from kombu import Connection
 from unittest import TestCase
+from retry import retry
+from io import StringIO
+from paramiko.ssh_exception import NoValidConnectionsError, SSHException
 
 import asyncio
 import openstack
-
 from rockoon import kube
 from rockoon import layers
 from rockoon import openstack_utils
 from rockoon import settings
 from rockoon.exporter import constants
 from rockoon.tests.functional import config
-from rockoon.tests.functional import data_utils, waiters
+from rockoon.tests.functional import waiters, data_utils
 
 CONF = config.Config()
 
@@ -146,8 +150,9 @@ class BaseFunctionalTestCase(TestCase):
                     )
         return logs
 
-    def is_service_enabled(self, name):
-        return name in self.osdpl.obj["spec"].get("features", {}).get(
+    @classmethod
+    def is_service_enabled(cls, name):
+        return name in cls.osdpl.obj["spec"].get("features", {}).get(
             "services", []
         )
 
@@ -170,6 +175,28 @@ class BaseFunctionalTestCase(TestCase):
         finally:
             connection.release()
 
+    @retry(
+        (
+            TimeoutError,
+            NoValidConnectionsError,
+            SSHException,
+            ConnectionResetError,
+        ),
+        tries=5,
+        delay=30,
+    )
+    def ssh_instance(self, ip, pkey):
+        LOG.info(f"Attempt to connect to instance with ip: {ip}")
+        pkey = StringIO(pkey)
+        auth = exec_helpers.SSHAuth(
+            username="ubuntu",
+            password="",
+            key=paramiko.rsakey.RSAKey.from_private_key(pkey),
+        )
+        ssh = exec_helpers.SSHClient(host=ip, port=22, auth=auth, verbose=True)
+        ssh.sudo_mode = True
+        return ssh
+
     @classmethod
     def server_create(
         cls,
@@ -183,7 +210,10 @@ class BaseFunctionalTestCase(TestCase):
         config_drive=None,
         user_data=None,
         tags=None,
+        metadata=None,
+        keypair=None,
     ):
+
         kwargs = {"networks": networks}
         if name is None:
             kwargs["name"] = data_utils.rand_name()
@@ -209,9 +239,14 @@ class BaseFunctionalTestCase(TestCase):
             kwargs["config_drive"] = True
         if tags:
             kwargs["tags"] = tags
+        if metadata:
+            kwargs["metadata"] = metadata
+        if keypair:
+            kwargs["key_name"] = keypair
         server = cls.ocm.oc.compute.create_server(**kwargs)
         if wait is True:
             waiters.wait_for_server_status(cls.ocm, server, status="ACTIVE")
+        server = cls.ocm.oc.get_server(server.id)
         cls.addClassCleanup(cls.server_delete, server)
         return server
 
@@ -332,13 +367,17 @@ class BaseFunctionalTestCase(TestCase):
         wait=True,
         status="DOWN",
         fixed_ips=None,
+        is_port_security_enabled=True,
     ):
         if name is None:
             name = data_utils.rand_name()
-        kwargs = {"name": name, "network_id": network_id}
+        kwargs = {
+            "name": name,
+            "network_id": network_id,
+            "is_port_security_enabled": is_port_security_enabled,
+        }
         if fixed_ips:
             kwargs.update({"fixed_ips": fixed_ips})
-
         port = cls.ocm.oc.network.create_port(**kwargs)
         if wait is True:
             waiters.wait_for_port_status(cls.ocm, port, status=status)
@@ -640,6 +679,14 @@ class BaseFunctionalTestCase(TestCase):
     def delete_flavor(cls, flavor_id):
         cls.ocm.oc.compute.delete_flavor(flavor_id)
 
+    def update_image_property(self, image, properties):
+        clean_properties = self.ocm.oc.image.get_image(image).properties
+        properties.update(clean_properties)
+        self.addCleanup(
+            self.ocm.oc.image.update_image_properties, image, clean_properties
+        )
+        self.ocm.oc.image.update_image(image, properties=properties)
+
     @classmethod
     def baremetal_node_create(cls, name=None, driver="fake-hardware"):
         if name is None:
@@ -722,3 +769,39 @@ class BaseFunctionalTestCase(TestCase):
                     res.append(agent)
                     break
         return res
+
+    def create_keypair(self, name=None, public_key=None, private_key=None):
+        if name is None:
+            name = data_utils.rand_name(postfix="keypair")
+        kwargs = {"name": name}
+        if public_key:
+            kwargs["public_key"] = public_key
+        if private_key:
+            kwargs["private_key"] = private_key
+        keypair = self.ocm.oc.compute.create_keypair(**kwargs)
+        self.addClassCleanup(self.delete_keypair, keypair["name"])
+        return keypair
+
+    @suppress404
+    def delete_keypair(self, keypair_name):
+        self.ocm.oc.compute.delete_keypair(keypair_name)
+
+    def update_floating_ip(self, floating_ip_id, port_id):
+        self.ocm.oc.network.update_ip(
+            floating_ip=floating_ip_id, port_id=port_id
+        )
+
+    @classmethod
+    def add_interface_to_router(cls, router, subnet_id):
+        cls.ocm.oc.network.add_interface_to_router(
+            router=router, subnet_id=subnet_id
+        )
+        cls.addClassCleanup(
+            cls.remove_interface_from_router, router, subnet_id
+        )
+
+    @classmethod
+    def remove_interface_from_router(cls, router, subnet_id):
+        cls.ocm.oc.network.remove_interface_from_router(
+            router=router, subnet_id=subnet_id
+        )
