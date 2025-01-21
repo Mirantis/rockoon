@@ -79,6 +79,7 @@ class Service:
         # The osdpl object is used only to send events. Should not be
         # changed. For any source of data mspec should be used.
         self.osdpl = kube.get_osdpl()
+        self.osdpl_fingerprint = self.osdpl.fingerprint
         self.openstack_version = mspec["openstack_version"]
 
         self.helm_manager = helm.HelmManager(namespace=self.namespace)
@@ -547,13 +548,12 @@ class Service:
 
         # Add internal data to helm release
 
-        fingerprint = layers.spec_hash(self.mspec)
         child_hashes = self.generate_child_object_hashes(data)
         internal_data = {
             f"{self.group}/{self.version}": {
                 "rockoon": {
                     "version": version.release_string,
-                    "fingerprint": fingerprint,
+                    "fingerprint": self.osdpl_fingerprint,
                     "child-objects": child_hashes,
                     "ownerReferences": data["metadata"]["ownerReferences"],
                     "helmbundle": {"name": self.resource_name},

@@ -98,6 +98,10 @@ class OpenStackDeployment(pykube.objects.NamespacedAPIObject):
         return mspec
 
     @property
+    def fingerprint(self):
+        return layers.spec_hash(self.mspec)
+
+    @property
     def is_applied(self):
         self.reload()
         osdplst = osdplstatus.OpenStackDeploymentStatus(

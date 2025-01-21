@@ -1,5 +1,6 @@
 import asyncio
 import os
+import time
 
 import kopf
 
@@ -18,6 +19,8 @@ from rockoon import resource_view
 
 
 LOG = utils.get_logger(__name__)
+
+OSCTL_APPLYING_WAITING_STARTED = None
 
 
 def is_openstack_version_changed(diff):
@@ -268,6 +271,8 @@ async def _handle(body, meta, spec, logger, reason, **kwargs):
     osdplst.set_osdpl_status(
         osdplstatus.APPLYING, mspec, kwargs["diff"], reason
     )
+    # We have settings.OSCTL_APPLYING_MAX_DELAY time to get here
+    # if we slow controller will be restarted.
 
     # Always create clusterworkloadlock, but set to inactive when we are not interested
     cwl = maintenance.ClusterWorkloadLock.get_by_osdpl(name)
@@ -421,3 +426,40 @@ async def _delete(name, meta, body, spec, logger, reason, **kwargs):
         await run_task(task_def)
     # TODO(dbiletskiy) delete osdpl status
     maintenance.ClusterWorkloadLock.get_by_osdpl(name).absent()
+
+
+@kopf.on.probe(id="waiting_for_applying_started")
+def check_osdpl_fingerprint(**kwargs):
+    global OSCTL_APPLYING_WAITING_STARTED
+    osdpl = kube.get_osdpl()
+    if not osdpl:
+        OSCTL_APPLYING_WAITING_STARTED = None
+        return OSCTL_APPLYING_WAITING_STARTED
+
+    osdplst = osdplstatus.OpenStackDeploymentStatus(
+        osdpl.name, osdpl.namespace
+    )
+
+    osdplst_fingerprint = osdplst.get_osdpl_fingerprint()
+    osdpl_fingerprint = osdpl.fingerprint
+
+    if osdpl_fingerprint != osdplst_fingerprint:
+        if osdplst.get_osdpl_status() == osdplstatus.APPLIED:
+            LOG.error(
+                f"OpenStackDeployment status is APPLIED and fingerprint is changed."
+                f"Current osdplst fingerprint: {osdplst_fingerprint} expected {osdpl_fingerprint}"
+            )
+            if not OSCTL_APPLYING_WAITING_STARTED:
+                OSCTL_APPLYING_WAITING_STARTED = int(time.time())
+            if (
+                int(time.time()) - OSCTL_APPLYING_WAITING_STARTED
+                > settings.OSCTL_APPLYING_MAX_DELAY
+            ):
+                raise ValueError(
+                    f"OpenStackDeployment did not transition to APPLYING state within {settings.OSCTL_APPLYING_MAX_DELAY} seconds"
+                )
+
+            return OSCTL_APPLYING_WAITING_STARTED
+
+    OSCTL_APPLYING_WAITING_STARTED = None
+    return OSCTL_APPLYING_WAITING_STARTED

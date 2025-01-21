@@ -181,6 +181,12 @@ OSCTL_HEARTBEAT_MAX_DELAY = int(
     os.environ.get("OSCTL_HEARTBEAT_MAX_DELAY", OSCTL_HEARTBEAT_INTERVAL * 3)
 )
 
+# If we did not start applying change in OSCTL_APPLYING_MAX_DELAY seconds
+# controller will be restarted
+OSCTL_APPLYING_MAX_DELAY = int(
+    os.environ.get("OSCTL_APPLYING_MAX_DELAY", "60")
+)
+
 OSCTL_BATCH_HEATH_UPDATER_PERIOD = int(
     os.environ.get("OSCTL_BATCH_HEATH_UPDATER_PERIOD", 60)
 )

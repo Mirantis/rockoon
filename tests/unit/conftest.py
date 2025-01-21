@@ -42,8 +42,14 @@ def dashboard_policy_default():
 
 
 @pytest.fixture
-def openstackdeployment():
+def openstackdeployment(mocker):
+    osdpl_mspec = mocker.patch(
+        "rockoon.kube.OpenStackDeployment.mspec",
+        new_callable=mock.PropertyMock,
+    )
+    osdpl_mspec.return_value = render_mspec()
     yield yaml.safe_load(open("tests/fixtures/openstackdeployment.yaml"))
+    mocker.stopall()
 
 
 @pytest.fixture
