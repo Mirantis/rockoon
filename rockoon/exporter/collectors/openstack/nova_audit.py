@@ -97,10 +97,17 @@ class OsdplNovaAuditMetricCollector(base.OpenStackBaseMetricCollector):
     def get_audit_report(self, job):
         if not job.ready:
             raise ValueError(f"Job {job} is not ready, cannot get report")
-        for pod in job.pods:
+        job_pods = job.pods
+        pod_names = []
+        for pod in job_pods:
+            pod_names.append(pod.name)
             if pod.obj["status"].get("phase") == "Succeeded":
                 logs = pod.logs(container="placement-audit-report")
                 break
+        else:
+            raise ValueError(
+                f"No 'Succeeded' pods for {job} found among {pod_names}"
+            )
         report_match = re.search(r"(\{.*\})", logs)
         if not report_match:
             LOG.debug(f"Report not found in logs {logs}")
