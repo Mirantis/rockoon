@@ -1091,7 +1091,6 @@ pod:
       pod:
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
         fsGroup: 42424
       container:
         bootstrap:
@@ -1103,7 +1102,6 @@ pod:
       pod:
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
         fsGroup: 42424
       container:
         db_init:
@@ -1115,7 +1113,6 @@ pod:
       pod:
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
         fsGroup: 42424
       container:
         db_purge:
@@ -1127,7 +1124,6 @@ pod:
       pod:
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
         fsGroup: 42424
       container:
         db_sync:
@@ -1139,7 +1135,6 @@ pod:
       pod:
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
         fsGroup: 42424
       container:
         db_sync_persistence:
@@ -1151,7 +1146,6 @@ pod:
       pod:
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
         fsGroup: 42424
       container:
         ks_user:
@@ -1163,7 +1157,6 @@ pod:
       pod:
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
         fsGroup: 42424
       container:
         ks_endpoints:
@@ -1175,7 +1168,6 @@ pod:
       pod:
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
         fsGroup: 42424
       container:
         ks_service:
@@ -1187,7 +1179,6 @@ pod:
       pod:
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
         fsGroup: 42424
       container:
         create_resources:
@@ -1207,10 +1198,12 @@ pod:
           capabilities:
             drop:
               - ALL
+          allowPrivilegeEscalation: false
         octavia_driver_agent:
           capabilities:
             drop:
               - ALL
+          allowPrivilegeEscalation: false
     octavia_housekeeping:
       pod:
         runAsUser: 42424
