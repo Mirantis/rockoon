@@ -1,3 +1,4 @@
+import json
 import logging
 import requests
 import unittest
@@ -6,6 +7,8 @@ import openstack
 from parameterized import parameterized
 
 from rockoon.tests.functional import base, config
+from rockoon import constants
+from rockoon import settings
 from rockoon import kube
 
 LOG = logging.getLogger(__name__)
@@ -251,3 +254,36 @@ class TestKeystoneFederation(base.BaseFunctionalTestCase):
         assert (
             len(networks_resp.json()["networks"]) > 0
         ), f"GET /networks response was {networks_resp.text}"
+
+
+class FederationSecretFunctionalTestCase(base.BaseFunctionalTestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        keycloak = (
+            cls.osdpl.mspec["features"].get("keystone", {}).get("keycloak", {})
+        )
+        if not (keycloak and keycloak.get("enabled", False)):
+            raise unittest.SkipTest(
+                "Legacy Keycloak configuration is not deployed."
+            )
+
+    def test_keycloak_shared_secret(self):
+        keycloak_secret = kube.find(
+            kube.Secret,
+            constants.OPENSTACK_IAM_SECRET,
+            settings.OSCTL_OS_DEPLOYMENT_NAMESPACE,
+            silent=True,
+        )
+        self.assertIsNotNone(
+            keycloak_secret,
+            f"The {constants.OPENSTACK_IAM_SECRET} secret is absent in {settings.OSCTL_OS_DEPLOYMENT_NAMESPACE} namespace.",
+        )
+        secret_data = keycloak_secret.data_decoded
+        client_section = json.loads(secret_data.get("client", ""))
+        for field in ["clientId", "redirectUris"]:
+            self.assertTrue(
+                client_section.get(field),
+                f"The '{field}' field is absent in {constants.OPENSTACK_IAM_SECRET} secret.",
+            )
