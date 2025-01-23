@@ -536,6 +536,19 @@ spec:
         replicas:
           osapi: 3
           placement: 3
+{%- if OSVer[spec.openstack_version] < OSVer.antelope %}
+        security_context:
+          nova:
+            container:
+              nova_compute_ssh:
+                # required to change /bin/nologin for nova user
+                readOnlyRootFilesystem: false
+                privileged: true
+                runAsUser: 0
+                runAsNonRoot: false
+                capabilities:
+                  drop: []
+{%- endif %}
       dependencies:
         static:
           db_init:

@@ -29,12 +29,11 @@ for KEY_TYPE in $KEY_TYPES; do
     HOST_KEY_OPT+=( -h "$KEY_PATH")
 done
 IFS=''
-usermod -s /bin/rbash nova
 
-# Create the PrivSep empty dir if necessary
-if [ ! -d /run/sshd ]; then
-  mkdir /run/sshd
-  chmod 0755 /run/sshd
+# Change shell for Nova user for compatibility with images
+# from old releases where shell is nologin
+if grep ^nova: /etc/passwd | grep -q nologin; then
+    usermod -s /bin/rbash nova
 fi
 
 exec /usr/sbin/sshd -f /etc/ssh/sshd_config -D -e "${HOST_KEY_OPT[@]}"

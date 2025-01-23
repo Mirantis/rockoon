@@ -704,7 +704,7 @@ conf:
     X11Forwarding no
     PrintMotd no
     AcceptEnv LANG LC_*
-    PidFile /var/run/sshd_nova.pid
+    PidFile /run/sshd/sshd_nova.pid
     Port {{ .Values.network.ssh.port }}
     # This Match block prevents Password Authentication for root user
     Match User root
@@ -2337,11 +2337,11 @@ pod:
           privileged: true
           runAsNonRoot: false
         nova_compute_ssh:
-          # required to change /bin/nologin for nova user
-          readOnlyRootFilesystem: false
-          privileged: true
-          runAsUser: 0
-          runAsNonRoot: false
+          readOnlyRootFilesystem: true
+          privileged: false
+          capabilities:
+            drop:
+              - ALL
         nova_api:
           readOnlyRootFilesystem: true
           allowPrivilegeEscalation: false
