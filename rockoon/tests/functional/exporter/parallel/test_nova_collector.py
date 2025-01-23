@@ -1,5 +1,6 @@
 from parameterized import parameterized
 import pytest
+import unittest
 
 from retry import retry
 
@@ -417,13 +418,21 @@ class NovaResourcesStatsTestCase(base.BaseFunctionalExporterTestCase):
         ]
 
         self.aggregate = None
-        self.aggregate_compute = [
-            x
-            for x in self.ocm.oc.compute.services(binary="nova-compute")
-            if x.get("availability_zone") == "nova"
-            and "nova-compute-ironic" not in x["host"]
-        ][0]["host"]
+        compute_services = self.ocm.oc.compute.services(binary="nova-compute")
+        filtered_services = [
+            service
+            for service in compute_services
+            if service.get("availability_zone") == "nova"
+            and "nova-compute-ironic" not in service["host"]
+            and len(self.ocm.compute_get_all_servers(host=service["host"]))
+            == 0
+        ]
+        if not filtered_services:
+            raise unittest.SkipTest(
+                "There are no nova compute hosts available for aggregate"
+            )
 
+        self.aggregate_compute = filtered_services[0]["host"]
         self.server = None
 
     def tearDown(self):
