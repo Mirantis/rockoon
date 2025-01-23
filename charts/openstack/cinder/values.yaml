@@ -992,8 +992,8 @@ conf:
       # NOTE(portdirect): the bind port should not be defined, and is manipulated
       # via the endpoints section.
       osapi_volume_listen_port: null
-      enabled_backends: "rbd1"
-      default_volume_type: "rbd1"
+      # enabled_backends: "rbd1"
+      # default_volume_type: "rbd1"
       # NOTE(portdirect): "cinder.backup.drivers.ceph" supported
       # NOTE(rchurch): As of Stein, drivers by class name are required
       # - cinder.backup.drivers.swift.SwiftBackupDriver

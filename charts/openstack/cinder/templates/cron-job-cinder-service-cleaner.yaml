@@ -19,11 +19,14 @@ limitations under the License.
   {{- $default_enabled_backends := index . 3 }}
   {{- $conf_default := index $conf "DEFAULT" | default dict }}
   {{- $host := index $conf_default  "host" | default $default_host }}
-  {{- $enabled_backends := splitList "," (index $conf_default "enabled_backends" | default $default_enabled_backends) }}
-  {{- if hasKey $backends $host }}
-    {{- $_ := set $backends $host ((concat (index $backends $host) $enabled_backends) | uniq ) }}
-  {{- else }}
-    {{- $_ := set $backends $host $enabled_backends }}
+  {{- $section_backends := index $conf_default "enabled_backends" | default $default_enabled_backends }}
+  {{- if $section_backends }}
+  {{-   $enabled_backends := splitList "," $section_backends }}
+  {{-   if hasKey $backends $host }}
+  {{-     $_ := set $backends $host ((concat (index $backends $host) $enabled_backends) | uniq ) }}
+  {{-   else }}
+  {{-     $_ := set $backends $host $enabled_backends }}
+  {{-   end }}
   {{- end }}
 {{- end }}
 
@@ -108,8 +111,11 @@ metadata:
 data:
   hosts_mapping.yaml: |
 {{- $default_host := $envAll.Values.conf.cinder.DEFAULT.host }}
-{{- $default_enabled_backends := $envAll.Values.conf.cinder.DEFAULT.enabled_backends }}
-{{- $backends := dict $default_host (splitList "," $default_enabled_backends) }}
+{{- $default_enabled_backends := $envAll.Values.conf.cinder.DEFAULT.enabled_backends | default "" }}
+{{- $backends := dict $default_host (list) }}
+{{- if $default_enabled_backends }}
+  {{- $backends = dict $default_host (splitList "," $default_enabled_backends) }}
+{{- end }}
 {{- $standalone_backends := index $envAll.Values.conf "standalone_backends" | default dict }}
 {{- $statefulsets_standalone := index $standalone_backends "statefulsets" | default dict }}
 {{- range $name, $standalone_backend := $statefulsets_standalone }}
