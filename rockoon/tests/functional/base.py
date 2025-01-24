@@ -591,37 +591,32 @@ class BaseFunctionalTestCase(TestCase):
             total_bytes += snapshot.size * constants.Gi
         return total_bytes
 
-    @classmethod
     @suppress404
-    def aggregate_delete(cls, name):
-        cls.ocm.oc.delete_aggregate(name)
+    def aggregate_delete(self, name_or_id):
+        self.ocm.oc.delete_aggregate(name_or_id)
 
-    @classmethod
-    def aggregate_create(cls, name, availability_zone=None):
-        aggregate = cls.ocm.oc.compute.create_aggregate(
+    def aggregate_create(self, name, availability_zone=None):
+        aggregate = self.ocm.oc.compute.create_aggregate(
             name=name, availability_zone=availability_zone
         )
-        cls.addClassCleanup(cls.aggregate_delete, name)
+        self.addCleanup(self.aggregate_delete, aggregate["id"])
         return aggregate
 
-    @classmethod
     @suppress404
-    def aggregate_remove_host(cls, name, host):
-        cls.ocm.oc.compute.remove_host_from_aggregate(name, host)
+    def aggregate_remove_host(self, name, host):
+        self.ocm.oc.compute.remove_host_from_aggregate(name, host)
 
-    @classmethod
     @suppress404
-    def aggregate_remove_hosts(cls, name):
-        aggregate = cls.ocm.oc.compute.get_aggregate(name)
+    def aggregate_remove_hosts(self, name):
+        aggregate = self.ocm.oc.compute.get_aggregate(name)
         for host in aggregate["hosts"]:
-            cls.ocm.oc.compute.remove_host_from_aggregate(
+            self.ocm.oc.compute.remove_host_from_aggregate(
                 aggregate["id"], host
             )
 
-    @classmethod
-    def aggregate_add_host(cls, name, host):
-        cls.ocm.oc.compute.add_host_to_aggregate(name, host)
-        cls.addClassCleanup(cls.aggregate_remove_host, name, host)
+    def aggregate_add_host(self, name, host):
+        self.ocm.oc.compute.add_host_to_aggregate(name, host)
+        self.addCleanup(self.aggregate_remove_host, name, host)
 
     @classmethod
     def service_create(cls, name, type):
