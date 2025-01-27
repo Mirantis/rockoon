@@ -123,6 +123,11 @@ pod:
         limits:
           memory: "1024Mi"
           cpu: "2000m"
+  mounts:
+    tempest_run_tests:
+      tempest_run_tests:
+        volumeMounts:
+        volumes:
 
 dependencies:
   dynamic:

@@ -3,6 +3,7 @@
 
 {%- set service = 'tempest' %}
 {%- set signature = spec.get('features', {}).get('glance', {}).get("signature", {"enabled": false}) %}
+{%- set bgpvpn = spec.get('features', {}).get('neutron', {}).get("bgpvpn", {"enabled": false}) %}
 
 spec:
   releases:
@@ -32,6 +33,19 @@ spec:
       pod:
         replicas:
           server: 1
+{%- if bgpvpn.enabled %}
+        # Mounts required for neutron dynamic routing
+        mounts:
+          tempest_run_tests:
+            tempest_run_tests:
+              volumeMounts:
+                - name: docker-socket
+                  mountPath: /var/run/docker.sock
+              volumes:
+                - name: docker-socket
+                  hostPath:
+                    path: /var/run/docker.sock
+{%- endif %}
       pvc:
 {%- if is_ceph_enabled %}
         storage_class: {{ spec.get('persistent_volume_storage_class', 'default') }}
