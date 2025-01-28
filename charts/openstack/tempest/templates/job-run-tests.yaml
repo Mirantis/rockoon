@@ -18,6 +18,8 @@ limitations under the License.
 
 {{- $serviceAccountName := "tempest-run-tests" }}
 {{ tuple $envAll "run_tests" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+
+{{- $mounts_tempest_run_tests := .Values.pod.mounts.tempest_run_tests.tempest_run_tests }}
 ---
 apiVersion: batch/v1
 kind: Job
@@ -182,11 +184,9 @@ spec:
               subPath: static-accounts.yaml
               readOnly: true
 {{- end }}
-            # Mounts required for neutron dynamic routing
-            - name: docker-socket
-              mountPath: /var/run/docker.sock
             - name: statepath
               mountPath: {{ .Values.conf.tempest.DEFAULT.state_path }}
+{{ if $mounts_tempest_run_tests.volumeMounts }}{{ toYaml $mounts_tempest_run_tests.volumeMounts | indent 12 }}{{ end }}
       volumes:
 {{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "tempest" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
         - name: pod-tmp
@@ -209,9 +209,6 @@ spec:
           secret:
             secretName: "tempest-os-clouds"
             defaultMode: 416
-        - name: docker-socket
-          hostPath:
-            path: /var/run/docker.sock
         - name: statepath
           hostPath:
             path: {{ .Values.conf.tempest.DEFAULT.state_path }}
@@ -222,4 +219,5 @@ spec:
           persistentVolumeClaim:
             claimName: {{ .Values.pvc.name }}
         {{- end }}
+{{ if $mounts_tempest_run_tests.volumes }}{{ toYaml $mounts_tempest_run_tests.volumes | indent 8 }}{{ end }}
 {{- end }}
