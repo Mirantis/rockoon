@@ -9,7 +9,7 @@ cinder_scheduler: '{{ images_base_url }}/openstack/cinder:yoga-jammy-20241120070
 cinder_volume: '{{ images_base_url }}/openstack/cinder:yoga-jammy-20241120070553'
 cinder_volume_daemonset: '{{ images_base_url }}/openstack/cinder:yoga-jammy-20241120070553'
 cinder_volume_usage_audit: '{{ images_base_url }}/openstack/cinder:yoga-jammy-20241120070553'
-cloudprober: '{{ images_base_url }}/openstack/osprober:0.0.1-22021cf'
+cloudprober: '{{ images_base_url }}/openstack/osprober:0.0.1-c4c3878'
 cloudprober_openstack_discovery: '{{ images_base_url }}/openstack/openstack-tools:yoga-jammy-20241120070553'
 stepler_run_tests: '{{ images_base_url }}/openstack/stepler:yoga-focal-20241107122432'
 db_drop: '{{ images_base_url }}/openstack/heat:yoga-jammy-20241120070553'
