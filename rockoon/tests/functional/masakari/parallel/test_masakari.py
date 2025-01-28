@@ -1,6 +1,7 @@
 import logging
 import time
 import pytest
+import unittest
 
 from rockoon.tests.functional import config, waiters, ssh_utils
 from rockoon.tests.functional.masakari.base import BaseMasakariTestCase
@@ -15,6 +16,10 @@ class MasakariIntrospectiveInstanceMonitorTestCases(BaseMasakariTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        if not cls.is_introspective_monitor_enabled():
+            raise unittest.SkipTest(
+                "Masakari introspective instance monitor is not enabled"
+            )
         cls.flavor = cls.ocm.oc.compute.find_flavor("m1.tiny_test")["id"]
         cls.image = cls.ocm.oc.get_image(CONF.UBUNTU_TEST_IMAGE_NAME)
 

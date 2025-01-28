@@ -17,6 +17,16 @@ class BaseMasakariTestCase(base.BaseFunctionalTestCase):
             raise unittest.SkipTest("Masakari is not deployed")
 
     @classmethod
+    def is_introspective_monitor_enabled(cls):
+        return (
+            cls.osdpl.obj["spec"]["features"]
+            .get("masakari", {})
+            .get("monitors", {})
+            .get("introspective", {})
+            .get("enabled", False)
+        )
+
+    @classmethod
     def create_masakari_segment(
         cls, recovery_method="auto", service_type="compute", name=None
     ):
