@@ -10,7 +10,7 @@ LOG = logging.getLogger(__name__)
 CONF = config.Config()
 
 
-@pytest.mark.xdist_group("masakari")
+@pytest.mark.xdist_group("exporter-compute-network")
 class MasakariIntrospectiveInstanceMonitorTestCases(BaseMasakariTestCase):
 
     @classmethod

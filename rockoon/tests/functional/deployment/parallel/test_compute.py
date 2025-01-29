@@ -1,9 +1,11 @@
 import unittest
+import pytest
 
 from rockoon.tests.functional import base
 from rockoon import constants, kube, settings
 
 
+@pytest.mark.xdist_group("exporter-compute-network")
 class TestVncTLSTestCase(base.BaseFunctionalTestCase):
     def setUp(self):
         super().setUp()
