@@ -4,6 +4,7 @@
 {%- set service = 'tempest' %}
 {%- set signature = spec.get('features', {}).get('glance', {}).get("signature", {"enabled": false}) %}
 {%- set bgpvpn = spec.get('features', {}).get('neutron', {}).get("bgpvpn", {"enabled": false}) %}
+{%- set dynamic_routing = spec.get('features', {}).get('neutron', {}).get("extensions", {}).get("dynamic_routing", {"enabled": false}) %}
 
 spec:
   releases:
@@ -33,7 +34,7 @@ spec:
       pod:
         replicas:
           server: 1
-{%- if bgpvpn.enabled %}
+{%- if bgpvpn.enabled or dynamic_routing %}
         # Mounts required for neutron dynamic routing
         mounts:
           tempest_run_tests:
