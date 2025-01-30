@@ -233,11 +233,6 @@ class NovaAvailabilityZonesTestCase(base.BaseFunctionalExporterTestCase):
             name=aggregate_name,
         )
 
-    def tearDown(self):
-        super().tearDown()
-        if self.aggregate:
-            self.aggregate_delete(self.aggregate["name"])
-
     def test_nova_availability_zone_info(self):
         """Information about availability zones in the cluster.
 
@@ -295,11 +290,6 @@ class NovaAggregatesTestCase(base.BaseFunctionalExporterTestCase):
         self.aggregate = self.aggregate_create(
             name=aggregate_name,
         )
-
-    def tearDown(self):
-        super().tearDown()
-        if self.aggregate:
-            self.aggregate_delete(self.aggregate["name"])
 
     def _test_osdpl_nova_aggregate_hosts(
         self, metric_name, aggregate_name, expected_num, phase
@@ -438,9 +428,6 @@ class NovaResourcesStatsTestCase(base.BaseFunctionalExporterTestCase):
     def tearDown(self):
         if self.server:
             self.server_delete(self.server)
-        if self.aggregate:
-            self.aggregate_remove_hosts(self.aggregate["id"])
-            self.aggregate_delete(self.aggregate["id"])
         super().tearDown()
 
     def get_resource_metrics_values(self, resource_type, labels):
