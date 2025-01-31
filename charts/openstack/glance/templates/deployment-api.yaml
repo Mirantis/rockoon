@@ -101,13 +101,15 @@ spec:
             - chown
             - -R
             - "glance:"
-            - {{ .Values.conf.glance.glance_store.filesystem_store_datadir }}
+            - /var/lib/glance
           {{- if .Values.conf.enable_iscsi }}
           terminationMessagePath: /var/log/termination-log
           {{- end }}
           volumeMounts:
             - name: pod-tmp
               mountPath: /tmp
+            - name: varlibglance
+              mountPath: /var/lib/glance
             - name: glance-images
               mountPath: {{ .Values.conf.glance.glance_store.filesystem_store_datadir }}
         {{ end }}
@@ -211,6 +213,8 @@ spec:
 {{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "glance" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
             - name: pod-tmp
               mountPath: /tmp
+            - name: varlibglance
+              mountPath: /var/lib/glance
             - name: etcglance
               mountPath: /etc/glance
             - name: etcglanceconfd
@@ -245,10 +249,6 @@ spec:
               readOnly: true
             - name: glance-images
               mountPath: {{ .Values.conf.glance.glance_store.filesystem_store_datadir }}
-            - name: glance-tasks-store
-              mountPath: {{ .Values.conf.glance.os_glance_tasks_store.filesystem_store_datadir }}
-            - name: glance-staging-store
-              mountPath: {{ .Values.conf.glance.os_glance_staging_store.filesystem_store_datadir }}
             - name: glance-etc
               mountPath: /etc/glance/rootwrap.conf
               subPath: rootwrap.conf
@@ -322,10 +322,6 @@ spec:
         - name: glance-images
           emptyDir: {}
 {{- end }}
-        - name: glance-tasks-store
-          emptyDir: {}
-        - name: glance-staging-store
-          emptyDir: {}
 {{- if has "rbd" $configured_storages }}
         - name: ceph-etc
 {{- if .Values.manifests.ceph_conf }}
@@ -337,6 +333,9 @@ spec:
 {{- end }}
             defaultMode: 416
 {{- end }}
+        - hostPath:
+            path: /var/lib/glance
+          name: varlibglance
 {{- if .Values.conf.enable_iscsi }}
         - hostPath:
             path: /etc/iscsi
