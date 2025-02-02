@@ -104,7 +104,7 @@ class BaseFunctionalTestCase(TestCase):
         return [x for x in pods][0]
 
     @property
-    def neturon_portprober_enabled(self):
+    def neutron_portprober_enabled(self):
         if self.ocm.oc.network.find_extension("portprober"):
             return True
         return False
