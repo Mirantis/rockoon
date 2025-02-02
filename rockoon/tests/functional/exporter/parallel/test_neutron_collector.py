@@ -1,8 +1,9 @@
 import ipaddress
-import time
 import unittest
 
 import pytest
+
+from retry import retry
 
 from rockoon.exporter import constants
 from rockoon.tests.functional.exporter import base
@@ -382,7 +383,7 @@ class NeutronPortsTestCase(base.BaseFunctionalExporterTestCase):
         # for the subnet and not creating unnecessary ports in tests
         expected_ports_after_create = len(active_ports) + 1
         # When portprober is enabled 2 additional ports are added per subnet
-        if self.neturon_portprober_enabled:
+        if self.neutron_portprober_enabled:
             expected_ports_after_create = expected_ports_after_create + 2
         subnet = self.subnet_create(
             cidr=CONF.TEST_SUBNET_RANGE,
@@ -492,8 +493,10 @@ class NeutronIPsCapacityTestCase(base.BaseFunctionalExporterTestCase):
     def get_total_ips_in_subnet(self, subnet):
         """Total number of IP addresses in a subnet."""
         subnet_ip = ipaddress.IPv4Network(subnet["cidr"], strict=False)
-        # Reserved addresses for network, broadcast, gateway address
-        reserved_addresses = 3
+        # Reserved addresses for network, broadcast
+        reserved_addresses = 2
+        if subnet["gateway_ip"]:
+            reserved_addresses += 1
         return subnet_ip.num_addresses - reserved_addresses
 
     def get_allocated_ports_in_subnet(self, subnet):
@@ -505,6 +508,25 @@ class NeutronIPsCapacityTestCase(base.BaseFunctionalExporterTestCase):
             )
         )
         return len(ports)
+
+    def get_subnet_service_ips_number(self, subnet):
+        res = 0
+        if self.neutron_portprober_enabled:
+            res += CONF.PORTPROBER_AGENTS_PER_NETWORK
+        if subnet["enable_dhcp"]:
+            res += CONF.DHCP_AGENTS_PER_NETWORK
+        return res
+
+    @retry(AssertionError, tries=6, delay=5)
+    def wait_service_ips_after_subnet_create(self, subnet):
+        expected_ips_number = self.get_subnet_service_ips_number(subnet)
+        current_used_ips = self.get_allocated_ports_in_subnet(subnet)
+
+        self.assertEqual(
+            expected_ips_number,
+            current_used_ips,
+            f"Current used ips {current_used_ips} != {expected_ips_number} after subnet create",
+        )
 
     def test_neutron_network_capacity_default_networks(self):
         """Validate that all default networks are present in the metrics.
@@ -639,11 +661,10 @@ class NeutronIPsCapacityTestCase(base.BaseFunctionalExporterTestCase):
         for cidr in subnet_cidrs:
             subnet = self.subnet_create(cidr=cidr, network_id=network["id"])
             subnets.append(subnet)
-        # Wait for Neutron initialize the service ports in the subnets.
-        time.sleep(10)
         expected_total_ips = 0
         expected_free_ips = 0
         for subnet in subnets:
+            self.wait_service_ips_after_subnet_create(subnet)
             total_ips = self.get_total_ips_in_subnet(subnet)
             allocated_ports = self.get_allocated_ports_in_subnet(subnet)
             free_ips = total_ips - allocated_ports
@@ -712,8 +733,7 @@ class NeutronIPsCapacityTestCase(base.BaseFunctionalExporterTestCase):
         )
         self.ocm.oc.network.set_tags(subnet, [self.collect_metrics_tag])
         labels = {"subnet_id": subnet["id"]}
-        # Wait for Neutron to initialize the service ports in the subnet.
-        time.sleep(10)
+        self.wait_service_ips_after_subnet_create(subnet)
         expected_total_ips = self.get_total_ips_in_subnet(subnet)
         allocated_ports = self.get_allocated_ports_in_subnet(subnet)
         expected_free_ips = expected_total_ips - allocated_ports

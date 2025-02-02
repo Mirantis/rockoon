@@ -91,6 +91,9 @@ class Config(metaclass=SingletonMeta):
         # Number of portprober agents to host nework
         self.PORTPROBER_AGENTS_PER_NETWORK = 2
 
+        # Number of DHCP agents to host nework
+        self.DHCP_AGENTS_PER_NETWORK = 2
+
         # Size, in GB of the flavor's disk to create.
         self.FLAVOR_DISK_SIZE = 1
         # Size, in MB of the flavor's ram to create.
