@@ -16,7 +16,7 @@ class BaseFunctionalPortProberTestCase(base.BaseFunctionalTestCase):
 
     def setUp(self):
         super().setUp()
-        if not self.neturon_portprober_enabled:
+        if not self.neutron_portprober_enabled:
             raise unittest.SkipTest(
                 "Neutron PortProber extension is not enabled."
             )

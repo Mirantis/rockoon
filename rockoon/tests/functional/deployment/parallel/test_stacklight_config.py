@@ -32,7 +32,7 @@ class StacklightSecretFunctionalTestCase(base.BaseFunctionalTestCase):
 
     def test_portprober(self):
         self.assertEqual(
-            self.neturon_portprober_enabled,
+            self.neutron_portprober_enabled,
             self.conf_json["exporters"]["portprober"]["enabled"],
             f"Portprober stacklight exporter configuration is not correct.",
         )
