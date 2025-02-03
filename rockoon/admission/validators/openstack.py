@@ -310,21 +310,12 @@ class OpenStackValidator(base.BaseValidator):
                 )
 
     def _check_manila_allowed(self, new_obj):
-        preset = new_obj["spec"]["preset"]
         openstack_services = (
             new_obj.get("spec", {}).get("features", {}).get("services", [])
         )
         os_num_version = constants.OpenStackVersion[
             new_obj["spec"]["openstack_version"]
         ].value
-        if (
-            "shared-file-system" in openstack_services
-            and preset == "compute-tf"
-        ):
-            raise exception.OsDplValidationFailed(
-                "Shared Filesystems (Manila) services is not supported"
-                "with TungstenFabric networking."
-            )
         if (
             "shared-file-system" in openstack_services
             and os_num_version < constants.OpenStackVersion["yoga"].value
