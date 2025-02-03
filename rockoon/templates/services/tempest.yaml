@@ -34,7 +34,7 @@ spec:
       pod:
         replicas:
           server: 1
-{%- if bgpvpn.enabled or dynamic_routing %}
+{%- if bgpvpn.enabled or dynamic_routing.enabled %}
         # Mounts required for neutron dynamic routing
         mounts:
           tempest_run_tests:
