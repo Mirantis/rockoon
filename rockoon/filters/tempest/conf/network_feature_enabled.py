@@ -171,8 +171,6 @@ class NetworkFeatureEnabled(base_section.BaseSection):
             )
         ):
             api_extensions_default.extend(["trunk"])
-        if self.os_version_compare("caracal", "ge") and self.tf_enabled():
-            api_extensions_default.remove("standard-attr-tag")
 
         return ", ".join(api_extensions_default)
 
