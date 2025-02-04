@@ -66,12 +66,12 @@ def ensure(osdpl, mspec):
         role = role.value
         expected_images = get_expected_images(mspec, role)
         running_images = get_running_images(namespace, role)
-
+        cache_ds_name = f"{constants.CACHE_NAME}-{role}"
         if expected_images != running_images:
             LOG.info(f"Starting cache for {role} ...")
             cache = layers.render_cache_template(
                 mspec,
-                f"{constants.CACHE_NAME}-{role}",
+                cache_ds_name,
                 expected_images,
                 node_selector=node_selector,
             )
@@ -80,10 +80,9 @@ def ensure(osdpl, mspec):
             if res and res.exists():
                 res.delete()
             res.create()
-            to_wait.append(res)
         else:
             LOG.info(f"Cache for role {role} is in required state.")
-    for ds in to_wait:
-        image_cache_name = ds.obj["metadata"]["name"]
-        LOG.info(f"Waiting image cache: {image_cache_name}")
-        kube.wait_for_daemonset_ready(image_cache_name, namespace)
+        to_wait.append(cache_ds_name)
+    for ds_name in to_wait:
+        LOG.info(f"Waiting image cache: {ds_name}")
+        kube.wait_for_daemonset_ready(ds_name, namespace)
