@@ -509,7 +509,7 @@ class NeutronIPsCapacityTestCase(base.BaseFunctionalExporterTestCase):
         )
         return len(ports)
 
-    def get_subnet_service_ips_number(self, subnet):
+    def neutron_subnet_internal_svc_ips(self, subnet):
         res = 0
         if self.neutron_portprober_enabled:
             res += CONF.PORTPROBER_AGENTS_PER_NETWORK
@@ -518,8 +518,8 @@ class NeutronIPsCapacityTestCase(base.BaseFunctionalExporterTestCase):
         return res
 
     @retry(AssertionError, tries=6, delay=5)
-    def wait_service_ips_after_subnet_create(self, subnet):
-        expected_ips_number = self.get_subnet_service_ips_number(subnet)
+    def wait_subnet_internal_ips(self, subnet):
+        expected_ips_number = self.neutron_subnet_internal_svc_ips(subnet)
         current_used_ips = self.get_allocated_ports_in_subnet(subnet)
 
         self.assertEqual(
@@ -664,7 +664,7 @@ class NeutronIPsCapacityTestCase(base.BaseFunctionalExporterTestCase):
         expected_total_ips = 0
         expected_free_ips = 0
         for subnet in subnets:
-            self.wait_service_ips_after_subnet_create(subnet)
+            self.wait_subnet_internal_ips(subnet)
             total_ips = self.get_total_ips_in_subnet(subnet)
             allocated_ports = self.get_allocated_ports_in_subnet(subnet)
             free_ips = total_ips - allocated_ports
@@ -733,7 +733,7 @@ class NeutronIPsCapacityTestCase(base.BaseFunctionalExporterTestCase):
         )
         self.ocm.oc.network.set_tags(subnet, [self.collect_metrics_tag])
         labels = {"subnet_id": subnet["id"]}
-        self.wait_service_ips_after_subnet_create(subnet)
+        self.wait_subnet_internal_ips(subnet)
         expected_total_ips = self.get_total_ips_in_subnet(subnet)
         allocated_ports = self.get_allocated_ports_in_subnet(subnet)
         expected_free_ips = expected_total_ips - allocated_ports

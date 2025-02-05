@@ -92,7 +92,9 @@ class Config(metaclass=SingletonMeta):
         self.PORTPROBER_AGENTS_PER_NETWORK = 2
 
         # Number of DHCP agents to host nework
-        self.DHCP_AGENTS_PER_NETWORK = 2
+        self.DHCP_AGENTS_PER_NETWORK = (
+            self.get_dhcp_agents_per_network_number()
+        )
 
         # Size, in GB of the flavor's disk to create.
         self.FLAVOR_DISK_SIZE = 1
@@ -153,3 +155,14 @@ class Config(metaclass=SingletonMeta):
         ):
             return "Cirros-5.1"
         return "Cirros-6.0"
+
+    def get_dhcp_agents_per_network_number(self):
+        if (
+            self._osdpl.obj["spec"]["features"]
+            .get("neutron", {})
+            .get("backend", None)
+            == "ml2/ovn"
+        ):
+            return 1
+        else:
+            return 2
