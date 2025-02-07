@@ -15,7 +15,8 @@ self-scaling and self-healing services.
 # Getting Started and Documentation
 
 For installation, deployment, and administration, see our [Documentation](https://mirantis.github.io/rockoon/)
-and [Quick start guide](https://mirantis.github.io/rockoon/quick-start/aio-installation/)
+and [Quick start guide](https://mirantis.github.io/rockoon/quick-start/aio-installation/).
+Have some questions? Join slack [channel](https://join.slack.com/t/rockoon/shared_invite/zt-2z5qxwyq9-061Kc3_j9s~l9CquGQNOSw/)
 
 # Report a Bug
 

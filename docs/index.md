@@ -14,6 +14,7 @@ and then reacts to these changes by creating, updating, or deleting appropriate 
 ## Getting Help
 
 * File a bug: [https://github.com/Mirantis/rockoon/issues](https://github.com/Mirantis/rockoon/issues)
+* Join slack [channel](https://join.slack.com/t/rockoon/shared_invite/zt-2z5qxwyq9-061Kc3_j9s~l9CquGQNOSw/)
 
 ## Developer
 
