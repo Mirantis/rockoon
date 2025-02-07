@@ -122,6 +122,8 @@ spec:
             - name: nova-ssh
               mountPath: /root/.ssh/authorized_keys
               subPath: ssh-key-public
+            - name: runsshd
+              mountPath: /run/sshd
         - name: lock-perms
 {{ tuple $envAll "nova_compute" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ dict "envAll" $envAll "application" "nova" "container" "lock_perms" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
@@ -343,11 +345,8 @@ spec:
               mountPath: /tmp
             - name: varlibnova
               mountPath: /var/lib/nova
-            {{- if or ( gt .Capabilities.KubeVersion.Major "1" ) ( ge .Capabilities.KubeVersion.Minor "10" ) }}
-              mountPropagation: Bidirectional
-            {{- end }}
-            - name: run
-              mountPath: /run
+            - name: runsshd
+              mountPath: /run/sshd
             - name: nova-etc
               mountPath: /etc/ssh/sshd_config
               subPath: sshd-config
@@ -435,6 +434,8 @@ spec:
         - name: run
           hostPath:
             path: /run
+        - name: runsshd
+          emptyDir: {}
         - name: cgroup
           hostPath:
             path: /sys/fs/cgroup

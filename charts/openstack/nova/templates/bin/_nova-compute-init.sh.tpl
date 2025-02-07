@@ -27,8 +27,15 @@ install -Dm 400 -o ${NOVA_USER_UID} -t /var/lib/nova/.ssh /root/.ssh/id_rsa
 install -Dm 440 -o ${NOVA_USER_UID} -t /var/lib/nova/.ssh /root/.ssh/authorized_keys
 install -Dm 444 -t /var/lib/nova/.ssh /root/.ssh/config
 
+# Directory /run/sshd should not be group or world-writable
+RUN_SSHD_DIR=/run/sshd
+chmod 00755 ${RUN_SSHD_DIR}
+
 # Set Ownership of nova dirs to the nova user
 chown ${NOVA_USER_UID} /var/lib/nova /var/lib/nova/instances
+{{- if not (eq (.Values.pod.security_context.nova.container.nova_compute_ssh.runAsUser | toString) "0") }}
+chown -R ${NOVA_USER_UID} ${RUN_SSHD_DIR}
+{{- end }}
 
 migration_interface="{{- .Values.conf.libvirt.live_migration_interface -}}"
 if [[ -n $migration_interface ]]; then

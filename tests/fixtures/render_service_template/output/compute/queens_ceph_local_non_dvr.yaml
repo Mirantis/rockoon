@@ -519,6 +519,16 @@ spec:
         replicas:
           osapi: 3
           placement: 3
+        security_context:
+          nova:
+            container:
+              nova_compute_ssh:
+                capabilities:
+                  drop: []
+                privileged: true
+                readOnlyRootFilesystem: false
+                runAsNonRoot: false
+                runAsUser: 0
         useHostNetwork:
           novncproxy: false
           spiceproxy: false
