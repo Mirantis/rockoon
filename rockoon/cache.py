@@ -67,22 +67,25 @@ def ensure(osdpl, mspec):
         expected_images = get_expected_images(mspec, role)
         running_images = get_running_images(namespace, role)
         cache_ds_name = f"{constants.CACHE_NAME}-{role}"
+        cache = layers.render_cache_template(
+            mspec,
+            cache_ds_name,
+            expected_images,
+            node_selector=node_selector,
+        )
+        kopf.adopt(cache, osdpl)
+        res = kube.resource(cache)
         if expected_images != running_images:
             LOG.info(f"Starting cache for {role} ...")
-            cache = layers.render_cache_template(
-                mspec,
-                cache_ds_name,
-                expected_images,
-                node_selector=node_selector,
-            )
-            kopf.adopt(cache, osdpl)
-            res = kube.resource(cache)
             if res and res.exists():
                 res.delete()
             res.create()
         else:
             LOG.info(f"Cache for role {role} is in required state.")
-        to_wait.append(cache_ds_name)
-    for ds_name in to_wait:
-        LOG.info(f"Waiting image cache: {ds_name}")
-        kube.wait_for_daemonset_ready(ds_name, namespace)
+        to_wait.append(res)
+    for ds in to_wait:
+        LOG.info(f"Waiting image cache: {ds.name}")
+        if not ds.ready:
+            raise kopf.TemporaryError(
+                f"The DaemonSet {ds.name} is not ready yet.", delay=10
+            )
