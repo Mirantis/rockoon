@@ -693,7 +693,7 @@ conf:
       a2enmod: null
       a2dismod: null
   powerdns:
-    slave: "yes"
+    secondary: "yes"
     dnsupdate: "yes"
     api: "yes"
     cache_ttl: 0
