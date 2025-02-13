@@ -57,6 +57,11 @@ exec:
 
 {{- $live_migration_tls_enabled := index $envAll.Values.conf.nova.libvirt "live_migration_with_native_tls" | default false }}
 
+{{- $run_sshd_user_id := .Values.pod.security_context.nova.pod.runAsUser }}
+{{- if hasKey .Values.pod.security_context.nova.container.nova_compute_ssh "runAsUser" }}
+{{-   $run_sshd_user_id = .Values.pod.security_context.nova.container.nova_compute_ssh.runAsUser }}
+{{- end }}
+
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -96,8 +101,13 @@ spec:
 {{ tuple $envAll "nova_compute" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ dict "envAll" $envAll "application" "nova" "container" "nova_compute_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
           env:
+            # Images before Antelope OS release have nologin as the shell for the Nova user.
+            # So we should run the nova-compute-sshd container for these releases with a user other than Nova.
+            # Init container should prepare sshd folders and files to work with correct user ID
             - name: NOVA_USER_UID
               value: "{{ .Values.pod.security_context.nova.pod.runAsUser }}"
+            - name: RUN_SSHD_USER_ID
+              value: "{{ $run_sshd_user_id }}"
           command:
             - /tmp/nova-compute-init.sh
           terminationMessagePath: /var/log/termination-log
