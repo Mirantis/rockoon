@@ -1211,27 +1211,6 @@ def wait_for_resource(klass, name, namespace=None, delay=60):
         )
 
 
-def wait_for_daemonset_ready(name, namespace=None, delay=60):
-    try:
-        ds = find(pykube.DaemonSet, name, namespace)
-        if not int(ds.obj["status"]["desiredNumberScheduled"]):
-            raise ValueError("Not scheduled yet")
-        if int(ds.obj["status"]["desiredNumberScheduled"]) != int(
-            ds.obj["status"]["numberReady"]
-        ):
-            raise ValueError("Not ready yet")
-
-    except pykube.exceptions.ObjectDoesNotExist:
-        raise kopf.TemporaryError(
-            f"The DaemonSet is not found yet.", delay=delay
-        )
-    except Exception as e:
-        raise kopf.TemporaryError(
-            f"An error occured while getting DaemonSet {name} ({e}).",
-            delay=delay,
-        )
-
-
 def wait_for_secret(namespace, name):
     wait_for_resource(pykube.Secret, name, namespace)
 
