@@ -40,5 +40,8 @@ class OsdplAodhMetricCollector(base.OpenStackBaseMetricCollector):
 
     @utils.timeit
     def update_samples(self):
-        alarms = self.oc.oc.alarm.get("/alarms").json()
+        alarms = self.oc.oc.alarm.get(
+            "/alarms",
+            params={"q.field": "all_projects", "q.op": "eq", "q.value": True},
+        ).json()
         self.set_samples("alarms", [([], len(alarms))])
