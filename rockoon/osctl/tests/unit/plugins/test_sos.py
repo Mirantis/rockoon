@@ -172,7 +172,7 @@ class TestSosRun(TestSosBase):
         self.elastic_task = (mock.Mock(), ("arg1",), {"kwarg1": "foo"})
 
         self.elastic_plugin = mock.Mock()
-        self.elastic_plugin.get_tasks.return_value = [(self.elastic_task)]
+        self.elastic_plugin.get_tasks.return_value = [self.elastic_task]
         mock_plugin = mock.Mock(return_value=self.elastic_plugin)
         mock_registry = mock.patch(
             "rockoon.osctl.plugins.sosreport.registry",
