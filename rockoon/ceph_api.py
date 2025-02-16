@@ -191,7 +191,7 @@ def _unpack_ips(data: str) -> Iterator[Tuple[IPv4Address, int]]:
 
 
 def get_os_ceph_params(
-    read_secret: Callable[[str, str], Dict[str, str]]
+    read_secret: Callable[[str, str], Dict[str, str]],
 ) -> OSCephParams:
     """Get OpenStack Ceph parameters
     Returns OpenStack Ceph parameters from secret OPENSTACK_KEYS_SECRET in shared ceph namespace
@@ -218,7 +218,7 @@ def set_os_ceph_params(
 
 
 def get_os_rgw_creds(
-    read_secret: Callable[[str, str], Dict[str, str]]
+    read_secret: Callable[[str, str], Dict[str, str]],
 ) -> OSRGWCreds:
     return from_dict(
         OSRGWCreds,
