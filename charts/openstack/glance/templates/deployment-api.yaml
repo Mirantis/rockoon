@@ -91,8 +91,6 @@ spec:
               mountPath: /tmp/glance-init-config.py
               subPath: glance-init-config.py
               readOnly: true
-        {{/* when pvc is not in configured_storages, filesystem_store_datadir is mounted as empty_dir so no need to chown */}}
-        {{- if and (has "file" $configured_storages) .Values.manifests.pvc_images }}
         - name: glance-perms
 {{ tuple $envAll "glance_api" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.api | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
@@ -112,7 +110,6 @@ spec:
               mountPath: /var/lib/glance
             - name: glance-images
               mountPath: {{ .Values.conf.glance.glance_store.filesystem_store_datadir }}
-        {{ end }}
         - name: lock-perms
 {{ tuple $envAll "glance_api" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ dict "envAll" $envAll "application" "glance" "container" "lock_perms" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
