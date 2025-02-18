@@ -110,7 +110,3 @@
             # Skip ironic rescue mode tests, rescue mode is not configured in MOSK properly as of now
             # TODO: PRODX-28092 - support configuration of rescue mode in Ironic
             - (?:ironic_tempest_plugin.tests.scenario.test_baremetal_basic_ops.BaremetalBasicOpsAndRescue)
-            # Skip multi-tenancy tests, they are partially covered by test_network_basic_ops in smoke
-            # TODO: PRODX-28093 run full multi-tenancy tests for Ironic to fully cover network isolation tests
-            - (?:ironic_tempest_plugin.tests.scenario.test_baremetal_single_tenant.BaremetalSingleTenant)
-            - (?:ironic_tempest_plugin.tests.scenario.test_baremetal_multitenancy.BaremetalMultitenancy)

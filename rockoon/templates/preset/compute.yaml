@@ -327,7 +327,9 @@ services:
               rescue_timeout: 2700
               unprovision_timeout: 2700
               unrescue_timeout: 2700
+              use_provision_network: {{ ironic_mt_enabled }}
             baremetal_feature_enabled:
+              trunks_supported: true
               adoption: true
             {%- endif %}
             # TODO (mshalamov): Will be removed during process of completing PRODX-1192
