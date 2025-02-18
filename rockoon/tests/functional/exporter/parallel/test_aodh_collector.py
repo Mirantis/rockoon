@@ -14,6 +14,15 @@ class AodhCollectorFunctionalTestCase(base.BaseFunctionalExporterTestCase):
             raise unittest.SkipTest("Alarming service is not enabled")
 
     def test_osdpl_aodh_alarms_value(self):
-        alarms_number = len(self.ocm.oc.alarm.get("/alarms").json())
+        alarms_number = len(
+            self.ocm.oc.alarm.get(
+                "/alarms",
+                params={
+                    "q.field": "all_projects",
+                    "q.op": "eq",
+                    "q.value": True,
+                },
+            ).json()
+        )
         metric = self.get_metric("osdpl_aodh_alarms")
         self.assertTrue(metric.samples[0].value == alarms_number)
