@@ -16,7 +16,7 @@ def get_output_templates():
     return res
 
 
-@pytest.mark.parametrize("out_template", get_output_templates())
+@pytest.mark.parametrize("out_template", sorted(get_output_templates()))
 def test_network_policy_ingress(
     out_template,
     child_view,
@@ -33,7 +33,7 @@ def test_network_policy_ingress(
     assert out == service_policies
 
 
-@pytest.mark.parametrize("out_template", get_output_templates())
+@pytest.mark.parametrize("out_template", sorted(get_output_templates()))
 def test_network_policy_eggress(
     out_template,
     child_view,
