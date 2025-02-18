@@ -58,6 +58,9 @@ spec:
             - name: stepler-etc
               mountPath: /etc/stepler/stepler-env.conf
               subPath: stepler-env.conf
+            - name: stepler-etc
+              mountPath: /etc/stepler/stepler.yaml
+              subPath: stepler.yaml
             - name: stepler-bin
               mountPath: /etc/stepler/skiplist.yaml
               subPath: skiplist.yaml

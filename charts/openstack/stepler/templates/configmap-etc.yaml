@@ -65,4 +65,5 @@ metadata:
 type: Opaque
 data:
   stepler-env.conf: {{ include "helm-toolkit.utils.to_env_conf" .Values.conf.stepler_env | b64enc }}
+  stepler.yaml:  {{ toYaml .Values.conf.stepler | b64enc }}
 {{- end }}
