@@ -349,6 +349,7 @@ spec:
               vni_ranges: '1:65536'
             ovn:
               ovn_metadata_enabled: true
+              ovn_emit_need_to_frag: true
           openvswitch_agent:
             agent:
               extensions: qos

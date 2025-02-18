@@ -941,6 +941,7 @@ spec:
             {%- if ovn_enabled %}
             ovn:
               ovn_metadata_enabled: true
+              ovn_emit_need_to_frag: true
             {%- endif %}
             {%- if physnet_vlan_mappings %}
             ml2_type_vlan:
