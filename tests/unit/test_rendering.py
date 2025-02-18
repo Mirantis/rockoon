@@ -303,7 +303,9 @@ def get_child_object_templates():
     return res
 
 
-@pytest.mark.parametrize("service,context", get_services_and_contexts())
+@pytest.mark.parametrize(
+    "service,context", sorted(get_services_and_contexts())
+)
 @mock.patch.object(layers, "_get_dashboard_default_policy")
 @mock.patch.object(layers, "_get_default_policy")
 def test_render_service_template(
@@ -331,13 +333,13 @@ def test_render_service_template(
         assert data == output, f"Mismatch when comparing to file {f.name}"
 
 
-@pytest.mark.parametrize("size", get_sizes())
+@pytest.mark.parametrize("size", sorted(get_sizes()))
 def test_render_sezes(size):
     layers.render_template(f"size/{size}")
 
 
 @pytest.mark.parametrize(
-    "service,template,openstack_version", get_child_object_templates()
+    "service,template,openstack_version", sorted(get_child_object_templates())
 )
 @mock.patch.object(kube, "artifacts_configmap")
 def test_render_child_object_template(
@@ -355,7 +357,7 @@ def test_render_child_object_template(
 
 
 @pytest.mark.parametrize(
-    "service,template,openstack_version", get_child_object_templates()
+    "service,template,openstack_version", sorted(get_child_object_templates())
 )
 @mock.patch.object(kube, "artifacts_configmap")
 def test_render_child_object_template_ensure_images(
