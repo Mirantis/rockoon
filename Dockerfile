@@ -3,7 +3,7 @@ ARG FROM=docker-remote.docker.mirantis.net/ubuntu:jammy
 FROM $FROM as builder
 SHELL ["/bin/bash", "-c"]
 ARG TEST_IMAGE
-ARG HELM_BINARY="https://binary.mirantis.com/openstack/bin/utils/helm/helm-v3.16.1-linux-amd64"
+ARG HELM_BINARY="https://binary.mirantis.com/openstack/bin/utils/helm/helm-v3.17.1-linux-amd64"
 
 # NOTE(pas-ha) need Git for pbr to install from source checkout w/o sdist
 ADD https://bootstrap.pypa.io/get-pip.py /tmp/get-pip.py
