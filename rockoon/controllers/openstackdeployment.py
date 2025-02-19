@@ -268,64 +268,96 @@ async def _handle(body, meta, spec, logger, reason, **kwargs):
     osdpl = kube.get_osdpl()
     mspec = osdpl.mspec
 
-    osdplst.set_osdpl_status(
-        osdplstatus.APPLYING, mspec, kwargs["diff"], reason
-    )
-    # We have settings.OSCTL_APPLYING_MAX_DELAY time to get here
-    # if we slow controller will be restarted.
-
-    # Always create clusterworkloadlock, but set to inactive when we are not interested
-    cwl = maintenance.ClusterWorkloadLock.get_by_osdpl(name)
-    cwl.present()
-
-    check_handling_allowed(kwargs["old"], kwargs["new"], reason)
-
-    secrets.OpenStackAdminSecret(namespace).ensure()
-    child_view = resource_view.ChildObjectView(mspec)
-
-    kwargs["patch"]["status"]["fingerprint"] = layers.spec_hash(mspec)
-
-    cache.ensure(body, mspec)
-
-    update, delete = layers.services(mspec, logger, **kwargs)
-
-    await rotate_credentials(
-        update,
-        mspec,
-        logger,
-        osdplst,
-        reason,
-        body,
-        meta,
-        spec,
-        child_view,
-        **kwargs,
-    )
-
-    if is_openstack_version_changed(kwargs["diff"]):
-        # Suspend descheduler cronjob during the upgrade services
-        service_instance_descheduler = services.registry["descheduler"](
-            mspec, logger, osdplst, child_view
+    try:
+        osdplst.set_osdpl_status(
+            osdplstatus.APPLYING, mspec, kwargs["diff"], reason
         )
-        child_obj_descheduler = service_instance_descheduler.get_child_object(
-            "CronJob", "descheduler"
-        )
-        await child_obj_descheduler.suspend(wait_completion=True)
+        # We have settings.OSCTL_APPLYING_MAX_DELAY time to get here
+        # if we slow controller will be restarted.
 
-        services_to_upgrade = get_os_services_for_upgrade(update)
-        LOG.info(
-            f"Starting upgrade for the following services: {services_to_upgrade}"
+        # Always create clusterworkloadlock, but set to inactive when we are not interested
+        cwl = maintenance.ClusterWorkloadLock.get_by_osdpl(name)
+        cwl.present()
+
+        check_handling_allowed(kwargs["old"], kwargs["new"], reason)
+
+        secrets.OpenStackAdminSecret(namespace).ensure()
+        child_view = resource_view.ChildObjectView(mspec)
+
+        kwargs["patch"]["status"]["fingerprint"] = layers.spec_hash(mspec)
+
+        cache.ensure(body, mspec)
+
+        update, delete = layers.services(mspec, logger, **kwargs)
+
+        await rotate_credentials(
+            update,
+            mspec,
+            logger,
+            osdplst,
+            reason,
+            body,
+            meta,
+            spec,
+            child_view,
+            **kwargs,
         )
-        for service in set(list(services_to_upgrade) + list(update)):
-            osdplst.set_service_state(service, osdplstatus.WAITING)
-        for service in services_to_upgrade:
-            task_def = {}
+
+        if is_openstack_version_changed(kwargs["diff"]):
+            # Suspend descheduler cronjob during the upgrade services
+            service_instance_descheduler = services.registry["descheduler"](
+                mspec, logger, osdplst, child_view
+            )
+            child_obj_descheduler = (
+                service_instance_descheduler.get_child_object(
+                    "CronJob", "descheduler"
+                )
+            )
+            await child_obj_descheduler.suspend(wait_completion=True)
+
+            services_to_upgrade = get_os_services_for_upgrade(update)
+            LOG.info(
+                f"Starting upgrade for the following services: {services_to_upgrade}"
+            )
+            for service in set(list(services_to_upgrade) + list(update)):
+                osdplst.set_service_state(service, osdplstatus.WAITING)
+            for service in services_to_upgrade:
+                task_def = {}
+                service_instance = services.registry[service](
+                    mspec, logger, osdplst, child_view
+                )
+                task_def[
+                    asyncio.create_task(
+                        service_instance.upgrade(
+                            event=reason,
+                            body=body,
+                            meta=meta,
+                            spec=spec,
+                            logger=logger,
+                            **kwargs,
+                        )
+                    )
+                ] = (
+                    service_instance.upgrade,
+                    reason,
+                    body,
+                    meta,
+                    spec,
+                    logger,
+                    kwargs,
+                )
+                await run_task(task_def)
+
+        # NOTE(vsaienko): explicitly call apply() here to make sure that newly deployed environment
+        # and environment after upgrade/update are identical.
+        task_def = {}
+        for service in update:
             service_instance = services.registry[service](
                 mspec, logger, osdplst, child_view
             )
             task_def[
                 asyncio.create_task(
-                    service_instance.upgrade(
+                    service_instance.apply(
                         event=reason,
                         body=body,
                         meta=meta,
@@ -335,7 +367,7 @@ async def _handle(body, meta, spec, logger, reason, **kwargs):
                     )
                 )
             ] = (
-                service_instance.upgrade,
+                service_instance.apply,
                 reason,
                 body,
                 meta,
@@ -343,54 +375,50 @@ async def _handle(body, meta, spec, logger, reason, **kwargs):
                 logger,
                 kwargs,
             )
-            await run_task(task_def)
 
-    # NOTE(vsaienko): explicitly call apply() here to make sure that newly deployed environment
-    # and environment after upgrade/update are identical.
-    task_def = {}
-    for service in update:
-        service_instance = services.registry[service](
-            mspec, logger, osdplst, child_view
-        )
-        task_def[
-            asyncio.create_task(
-                service_instance.apply(
-                    event=reason,
-                    body=body,
-                    meta=meta,
-                    spec=spec,
-                    logger=logger,
-                    **kwargs,
-                )
+        if delete:
+            LOG.info(f"deleting children {' '.join(delete)}")
+        for service in delete:
+            service_instance = services.registry[service](
+                mspec, logger, osdplst, child_view
             )
-        ] = (service_instance.apply, reason, body, meta, spec, logger, kwargs)
-
-    if delete:
-        LOG.info(f"deleting children {' '.join(delete)}")
-    for service in delete:
-        service_instance = services.registry[service](
-            mspec, logger, osdplst, child_view
-        )
-        task_def[
-            asyncio.create_task(
-                service_instance.delete(
-                    body=body, meta=meta, spec=spec, logger=logger, **kwargs
+            task_def[
+                asyncio.create_task(
+                    service_instance.delete(
+                        body=body,
+                        meta=meta,
+                        spec=spec,
+                        logger=logger,
+                        **kwargs,
+                    )
                 )
+            ] = (
+                service_instance.delete,
+                reason,
+                body,
+                meta,
+                spec,
+                logger,
+                kwargs,
             )
-        ] = (service_instance.delete, reason, body, meta, spec, logger, kwargs)
 
-    await run_task(task_def)
+        await run_task(task_def)
 
-    # TODO(vsaienko): remove when release boundary passed. Cleanup status from osdpl
-    # object.
-    kwargs["patch"]["status"]["health"] = None
-    kwargs["patch"]["status"]["children"] = None
-    kwargs["patch"]["status"]["deployed"] = None
-    osdplst.set_osdpl_status(
-        osdplstatus.APPLIED, mspec, kwargs["diff"], reason
-    )
+        # TODO(vsaienko): remove when release boundary passed. Cleanup status from osdpl
+        # object.
+        kwargs["patch"]["status"]["health"] = None
+        kwargs["patch"]["status"]["children"] = None
+        kwargs["patch"]["status"]["deployed"] = None
+        osdplst.set_osdpl_status(
+            osdplstatus.APPLIED, mspec, kwargs["diff"], reason
+        )
 
-    cleanup_helm_cache()
+        cleanup_helm_cache()
+    except kopf.PermanentError as e:
+        osdplst.set_osdpl_status(
+            osdplstatus.FAILED, mspec, kwargs["diff"], str(e)
+        )
+        raise e
 
     return {"lastStatus": f"{reason}d"}
 

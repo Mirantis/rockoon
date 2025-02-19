@@ -41,7 +41,8 @@ async def helm_lock(lock, cmd):
 def helm_retry(func):
     async def wrapper(*args, **kwargs):
         attempt = 1
-        while True:
+        max_retries = CONF.getint("helmbundle", "helm_max_retries")
+        while attempt <= max_retries:
             try:
                 start = datetime.utcnow()
                 res = await asyncio.wait_for(
@@ -63,6 +64,9 @@ def helm_retry(func):
                     f"Got retriable exception {e}, when calling {func}, retrying, attempt: {attempt}"
                 )
                 attempt += 1
+        raise kopf.PermanentError(
+            f"Exhausted all retries {max_retries} while running helm {args} {kwargs}"
+        )
 
     return wrapper
 
