@@ -123,3 +123,80 @@ class MasakariIntrospectiveInstanceMonitorTestCases(BaseMasakariTestCase):
         LOG.debug("Verify the qemu-guest-agent status")
         ssh = self.ssh_instance(server.public_v4, self.ssh_keys["private"])
         ssh.check_call("systemctl status qemu-guest-agent")
+
+    def test_introspective_monitor_without_ha_enabled(self):
+        """Verify Masakari introspective instance monitor - instance without
+        property HA_Enabled=True
+
+        #. Set the Ubuntu image property hw_qemu_guest_agent='yes'
+        #. Boot an instance with SSH access without property 'HA_Enabled=True'
+        #. Add the instance's host to the Masakari segment
+        #. SSH into the instance and install the qemu-guest-agent
+        #. Retrieve the initial reboot count of the instance
+        #. Stop the qemu-guest-agent to simulate the instance crash
+        #. Verify the Masakari notification after stopping the qemu-guest-agent
+        #. Verify that the instance was not rebooted after stopping the qemu-guest
+        #. Verify that the instance is running
+        #. Start the qemu-guest-agent and verify its status
+        """
+        LOG.debug("Set the Ubuntu image property hw_qemu_guest_agent='yes'")
+        self.update_image_property(self.image, {"hw_qemu_guest_agent": "yes"})
+
+        LOG.debug(
+            "Boot an instance with SSH access without property 'HA_Enabled=True'"
+        )
+        server = self.server_create(
+            imageRef=self.image.id,
+            flavorRef=self.flavor,
+            networks=[{"port": self.port.id}],
+            keypair=self.keypair["id"],
+        )
+
+        LOG.debug("Add the instance's host to the Masakari segment")
+        self.segment_add_host(server.compute_host, self.ms_segment.uuid)
+
+        LOG.debug("SSH into the instance and install the qemu-guest-agent")
+        ssh = self.ssh_instance(server.public_v4, self.ssh_keys["private"])
+        self.install_qemu_guest_agent(ssh)
+        time.sleep(30)
+
+        LOG.debug("Retrieve the initial reboot count of the instance")
+        start_timestamp = int(time.time())
+        initial_reboot_count = self.get_servers_reboot_count(
+            server.public_v4, self.ssh_keys["private"]
+        )
+
+        LOG.debug("Stop the qemu-guest-agent to simulate the instance crash")
+        ssh.check_call("systemctl stop qemu-guest-agent")
+        time.sleep(30)
+
+        LOG.debug(
+            "Verify the Masakari notification after stopping the qemu-guest-agent"
+        )
+        waiters.wait_masakari_notification(
+            self.get_notification_list,
+            server.id,
+            start_timestamp=start_timestamp,
+            notification_type="VM",
+            status="finished",
+            event="QEMU_GUEST_AGENT_ERROR",
+        )
+
+        LOG.debug(
+            "Verify that the instance was not rebooted after stopping the qemu-guest-agent"
+        )
+        reboot_count = self.get_servers_reboot_count(
+            server.public_v4, self.ssh_keys["private"]
+        )
+        self.assertEqual(
+            reboot_count,
+            initial_reboot_count,
+            f"The instance was rebooted after stopping the qemu-guest-agent: {reboot_count} times",
+        )
+
+        LOG.debug("Verify that the instance is running")
+        waiters.wait_for_server_status(self.ocm, server, status="ACTIVE")
+
+        LOG.debug("Verify the qemu-guest-agent status")
+        ssh.check_call("systemctl start qemu-guest-agent")
+        ssh.check_call("systemctl status qemu-guest-agent")
