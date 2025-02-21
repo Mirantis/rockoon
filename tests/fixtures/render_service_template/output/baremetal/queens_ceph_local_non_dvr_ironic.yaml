@@ -13,7 +13,7 @@ spec:
           DEFAULT:
             enabled_bios_interfaces: fake,no-bios
             enabled_boot_interfaces: pxe,fake
-            enabled_console_interfaces: fake,no-console
+            enabled_console_interfaces: fake,no-console,ipmitool-socat
             enabled_deploy_interfaces: fake,direct
             enabled_hardware_types: ipmi,fake-hardware
             enabled_inspect_interfaces: fake,no-inspect

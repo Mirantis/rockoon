@@ -137,7 +137,7 @@ spec:
             # while ironic BFV supports only ISCSI or FiberChannel
             enabled_storage_interfaces: fake,cinder,noop
             enabled_bios_interfaces: fake,no-bios
-            enabled_console_interfaces: fake,no-console
+            enabled_console_interfaces: fake,no-console,ipmitool-socat
             enabled_inspect_interfaces: fake,no-inspect
             enabled_raid_interfaces: fake,agent,no-raid
             enabled_rescue_interfaces: fake,no-rescue
