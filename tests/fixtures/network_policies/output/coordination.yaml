@@ -63,6 +63,10 @@ coordination:etcd:StatefulSet:etcd-etcd:
   - podSelector:
       matchLabels:
         application: nova
+        component: serial-proxy
+  - podSelector:
+      matchLabels:
+        application: nova
         component: placement
   - podSelector:
       matchLabels:

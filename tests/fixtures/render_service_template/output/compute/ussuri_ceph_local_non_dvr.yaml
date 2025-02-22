@@ -8,6 +8,15 @@ spec:
         user_secret_name: nova-rbd-keyring
       conf:
         ceph:
+          cinder:
+            user: nova
+          config:
+            global:
+              mon_host:
+              - 10.10.10.1:6789
+              - 10.10.10.2:6789
+              - 10.10.10.3:6789
+          enabled: true
           keyrings:
             cinder:
               key: AQDLZLJfNPtTOxAAQm248Q9AyoirvELaSyPz5w==
@@ -15,37 +24,14 @@ spec:
             nova:
               key: AQDNZLJf8S+fORAA6hg50Jo+vBq07kxtBXB9PQ==
               secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
-          cinder:
-            user: nova
-          enabled: true
-          config:
-            global:
-              mon_host:
-                - "10.10.10.1:6789"
-                - "10.10.10.2:6789"
-                - "10.10.10.3:6789"
-        qemu:
-          security_driver: apparmor
         dynamic_options:
           libvirt:
             listen_interface: ens3
         libvirt:
           keepalive_count: 9
           keepalive_interval: 10
-      pod:
-        probes:
-          libvirt:
-            libvirt:
-              readiness:
-                params:
-                  initialDelaySeconds: 30
-                  periodSeconds: 10
-                  timeoutSeconds: 5
-              liveness:
-                params:
-                  initialDelaySeconds: 30
-                  periodSeconds: 10
-                  timeoutSeconds: 5
+        qemu:
+          security_driver: apparmor
       images:
         tags:
           ceph_config_helper: ceph-config-helper:latest
@@ -53,8 +39,22 @@ spec:
           image_repo_sync: image-repo-sync:latest
           libvirt: libvirt:latest
       manifests:
-        network_policy: false
         ceph_conf: true
+        network_policy: false
+      pod:
+        probes:
+          libvirt:
+            libvirt:
+              liveness:
+                params:
+                  initialDelaySeconds: 30
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+              readiness:
+                params:
+                  initialDelaySeconds: 30
+                  periodSeconds: 10
+                  timeoutSeconds: 5
   - chart: nova
     name: openstack-nova
     values:
@@ -62,24 +62,21 @@ spec:
         configmap: rook-ceph-config
         user_secret_name: nova-rbd-keyring
       conf:
-        policy.d:
-          01-controller-default.yaml: {'compute_rule1': 'compute_value1'}
-          02-custom.yaml: {}
         ceph:
+          cinder:
+            user: nova
+          config:
+            global:
+              mon_host:
+              - 10.10.10.1:6789
+              - 10.10.10.2:6789
+              - 10.10.10.3:6789
+          enabled: true
           keyrings:
             cinder:
               key: AQDLZLJfNPtTOxAAQm248Q9AyoirvELaSyPz5w==
             nova:
               key: AQDNZLJf8S+fORAA6hg50Jo+vBq07kxtBXB9PQ==
-          cinder:
-            user: nova
-          enabled: true
-          config:
-            global:
-              mon_host:
-                - "10.10.10.1:6789"
-                - "10.10.10.2:6789"
-                - "10.10.10.3:6789"
         hypervisor:
           host_interface: ens3
         libvirt:
@@ -89,32 +86,28 @@ spec:
             level: INFO
           logger_os.brick:
             level: INFO
-        paste:
-          composite:osapi_compute:
-            /v2: oscomputeversion_legacy_v2
-            /v2.1: oscomputeversion_v2
-            /v2/+: openstack_compute_api_v21_legacy_v2_compatible
-            /v2.1/+: openstack_compute_api_v21
-          pipeline:oscomputeversion_v2:
-            pipeline: cors compute_req_id faultwrap http_proxy_to_wsgi oscomputeversionapp_v2
-          pipeline:oscomputeversion_legacy_v2:
-            pipeline: cors compute_req_id faultwrap http_proxy_to_wsgi legacy_v2_compatible oscomputeversionapp_v2
-          app:oscomputeversionapp_v2:
-            paste.app_factory: nova.api.openstack.compute.versions:VersionsV2.factory
         nova:
           DEFAULT:
+            allow_resize_to_same_host: true
+            cpu_allocation_ratio: 0
+            default_schedule_zone: nova
+            disk_allocation_ratio: 0
             initial_cpu_allocation_ratio: 8.0
             initial_disk_allocation_ratio: 1.6
             initial_ram_allocation_ratio: 1.0
-            cpu_allocation_ratio: 0
-            disk_allocation_ratio: 0
             ram_allocation_ratio: 0
-            allow_resize_to_same_host: true
-            default_schedule_zone: nova
+          audit_middleware_notifications:
+            driver: noop
           cache:
             backend: oslo_cache.memcache_pool
           cinder:
             catalog_info: volumev3:cinderv3:internalURL
+          console:
+            allowed_origins: horizon.it.just.works,serialproxy.it.just.works
+          coordination:
+            backend_url: etcd3+http://etcd:2379
+          filter_scheduler:
+            build_failure_weight_multiplier: 2.0
           ironic:
             memcache_secret_key: JinzIdQzLdIslgxu
             memcache_security_strategy: ENCRYPT
@@ -122,38 +115,65 @@ spec:
             memcache_secret_key: JinzIdQzLdIslgxu
             memcache_security_strategy: ENCRYPT
             service_type: compute
-          os_vif_ovs:
-            isolate_vif: true
-          filter_scheduler:
-            build_failure_weight_multiplier: 2.0
           libvirt:
             cpu_mode: host-model
             images_rbd_pool: vms-hdd
             images_type: qcow2
+            live_migration_permit_auto_converge: true
             rbd_user: nova
             virt_type: kvm
-            live_migration_permit_auto_converge: true
           neutron:
             metadata_proxy_shared_secret: mN0aLDTcg1AVqyLWNDjCd2Jz6DA61cZJ
-          audit_middleware_notifications:
-            driver: noop
+          os_vif_ovs:
+            isolate_vif: true
           oslo_messaging_notifications:
             topics: notifications,stacklight_notifications
           oslo_policy:
             enforce_new_defaults: false
             enforce_scope: false
+          serial_console:
+            enabled: false
           service_user:
             send_service_user_token: true
-          coordination:
-            backend_url: 'etcd3+http://etcd:2379'
           workarounds:
             disable_fallback_pcpu_query: true
+        paste:
+          app:oscomputeversionapp_v2:
+            paste.app_factory: nova.api.openstack.compute.versions:VersionsV2.factory
+          composite:osapi_compute:
+            /v2: oscomputeversion_legacy_v2
+            /v2.1: oscomputeversion_v2
+            /v2.1/+: openstack_compute_api_v21
+            /v2/+: openstack_compute_api_v21_legacy_v2_compatible
+          pipeline:oscomputeversion_legacy_v2:
+            pipeline: cors compute_req_id faultwrap http_proxy_to_wsgi legacy_v2_compatible
+              oscomputeversionapp_v2
+          pipeline:oscomputeversion_v2:
+            pipeline: cors compute_req_id faultwrap http_proxy_to_wsgi oscomputeversionapp_v2
+        policy.d:
+          01-controller-default.yaml:
+            compute_rule1: compute_value1
+          02-custom.yaml: {}
         ssh_private: 'COMPUTE TEST SSH PRIVATE KEY
 
           '
         ssh_public: 'COMPUTE TEST SSH PUBLIC KEY
 
           '
+      console:
+        novnc:
+          compute:
+            vncserver_proxyclient_interface: ens3
+          enabled: true
+          tls_enabled: false
+        serial:
+          compute:
+            server_proxyclient_interface: ens3
+          enabled: false
+        spice:
+          compute:
+            server_proxyclient_interface: ens3
+          enabled: false
       dependencies:
         static:
           db_init:
@@ -166,12 +186,15 @@ spec:
             public:
               host: nova.it.just.works
               tls:
-                ca: |
-                  TEST CA
-                crt: |
-                  TEST CRT
-                key: |
-                  TEST KEY
+                ca: 'TEST CA
+
+                  '
+                crt: 'TEST CRT
+
+                  '
+                key: 'TEST KEY
+
+                  '
           hosts:
             admin:
               host: nova-api
@@ -180,12 +203,15 @@ spec:
             public:
               host: nova
               tls:
-                ca: |
-                  TEST CA
-                crt: |
-                  TEST CRT
-                key: |
-                  TEST KEY
+                ca: 'TEST CA
+
+                  '
+                crt: 'TEST CRT
+
+                  '
+                key: 'TEST KEY
+
+                  '
           port:
             api:
               admin: 8774
@@ -195,60 +221,72 @@ spec:
           scheme:
             default: http
             public: https
+        compute_metadata:
+          host_fqdn_override:
+            public:
+              host: metadata.it.just.works
+              tls:
+                ca: 'TEST CA
+
+                  '
+                crt: 'TEST CRT
+
+                  '
+                key: 'TEST KEY
+
+                  '
+          hosts:
+            default: nova-metadata
+            public:
+              host: metadata
+              tls:
+                ca: 'TEST CA
+
+                  '
+                crt: 'TEST CRT
+
+                  '
+                key: 'TEST KEY
+
+                  '
+          port:
+            metadata:
+              default: 8775
+              public: 443
+          scheme:
+            default: http
+            public: https
         compute_novnc_proxy:
           host_fqdn_override:
             public:
               host: novncproxy.it.just.works
               tls:
-                ca: |
-                  TEST CA
-                crt: |
-                  TEST CRT
-                key: |
-                  TEST KEY
+                ca: 'TEST CA
+
+                  '
+                crt: 'TEST CRT
+
+                  '
+                key: 'TEST KEY
+
+                  '
           hosts:
             default: nova-novncproxy
             public:
               host: novncproxy
               tls:
-                ca: |
-                  TEST CA
-                crt: |
-                  TEST CRT
-                key: |
-                  TEST KEY
+                ca: 'TEST CA
+
+                  '
+                crt: 'TEST CRT
+
+                  '
+                key: 'TEST KEY
+
+                  '
           port:
             novnc_proxy:
               default: 6080
-              public: 443
-          scheme:
-            default: http
-            public: https
-        compute_metadata:
-          host_fqdn_override:
-            public:
-              host: 'metadata.it.just.works'
-              tls:
-                ca: |
-                  TEST CA
-                crt: |
-                  TEST CRT
-                key: |
-                  TEST KEY
-          hosts:
-            default: 'nova-metadata'
-            public:
-              host: metadata
-              tls:
-                ca: |
-                  TEST CA
-                crt: |
-                  TEST CRT
-                key: |
-                  TEST KEY
-          port:
-            metadata:
-              default: 8775
               public: 443
           scheme:
             default: http
@@ -265,20 +303,20 @@ spec:
               username: admin
             neutron:
               password: 9d4CIP5ismqTa7l5N5FdD8MAuFMXx9EV
+              region_name: RegionOne
               username: neutronnmAhFsr
-              region_name: 'RegionOne'
             nova:
               password: BLFKrb8JhAMBb1v9BnRGDckMaYY7XUbq
+              region_name: RegionOne
               username: novaZzHG
-              region_name: 'RegionOne'
             placement:
               password: AEYVXR3LFUbLcePQlkxSFvbQ1WyWtaiY
+              region_name: RegionOne
               username: placementR3AqaC4te
-              region_name: 'RegionOne'
             test:
               password: YJh7cWqBdT8R5ylm3LD0aKw4V3DtlS8p
+              region_name: RegionOne
               username: testb2yA
-              region_name: 'RegionOne'
         oslo_cache:
           statefulset:
             name: openstack-memcached-memcached
@@ -416,30 +454,34 @@ spec:
           rabbit_init: rabbit-init:latest
           test: test:latest
       jobs:
+        db_purge:
+          cron: 1 1 * * 1
+          enabled: true
+          script:
+            config:
+              age: 30
+              max_rows: 1000
         ks_endpoints:
           restartPolicy: Never
         ks_service:
           restartPolicy: Never
         ks_user:
           restartPolicy: Never
-        db_purge:
-          enabled: true
-          cron: "1 1 * * 1"
-          script:
-            config:
-              age: 30
-              max_rows: 1000
       labels:
         agent:
           compute_ironic:
             node_selector_key: openstack-control-plane
             node_selector_value: enabled
       manifests:
+        ceph_conf: true
         cron_job_db_purge: true
         cron_job_placement_audit: true
         deployment_consoleauth: false
         deployment_placement: false
+        ingress_novncproxy: true
         ingress_placement: false
+        ingress_serialproxy: false
+        ingress_spiceproxy: false
         job_db_init_placement: false
         job_ks_placement_endpoints: false
         job_ks_placement_service: false
@@ -450,21 +492,19 @@ spec:
         secret_ca_bundle: true
         secret_keystone_placement: false
         secret_novncproxy_tls: false
-        service_ingress_placement: false
-        service_placement: false
-        ceph_conf: true
-        ingress_novncproxy: true
-        ingress_spiceproxy: false
         service_ingress_novncproxy: true
+        service_ingress_placement: false
+        service_ingress_serialproxy: false
         service_ingress_spiceproxy: false
+        service_placement: false
       network:
         core_plugin: ml2
-        sshd:
-          enabled: true
         novncproxy:
           ingress:
             annotations:
-              nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+              nginx.ingress.kubernetes.io/proxy-read-timeout: '300'
+        sshd:
+          enabled: true
       pod:
         probes:
           compute:
@@ -481,6 +521,26 @@ spec:
                   initialDelaySeconds: 0
                   periodSeconds: 50
                   timeoutSeconds: 40
+          compute-serial-proxy:
+            default:
+              liveness:
+                enabled: true
+                params:
+                  initialDelaySeconds: 0
+              readiness:
+                enabled: true
+                params:
+                  initialDelaySeconds: 0
+          compute-spice-proxy:
+            default:
+              liveness:
+                enabled: true
+                params:
+                  initialDelaySeconds: 0
+              readiness:
+                enabled: true
+                params:
+                  initialDelaySeconds: 0
           conductor:
             default:
               liveness:
@@ -510,16 +570,6 @@ spec:
                   periodSeconds: 50
                   timeoutSeconds: 40
           novncproxy:
-            default:
-              liveness:
-                enabled: true
-                params:
-                  initialDelaySeconds: 0
-              readiness:
-                enabled: true
-                params:
-                  initialDelaySeconds: 0
-          compute-spice-proxy:
             default:
               liveness:
                 enabled: true
@@ -560,16 +610,7 @@ spec:
                 runAsUser: 0
         useHostNetwork:
           novncproxy: false
+          serialproxy: false
           spiceproxy: false
         use_fqdn:
           compute: false
-      console:
-        novnc:
-          enabled: true
-          tls_enabled: false
-          compute:
-            vncserver_proxyclient_interface: ens3
-        spice:
-          enabled: false
-          compute:
-            server_proxyclient_interface: ens3

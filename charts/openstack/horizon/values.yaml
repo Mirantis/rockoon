@@ -365,7 +365,7 @@ conf:
         # Set Console type:
         # valid options are "AUTO"(default), "VNC", "SPICE", "RDP", "SERIAL" or None
         # Set to None explicitly if you want to deactivate the console.
-        #CONSOLE_TYPE = "AUTO"
+        # CONSOLE_TYPE = "AUTO"
 
         # Default OpenStack Dashboard configuration.
         HORIZON_CONFIG = {

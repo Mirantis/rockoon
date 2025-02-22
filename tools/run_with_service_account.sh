@@ -42,7 +42,7 @@ available_controllers=(
     "-m rockoon.controllers.openstackdeploymentstatus"
     "-m rockoon.controllers.configmaps"
 )
-
 controllers="${available_controllers[*]}"
 
+echo "Starting controllers $controllers"
 kopf run --dev -n openstack -P rockoon.osdpl --liveness=http://:8090/healthz $controllers -m rockoon.controllers.probe

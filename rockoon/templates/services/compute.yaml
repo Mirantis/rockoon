@@ -48,6 +48,7 @@
 {%- set libvirt_server_tls_enabled = spec.get('features', {}).get('nova', {}).get('libvirt', {}).get('tls', {}).get('enabled', false) %}
 {%- set nova_console = spec.get('features', {}).get('nova', {}).get('console', {}) %}
 {%- set spice_enabled = nova_console.get('spice', {}).get('enabled', false) %}
+{%- set ironic_serial_enabled = spec.get('features', {}).get('ironic', {}).get('serial', {}).get('enabled', baremetal_enabled) %}
 {%- set vnc_enabled = nova_console.get('novnc', {}).get('enabled', true) %}
 {%- set vnc_tls_enabled = vnc_enabled and nova_console.get('novnc', {}).get('tls', {}).get('enabled', false) %}
 {%- set swtpm_enabled = false %}
@@ -327,6 +328,7 @@ spec:
     "ks_user",
     "ks_service",
     "nova_spiceproxy",
+    "nova_serialproxy",
     "nova_scheduler",
     "rabbit_init",
     "nova_cell_setup",
@@ -439,6 +441,11 @@ spec:
                     compute:
                       server_proxyclient_interface: {{ nova_override.live_migration_interface }}
                 {%- endif %}
+                {%- if ironic_serial_enabled %}
+                  serial:
+                    compute:
+                      server_proxyclient_interface: {{ nova_override.live_migration_interface }}
+                {%- endif %}
       {%- endif %}
     {%- endif %}
   {%- endfor %}
@@ -454,6 +461,7 @@ spec:
         useHostNetwork:
           novncproxy: false
           spiceproxy: false
+          serialproxy: false
         probes:
           rpc_timeout: 30
           rpc_retries: 2
@@ -510,6 +518,16 @@ spec:
                 params:
                   initialDelaySeconds: 0
           compute-spice-proxy:
+            default:
+              liveness:
+                enabled: True
+                params:
+                  initialDelaySeconds: 0
+              readiness:
+                enabled: True
+                params:
+                  initialDelaySeconds: 0
+          compute-serial-proxy:
             default:
               liveness:
                 enabled: True
@@ -582,6 +600,8 @@ spec:
         ingress_novncproxy: {{ vnc_enabled }}
         service_ingress_spiceproxy: {{ spice_enabled }}
         ingress_spiceproxy: {{ spice_enabled }}
+        service_ingress_serialproxy: {{ ironic_serial_enabled }}
+        ingress_serialproxy: {{ ironic_serial_enabled }}
 {%- if OSVer[spec.openstack_version] >= OSVer.ussuri %}
         cron_job_placement_audit: true
 {%- endif %}
@@ -770,6 +790,37 @@ spec:
           scheme:
             default: http
             public: https
+{%- endif %}
+{%- if ironic_serial_enabled %}
+        compute_serial_proxy:
+          host_fqdn_override:
+            public:
+              host: serialproxy.{{ spec.public_domain_name }}
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent(width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent(width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent(width=18, first=True) }}
+          hosts:
+            default: nova-serialproxy
+            public:
+              host: serialproxy
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent(width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent(width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent(width=18, first=True) }}
+          port:
+            serial_proxy:
+              default: 6083
+              public: 443
+          scheme:
+            default: wss
+            public: wss
 {%- endif %}
         compute_metadata:
           host_fqdn_override:
@@ -989,6 +1040,11 @@ spec:
         {%- endif %}
           coordination:
             backend_url: {{ get_etcd3_endpoint(spec.openstack_version, 'etcd3gw') }}
+          console:
+            allowed_origins: "horizon.{{ spec.public_domain_name }},serialproxy.{{ spec.public_domain_name }}"
+          serial_console:
+            # NOTE(vsaienko): we do not want to support serial console on VMs
+            enabled: false
       {%- if baremetal_enabled %}
         nova_ironic:
           DEFAULT:
@@ -1002,6 +1058,8 @@ spec:
           ironic:
             status_code_retries: 15
             status_code_retry_delay: 15
+          serial_console:
+            enabled: {{ ironic_serial_enabled }}
       {%- endif %}
         logging:
           logger_nova:
@@ -1021,6 +1079,12 @@ spec:
       console:
         spice:
           enabled: {{ spice_enabled }}
+        {%- if spec.get('features', {}).get('nova', {}).get('live_migration_interface') %}
+          compute:
+            server_proxyclient_interface: {{ spec.features.nova.live_migration_interface }}
+        {%- endif %}
+        serial:
+          enabled: {{ ironic_serial_enabled }}
         {%- if spec.get('features', {}).get('nova', {}).get('live_migration_interface') %}
           compute:
             server_proxyclient_interface: {{ spec.features.nova.live_migration_interface }}

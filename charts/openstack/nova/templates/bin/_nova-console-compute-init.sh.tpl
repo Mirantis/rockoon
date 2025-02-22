@@ -28,6 +28,10 @@ elif [ "${console_kind}" == "spice" ] ; then
     client_address="{{- .Values.conf.nova.spice.server_proxyclient_address -}}"
     client_interface="{{- .Values.console.spice.compute.server_proxyclient_interface -}}"
     listen_ip="{{- .Values.conf.nova.spice.server_listen -}}"
+elif [ "${console_kind}" == "serial" ] ; then
+    client_address="{{- .Values.conf.nova.serial_console.server_proxyclient_address -}}"
+    client_interface="{{- .Values.console.serial.compute.server_proxyclient_interface -}}"
+    listen_ip="{{- .Values.conf.nova.serial_console.server_listen -}}"
 fi
 
 if [ -z "${client_address}" ] ; then
@@ -46,17 +50,21 @@ fi
 
 listen_ip=${listen_ip:-${client_address}}
 
-touch /etc/nova/nova.conf.d/nova-console.conf
-if [ "${console_kind}" == "novnc" ] ; then
-  cat >> /etc/nova/nova.conf.d/nova-console.conf <<EOF
+if [ "${console_kind}" == "novnc" ]; then
+  cat >> /etc/nova/nova.conf.d/nova-console-${console_kind}.conf <<EOF
 [vnc]
 server_proxyclient_address = $client_address
 server_listen = $listen_ip
 EOF
-elif [ "${console_kind}" == "spice" ] ; then
-  cat >> /etc/nova/nova.conf.d/nova-console.conf <<EOF
+elif [ "${console_kind}" == "spice" ]; then
+  cat >> /etc/nova/nova.conf.d/nova-console-${console_kind}.conf <<EOF
 [spice]
 server_proxyclient_address = $client_address
 server_listen = $listen_ip
+EOF
+elif [ "${console_kind}" == "serial" ]; then
+  cat >> /etc/nova/nova.conf.d/nova-console-${console_kind}.conf <<EOF
+[serial_console]
+proxyclient_address = $client_address
 EOF
 fi

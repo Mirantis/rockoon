@@ -6,8 +6,11 @@
 {%- set nova_metadata = "compute:nova:Deployment:nova-api-metadata" %}
 {%- set nova_novnc = "compute:nova:Deployment:nova-novncproxy" %}
 {%- set nova_spice = "compute:nova:Deployment:nova-spiceproxy" %}
+{%- set nova_serial = "compute:nova:Deployment:nova-serialproxy" %}
 {%- set nova_console = spec.get('features', {}).get('nova', {}).get('console', {}) %}
 {%- set spice_enabled = nova_console.get('spice', {}).get('enabled', false) %}
+{%- set baremtal_enabled = "baremetal" in spec.get('features', {}).get("services", []) %}
+{%- set ironic_serial_enabled = spec.get('features', {}).get('ironic', {}).get('serial', {}).get('enabled', baremetal_enabled) %}
 {%- set vnc_enabled = nova_console.get('novnc', {}).get('enabled', true) %}
         metadata:
           spec:
@@ -58,4 +61,15 @@
             - Ingress
             ingress:
 {{ network_policies["ingress"][nova_spice] | toyaml | indent(14, first=True) }}
+{%- endif %}
+{%- if ironic_serial_enabled %}
+        serialproxy:
+          spec:
+            podSelector:
+              matchLabels:
+{{ service_childs[nova_serial].get_pod_labels() | toyaml | indent(16, first=True) }}
+            policyTypes:
+            - Ingress
+            ingress:
+{{ network_policies["ingress"][nova_serial] | toyaml | indent(14, first=True) }}
 {%- endif %}

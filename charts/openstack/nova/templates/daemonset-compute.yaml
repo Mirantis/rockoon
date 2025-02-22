@@ -184,6 +184,25 @@ spec:
             - name: nova-confd
               mountPath: /etc/nova/nova.conf.d
         {{ end }}
+        {{- if .Values.console.serial.enabled }}
+        - name: nova-compute-serial-init
+{{ tuple $envAll "nova_compute" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.compute | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "nova" "container" "nova_compute_serial_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/nova-console-compute-init.sh
+            - serial
+          terminationMessagePath: /var/log/termination-log
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: nova-bin
+              mountPath: /tmp/nova-console-compute-init.sh
+              subPath: nova-console-compute-init.sh
+              readOnly: true
+            - name: nova-confd
+              mountPath: /etc/nova/nova.conf.d
+        {{ end }}
         {{- if ( has "tungstenfabric" .Values.network.backend ) }}
         - name: tungstenfabric-compute-init
           image: {{ .Values.images.tags.tf_compute_init }}

@@ -53,6 +53,9 @@ labels:
   spiceproxy:
     node_selector_key: openstack-control-plane
     node_selector_value: enabled
+  serialproxy:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
   test:
     node_selector_key: openstack-control-plane
     node_selector_value: enabled
@@ -89,6 +92,7 @@ images:
     # as it has both oscli and jq.
     nova_service_cleaner: 'docker.io/openstackhelm/ceph-config-helper:latest-ubuntu_xenial'
     nova_spiceproxy: docker.io/openstackhelm/nova:stein-ubuntu_bionic
+    nova_serialproxy: docker.io/openstackhelm/nova:stein-ubuntu_bionic
     test: docker.io/xrally/xrally-openstack:2.0.0
     image_repo_sync: docker.io/docker:17.07.0
     nova_wait_for_computes_init: gcr.io/google_containers/hyperkube-amd64:v1.11.6
@@ -311,6 +315,17 @@ network:
     node_port:
       enabled: false
       port: 30682
+  serialproxy:
+    ingress:
+      public: true
+      classes:
+        namespace: "nginx"
+        cluster: "nginx-cluster"
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /
+    node_port:
+      enabled: false
+      port: 30684
   ssh:
     name: "nova-ssh"
     port: 8022
@@ -603,6 +618,12 @@ dependencies:
       services:
         - endpoint: internal
           service: oslo_db
+    serialproxy:
+      jobs:
+        - nova-db-sync
+      services:
+        - endpoint: internal
+          service: oslo_db
     scheduler:
       jobs:
         - nova-db-sync
@@ -635,6 +656,14 @@ dependencies:
 console:
   serial:
   spice:
+    enabled: false
+    compute:
+      # IF blank, search default routing interface
+      server_proxyclient_interface:
+    proxy:
+      # IF blank, search default routing interface
+      server_proxyclient_interface:
+  serial:
     enabled: false
     compute:
       # IF blank, search default routing interface
@@ -1553,6 +1582,11 @@ conf:
       # This would be set by each compute nodes's ip
       # server_proxyclient_address: 127.0.0.1
       # server_listen: 127.0.0.1
+    serial_console:
+      serialproxy_host: 0.0.0.0
+      # This would be set by each compute nodes's ip
+      # server_proxyclient_address: 127.0.0.1
+      # server_listen: 127.0.0.1
     conductor:
       workers: 1
     audit_middleware_notifications:
@@ -1743,6 +1777,10 @@ secrets:
       spiceproxy:
         public: nova-spiceproxy-tls-public
         internal: nova-spiceproxy-tls-proxy
+    compute_serial_proxy:
+      serialproxy:
+        public: nova-serialproxy-tls-public
+        internal: nova-serialproxy-tls-proxy
 
 # typically overridden by environmental
 # values, but should include all endpoints
@@ -2036,6 +2074,20 @@ endpoints:
     port:
       spice_proxy:
         default: 6082
+  compute_serial_proxy:
+    name: nova
+    hosts:
+      default: nova-serialproxy
+      public: placement
+    host_fqdn_override:
+      default: null
+    path:
+      default: /
+    scheme:
+      default: 'ws'
+    port:
+      serial_proxy:
+        default: 6083
   placement:
     name: placement
     hosts:
@@ -2282,6 +2334,16 @@ pod:
           enabled: True
           params:
             initialDelaySeconds: 30
+    compute-serial-proxy:
+      default:
+        liveness:
+          enabled: True
+          params:
+            initialDelaySeconds: 30
+        readiness:
+          enabled: True
+          params:
+            initialDelaySeconds: 30
   user:
     nova:
       uid: 42424
@@ -2323,6 +2385,12 @@ pod:
             drop:
               - ALL
         nova_compute_spice_init:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        nova_compute_serial_init:
           readOnlyRootFilesystem: true
           allowPrivilegeEscalation: false
           capabilities:
@@ -2379,6 +2447,12 @@ pod:
             drop:
               - ALL
         nova_spiceproxy:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        nova_serialproxy:
           readOnlyRootFilesystem: true
           allowPrivilegeEscalation: false
           capabilities:
@@ -2649,6 +2723,11 @@ pod:
       nova_spiceproxy:
         volumeMounts:
         volumes:
+    nova_serialproxy:
+      init_serialproxy: null
+      nova_serialproxy:
+        volumeMounts:
+        volumes:
     nova_db_sync:
       nova_db_sync:
         volumeMounts:
@@ -2656,6 +2735,7 @@ pod:
   useHostNetwork:
     novncproxy: true
     spiceproxy: true
+    serialproxy: true
   replicas:
     api_metadata: 1
     compute_ironic: 1
@@ -2666,6 +2746,7 @@ pod:
     scheduler: 1
     novncproxy: 1
     spiceproxy: 1
+    serialproxy: 1
   lifecycle:
     upgrades:
       deployments:
@@ -2767,6 +2848,13 @@ pod:
         memory: "1024Mi"
         cpu: "2000m"
     spiceproxy:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    serialproxy:
       requests:
         memory: "128Mi"
         cpu: "100m"
@@ -2901,10 +2989,12 @@ manifests:
   deployment_consoleauth: true
   deployment_novncproxy: true
   deployment_spiceproxy: true
+  deployment_serialproxy: true
   deployment_scheduler: false
   ingress_metadata: true
   ingress_novncproxy: true
   ingress_spiceproxy: false
+  ingress_serialproxy: false
   ingress_placement: true
   ingress_osapi: true
   job_bootstrap: true
@@ -2940,12 +3030,14 @@ manifests:
   service_ingress_metadata: true
   service_ingress_novncproxy: true
   service_ingress_spiceproxy: false
+  service_ingress_serialproxy: false
   service_ingress_placement: true
   service_ingress_osapi: true
   service_metadata: true
   service_placement: true
   service_novncproxy: true
   service_spiceproxy: true
+  service_serialproxy: true
   service_osapi: true
   statefulset_compute_ironic: false
   statefulset_conductor: true

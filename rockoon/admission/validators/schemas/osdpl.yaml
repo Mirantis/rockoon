@@ -1553,6 +1553,19 @@ properties:
                 type: string
               kernel:
                 type: string
+          console:
+            type: object
+            additionalProperties: false
+            properties:
+              serial:
+                type: object
+                additionalProperties: false
+                properties:
+                  enabled:
+                    type: boolean
+                    description: |
+                      Enable SERIAL console feature
+                      default: true
       octavia:
         type: object
         additionalProperties: false

@@ -12,6 +12,7 @@ ingress:
           - {{ to_child_object("compute", "nova", "Deployment", "nova-api-metadata", ["n-metadata"]) | indent(12)}}
           - {{ to_child_object("compute", "nova", "Deployment", "nova-novncproxy", ["n-novnc"]) | indent(12)}}
           - {{ to_child_object("compute", "nova", "Deployment", "nova-spiceproxy", ["n-spice"]) | indent(12)}}
+          - {{ to_child_object("compute", "nova", "Deployment", "nova-serialproxy", ["n-serial"]) | indent(12)}}
           - {{ to_child_object("compute", "nova", "Deployment", "nova-api-osapi", ["n-api"]) | indent(12)}}
           - {{ to_child_object("instance-ha", "masakari", "Deployment", "masakari-api", ["m-api"]) | indent(12)}}
           - {{ to_child_object("image", "glance", "Deployment", "glance-api", ["g-api"]) | indent(12)}}

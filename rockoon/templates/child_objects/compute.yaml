@@ -191,6 +191,26 @@ nova:
       - port: 6082
         name: n-spice
         protocol: TCP
+    nova-serialproxy:
+      connections:
+        egress:
+          - {{ to_child_object("compute", "rabbitmq", "StatefulSet", "openstack-nova-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("coordination", "etcd", "StatefulSet", "etcd-etcd", ["client"]) | indent(12)}}
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - nova_serialproxy
+      manifest: deployment_serialproxy
+      pod_labels:
+        application: nova
+        component: serial-proxy
+      ports:
+      - port: 6083
+        name: n-serial
+        protocol: TCP
 {%- if OSVer[spec.openstack_version] <= OSVer.stein %}
     nova-placement-api:
       connections:

@@ -8,44 +8,30 @@ spec:
         user_secret_name: nova-rbd-keyring
       conf:
         ceph:
-          keyrings:
-            cinder:
-              key: 'AQDLZLJfNPtTOxAAQm248Q9AyoirvELaSyPz5w=='
-              secret_uuid: c9543a17-411c-45e1-8a25-3f03e0090dc2
-            nova:
-              key: 'AQDNZLJf8S+fORAA6hg50Jo+vBq07kxtBXB9PQ=='
-              secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
           cinder:
             user: nova
-          enabled: true
           config:
             global:
               mon_host:
-                - "10.10.10.1:6789"
-                - "10.10.10.2:6789"
-                - "10.10.10.3:6789"
-        qemu:
-          security_driver: apparmor
+              - 10.10.10.1:6789
+              - 10.10.10.2:6789
+              - 10.10.10.3:6789
+          enabled: true
+          keyrings:
+            cinder:
+              key: AQDLZLJfNPtTOxAAQm248Q9AyoirvELaSyPz5w==
+              secret_uuid: c9543a17-411c-45e1-8a25-3f03e0090dc2
+            nova:
+              key: AQDNZLJf8S+fORAA6hg50Jo+vBq07kxtBXB9PQ==
+              secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
         dynamic_options:
           libvirt:
             listen_interface: ens3
         libvirt:
           keepalive_count: 9
           keepalive_interval: 10
-      pod:
-        probes:
-          libvirt:
-            libvirt:
-              readiness:
-                params:
-                  initialDelaySeconds: 30
-                  periodSeconds: 10
-                  timeoutSeconds: 5
-              liveness:
-                params:
-                  initialDelaySeconds: 30
-                  periodSeconds: 10
-                  timeoutSeconds: 5
+        qemu:
+          security_driver: apparmor
       images:
         tags:
           ceph_config_helper: ceph-config-helper:latest
@@ -53,5 +39,19 @@ spec:
           image_repo_sync: image-repo-sync:latest
           libvirt: libvirt:latest
       manifests:
-        network_policy: false
         ceph_conf: true
+        network_policy: false
+      pod:
+        probes:
+          libvirt:
+            libvirt:
+              liveness:
+                params:
+                  initialDelaySeconds: 30
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+              readiness:
+                params:
+                  initialDelaySeconds: 30
+                  periodSeconds: 10
+                  timeoutSeconds: 5

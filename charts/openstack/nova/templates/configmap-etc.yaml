@@ -207,6 +207,11 @@ limitations under the License.
 {{- end -}}
 {{- end -}}
 
+# Set always as ironic is configured independently. Having this set will not harm as actual enablement controller by enabled flag.
+{{- if empty .Values.conf.nova.serial_console.base_url -}}
+{{- $_ := tuple "compute_serial_proxy" "public" "serial_proxy" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" | set .Values.conf.nova.serial_console "base_url" -}}
+{{- end -}}
+
 {{- $_ := .Values.console.spice.enabled | set .Values.conf.nova.spice "enabled" -}}
 {{- if .Values.console.spice.enabled }}
 {{- if empty .Values.conf.nova.spice.html5proxy_base_url -}}

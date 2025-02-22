@@ -209,6 +209,10 @@ services:
             ingress:
               classes:
                 namespace: {{ nginx_ingress_namespace_class }}
+          serialproxy:
+            ingress:
+              classes:
+                namespace: {{ nginx_ingress_namespace_class }}
         bootstrap:
           structured:
             flavors:
