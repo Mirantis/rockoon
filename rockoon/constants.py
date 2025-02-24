@@ -159,6 +159,8 @@ PROXY_VARS_NAMES = {
 
 COMPUTE_NODE_CONTROLLER_SECRET_NAME = "keystone-os-clouds"
 LIBVIRT_SERVER_TLS_SECRET_NAME = "libvirt-server-tls"
+EXPORTER_CA_CERT_SECRET_NAME = "exporter-ca-cert"
+EXPORTER_NAMESPACE = "osh-system"
 
 SLURP_RELEASES = ["yoga", "antelope", "caracal"]
 

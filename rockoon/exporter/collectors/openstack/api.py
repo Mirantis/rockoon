@@ -20,6 +20,7 @@ from urllib3.exceptions import InsecureRequestWarning
 from prometheus_client.core import GaugeMetricFamily
 
 from rockoon import utils
+from rockoon.exporter import settings
 from rockoon.exporter.collectors.openstack import base
 
 
@@ -28,12 +29,16 @@ LOG = utils.get_logger(__name__)
 
 def check_endpoint(url, service_type, service_name, headers):
     result = {"success": True}
-    # TODO(vsaienko): mount ssl ca_cert from osdpl and use here.
     try:
         requests.packages.urllib3.disable_warnings(
             category=InsecureRequestWarning
         )
-        resp = requests.get(url, timeout=10, verify=False, headers=headers)
+        resp = requests.get(
+            url,
+            timeout=10,
+            verify=settings.OSCTL_EXPORTER_CA_CERT_PATH,
+            headers=headers,
+        )
         if resp.status_code >= 500:
             LOG.warning(
                 f"Got bad responce code {resp.status_code} from {url}."

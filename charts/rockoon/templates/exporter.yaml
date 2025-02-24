@@ -110,11 +110,19 @@ spec:
               mountPath: /etc/openstack/
             - name: exporter-etc
               mountPath: /etc/rockoon/exporter
+            - name: ca-cert
+              mountPath: /usr/local/share/ca-certificates/osdpl/
+              readOnly: true
       volumes:
         - name: os-clouds
           secret:
             secretName: keystone-os-clouds
             defaultMode: 365
+        - name: ca-cert
+          secret:
+            secretName: exporter-ca-cert
+            optional: true
+            defaultMode: 420
         - name: exporter-etc
           secret:
             secretName: {{ include "rockoon.fullname" . }}-exporter-etc

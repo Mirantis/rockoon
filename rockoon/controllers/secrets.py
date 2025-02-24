@@ -518,3 +518,39 @@ def handle_keystone_osclouds_secret(
     }
 
     secrets.ExternalCredentialSecret("identity").save(encoded_ext_data)
+
+
+@kopf.on.create(
+    "",
+    "v1",
+    "secrets",
+    when=lambda name, **_: "keystone-tls-public" in name,
+)
+@kopf.on.resume(
+    "",
+    "v1",
+    "secrets",
+    when=lambda name, **_: "keystone-tls-public" in name,
+)
+@kopf.on.update(
+    "",
+    "v1",
+    "secrets",
+    when=lambda name, **_: "keystone-tls-public" in name,
+)
+def handle_exporter_ca_cert_secret(
+    body,
+    meta,
+    name,
+    status,
+    logger,
+    diff,
+    **kwargs,
+):
+    LOG.debug(f"Handling secret create/update {name}")
+
+    utils.log_changes(kwargs.get("old", {}), kwargs.get("new", {}))
+
+    ca_data = body["data"]["ca.crt"]
+    secret_data = {"ca.crt": ca_data}
+    secrets.ExporterCaCertSecret().save(secret_data)
