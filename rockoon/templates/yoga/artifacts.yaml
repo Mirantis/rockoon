@@ -102,7 +102,7 @@ prometheus_mysql_exporter_helm_tests: '{{ images_base_url }}/openstack/heat:yoga
 mariadb_backup: '{{ images_base_url }}/general/mariadb:10.6.20-jammy-20250218081722'
 mariadb_scripted_test: '{{ images_base_url }}/general/mariadb:10.6.20-jammy-20250218081722'
 rabbit_init: '{{ images_base_url }}/openstack/extra/rabbitmq-management:3.12.12-jammy-20240829072728'
-powerdns: '{{ images_base_url }}/openstack/extra/powerdns:4.8-alpine-20241120110423'
+powerdns: '{{ images_base_url }}/openstack/extra/powerdns:4.8-alpine-20250225092111'
 prometheus_rabbitmq_exporter_helm_tests: '{{ images_base_url }}/openstack/heat:yoga-jammy-20241120070553'
 rabbitmq_init: '{{ images_base_url }}/openstack/heat:yoga-jammy-20241120070553'
 rabbitmq: '{{ images_base_url }}/openstack/extra/rabbitmq:3.12.12-jammy-20240829072728'
@@ -121,7 +121,7 @@ ironic_api: '{{ images_base_url }}/openstack/ironic:yoga-jammy-20241120070553'
 ironic_conductor: '{{ images_base_url }}/openstack/ironic:yoga-jammy-20241120070553'
 ironic_pxe: '{{ images_base_url }}/openstack/ironic:yoga-jammy-20241120070553'
 ironic_pxe_init: '{{ images_base_url }}/openstack/ironic:yoga-jammy-20241120070553'
-powerdns_db_sync: '{{ images_base_url }}/openstack/extra/powerdns:4.8-alpine-20241120110423'
+powerdns_db_sync: '{{ images_base_url }}/openstack/extra/powerdns:4.8-alpine-20250225092111'
 neutron_ironic_agent: '{{ images_base_url }}/openstack/neutron:yoga-jammy-20241120070553'
 neutron_bagpipe_bgp: '{{ images_base_url }}/openstack/neutron:yoga-jammy-20241120070553'
 neutron_l2gw: '{{ images_base_url }}/openstack/neutron:yoga-jammy-20241120070553'
@@ -243,3 +243,4 @@ os_image_ubuntu_1804_checksum: 30d459e0dc0562e629d3683970e55efa
 os_image_cirros_060_checksum: f4027b89e99e238184e13089a3155b74
 os_image_cirros_060_raw_checksum: f756328a32fad36f7239223b030caab5
 neutron_ovn_vpn_agent: '{{ images_base_url }}/openstack/neutron:yoga-jammy-20241120070553'
+nova_serialproxy: '{{ images_base_url }}/openstack/nova:yoga-jammy-20241120070553'
