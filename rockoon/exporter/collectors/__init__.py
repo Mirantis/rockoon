@@ -65,6 +65,10 @@ from rockoon.exporter.collectors.openstack.masakari import (
     OsdplMasakariMetricCollector,
 )
 
+from rockoon.exporter.collectors.openstack.horizon import (
+    OsdplHorizonMetricCollector,
+)
+
 __all__ = (
     OsdplMetricsCollector,
     OsdplCertsMetricCollector,
@@ -83,6 +87,7 @@ __all__ = (
     OsdplApiMetricCollector,
     OsdplManilaMetricCollector,
     OsdplMasakariMetricCollector,
+    OsdplHorizonMetricCollector,
 )
 
 registry = base.BaseMetricsCollector.registry

@@ -21,7 +21,7 @@ OSCTL_EXPORTER_CERTIFICATES_INFO_FILE = os.getenv(
 # List of enabled collectors, when not set all collectors are enabled
 OSCTL_EXPORTER_ENABLED_COLLECTORS = os.getenv(
     "OSCTL_EXPORTER_ENABLED_COLLECTORS",
-    "osdpl_certificate,osdpl_credentials,osdpl_nova,osdpl_nova_audit,osdpl_ironic,osdpl_keystone,osdpl_heat,osdpl_glance,osdpl_manila,osdpl_cinder,osdpl_neutron,osdpl_octavia,osdpl_api,osdpl_aodh,osdpl_masakari,osdpl",
+    "osdpl_certificate,osdpl_credentials,osdpl_nova,osdpl_nova_audit,osdpl_ironic,osdpl_keystone,osdpl_heat,osdpl_glance,osdpl_manila,osdpl_cinder,osdpl_neutron,osdpl_octavia,osdpl_api,osdpl_aodh,osdpl_masakari,osdpl,osdpl_horizon",
 ).split(",")
 
 # Number in seconds we allow for polling, when exceeds exporter is stopped.
