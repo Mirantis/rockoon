@@ -44,6 +44,13 @@ def wait_port_active(port_id):
 
     LOG.info("Waiting for port %s to become ACTIVE.", port_id)
 
+    port_obj = ost.network.get_port(port_id)
+    if port_obj.status != "ACTIVE":
+        LOG.info("Triggerting down/up for port: %s", port_id)
+        ost.network.update_port(port_id, admin_state_up=False)
+        time.sleep(5)
+        ost.network.update_port(port_id, admin_state_up=True)
+
     def is_port_ready():
         port_obj = ost.network.get_port(port_id)
         if port_obj.status != "ACTIVE":
@@ -52,7 +59,7 @@ def wait_port_active(port_id):
         return True
 
     while not is_port_ready():
-        time.sleep(2)
+        time.sleep(5)
 
     LOG.info("Done. Port %s is ACTIVE.", port_id)
 
