@@ -214,6 +214,19 @@ class NodeWorkloadLock(LockBase):
     kopf_on_args = *version.split("/"), endpoint
 
     @classmethod
+    def get_normalized_node(cls, node_obj):
+        node = {
+            "apiVersion": node_obj["apiVersion"],
+            "kind": node_obj["kind"],
+            "spec": node_obj["spec"],
+            "metadata": {
+                "name": node_obj["metadata"]["name"],
+                "labels": node_obj["metadata"].get("labels", []),
+            },
+        }
+        return node
+
+    @classmethod
     def dummy(cls, name):
         node_name = "-".join(name.split("-")[1:])
         dummy = super().dummy(name)
@@ -221,10 +234,13 @@ class NodeWorkloadLock(LockBase):
         dummy["spec"]["nodeDeletionRequestSupported"] = True
         node = kube.safe_get_node(node_name)
         if node.exists():
-            node = node.obj
-            node.pop("status", None)
+            normalized_node = cls.get_normalized_node(node.obj)
             dummy["metadata"]["annotations"].update(
-                {"openstack.lcm.mirantis.com/original-node": json.dumps(node)}
+                {
+                    "openstack.lcm.mirantis.com/original-node": json.dumps(
+                        normalized_node
+                    )
+                }
             )
         return dummy
 
