@@ -56,7 +56,13 @@ class BaseMasakariTestCase(base.BaseFunctionalTestCase):
         )
 
     def segment_delete_host(self, host_name, segment_id):
-        self.ocm.oc.instance_ha.delete_host(host_name, segment_id)
+        host_id = [
+            x
+            for x in self.ocm.oc.instance_ha.hosts(segment_id)
+            if x.name == host_name
+        ]
+        if host_id:
+            self.ocm.oc.instance_ha.delete_host(host_id[0].uuid, segment_id)
 
     def get_notification_list(self):
         return list(self.ocm.oc.instance_ha.notifications())
