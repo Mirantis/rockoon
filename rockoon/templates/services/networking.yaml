@@ -832,6 +832,7 @@ spec:
             {%- if spec.get('features', {}).get('neutron', {}).get('dns_servers', []) %}
             dns_servers: {{ spec.features.neutron.dns_servers |join(',') }}
             {%- endif %}
+            ovn_l3_scheduler: "noop"
           {%- endif %}
           cache:
             backend: oslo_cache.memcache_pool
