@@ -324,6 +324,7 @@ spec:
           ovn:
             enable_distributed_floating_ip: False
             dns_servers: 10.172.1.100
+            ovn_l3_scheduler: "noop"
           nova:
             live_migration_events: True
           ironic:
