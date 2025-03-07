@@ -135,8 +135,9 @@ conf:
       reason: Glance API v1 is disabled
   stepler_env:
     TEST_REPORTS_DIR: /opt/stepler/test_reports/
-  # TODO(vsaienko): move stepler to oslo.conf at some point.
-  stepler: {}
+  stepler:
+    federation:
+      enabled: false
 
 pvc:
   enabled: true
