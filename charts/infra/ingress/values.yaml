@@ -362,6 +362,7 @@ conf:
     # ssl-redirect: "false"
     # bind-address: "127.0.0.1"
     # use-proxy-protocol: "true"
+    annotations-risk-level: "Critical"
   services:
     tcp: null
     udp: null

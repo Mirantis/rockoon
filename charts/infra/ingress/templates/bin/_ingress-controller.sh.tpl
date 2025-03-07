@@ -39,6 +39,9 @@ function start () {
       {{- if eq .Values.deployment.mode "namespace" }}
       --watch-namespace ${POD_NAMESPACE} \
       {{- end }}
+      {{- if .Values.manifests.monitoring.prometheus.service_exporter }}
+      --enable-metrics=true \
+      {{- end }}
       --http-port=${PORT_HTTP} \
       --https-port=${PORT_HTTPS} \
       --healthz-port=${PORT_HEALTHZ} \
