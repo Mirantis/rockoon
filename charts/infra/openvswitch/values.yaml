@@ -331,6 +331,9 @@ pod:
           enabled: true
           min_ready_seconds: 0
           max_unavailable: 1
+    disruption_budget:
+      ovn_db:
+        min_available: 2
   resources:
     enabled: false
     ovs:
@@ -471,17 +474,6 @@ dependencies:
         - endpoint: internal
           service: local_image_registry
 
-manifests:
-  configmap_bin: true
-  daemonset_ovs_db: true
-  daemonset_ovs_vswitchd: true
-  statefulset_ovn_db: false
-  statefulset_ovn_northd: false
-  daemonset_ovn_controller: false
-  job_image_repo_sync: true
-  network_policy: false
-  service_discovery_ovn_db: false
-  service_master_ovn_db: false
 conf:
   openvswitch_db_server:
     ptcp_port: null
@@ -524,4 +516,16 @@ volume:
     enabled: true
     size: 1G
     class_name: default
+manifests:
+  configmap_bin: true
+  daemonset_ovs_db: true
+  daemonset_ovs_vswitchd: true
+  statefulset_ovn_db: false
+  statefulset_ovn_northd: false
+  daemonset_ovn_controller: false
+  job_image_repo_sync: true
+  network_policy: false
+  service_discovery_ovn_db: false
+  service_master_ovn_db: false
+  pdb_ovn_db: true
 ...
