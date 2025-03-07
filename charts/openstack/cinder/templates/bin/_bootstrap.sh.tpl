@@ -73,16 +73,35 @@ openstack volume type show {{ $name }} || \
 {{- /* Check volume type and properties were added */}}
 openstack volume type list --long
 
-# Set volumes quote to unlim for cinder service project to have a chance to create
-# volumes, images etc inside it.
 SERVICE_DOMAIN_ID=$(openstack --os-cloud admin-system domain show {{ .Values.endpoints.identity.auth.cinder.project_domain_name }} -f value -c id)
 SERVICE_PROJECT_ID=$(openstack --os-cloud admin-system project show {{ .Values.endpoints.identity.auth.cinder.project_name }} --domain ${SERVICE_DOMAIN_ID} -f value -c id)
+
+INTERNAL_PROJECT_DOMAIN_ID=$(openstack --os-cloud admin-system domain show {{ .Values.conf.cinder.DEFAULT.internal_project_domain_name }} -f value -c id)
+INTERNAL_PROJECT_ID=$(openstack --os-cloud admin-system project show {{ .Values.conf.cinder.DEFAULT.internal_project_name }} --domain ${INTERNAL_PROJECT_DOMAIN_ID} -f value -c id)
 
 # NOTE(vsaienko): unless is fixed PRODX-23599 in Yogga release, command: openstack --os-cloud admin quota set --volumes -1 507d9f0509524609bff4c0159432739a doesn't work.
 VOLUME_V3_ENDPOINT=$(openstack --os-cloud admin catalog show volumev3 |grep internal | awk '{print $4}')
 if [[ -n $VOLUME_V3_ENDPOINT ]]; then
     TOKEN=$(openstack token issue -f value -c id)
+# Set volumes quote to unlim for cinder service project to have a chance to create
+# volumes, images etc inside it.
     curl -X PUT ${VOLUME_V3_ENDPOINT}/os-quota-sets/${SERVICE_PROJECT_ID} -H "Accept: application/json" -H "Content-Type: application/json" -H "X-Auth-Token: $TOKEN" -d '{"quota_set": {"tenant_id": "'${SERVICE_PROJECT_ID}'", "volumes": -1}}'
+# Set cinder quotes for internal project
+    curl -X PUT ${VOLUME_V3_ENDPOINT}/os-quota-sets/${INTERNAL_PROJECT_ID} \
+        -H "Accept: application/json" \
+        -H "Content-Type: application/json" \
+        -H "X-Auth-Token: $TOKEN" \
+        -d '{
+            "quota_set": {
+                "tenant_id": "'${INTERNAL_PROJECT_ID}'",
+                "volumes": {{ .Values.bootstrap.quotas.Default.internal_cinder.volumes }},
+                "snapshots": {{ .Values.bootstrap.quotas.Default.internal_cinder.snapshots }},
+                "groups": {{ .Values.bootstrap.quotas.Default.internal_cinder.groups }},
+                "gigabytes": {{ .Values.bootstrap.quotas.Default.internal_cinder.gigabytes }},
+                "backups": {{ .Values.bootstrap.quotas.Default.internal_cinder.backups }},
+                "backup_gigabytes": {{ .Values.bootstrap.quotas.Default.internal_cinder.backup_gigabytes }}
+            }
+        }'
 fi
 
 {{- end }}

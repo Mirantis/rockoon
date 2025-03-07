@@ -100,6 +100,8 @@ spec:
               value: {{ .Values.conf.cinder.DEFAULT.internal_project_name | quote }}
             - name: INTERNAL_USER_NAME
               value: {{ .Values.conf.cinder.DEFAULT.internal_user_name | quote }}
+            - name: INTERNAL_PROJECT_DOMAIN_NAME
+              value: {{ .Values.conf.cinder.DEFAULT.internal_project_domain_name | quote }}
             - name: CINDER_NAMESPACE
               value: {{ $envAll.Release.Namespace | quote }}
 
