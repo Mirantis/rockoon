@@ -34,7 +34,7 @@ import kubernetes.client
 import kubernetes.config
 
 #set one name for all commands, avoid "magic names"
-MYSQL_BINARY_NAME='mysqld'
+MYSQL_BINARY_NAME='mariadbd'
 
 # Create logger, console handler and formatter
 logger = logging.getLogger('OpenStack-Helm Mariadb')
@@ -182,8 +182,8 @@ def wait_mysql_status(delay=30):
     i = 0
     res = 1
     while True:
-        logger.info("Checking mysql status {0}".format(i))
-        res = run_cmd_with_logging(['mysqladmin', 'status', "-u{0}".format(mysql_dbadmin_username),
+        logger.info("Checking mariadb status {0}".format(i))
+        res = run_cmd_with_logging(['mariadb-admin', 'status', "-u{0}".format(mysql_dbadmin_username),
             "-p{0}".format(mysql_dbadmin_password)], logger)
         if res == 0:
             logger.info("mariadb status check passed")
@@ -195,8 +195,8 @@ def wait_mysql_status(delay=30):
 
 
 def stop_mysqld():
-    """Stop mysqld, assuming pid file in default location."""
-    logger.info("Shutting down any mysqld instance if required")
+    """Stop mariadbd, assuming pid file in default location."""
+    logger.info("Shutting down any mariadbd instance if required")
     mysqld_pidfile_path = "/var/lib/mysql/{0}.pid".format(local_hostname)
 
     def is_pid_running(pid):
@@ -213,7 +213,7 @@ def stop_mysqld():
             return False
 
     if not os.path.isfile(mysqld_pidfile_path):
-        logger.debug("No previous pid file found for mysqld")
+        logger.debug("No previous pid file found for mariadbd")
         return
 
     if os.stat(mysqld_pidfile_path).st_size == 0:
@@ -223,7 +223,7 @@ def stop_mysqld():
         return
 
     logger.info(
-        "Previous pid file found for mysqld, attempting to shut it down")
+        "Previous pid file found for mariadbd, attempting to shut it down")
     with open(mysqld_pidfile_path, "r") as mysqld_pidfile:
         mysqld_pid = int(mysqld_pidfile.readlines()[0].rstrip('\n'))
 
@@ -235,11 +235,11 @@ def stop_mysqld():
         return
     if not is_pid_mysqld(mysqld_pid):
         logger.error(
-            "pidfile process is not mysqld, removing pidfile and panic")
+            "pidfile process is not mariadbd, removing pidfile and panic")
         os.remove(mysqld_pidfile_path)
         sys.exit(1)
 
-    logger.info("pid from pidfile is mysqld")
+    logger.info("pid from pidfile is mariadbd")
     os.kill(mysqld_pid, 15)
     try:
         pid, status = os.waitpid(mysqld_pid, 0)
@@ -283,7 +283,7 @@ def mysqld_write_cluster_conf(mode='run'):
         cluster_config.write(configfile)
 
 
-# Function to setup mysqld
+# Function to setup mariadbd
 def mysqld_bootstrap():
     """Bootstrap the db if no data found in the 'bootstrap_test_dir'"""
     logger.info("Boostrapping Mariadb")
@@ -293,7 +293,7 @@ def mysqld_bootstrap():
         stop_mysqld()
         mysqld_write_cluster_conf(mode='bootstrap')
         run_cmd_with_logging([
-            'mysql_install_db', '--user=mysql',
+            'mariadb-install-db', '--user=mysql',
             "--datadir={0}".format(mysql_data_dir)
         ], logger)
         if not mysql_dbaudit_username:
@@ -310,7 +310,7 @@ def mysqld_bootstrap():
                 "GRANT PROCESS, RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO '{2}'@'127.0.0.1' ;\n"
                 "CREATE OR REPLACE USER '{4}'@'%' IDENTIFIED BY '{5}' ;\n"
                 "GRANT PROCESS, RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO '{4}'@'%' ;\n"
-                # needed for mariabackup --history option
+                # needed for mariadb-backup --history option
                 "GRANT CREATE, INSERT ON PERCONA_SCHEMA.* TO '{4}'@'%';\n"
                 "FLUSH PRIVILEGES ;\n"
                 "SHUTDOWN ;".format(mysql_dbadmin_username, mysql_dbadmin_password,
@@ -328,7 +328,7 @@ def mysqld_bootstrap():
                 "GRANT SELECT ON *.* TO '{4}'@'%' ;\n"
                 "CREATE OR REPLACE USER '{6}'@'%' IDENTIFIED BY '{7}' ;\n"
                 "GRANT PROCESS, RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO '{6}'@'%' ;\n"
-                # needed for mariabackup --history option
+                # needed for mariadb-backup --history option
                 "GRANT CREATE, INSERT ON PERCONA_SCHEMA.* TO '{6}'@'%';\n"
                 "FLUSH PRIVILEGES ;\n"
                 "SHUTDOWN ;".format(mysql_dbadmin_username, mysql_dbadmin_password,
@@ -847,7 +847,7 @@ def launch_leader_election():
 
 
 def run_mysqld(cluster='existing'):
-    """Launch the mysqld instance for the pod. This will also run mysql upgrade
+    """Launch the mariadbd instance for the pod. This will also run mariadb upgrade
     if we are the 1st replica, and the rest of the cluster is already running.
     This senario will be triggerd either following a rolling update, as this
     works in reverse order for statefulset. Or restart of the 1st instance, in
@@ -868,7 +868,7 @@ def run_mysqld(cluster='existing'):
     mysql_data_dir = '/var/lib/mysql'
     db_test_dir = "{0}/mysql".format(mysql_data_dir)
     if os.path.isdir(db_test_dir):
-        logger.info("Setting the admin passwords to the current value and upgrade mysql if needed")
+        logger.info("Setting the admin passwords to the current value and upgrade mariadb if needed")
         if not mysql_dbaudit_username:
             template = (
                 "CREATE OR REPLACE USER '{0}'@'%' IDENTIFIED BY \'{1}\' ;\n"
@@ -877,7 +877,7 @@ def run_mysqld(cluster='existing'):
                 "GRANT PROCESS, RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO '{2}'@'127.0.0.1' ;\n"
                 "CREATE OR REPLACE USER '{4}'@'%' IDENTIFIED BY '{5}' ;\n"
                 "GRANT PROCESS, RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO '{4}'@'%' ;\n"
-                # needed for mariabackup --history option
+                # needed for mariadb-backup --history option
                 "GRANT CREATE, INSERT ON PERCONA_SCHEMA.* TO '{4}'@'%';\n"
                 "FLUSH PRIVILEGES ;".format(mysql_dbadmin_username, mysql_dbadmin_password,
                                             mysql_dbsst_username, mysql_dbsst_password,
@@ -892,7 +892,7 @@ def run_mysqld(cluster='existing'):
                 "GRANT SELECT ON mysql.user TO '{4}'@'%' ;\n"
                 "CREATE OR REPLACE USER '{6}'@'%' IDENTIFIED BY '{7}' ;\n"
                 "GRANT PROCESS, RELOAD, LOCK TABLES, REPLICATION CLIENT ON *.* TO '{6}'@'%' ;\n"
-                # needed for mariabackup --history option
+                # needed for mariadb-backup --history option
                 "GRANT CREATE, INSERT ON PERCONA_SCHEMA.* TO '{6}'@'%';\n"
                 "FLUSH PRIVILEGES ;".format(mysql_dbadmin_username, mysql_dbadmin_password,
                                             mysql_dbsst_username, mysql_dbsst_password,
@@ -902,15 +902,15 @@ def run_mysqld(cluster='existing'):
         with open(bootstrap_sql_file, 'w') as f:
             f.write(template)
             f.close()
-        # run mysqld as thread and check it's status in order to upgrade it
+        # run mariadbd as thread and check it's status in order to upgrade it
         run_cmd_with_logging_thread = threading.Thread(target=run_cmd_with_logging, args=([
             MYSQL_BINARY_NAME, '--bind-address=127.0.0.1', '--wsrep-on=false',
             "--init-file={0}".format(bootstrap_sql_file)
         ], logger))
         run_cmd_with_logging_thread.start()
         wait_mysql_status()
-        logger.info("Upgrading local mysql instance")
-        upgrade_res = run_cmd_with_logging(['mysql_upgrade', '--skip-write-binlog',
+        logger.info("Upgrading local mariadb instance")
+        upgrade_res = run_cmd_with_logging(['mariadb-upgrade', '--skip-write-binlog',
             "-u{0}".format(mysql_dbadmin_username), "-p{0}".format(mysql_dbadmin_password)], logger)
         if upgrade_res != 0:
             raise Exception('Mysql upgrade failed, cannot proceed')
@@ -930,14 +930,14 @@ def run_mysqld(cluster='existing'):
 
 
 def mysqld_reboot():
-    """Reboot a mysqld cluster."""
+    """Reboot a mariadbd cluster."""
     declare_myself_cluster_leader()
     set_grastate_val(key='safe_to_bootstrap', value='1')
     run_mysqld(cluster='new')
 
 
 def sigterm_shutdown(x, y):
-    """Shutdown the instance of mysqld on shutdown signal."""
+    """Shutdown the instance of mariadbd on shutdown signal."""
     logger.info("Got a sigterm from the container runtime, time to go.")
     stop_event.set()
     stop_mysqld()

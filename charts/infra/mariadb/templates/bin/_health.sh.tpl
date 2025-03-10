@@ -18,7 +18,7 @@
 
 set -e
 
-MYSQL="mysql \
+MYSQL="mariadb \
   --defaults-file=/etc/mysql/admin_user.cnf \
   --host=localhost \
   --connect-timeout 2"
@@ -54,7 +54,7 @@ shift $((OPTIND-1))
 
 check_readiness () {
   if ! $MYSQL -e 'select 1' > /dev/null 2>&1 ; then
-      echo "Select from mysql failed"
+      echo "Select from mariadb failed"
       exit 1
   fi
 
@@ -86,25 +86,25 @@ check_readiness () {
 }
 
 check_liveness () {
-  if pidof mysql_upgrade > /dev/null 2>&1 ; then
-    echo "The process mysql_upgrade is active. Skip rest checks"
+  if pidof mariadb-upgrade > /dev/null 2>&1 ; then
+    echo "The process mariadb-upgrade is active. Skip rest checks"
     exit 0
   fi
-  if ! pidof mysqld > /dev/null 2>&1 ; then
-    echo "The mysqld pid not found"
+  if ! pidof mariadbd > /dev/null 2>&1 ; then
+    echo "The mariadbd pid not found"
     exit 1
   fi
   # NOTE(mkarpin): SST process may take significant time in case of large databases,
-  # killing mysqld during SST may destroy all data on the node.
+  # killing mariadbd during SST may destroy all data on the node.
   local datadir="/var/lib/mysql"
   if [ -f ${datadir}/sst_in_progress ]; then
-      echo "SST is still in progress, skip further checks as mysql won't respond"
+      echo "SST is still in progress, skip further checks as mariadb won't respond"
   else
       # NOTE(vsaienko): in some cases maria might stuck during IST, or when neighbours
-      # IPs are changed. Here we check that we can connect to mysql socket to ensure
+      # IPs are changed. Here we check that we can connect to mariadb socket to ensure
       # process is alive.
       if ! $MYSQL -e "show status like 'wsrep_cluster_status'" > /dev/null 2>&1 ; then
-          echo "Can't connect to mysql socket"
+          echo "Can't connect to mariadb socket"
           exit 1
       fi
       # Detect node that is not connected to wsrep provider
