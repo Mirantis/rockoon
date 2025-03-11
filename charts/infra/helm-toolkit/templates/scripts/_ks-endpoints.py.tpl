@@ -72,7 +72,7 @@ def get_services(name, s_type):
 @retry_cloud_call(CLOUD_CALL_RETRIES)
 def get_service_endpoints(id, region, interface):
     return CLOUD.search_endpoints(
-        filters={"service_id": id, "region": region, "interface": interface}
+        filters={"service_id": id, "region_id": region, "interface": interface}
     )
 
 
