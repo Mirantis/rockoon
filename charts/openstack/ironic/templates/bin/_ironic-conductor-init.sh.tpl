@@ -16,8 +16,19 @@ limitations under the License.
 
 set -ex
 
+mkdir -p /var/lib/openstack-helm/tftpboot
+mkdir -p /var/lib/openstack-helm/tftpboot/master_images
+
+for FILE in undionly.kpxe ipxe.efi pxelinux.0; do
+  if [ -f /usr/lib/ipxe/$FILE ]; then
+    cp -v /usr/lib/ipxe/$FILE /var/lib/openstack-helm/tftpboot
+  fi
+done
+
 # Mask permissions to files 416 dirs 0750
 umask 0027
+
+mkdir -p /var/lib/openstack-helm/httpboot
 
 if [ "x" == "x${PROVISIONER_INTERFACE}" ]; then
   echo "Provisioner interface is not set"
@@ -36,6 +47,8 @@ if [ "x" == "x${PXE_IP}" ]; then
   echo "Could not find IP for pxe to bind to"
   exit 1
 fi
+
+sed "s|OSH_PXE_IP|${PXE_IP}|g" /etc/nginx/nginx.conf > /tmp/pod-shared/nginx.conf
 
 tee /tmp/pod-shared/conductor-local-ip.conf << EOF
 [DEFAULT]
