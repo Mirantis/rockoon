@@ -11,6 +11,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import hashlib
 import html.parser
 import http.cookiejar
 import ssl
@@ -22,6 +23,7 @@ from urllib import request
 from prometheus_client.core import GaugeMetricFamily
 
 from rockoon import utils
+from rockoon.exporter import settings
 from rockoon.exporter.collectors.openstack import base
 
 LOG = utils.get_logger(__name__)
@@ -68,7 +70,8 @@ class OsdplHorizonMetricCollector(base.OpenStackBaseMetricCollector):
     is_service_available = True
 
     def __init__(self):
-        self.opener = None
+        self._opener = None
+        self.ca_cert_checksum = None
         self.cookie_jar = http.cookiejar.CookieJar()
         super().__init__()
 
@@ -109,19 +112,17 @@ class OsdplHorizonMetricCollector(base.OpenStackBaseMetricCollector):
         public_domain_name = self.osdpl.mspec["public_domain_name"]
         return f"https://horizon.{public_domain_name}/"
 
-    def check_login_page(self, dashboard_url, timeout=10):
+    def check_login_page(self, opener, dashboard_url, timeout=10):
         start_time = perf_counter()
-        response = (
-            self._get_opener().open(dashboard_url, timeout=timeout).read()
-        )
+        response = opener.open(dashboard_url, timeout=timeout).read()
         if "id_username" not in response.decode("utf-8"):
             raise ValueError("Cannot find 'id_username' in login page")
         end_time = perf_counter()
         return end_time - start_time
 
-    def check_user_login(self, dashboard_url, credentials, timeout=10):
+    def check_user_login(self, opener, dashboard_url, credentials, timeout=10):
         start_time = perf_counter()
-        response = self._get_opener().open(dashboard_url).read()
+        response = opener.open(dashboard_url).read()
 
         # Grab the CSRF token and default region
         parser = HorizonHTMLParser()
@@ -143,29 +144,30 @@ class OsdplHorizonMetricCollector(base.OpenStackBaseMetricCollector):
             "domain": credentials["user_domain_name"],
             "csrfmiddlewaretoken": parser.csrf_token,
         }
-        self._get_opener().open(
-            req, parse.urlencode(params).encode(), timeout=timeout
-        )
+        opener.open(req, parse.urlencode(params).encode(), timeout=timeout)
 
-        response = (
-            self._get_opener().open(dashboard_url, timeout=timeout).read()
-        )
+        response = opener.open(dashboard_url, timeout=timeout).read()
         if "Overview" not in response.decode("utf-8"):
             raise ValueError("Cannot find 'Overview' in home page")
         end_time = perf_counter()
         return end_time - start_time
 
-    def _get_opener(self):
-        if not self.opener:
-            # TODO(dbiletskyi): add ssl verify here
-            ctx = ssl.create_default_context()
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
-            self.opener = request.build_opener(
-                request.HTTPSHandler(context=ctx),
-                request.HTTPCookieProcessor(self.cookie_jar),
-            )
-        return self.opener
+    @property
+    def opener(self):
+        with open(settings.OSCTL_EXPORTER_CA_CERT_PATH, "rb") as f:
+            current_checksum = hashlib.sha256(f.read()).hexdigest()
+        if self.ca_cert_checksum == current_checksum and self._opener:
+            return self._opener
+
+        self.ca_cert_checksum = current_checksum
+        ctx = ssl.create_default_context(
+            cafile=settings.OSCTL_EXPORTER_CA_CERT_PATH
+        )
+        self._opener = request.build_opener(
+            request.HTTPSHandler(context=ctx),
+            request.HTTPCookieProcessor(self.cookie_jar),
+        )
+        return self._opener
 
     @utils.timeit
     def update_login_samples(self):
@@ -173,9 +175,10 @@ class OsdplHorizonMetricCollector(base.OpenStackBaseMetricCollector):
         login_latency_samples = []
         try:
             self.cookie_jar.clear()
+            opener = self.opener
             credentials = self.get_credentials()
             dashboard_url = self.dashboard_url
-            login_page_latency = self.check_login_page(dashboard_url)
+            login_page_latency = self.check_login_page(opener, dashboard_url)
             login_latency_samples.append(
                 (
                     [
@@ -186,7 +189,7 @@ class OsdplHorizonMetricCollector(base.OpenStackBaseMetricCollector):
                 )
             )
             login_success_latency = self.check_user_login(
-                dashboard_url, credentials
+                opener, dashboard_url, credentials
             )
             login_latency_samples.append(
                 (

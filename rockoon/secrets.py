@@ -1209,6 +1209,13 @@ class ExternalCredentialSecret(SecretCopy):
         self.secret_name = f"openstack-{name}-credentials"
 
 
+class ExporterCaCertSecret(SecretCopy):
+    secret_name = constants.EXPORTER_CA_CERT_SECRET_NAME
+
+    def __init__(self, namespace=constants.EXPORTER_NAMESPACE):
+        super().__init__(namespace)
+
+
 @dataclass
 class OpenStackIAMData:
     clientId: str
