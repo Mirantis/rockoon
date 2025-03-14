@@ -527,6 +527,7 @@ def cleanup_linux_netns(script_args):
     EXIT_CODE=0
     for ns in $(egrep 'qrouter-|qdhcp-|snat-|fip-' <(cut -d' ' -f1 <($IP_NETNS))); do
         for link in $(cut -d: -f2 <(grep -v LOOPBACK <($IP_NETNS exec $ns ip -o link show))); do
+            link=${link%%@*}
             $IP_NETNS exec $ns ip l delete $link || ovs-vsctl ${OVS_DB_SOCK} --if-exists del-port br-int $link
         done
         if [[ -n $(grep -v LOOPBACK <($IP_NETNS exec $ns ip -o link show)) ]]; then
