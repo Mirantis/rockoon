@@ -456,7 +456,6 @@ spec:
             node_selector_value: enabled
       manifests:
         ceph_conf: true
-        cron_job_db_purge: true
         ingress_novncproxy: true
         ingress_serialproxy: false
         ingress_spiceproxy: false
