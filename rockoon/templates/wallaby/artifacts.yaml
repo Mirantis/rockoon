@@ -192,7 +192,7 @@ masakari_monitors: '{{ images_base_url }}/openstack/masakari-monitors:wallaby-fo
 ironic_inspector: '{{ images_base_url }}/openstack/ironic-inspector:wallaby-focal-20240112082933'
 frr_init: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250310060023'
 frr_info: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250310060023'
-frr: '{{ images_base_url }}/general/external/docker.io/frrouting/frr:v9.1.2-20241111080549'
+frr: '{{ images_base_url }}/general/external/docker.io/frrouting/frr:v9.1.2-20250318060007'
 cinder_service_cleaner: '{{ images_base_url }}/openstack/cinder:wallaby-focal-20240112082933'
 strongswan: '{{ images_base_url }}/openstack/extra/strongswan:alpine-5.9.14-20250226152200'
 keystone_init_secrets: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250310060023'
