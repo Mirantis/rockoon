@@ -573,7 +573,10 @@ spec:
             jobs:
               - openstack-mariadb-cluster-wait
       manifests:
+{%- if OSVer[spec.openstack_version] >= OSVer.rocky %}
+# Since Rocky, the --purge command argument has been added.
         cron_job_db_purge: true
+{%- endif %}
         network_policy: {{ spec.features.network_policies.enabled }}
         job_rabbit_init: false
         ceph_conf: true
