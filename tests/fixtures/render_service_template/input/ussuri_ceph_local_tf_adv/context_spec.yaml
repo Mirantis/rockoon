@@ -39,6 +39,9 @@ features:
         use_ssl: false
         vault_url: http://vault.openstack-vault.svc:8200
   database:
+    cleanup:
+      nova:
+        enabled: false
     local_volumes:
       enabled: true
   messaging:

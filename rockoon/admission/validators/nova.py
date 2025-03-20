@@ -31,6 +31,7 @@ class NovaValidator(base.BaseValidator):
         )
         self._check_ephemeral_encryption(nova_section)
         self._check_vcpu_type(nova_section, os_num_version)
+        self._check_db_cleanup(review_request, os_num_version)
 
     def _check_ephemeral_encryption(self, nova_section):
         if (
@@ -57,3 +58,21 @@ class NovaValidator(base.BaseValidator):
                     "Multiple vcpu types are supported "
                     "since OpenStack Train release."
                 )
+
+    def _check_db_cleanup(self, review_request, os_version):
+        nova_db_cleanup = (
+            review_request.get("object", {})
+            .get("spec", {})
+            .get("features", {})
+            .get("database", {})
+            .get("cleanup", {})
+            .get("nova", {})
+        )
+        if (
+            nova_db_cleanup.get("enabled")
+            and os_version < constants.OpenStackVersion["antelope"].value
+        ):
+            raise exception.OsDplValidationFailed(
+                "Nova db cleanup is supported "
+                "since OpenStack Antelope release."
+            )

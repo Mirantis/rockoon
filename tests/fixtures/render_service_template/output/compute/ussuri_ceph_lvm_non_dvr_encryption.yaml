@@ -461,7 +461,7 @@ spec:
       jobs:
         db_purge:
           cron: 1 1 * * 1
-          enabled: true
+          enabled: false
           script:
             config:
               age: 30

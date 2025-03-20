@@ -14,6 +14,9 @@ features:
     discovery:
       interval: 900
   database:
+    cleanup:
+      nova:
+        enabled: true
     local_volumes:
       enabled: true
   messaging:
