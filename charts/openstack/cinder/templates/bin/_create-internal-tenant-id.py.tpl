@@ -69,7 +69,7 @@ def log_info(func):
     return wrapper
 
 
-PROJECT_DOMAIN_ID = get_env_var("PROJECT_DOMAIN_ID", 'Default')
+INTERNAL_PROJECT_DOMAIN_NAME = get_env_var("INTERNAL_PROJECT_DOMAIN_NAME")
 INTERNAL_PROJECT_NAME =  get_env_var("INTERNAL_PROJECT_NAME")
 INTERNAL_USER_NAME = get_env_var("INTERNAL_USER_NAME")
 
@@ -106,10 +106,10 @@ def find_user(name, domain_id):
 
 # Project domain
 project_domain_def = {
-    "name": PROJECT_DOMAIN_ID,
+    "name": INTERNAL_PROJECT_DOMAIN_NAME,
 }
 
-project_domain = osc.identity.find_domain(PROJECT_DOMAIN_ID)
+project_domain = osc.identity.find_domain(INTERNAL_PROJECT_DOMAIN_NAME)
 
 user_project_def = {
     "name": INTERNAL_PROJECT_NAME,

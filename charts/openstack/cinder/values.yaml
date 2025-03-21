@@ -611,6 +611,15 @@ bootstrap:
     name:
       group:
       volume_backend_name:
+  quotas:
+    Default:
+      internal_cinder:
+        volumes: -1
+        snapshots: -1
+        groups: -1
+        gigabytes: -1
+        backups: -1
+        backup_gigabytes: -1
 
 network:
   api:
@@ -1007,6 +1016,7 @@ conf:
       # Internal tenant id
       internal_project_name: internal_cinder
       internal_user_name: internal_cinder
+      internal_project_domain_name: Default
       # NOTE: tgtadm target helper has problems with WWN in multinode environments
       # see bug PRODX-34069 and https://bugs.launchpad.net/cinder/+bug/1917750
       # We use lioadm as target helper for LVM backend
