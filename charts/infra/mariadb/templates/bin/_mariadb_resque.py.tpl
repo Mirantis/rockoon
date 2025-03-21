@@ -19,7 +19,7 @@ r"""
     The script provides tooling for resque operations (e.g data backup, data restore) procedure
     for mariadb galera cluster (master-master) in k8s/helm environment.
     Currently supported:
-        - physical data backup and restore using mariabackup.
+        - physical data backup and restore using mariadb-backup.
         - upload of backups to remote storage (s3).
         - download of backups from remote storage, if local backups are not valid.
 
@@ -564,11 +564,11 @@ def run_cmd(popenargs,
 
 
 def get_mariabackup_version():
-    """ $ mariabackup --version
-    mariabackup based on MariaDB server 10.6.17-MariaDB debian-linux-gnu (x86_64)
+    """ $ mariadb-backup --version
+    mariadb-backup based on MariaDB server 10.6.17-MariaDB debian-linux-gnu (x86_64)
     """
-    cmd_res = run_cmd(["mariabackup", "--version"], return_stderr=True)[2][0]
-    res = re.search(MARIADB_VERSION_REGEX, cmd_res)
+    cmd_res = run_cmd(["mariadb-backup", "--version"], return_stderr=True)[2]
+    res = re.search(MARIADB_VERSION_REGEX, " ".join(cmd_res))
     return {"major": res.group(1), "minor": res.group(2), "patch": res.group(3)}
 
 
@@ -588,22 +588,19 @@ def find_latest_backup(path):
             raise Exception(f"Successful backup not found at {backup_path} !!!! Cannot proceed")
         return back_dir
 
+def get_backup_version():
 
-def get_backup_version(path=None):
-    base_back_path = SETTINGS.base_back_path
-
-    def find_latest_xtrabackup_info(path):
+    def find_latest_backup_info(path):
         back_dirs = sorted(get_dirs(path), reverse=True)
         for d in back_dirs:
-            if "xtrabackup_info" in os.listdir(f"{path}/{d}"):
-                return f"{path}/{d}/xtrabackup_info"
+            for info_file in ["mariadb_backup_info", "xtrabackup_info"]:
+                info_file_path = os.path.join(path, d, info_file)
+                if os.path.exists(info_file_path):
+                    return info_file_path
 
-    if path:
-        xtrab_info = f"{path}/xtrabackup_info"
-    else:
-        xtrab_info = find_latest_xtrabackup_info(base_back_path)
-    if xtrab_info:
-        with open(xtrab_info) as f:
+    backup_info = find_latest_backup_info(SETTINGS.base_back_path)
+    if backup_info:
+        with open(backup_info) as f:
             for line in f:
                 if line.startswith("tool_version"):
                     res = re.search(MARIADB_VERSION_REGEX, line.split("=")[1].strip())
@@ -1157,7 +1154,7 @@ def main():
         pre_backup_sanity_check(ready_pods, synced_state)
 
         logger.info(f"Target replica is: {SETTINGS.mariadb_target_replica}")
-        # we need pod ip as mariabackup util doesn't work with fqdn
+        # we need pod ip as mariadb-backup util doesn't work with fqdn
         mariadb_pod_ip = get_target_replica_ip(ready_pods, SETTINGS.mariadb_target_replica)
         # target_dir and incremental_base_dir are required in operation kwargs
         # according to get_operation_cmd_args, we can remove them from operation

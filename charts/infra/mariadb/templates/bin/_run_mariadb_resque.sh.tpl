@@ -8,7 +8,7 @@ cat << EOF
     The script provides tooling for resque operations (e.g data backup, data restore) of mariadb
     galera cluster member.
     Currently supported:
-        - physical data backup and restore using mariabackup.
+        - physical data backup and restore using mariadb-backup.
     Example of resulting backup directory structure:
 
     /var/backup
@@ -251,9 +251,9 @@ function post_operation_info(){
 }
 
 function set_global_variables(){
-    BACKCMD=mariabackup
+    BACKCMD=mariadb-backup
     BACKDIR=/var/backup
-    LOCKDIR="${BACKDIR}/mariabackup.lock"
+    LOCKDIR="${BACKDIR}/mariadb-backup.lock"
     MARIADB_CLIENT_CONF=${MARIADB_CLIENT_CONF:-/etc/mysql/mariabackup_user.cnf}
     USEROPTIONS="--defaults-file=${MARIADB_CLIENT_CONF}"
     BASEBACKDIR="${BACKDIR}/base"
@@ -304,7 +304,7 @@ function pre_backup_sanity_check() {
     local available_space
     local db_size
     local required_space
-    mysql $USEROPTIONS -s -e 'exit' || die $LINENO "FATAL ERROR: Could not connect to mysql with provided credentials"
+    mariadb $USEROPTIONS -s -e 'exit' || die $LINENO "FATAL ERROR: Could not connect to mariadb with provided credentials"
     # check available space on device in KB
     available_space=$(df --output=avail -k ${BACKDIR} | sed 's/[^0-9]*//g' | tr -d '[:space:]')
     # Calculate current db size
@@ -384,7 +384,7 @@ function prepare_backup_for_restore(){
 
 function run_restore() {
     # TODO: implement rollback of restore
-    # mariabackup requires datadir to be clean
+    # mariadb-backup requires datadir to be clean
     local latest_grastate_file
     if [[ ! "${TARGET_INCR_BACKUP_DIRS}" ]]; then
         echo "NO incremental backups found for base backup ${TARGET_BASE_BACKUP_DIR}, only base backup will be restored"
@@ -416,19 +416,24 @@ function cleanup_unarchieved_data(){
 }
 
 function get_mariabackup_version() {
-    echo "$(${BACKCMD} --version 2>&1 | sed -nE 's/.*(10\.[0-9]{1,2}\.[0-9]{1,2}-MariaDB).*/\1/p')"
+    echo "$(${BACKCMD} --version 2>&1 | sed -nE 's/.*([0-9]{2}\.[0-9]{1,2}\.[0-9]{1,2}-MariaDB).*/\1/p')"
 }
 
 function get_backup_version() {
     local backup=$1
     # if function called without params, we looking for latest full backup and return its version
     if [[ ! ${backup} ]]; then
-        backup=$(find ${BASEBACKDIR} -mindepth 1 -name xtrabackup_info -printf "%h\n" | sort | tail -1)
+        backup=$(find ${BASEBACKDIR} -mindepth 1 -name *backup_info -printf "%h\n" | sort | tail -1)
     fi
     if [[ ! ${backup} ]]; then
         echo "No-backups"
     else
-        echo "$(cat ${backup}/xtrabackup_info | grep tool_version | cut -d' ' -f3)"
+        for info_file in mariadb_backup_info xtrabackup_info; do
+            if [[ -f ${backup}/${info_file} ]]; then
+                echo "$(cat ${backup}/${info_file} | grep tool_version | cut -d' ' -f3)"
+                break
+            fi
+        done
     fi
 }
 
