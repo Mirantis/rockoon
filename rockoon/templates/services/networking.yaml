@@ -833,7 +833,8 @@ spec:
             dns_servers: {{ spec.features.neutron.dns_servers |join(',') }}
             {%- endif %}
             {%- if OSVer[spec.openstack_version] >= OSVer.caracal %}
-            ovn_l3_scheduler: "noop"
+            # NOTE(vsaienko): we need to update octavia first do not enable by default unless 25.2 PRODX-47697
+            # ovn_l3_scheduler: "noop"
             {%- endif %}
           {%- endif %}
           cache:
