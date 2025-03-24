@@ -16,6 +16,9 @@ features:
         vault_url: http://vault.openstack-vault.svc:8200
   cinder:
   database:
+    cleanup:
+      nova:
+        enabled: false
     local_volumes:
       enabled: true
   messaging:

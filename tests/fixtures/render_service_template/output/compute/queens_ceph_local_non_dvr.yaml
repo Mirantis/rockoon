@@ -438,7 +438,7 @@ spec:
       jobs:
         db_purge:
           cron: 1 1 * * 1
-          enabled: true
+          enabled: false
           script:
             config:
               age: 30
@@ -456,6 +456,7 @@ spec:
             node_selector_value: enabled
       manifests:
         ceph_conf: true
+        cron_job_db_purge: true
         ingress_novncproxy: true
         ingress_serialproxy: false
         ingress_spiceproxy: false

@@ -24,6 +24,9 @@ features:
     discovery:
       interval: 900
   database:
+    cleanup:
+      nova:
+        enabled: false
     local_volumes:
       enabled: true
   glance:

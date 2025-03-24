@@ -339,7 +339,7 @@ properties:
                     type: boolean
                     description: |
                       Enable periodic cleanup of database for Nova.
-                      default: true
+                      default: true for Antelope and newer OS releases and false for the rest
                   schedule:
                     type: string
                     description: |

@@ -41,7 +41,7 @@
 {%- set signature = spec.get('features', {}).get('glance', {}).get("signature", {"enabled": false}) %}
 
 {%- set ephemeral_encryption = spec.get('features', {}).get('nova', {}).get('images', {}).get("encryption", {}) %}
-{%- set nova_db_cleanup = spec.get('features', {}).get('database', {}).get('cleanup', {}).get('nova', {'enabled': true}) %}
+{%- set nova_db_cleanup = spec.features.database.cleanup.nova %}
 {%- set cadf_audit = spec.get('features', {}).get('logging', {}).get('cadf', {'enabled': false}) %}
 {%- set cadf_audit_driver = spec.get('features', {}).get('logging', {}).get('cadf', {}).get('driver', 'messagingv2') %}
 
@@ -573,10 +573,7 @@ spec:
             jobs:
               - openstack-mariadb-cluster-wait
       manifests:
-{%- if OSVer[spec.openstack_version] >= OSVer.rocky %}
-# Since Rocky, the --purge command argument has been added.
         cron_job_db_purge: true
-{%- endif %}
         network_policy: {{ spec.features.network_policies.enabled }}
         job_rabbit_init: false
         ceph_conf: true

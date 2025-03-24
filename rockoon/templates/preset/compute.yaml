@@ -64,6 +64,13 @@ features:
   neutron:
     backend: ml2
   database:
+    cleanup:
+      nova:
+{%- if OSVer[openstack_version] >= OSVer.antelope %}
+        enabled: true
+{%- else %}
+        enabled: false
+{%- endif %}
     local_volumes:
       enabled: true
   ssl:
