@@ -84,21 +84,18 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       initContainers:
 {{ tuple $envAll "conductor" $mounts_ironic_conductor_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
-        - name: ironic-conductor-pxe-init
-{{ tuple $envAll "ironic_pxe_init" | include "helm-toolkit.snippets.image" | indent 10 }}
+        - name: ironic-conductor-perms
+{{ tuple $envAll "ironic_conductor" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.conductor | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
-{{ dict "envAll" $envAll "application" "ironic_conductor" "container" "ironic_conductor_pxe_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ dict "envAll" $envAll "application" "ironic_conductor" "container" "ironic_conductor_perms" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
           command:
-            - /tmp/ironic-conductor-pxe-init.sh
+            - chown
+            - -R
+            - "ironic:"
+            - /var/lib/ironic
           volumeMounts:
-            - name: pod-tmp
-              mountPath: /tmp
-            - name: ironic-bin
-              mountPath: /tmp/ironic-conductor-pxe-init.sh
-              subPath: ironic-conductor-pxe-init.sh
-              readOnly: true
-            - name: pod-data
-              mountPath: /var/lib/openstack-helm
+            - name: host-var-lib-ironic
+              mountPath: /var/lib/ironic
         - name: ironic-conductor-init
 {{ tuple $envAll "ironic_conductor" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.conductor | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
@@ -117,28 +114,10 @@ spec:
               readOnly: true
             - name: pod-shared
               mountPath: /tmp/pod-shared
-        - name: ironic-conductor-http-init
-{{ tuple $envAll "ironic_conductor" | include "helm-toolkit.snippets.image" | indent 10 }}
-{{ tuple $envAll $envAll.Values.pod.resources.conductor | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
-{{ dict "envAll" $envAll "application" "ironic_conductor" "container" "ironic_conductor_http_init" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
-          env:
-            - name: PROVISIONER_INTERFACE
-              value: {{ .Values.network.pxe.device }}
-          command:
-            - /tmp/ironic-conductor-http-init.sh
-          volumeMounts:
-            - name: pod-tmp
-              mountPath: /tmp
-            - name: ironic-bin
-              mountPath: /tmp/ironic-conductor-http-init.sh
-              subPath: ironic-conductor-http-init.sh
-              readOnly: true
             - name: ironic-etc
               mountPath: /etc/nginx/nginx.conf
               subPath: nginx.conf
               readOnly: true
-            - name: pod-shared
-              mountPath: /tmp/pod-shared
             - name: pod-data
               mountPath: /var/lib/openstack-helm
             - name: host-var-lib-ironic

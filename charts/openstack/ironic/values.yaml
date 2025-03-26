@@ -695,15 +695,11 @@ pod:
           capabilities:
             drop:
               - NET_RAW
-        ironic_conductor_pxe_init:
-          capabilities:
-            drop:
-              - ALL
         ironic_conductor_http:
           capabilities:
             drop:
               - ALL
-        ironic_conductor_http_init:
+        ironic_conductor_perms:
           # run as root for chown ironic lib host path directory
           runAsUser: 0
           runAsNonRoot: false
