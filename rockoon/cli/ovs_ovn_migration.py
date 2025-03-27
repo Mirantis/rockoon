@@ -210,18 +210,30 @@ class CheckBase(ABC):
     def is_success(self):
         return self.status == CheckStatus.SUCCESS
 
+    @property
+    def report(self):
+        return {
+            self.id: {
+                "state": str(self.status),
+                "description": self.description,
+                "violations": self.violations,
+            }
+        }
+
     def log(self):
-        # successful checks are logged to debug
         log_method = LOG.debug
-        if self.status == CheckStatus.WARNING:
-            log_method = LOG.warning
-        elif self.status == CheckStatus.ERROR:
-            log_method = LOG.error
-        result = "\nCheck name: " + self.name
-        result += "\nState: " + f"{self.status}\n"
-        result += "Result description:\n" + self.description + "\n"
-        result += yaml.dump(self.violations)
-        log_method(result)
+        log_base = f"{self.name} succeeded:\n"
+        if not self.is_success:
+            log_base = f"{self.name} is FAILED:\n"
+            if self.status == CheckStatus.WARNING:
+                log_method = LOG.warning
+            elif self.status == CheckStatus.ERROR:
+                log_method = LOG.error
+
+        log_record = self.report[self.id]
+        log_record["violations"] = len(log_record["violations"])
+        log_record = log_base + yaml.dump(log_record)
+        log_method(log_record)
 
     def run_check(self):
         try:
@@ -231,6 +243,7 @@ class CheckBase(ABC):
             self.violations = [f"Exception {type(e).__name__}"]
             self.error_message = f"Check function '{self.check.__name__}' throws an exception '{type(e).__name__}: {e}'."
         self.log()
+        return self.report
 
     def _get_security_group_dhcp_allowed_ipv4(self):
         """Return dictionary. The dictionary key corresponds to security group Id and
@@ -1362,20 +1375,30 @@ def do_migration(script_args):
 
 def do_preflight_checks():
     ocm = OpenStackClientManager()
+    report_file = f"/tmp/preflight_checks_{time.strftime('%Y%m%d%H%M%S')}.yaml"
+    all_reports = {}
     errors = 0
     warnings = 0
     for check_cls in CheckBase.registry.values():
         check = check_cls(ocm.oc)
-        check.run_check()
+        all_reports.update(check.run_check())
         if check.status == CheckStatus.ERROR:
             errors += 1
         elif check.status == CheckStatus.WARNING:
             warnings += 1
+    with open(report_file, "w") as f:
+        yaml.dump(all_reports, f)
     if errors:
-        LOG.error(f"Found {errors} errors in the check results.")
+        LOG.error(
+            f"Found {errors} errors in the check results. "
+            f"Please check {report_file} for more details"
+        )
         sys.exit(1)
     elif warnings:
-        LOG.warning(f"Found {warnings} warnings in the check results.")
+        LOG.warning(
+            f"Found {warnings} warnings in the check results. "
+            f"Please check {report_file} for more details"
+        )
     else:
         LOG.info("All checks are successful.")
 
