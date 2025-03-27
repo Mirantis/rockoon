@@ -10,6 +10,8 @@ import sys
 import time
 import yaml
 
+from abc import ABC, abstractmethod
+from enum import Enum, auto
 from concurrent.futures import ThreadPoolExecutor, ALL_COMPLETED, wait
 from pykube import ConfigMap
 
@@ -152,6 +154,370 @@ def check_input(check, msg, error_string="Illegal Input"):
         if check(result):
             return result
         LOG.error(error_string)
+
+
+class CheckStatus(Enum):
+    SUCCESS = auto()
+    WARNING = auto()
+    ERROR = auto()
+
+    def __str__(self):
+        return self.name
+
+
+class CheckImpact(Enum):
+    MAJOR = auto()
+    CRITICAL = auto()
+
+
+class CheckBase(ABC):
+
+    name = None
+    error_message = None
+    success_message = "No issues found"
+    impact = CheckImpact.MAJOR
+    violations = ["Check was not executed yet"]
+    registry = {}
+
+    def __init__(self, connect):
+        self.oc = connect
+
+    def __init_subclass__(cls, *args, **kwargs):
+        super().__init_subclass__(*args, **kwargs)
+        cls.id = cls.name.replace(" ", "_").lower()
+        cls.registry[cls.id] = cls
+
+    @abstractmethod
+    def check(self):
+        pass
+
+    @property
+    def status(self):
+        if not self.violations:
+            return CheckStatus.SUCCESS
+        elif self.impact == CheckImpact.MAJOR:
+            return CheckStatus.WARNING
+        elif self.impact == CheckImpact.CRITICAL:
+            return CheckStatus.ERROR
+
+    @property
+    def description(self):
+        if self.is_success:
+            return self.success_message
+        return self.error_message
+
+    @property
+    def is_success(self):
+        return self.status == CheckStatus.SUCCESS
+
+    def log(self):
+        # successful checks are logged to debug
+        log_method = LOG.debug
+        if self.status == CheckStatus.WARNING:
+            log_method = LOG.warning
+        elif self.status == CheckStatus.ERROR:
+            log_method = LOG.error
+        result = "\nCheck name: " + self.name
+        result += "\nState: " + f"{self.status}\n"
+        result += "Result description:\n" + self.description + "\n"
+        result += "\n".join(self.violations)
+        log_method(result)
+
+    def run_check(self):
+        try:
+            self.violations = self.check()
+        except Exception as e:
+            LOG.exception(e)
+            self.violations = [f"Exception {type(e).__name__}"]
+            self.error_message = f"Check function '{self.check.__name__}' throws an exception '{type(e).__name__}: {e}'."
+        self.log()
+
+    def _get_security_group_dhcp_allowed_ipv4(self):
+        """Return dictionary. The dictionary key corresponds to security group Id and
+        value is a list of IPv4 CIDRs from this security group where access to DHCP is
+        enabled. IPs are stored in IPv4Network format.
+        """
+        dhcp_allowed_sg = {}
+        wildcard_cidr = ipaddress.ip_network("0.0.0.0/0")
+        for sec_group in self.oc.network.security_groups():
+            networks = []
+            for rule in sec_group.security_group_rules:
+                # Process egress rules for IPv4
+                if (
+                    rule["direction"] == "egress"
+                    and rule["ethertype"] == "IPv4"
+                ):
+                    # The DHCP port has no security group
+                    if not rule["remote_group_id"] is None:
+                        continue
+                    # Rule must be protocol independent
+                    # or allow access to 67 port by UDP
+                    if rule["protocol"] is None or (
+                        rule["protocol"].lower() in ["udp", "17"]
+                        and (
+                            rule["port_range_min"] is None
+                            or rule["port_range_min"] <= 67
+                        )
+                        and (
+                            rule["port_range_max"] is None
+                            or rule["port_range_max"] >= 67
+                        )
+                    ):
+                        if rule["remote_address_group_id"] is None:
+                            # Get CIDR from rule definition
+                            if rule["normalized_cidr"] is None:
+                                networks.append(wildcard_cidr)
+                            else:
+                                networks.append(
+                                    ipaddress.ip_network(
+                                        rule["normalized_cidr"]
+                                    )
+                                )
+                        else:
+                            # Get CIDRs if they are stored in address group
+                            for cidr in self.oc.network.get_address_group(
+                                rule["remote_address_group_id"]
+                            ).addresses:
+                                net = ipaddress.ip_network(cidr)
+                                if net.version == 4:
+                                    networks.append(net)
+            if networks:
+                dhcp_allowed_sg.update({sec_group.id: networks})
+        return dhcp_allowed_sg
+
+    def _are_addresses_allowed_by_firewall(
+        self, tested_cidrs, permitted_cidrs
+    ):
+        """param: tested_cidrs - list of IPv4Network
+        param: permitted_cidrs - list of IPv4Network
+        return: True if all subnets from tested_cidrs are in
+                networks from permitted_cidrs
+        """
+        if ipaddress.ip_network("0.0.0.0/0") in permitted_cidrs:
+            return True
+        for subnet in tested_cidrs:
+            is_blocked = True
+            for net in permitted_cidrs:
+                if net.prefixlen <= subnet.prefixlen:
+                    if subnet in net.subnets(new_prefix=subnet.prefixlen):
+                        is_blocked = False
+                        break
+            if is_blocked:
+                return False
+        return True
+
+    def _get_port_cidrs_with_dhcp4(self, port):
+        """
+        param: port - openstack.network.v2.port.Port object
+        return: list CIDRs of IPv4 subnets where dhcp is enabled
+                CIDRs are stored in IPv4Network format.
+        """
+        result = []
+        subnet_ids = set()
+        for fip in port.fixed_ips:
+            subnet_ids.add(fip["subnet_id"])
+        for id in subnet_ids:
+            subnet = self.oc.network.get_subnet(id)
+            if subnet.is_dhcp_enabled and subnet.ip_version == 4:
+                result.append(ipaddress.ip_network(subnet.cidr))
+        return result
+
+    def _subnet_has_workload_ports(self, subnet_id):
+        ports = self.oc.network.get_subnet_ports(subnet_id)
+        for port in ports:
+            if not (
+                port.device_owner.startswith("network")
+                or port.device_owner.startswith("neutron")
+            ):
+                return True
+        return False
+
+    def _router_network_mtu_map(self, router, network_type=None):
+        ports = self.oc.list_router_interfaces(router, network_type)
+        networks = {}
+        for p in ports:
+            network = self.oc.get_network(p.network_id)
+            # network can be removed after we get router interfaces
+            if network:
+                networks[p.network_id] = network.mtu
+            else:
+                LOG.debug(
+                    f"Not found network {p.network_id}, skipping port {p.id}"
+                )
+        return networks
+
+
+class SubnetsIpAvailabilityCheck(CheckBase):
+
+    name = "Subnets IP address availability check"
+    impact = CheckImpact.MAJOR
+    error_message = (
+        "Found subnets that do not have free IPs. "
+        "Metadata ports may not be created aftser migration. "
+        "Metadata will not be available for instances after migration. "
+    )
+
+    def check(self):
+        LOG.info("Process subnets for free IPs.")
+        overfilled_subnets = []
+        for net in self.oc.network.networks():
+            LOG.debug(f"Checking free ips in subnet of network {net.name}.")
+            for subnet in self.oc.network.get_network_ip_availability(
+                net.id
+            ).subnet_ip_availability:
+                if subnet.get("used_ips") == subnet.get("total_ips"):
+                    overfilled_subnets.append(subnet.get("subnet_id"))
+        LOG.info("Finished processing subnets for free IPs.")
+        return overfilled_subnets
+
+
+class NetworksMtuCheck(CheckBase):
+
+    name = "Networks MTU size check"
+    impact = CheckImpact.CRITICAL
+    error_message = (
+        "Found networks that have unsuitable MTU size for Geneve. "
+        "Workloads availability will be broken after migration. "
+        "Please adjust MTU for networks. "
+        "Migration is not recommended."
+    )
+
+    def check(self):
+        osdpl = kube.get_osdpl()
+        network_params = (
+            osdpl.obj.get("spec", {})
+            .get("services", {})
+            .get("networking", {})
+            .get("neutron", {})
+            .get("values", {})
+            .get("conf", {})
+            .get("neutron", {})
+        )
+        mtu = []
+        mtu.append(
+            network_params.get("DEFAULT", {}).get("global_physnet_mtu", 1500)
+        )
+        path_mtu = network_params.get("ml2", {}).get("path_mtu", 0)
+        if path_mtu > 0:
+            mtu.append(path_mtu)
+
+        ip_version = network_params.get("ml2", {}).get("overlay_ip_version", 4)
+        max_mtu_for_network = (
+            min(mtu)
+            - IP_HEADER_LENGTH[ip_version]
+            - DEFAULT_GENEVE_HEADER_SIZE
+        )
+        bad_mtu_networks = []
+        LOG.info("Check MTU value for networks.")
+        for net in self.oc.network.networks(provider_network_type=TYPE_VXLAN):
+            if net.mtu > max_mtu_for_network:
+                bad_mtu_networks.append(net.id)
+        LOG.info("Finished check MTU value for networks.")
+        return bad_mtu_networks
+
+
+class SubnetsNoDHCPCheck(CheckBase):
+    name = "Subnets without enabled DHCP check"
+    impact = CheckImpact.CRITICAL
+    error_message = (
+        "Found subnets that do not have DHCP. "
+        "Correct MTU settings will not be propagated automatically. "
+        "Please configure the MTU of instances in these subnets manually. "
+        "Migration is not recommended."
+    )
+
+    def check(self):
+        no_dhcp_subnets = []
+        LOG.info("Check if DHCP is enabled in subnets.")
+        for net in self.oc.network.networks(provider_network_type=TYPE_VXLAN):
+            for subnet_id in net.subnet_ids:
+                if not self.oc.network.get_subnet(
+                    subnet_id
+                ).is_dhcp_enabled and self._subnet_has_workload_ports(
+                    subnet_id
+                ):
+                    no_dhcp_subnets.append(subnet_id)
+        LOG.info("Finished check for DHCP enabling.")
+        return no_dhcp_subnets
+
+
+class SubnetsDNSServersCheck(CheckBase):
+
+    name = "Subnets without dns_nameservers check"
+    impact = CheckImpact.CRITICAL
+    error_message = (
+        "Found subnets that do not have dns nameservers set. "
+        "Access to DNS from instances will be broken. "
+        "Please set dns nameservers for subnets manually. "
+        "Migration is not recommended."
+    )
+
+    def check(self):
+        """
+        Checks whether dhcp enabled subnets have dns_nameservers set. Check
+        is failed if list of dns servers is empty.
+        """
+        no_dns_subnets = []
+        LOG.info("Checking subnets have dns_nameservers set")
+        for subnet in self.oc.network.subnets(is_dhcp_enabled=True):
+            if not subnet.dns_nameservers and self._subnet_has_workload_ports(
+                subnet.id
+            ):
+                no_dns_subnets.append(subnet.id)
+        LOG.info("Finished checking subnets have dns_nameservers set")
+        return no_dns_subnets
+
+
+class PortsDHCPAccessCheck(CheckBase):
+
+    name = "Ports with blocked access to DHCPv4 check"
+    impact = CheckImpact.CRITICAL
+    error_message = (
+        "Found ports which have incorrect security group rules for access to DHCP. "
+        "Instances may lose network connectivity after migration. "
+        "Please configure correct rules to allow access to DHCPv4 service. "
+        "Migration is not recommended."
+    )
+
+    def check(self):
+        """Test VM ports from networks which are not connected to external routers.
+        The test is considered successful if all subnets of the port with enable_dhcp==True
+        param have access to 67 UDP port and allow packets to the 255.255.255.255 address.
+        """
+        allowed_sg = self._get_security_group_dhcp_allowed_ipv4()
+        broadcast_ip = ipaddress.ip_network("255.255.255.255/32")
+        ports_blocked = []
+        LOG.info("Check if DHCP is allowed by security groups on the ports.")
+        for net in self.oc.network.networks(is_router_external=False):
+            for port in self.oc.network.ports(network_id=net.id):
+                if port.is_port_security_enabled and port.device_owner in [
+                    "compute:nova",
+                    "",
+                ]:
+                    port_cidrs_with_dhcp = self._get_port_cidrs_with_dhcp4(
+                        port
+                    )
+                    if len(port_cidrs_with_dhcp) == 0:
+                        continue
+
+                    permitted_cidrs = set()
+                    for sg in port.security_group_ids:
+                        if sg in allowed_sg.keys():
+                            permitted_cidrs.update(allowed_sg[sg])
+
+                    # If port has permissions to broadcast and 67 UDP port it will get IP via DHCP
+                    is_access_allowed = (
+                        self._are_addresses_allowed_by_firewall(
+                            [broadcast_ip], permitted_cidrs
+                        )
+                        and self._are_addresses_allowed_by_firewall(
+                            port_cidrs_with_dhcp, permitted_cidrs
+                        )
+                    )
+                    if not is_access_allowed:
+                        ports_blocked.append(port.id)
+        LOG.info("Finished ports check for access to DHCP.")
+        return ports_blocked
 
 
 class StateCM:
@@ -944,306 +1310,22 @@ def do_migration(script_args):
                 raise error
 
 
-class CheckResult:
-
-    def __init__(self, name, status, description):
-        """:param name: the name of the check
-        :param status: boolean true|false
-        :param description: description with issues that are found.
-        """
-        self.name = name
-        self.status = status
-        self.description = description
-
-    @property
-    def is_success(self):
-        return self.status
-
-    def get_report(self):
-        result = "\nCheck name: " + self.name
-        result += "\nState: " + ("Pass\n" if self.status else "Fail\n")
-        result += "Result description:\n" + self.description + "\n"
-        return result
-
-
 def do_preflight_checks():
-    general_results = []
-
-    def run_check(check_func):
-        def f(*args, **kwargs):
-            try:
-                return check_func(*args, **kwargs)
-            except Exception as e:
-                function_name = check_func.__name__
-                return CheckResult(
-                    function_name,
-                    False,
-                    f"Check function '{function_name}' throws an exception '{type(e).__name__}: {e}'.",
-                )
-
-        return f
-
-    def _get_check_results(check_name, issues_list, comment):
-        if issues_list:
-            return CheckResult(
-                check_name,
-                False,
-                comment + "\n".join(issues_list),
-            )
-        else:
-            return CheckResult(check_name, True, "No issues are found")
-
-    def _get_security_group_dhcp_allowed_ipv4(connect):
-        """Return dictionary. The dictionary key corresponds to security group Id and
-        value is a list of IPv4 CIDRs from this security group where access to DHCP is
-        enabled. IPs are stored in IPv4Network format.
-        """
-        dhcp_allowed_sg = {}
-        wildcard_cidr = ipaddress.ip_network("0.0.0.0/0")
-        for sec_group in connect.network.security_groups():
-            networks = []
-            for rule in sec_group.security_group_rules:
-                # Process egress rules for IPv4
-                if (
-                    rule["direction"] == "egress"
-                    and rule["ethertype"] == "IPv4"
-                ):
-                    # The DHCP port has no security group
-                    if not rule["remote_group_id"] is None:
-                        continue
-                    # Rule must be protocol independent
-                    # or allow access to 67 port by UDP
-                    if rule["protocol"] is None or (
-                        rule["protocol"].lower() in ["udp", "17"]
-                        and (
-                            rule["port_range_min"] is None
-                            or rule["port_range_min"] <= 67
-                        )
-                        and (
-                            rule["port_range_max"] is None
-                            or rule["port_range_max"] >= 67
-                        )
-                    ):
-                        if rule["remote_address_group_id"] is None:
-                            # Get CIDR from rule definition
-                            if rule["normalized_cidr"] is None:
-                                networks.append(wildcard_cidr)
-                            else:
-                                networks.append(
-                                    ipaddress.ip_network(
-                                        rule["normalized_cidr"]
-                                    )
-                                )
-                        else:
-                            # Get CIDRs if they are stored in address group
-                            for cidr in connect.network.get_address_group(
-                                rule["remote_address_group_id"]
-                            ).addresses:
-                                net = ipaddress.ip_network(cidr)
-                                if net.version == 4:
-                                    networks.append(net)
-            if networks:
-                dhcp_allowed_sg.update({sec_group.id: networks})
-        return dhcp_allowed_sg
-
-    def _are_addresses_allowed_by_firewall(tested_cidrs, permitted_cidrs):
-        """param: tested_cidrs - list of IPv4Network
-        param: permitted_cidrs - list of IPv4Network
-        return: True if all subnets from tested_cidrs are in
-                networks from permitted_cidrs
-        """
-        if ipaddress.ip_network("0.0.0.0/0") in permitted_cidrs:
-            return True
-        for subnet in tested_cidrs:
-            is_blocked = True
-            for net in permitted_cidrs:
-                if net.prefixlen <= subnet.prefixlen:
-                    if subnet in net.subnets(new_prefix=subnet.prefixlen):
-                        is_blocked = False
-                        break
-            if is_blocked:
-                return False
-        return True
-
-    def _get_port_cidrs_with_dhcp4(connect, port):
-        """param: connect - connection to OS API
-        param: port - openstack.network.v2.port.Port object
-        return: list CIDRs of IPv4 subnets where dhcp is enabled
-                CIDRs are stored in IPv4Network format.
-        """
-        result = []
-        subnet_ids = set()
-        for fip in port.fixed_ips:
-            subnet_ids.add(fip["subnet_id"])
-        for id in subnet_ids:
-            subnet = connect.network.get_subnet(id)
-            if subnet.is_dhcp_enabled and subnet.ip_version == 4:
-                result.append(ipaddress.ip_network(subnet.cidr))
-        return result
-
-    def _subnet_has_workload_ports(connect, subnet_id):
-        ports = connect.network.get_subnet_ports(subnet_id)
-        for port in ports:
-            if not (
-                port.device_owner.startswith("network")
-                or port.device_owner.startswith("neutron")
-            ):
-                return True
-        return False
-
-    @run_check
-    def _check_for_free_ip(connect):
-        LOG.info("Process subnets for free IPs.")
-        overfilled_subnets = []
-        for net in connect.network.networks():
-            LOG.debug(f"Checking free ips in subnet of network {net.name}.")
-            for subnet in connect.network.get_network_ip_availability(
-                net.id
-            ).subnet_ip_availability:
-                if subnet.get("used_ips") == subnet.get("total_ips"):
-                    overfilled_subnets.append(subnet.get("subnet_id"))
-        LOG.info("Finished processing subnets for free IPs.")
-        return _get_check_results(
-            "IP address availability check",
-            overfilled_subnets,
-            "The following subnets do not have free IP:\n",
-        )
-
-    @run_check
-    def _check_network_mtu(connect):
-        osdpl = kube.get_osdpl()
-        network_params = (
-            osdpl.obj.get("spec", {})
-            .get("services", {})
-            .get("networking", {})
-            .get("neutron", {})
-            .get("values", {})
-            .get("conf", {})
-            .get("neutron", {})
-        )
-        mtu = []
-        mtu.append(
-            network_params.get("DEFAULT", {}).get("global_physnet_mtu", 1500)
-        )
-        path_mtu = network_params.get("ml2", {}).get("path_mtu", 0)
-        if path_mtu > 0:
-            mtu.append(path_mtu)
-
-        ip_version = network_params.get("ml2", {}).get("overlay_ip_version", 4)
-        max_mtu_for_network = (
-            min(mtu)
-            - IP_HEADER_LENGTH[ip_version]
-            - DEFAULT_GENEVE_HEADER_SIZE
-        )
-        bad_mtu_networks = []
-        LOG.info("Check MTU value for networks.")
-        for net in connect.network.networks(provider_network_type=TYPE_VXLAN):
-            if net.mtu > max_mtu_for_network:
-                bad_mtu_networks.append(net.id)
-        LOG.info("Finished check MTU value for networks.")
-        return _get_check_results(
-            "MTU size check",
-            bad_mtu_networks,
-            "The following networks have not suitable MTU size for Geneve:\n",
-        )
-
-    @run_check
-    def _check_for_no_dhcp_subnet(connect):
-        no_dhcp_subnets = []
-        LOG.info("Check if DHCP is enabled in subnets.")
-        for net in connect.network.networks(provider_network_type=TYPE_VXLAN):
-            for subnet_id in net.subnet_ids:
-                if not connect.network.get_subnet(
-                    subnet_id
-                ).is_dhcp_enabled and _subnet_has_workload_ports(
-                    connect, subnet_id
-                ):
-                    no_dhcp_subnets.append(subnet_id)
-        LOG.info("Finish check for DHCP enabling.")
-        return _get_check_results(
-            "Subnets without enabled DHCP check",
-            no_dhcp_subnets,
-            "The following subnets have no DHCP. You should configure\nthe MTU of instances in these subnets manually:\n",
-        )
-
-    @run_check
-    def _check_subnets_dns_servers(connect):
-        """
-        Checks whether dhcp enabled subnets have dns_nameservers set. Check
-        is failed if list of dns servers is empty.
-
-        :param connect openstack.connection.Connection
-        :returns CheckResult
-        """
-        no_dns_subnets = []
-        LOG.info("Checking subnets have dns_nameservers set")
-        for subnet in connect.network.subnets(is_dhcp_enabled=True):
-            if not subnet.dns_nameservers and _subnet_has_workload_ports(
-                connect, subnet.id
-            ):
-                no_dns_subnets.append(subnet.id)
-        LOG.info("Finished checking subnets have dns_nameservers set")
-        return _get_check_results(
-            "Subnets without dns_nameservers check",
-            no_dns_subnets,
-            "The following subnets have no dns_nameservers set. You should set\ndns_nameservers in subnets manually:\n",
-        )
-
-    @run_check
-    def _check_port_sg_allowed_dhcp4(connect):
-        """Test VM ports from networks which are not connected to external routers.
-        The test is considered successful if all subnets of the port with enable_dhcp==True
-        param have access to 67 UDP port and allow packets to the 255.255.255.255 address.
-        """
-        allowed_sg = _get_security_group_dhcp_allowed_ipv4(connect)
-        broadcast_ip = ipaddress.ip_network("255.255.255.255/32")
-        ports_blocked = []
-        LOG.info("Check if DHCP is allowed by security groups on the ports.")
-        for net in connect.network.networks(is_router_external=False):
-            for port in connect.network.ports(network_id=net.id):
-                if port.is_port_security_enabled and port.device_owner in [
-                    "compute:nova",
-                    "",
-                ]:
-                    port_cidrs_with_dhcp = _get_port_cidrs_with_dhcp4(
-                        connect, port
-                    )
-                    if len(port_cidrs_with_dhcp) == 0:
-                        continue
-
-                    permitted_cidrs = set()
-                    for sg in port.security_group_ids:
-                        if sg in allowed_sg.keys():
-                            permitted_cidrs.update(allowed_sg[sg])
-
-                    # If port has permissions to broadcast and 67 UDP port it will get IP via DHCP
-                    is_access_allowed = _are_addresses_allowed_by_firewall(
-                        [broadcast_ip], permitted_cidrs
-                    ) and _are_addresses_allowed_by_firewall(
-                        port_cidrs_with_dhcp, permitted_cidrs
-                    )
-                    if not is_access_allowed:
-                        ports_blocked.append(port.id)
-        LOG.info("Finish ports check for access to DHCP.")
-        return _get_check_results(
-            "Checking ports with blocked access to DHCPv4",
-            ports_blocked,
-            "The following ports have no security groups that allow correct connection to DHCPv4 service:\n",
-        )
-
     ocm = OpenStackClientManager()
-    general_results.append(_check_for_free_ip(ocm.oc))
-    general_results.append(_check_network_mtu(ocm.oc))
-    general_results.append(_check_for_no_dhcp_subnet(ocm.oc))
-    general_results.append(_check_subnets_dns_servers(ocm.oc))
-    general_results.append(_check_port_sg_allowed_dhcp4(ocm.oc))
-
-    failed_tests = [a for a in general_results if not a.is_success]
-    if failed_tests:
-        LOG.warning("There are failures in the check results.")
-        for test in failed_tests:
-            LOG.warning(test.get_report())
+    errors = 0
+    warnings = 0
+    for check_cls in CheckBase.registry.values():
+        check = check_cls(ocm.oc)
+        check.run_check()
+        if check.status == CheckStatus.ERROR:
+            errors += 1
+        elif check.status == CheckStatus.WARNING:
+            warnings += 1
+    if errors:
+        LOG.error(f"Found {errors} errors in the check results.")
         sys.exit(1)
+    elif warnings:
+        LOG.warning(f"Found {warnings} warnings in the check results.")
     else:
         LOG.info("All checks are successful.")
 
