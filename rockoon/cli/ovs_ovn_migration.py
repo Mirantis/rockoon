@@ -220,7 +220,7 @@ class CheckBase(ABC):
         result = "\nCheck name: " + self.name
         result += "\nState: " + f"{self.status}\n"
         result += "Result description:\n" + self.description + "\n"
-        result += "\n".join(self.violations)
+        result += yaml.dump(self.violations)
         log_method(result)
 
     def run_check(self):
@@ -518,6 +518,56 @@ class PortsDHCPAccessCheck(CheckBase):
                         ports_blocked.append(port.id)
         LOG.info("Finished ports check for access to DHCP.")
         return ports_blocked
+
+
+class RouterGatewayMtuCheck(CheckBase):
+
+    name = "Routers gateway MTU check"
+    impact = CheckImpact.MAJOR
+    error_message = (
+        "OVN can only send packet 'ICMP fragmentation needed'. "
+        "It may not be handled by all workloads correctly. "
+        "Additional analysis is needed."
+    )
+
+    def check(self):
+        gw_mtu = {}
+        LOG.info("Check gateway MTU value for routers.")
+        for router in self.oc.network.routers():
+            if router.external_gateway_info:
+                networks = self._router_network_mtu_map(router)
+                if len(set(networks.values())) > 1:
+                    gw_mtu[router.id] = {
+                        "networks_mtu": networks,
+                        "external_net_id": router.external_gateway_info[
+                            "network_id"
+                        ],
+                    }
+        LOG.info("Finished check MTU value for routers.")
+        return gw_mtu
+
+
+class RouterInternalMtuCheck(CheckBase):
+
+    name = "Routers internal MTU check"
+    impact = CheckImpact.CRITICAL
+    error_message = (
+        "Since OVN can not fragment packets by itself "
+        "connectivity between specified networks will be broken. "
+        "Please make sure that all networks plugged into the router "
+        "have the same MTU value. "
+        "Migration is not recommended."
+    )
+
+    def check(self):
+        internal_mtu = {}
+        LOG.info("Check internal MTU value for routers.")
+        for router in self.oc.network.routers():
+            networks = self._router_network_mtu_map(router, "internal")
+            if len(set(networks.values())) > 1:
+                internal_mtu[router.id] = {"networks_mtu": networks}
+        LOG.info("Finished check MTU value for routers.")
+        return internal_mtu
 
 
 class StateCM:
