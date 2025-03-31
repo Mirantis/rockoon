@@ -109,7 +109,7 @@ rabbitmq_scripted_test: '{{ images_base_url }}/openstack/extra/rabbitmq-manageme
 tempest_run_tests: '{{ images_base_url }}/openstack/tempest:victoria-focal-20240112082932'
 tempest-uuids-init: '{{ images_base_url }}/openstack/heat:wallaby-focal-20240112082933'
 glance_metadefs_load: '{{ images_base_url }}/openstack/glance:wallaby-focal-20240112082933'
-memcached: '{{ images_base_url }}/general/memcached:v1.6.32-alpine-20250213123431'
+memcached: '{{ images_base_url }}/general/memcached:v1.6.38-alpine-20250328111424'
 ingress: '{{ images_base_url }}/openstack/extra/nginx-ingress-controller:1.12.1-alpine-20250325120509'
 error_pages: '{{ images_base_url }}/openstack/extra/defaultbackend:v1.19.2-77af1ef-20240910090142'
 ironic_manage_networks: '{{ images_base_url }}/openstack/heat:wallaby-focal-20240112082933'
