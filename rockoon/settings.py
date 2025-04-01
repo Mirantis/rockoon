@@ -289,6 +289,8 @@ OSCTL_POD_NETWORKS_DATA = json_from_env(
     "OSCTL_POD_NETWORKS_DATA", [{"cidr": "192.168.0.0/16"}]
 )
 
+CONF = Config()
+
 
 class InfiniteBackoffsWithJitter:
     def __iter__(self):
@@ -314,6 +316,7 @@ def configure(settings: kopf.OperatorSettings, **_):
         f"lcm.mirantis.com/{OSCTL_HEARTBEAT_PEERING_OBJECT_NAME}-finalizer"
     )
     settings.networking.error_backoffs = InfiniteBackoffsWithJitter()
+    settings.execution.max_workers = CONF.getint("osctl", "max_workers")
 
 
 # HELM SETTINGS
@@ -323,5 +326,3 @@ HELM_REPOSITORY_CACHE = os.environ.get(
 )
 HELM_CHARTS_DIR = os.environ.get("HELM_CHARTS_DIR", "/opt/operator/charts/")
 # END HELM SETTINGS
-
-CONF = Config()
