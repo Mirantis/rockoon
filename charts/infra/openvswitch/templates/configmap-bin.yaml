@@ -42,12 +42,16 @@ data:
 {{ tuple "bin/_ovn_northd.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   ovn-controller.sh: |
 {{ tuple "bin/_ovn-controller.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  ovn-vtep.sh: |
+{{ tuple "bin/_ovn_vtep.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   ovn-controller-perms.sh: |
 {{ tuple "bin/_ovn-controller-perms.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   ovn-northd-health-probe.sh: |
 {{ tuple "bin/_ovn_northd_probe.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   ovn-migrate-dataplane.sh: |
 {{ tuple "bin/_ovn_migrate_dataplane.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  ovn-vtep-health-probe.sh: |
+{{ tuple "bin/_ovn_vtep-health_probe.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
 {{- end }}
 {{- end }}
 {{- if .Values.manifests.configmap_bin }}
