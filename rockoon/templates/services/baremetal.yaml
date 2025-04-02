@@ -33,6 +33,14 @@
 {%- set cadf_audit = spec.get('features', {}).get('logging', {}).get('cadf', {'enabled': false}) %}
 {%- set cadf_audit_driver = spec.get('features', {}).get('logging', {}).get('cadf', {}).get('driver', 'messagingv2') %}
 
+{%- set ngs_ovs_vtep = namespace(enabled=false) %}
+{%- for hw_dev_name, hw_dev in spec.features.neutron.get('baremetal', {}).get('ngs', {}).get('hardware', {}).items() %}
+{%-   if hw_dev.device_type == "ovs_vtep" %}
+{%-       set ngs_ovs_vtep.enabled = true %}
+{%-       break %}
+{%-   endif %}
+{%- endfor %}
+
 spec:
   releases:
 {%- if spec.get('migration', {}).get('ironic', {}).get('deploy_main_service', True) %}
@@ -59,6 +67,9 @@ spec:
     "ironic_pxe",
     "ironic_pxe_init",
     "ironic_pxe_http",
+    "ironic_nic_init",
+    "ironic_nic_init_pre",
+    "ironic_nic_init_post",
     "dep_check",
     "image_repo_sync",] %}
         {%- if image in images %}
@@ -86,11 +97,20 @@ spec:
           # NOTE(vsaienko): image creation is moved to glance to support singed image upload.
           enabled: false
       network:
+{%- if ngs_ovs_vtep.enabled %}
+        api:
+          node_port:
+            enabled: true
+            port: 33385
+{%- endif %}
         proxy:
 {% include 'base/_proxy_vars.yaml' %}
         cleaning: &bm_network
+          enabled: {{ not network.get('bind_deployment_services', false) }}
           name: {{ network.get('name', 'baremetal') }}
+          {%- if network.get('network_type', 'vlan') in ['vlan', 'flat'] %}
           physnet: {{ network.get('physnet', 'ironic') }}
+          {%- endif %}
           network_type: {{ network.get('network_type', 'vlan') }}
           external: {{ network.get('external', true) }}
           shared: {{ network.get('shared', true) }}
@@ -113,9 +133,19 @@ spec:
               nameservers: {{ spec.features.neutron.dns_servers }}
               {%- endif %}
           {%- endfor %}
-        provisioning: *bm_network
+        provisioning:
+          <<: *bm_network
+        {%- if network.get('bind_deployment_services', false) %}
+        deployment_network:
+          <<: *bm_network
+          enabled: true
+        {%- endif %}
         pxe:
-          device: {{ spec.get('features', {}).get('ironic', {}).get('provisioning_interface', 'ironic-pxe') }}
+{%- set default_provisioning_interface = 'ironic-pxe' %}
+{%- if ngs_ovs_vtep.enabled %}
+{%-   set default_provisioning_interface = 'o-irc0' %}
+{%- endif %}
+          device: {{ spec.get('features', {}).get('ironic', {}).get('provisioning_interface', default_provisioning_interface) }}
           convert_cleaning_network_name_to_uuid: false
           # TODO(vsaienko): drop when switch to images with jammy
           {%- if OSVer.yoga <= OSVer[spec.openstack_version] < OSVer.master %}

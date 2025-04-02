@@ -4,14 +4,11 @@ spec:
     name: openstack-neutron-rabbitmq
     values:
       conf:
-        enabled_plugins:
-          - rabbitmq_management
-          - rabbitmq_prometheus
         aux_conf:
           policies:
           - definition:
-              message-ttl: 120000
               expires: 600000
+              message-ttl: 120000
             name: default-policy
             pattern: ^(?!amq\.).*
             vhost: neutron
@@ -27,6 +24,9 @@ spec:
             pattern: ^tasks\.
             priority: 1
             vhost: neutron
+        enabled_plugins:
+        - rabbitmq_management
+        - rabbitmq_prometheus
         prometheus_exporter:
           rabbit_exporters: overview,exchange,node
         users:
@@ -73,53 +73,53 @@ spec:
           rabbitmq_scripted_test: rabbitmq-scripted-test:latest
       manifests:
         job_users_create: true
-        network_policy: false
         monitoring:
           prometheus:
             configmap_bin: true
             deployment_exporter: true
             service_exporter: true
+        network_policy: false
       monitoring:
         prometheus:
           enabled: true
       pod:
-        replicas:
-          server: 1
         probes:
           server:
             rabbitmq:
-              readiness:
-                params:
-                  periodSeconds: 60
-                  timeoutSeconds: 30
               liveness:
                 params:
                   periodSeconds: 60
                   timeoutSeconds: 30
+              readiness:
+                params:
+                  periodSeconds: 60
+                  timeoutSeconds: 30
+        replicas:
+          server: 1
       volume:
         enabled: false
   - chart: openvswitch
     name: openstack-openvswitch
     values:
-      endpoints:
-        cluster_domain_suffix: cluster.local
       conf:
         neutron:
           DEFAULT:
             support_sync_ovs_info: true
+      endpoints:
+        cluster_domain_suffix: cluster.local
       images:
         tags:
           dep_check: dep-check:latest
           image_repo_sync: image-repo-sync:latest
           openvswitch_db_server: openvswitch-db-server:latest
-          openvswitch_vswitchd: openvswitch-vswitchd:latest
-          openvswitch_vswitchd_dpdk: openvswitch-vswitchd-dpdk:latest
+          openvswitch_ovn_controller: openvswitch-ovn-controller:latest
+          openvswitch_ovn_db: openvswitch-ovn-db:latest
           openvswitch_ovn_db_nb: openvswitch-ovn-db-nb:latest
           openvswitch_ovn_db_sb: openvswitch-ovn-db-sb:latest
           openvswitch_ovn_northd: openvswitch-ovn-northd:latest
           openvswitch_ovn_vswitchd: openvswitch-ovn-vswitchd:latest
-          openvswitch_ovn_db: openvswitch-ovn-db:latest
-          openvswitch_ovn_controller: openvswitch-ovn-controller:latest
+          openvswitch_vswitchd: openvswitch-vswitchd:latest
+          openvswitch_vswitchd_dpdk: openvswitch-vswitchd-dpdk:latest
       overrides:
         openvswitch_openvswitch-vswitchd:
           labels: null
@@ -163,63 +163,60 @@ spec:
       bootstrap:
         enabled: true
         floating_network:
-          enabled: true
           default: true
+          enabled: true
           external: true
           name: public
           network_type: flat
           physnet: physnet1
+          router:
+            name: r1
           subnet:
-            name: public-subnet
+            dhcp: false
             gateway: 10.11.12.39
+            name: public-subnet
             pool_end: 10.11.12.200
             pool_start: 10.11.12.100
             range: 10.11.12.0/24
-            dhcp: false
-          router:
-            name: r1
       conf:
-        policy.d:
-          01-controller-default.yaml: {'networking_rule1': 'networking_value1'}
-          02-custom.yaml: {}
         auto_bridge_add:
           br-ex: veth-phy
           br-mpls: 'null'
         bagpipe_bgp:
           api:
-            host: 'localhost'
+            host: localhost
             port: 8082
           bgp:
-            local_address: 'ens3'
+            local_address: ens3
             my_as: 64512
-            peers: '1.2.3.4'
+            peers: 1.2.3.4
           common:
-            root_helper: 'sudo /var/lib/openstack/bin/neutron-rootwrap /etc/neutron/rootwrap.conf'
+            root_helper: sudo /var/lib/openstack/bin/neutron-rootwrap /etc/neutron/rootwrap.conf
           dataplane_driver_evpn:
-            dataplane_driver: 'ovs'
-            dataplane_local_address: 'ens3'
+            dataplane_driver: ovs
+            dataplane_local_address: ens3
             vxlan_dst_port: 4790
           dataplane_driver_ipvpn:
-            dataplane_driver: 'ovs'
-            dataplane_local_address: 'ens3'
-            gre_tunnel_options: 'packet_type=legacy_l3'
+            dataplane_driver: ovs
+            dataplane_local_address: ens3
+            gre_tunnel_options: packet_type=legacy_l3
             mpls_interface: '*gre*'
-            ovs_bridge: 'br-mpls'
-            proxy_arp: False
+            ovs_bridge: br-mpls
+            proxy_arp: false
         l3_agent:
+          DEFAULT:
+            cleanup_on_shutdown: true
           agent:
             extensions: fip_qos,gateway_ip_qos,vpnaas
           vpnagent:
-            vpn_device_driver: 'neutron_vpnaas.services.vpn.device_drivers.strongswan_ipsec.StrongSwanDriver'
-          DEFAULT:
-            cleanup_on_shutdown: true
+            vpn_device_driver: neutron_vpnaas.services.vpn.device_drivers.strongswan_ipsec.StrongSwanDriver
         logging:
           logger_neutron:
             level: INFO
           logger_neutron_lib:
-             handlers: ""
-             level: INFO
-             qualname: neutron_lib
+            handlers: ''
+            level: INFO
+            qualname: neutron_lib
         metadata_agent:
           DEFAULT:
             metadata_proxy_shared_secret: mN0aLDTcg1AVqyLWNDjCd2Jz6DA61cZJ
@@ -229,29 +226,31 @@ spec:
           orphaned_ports: true
         neutron:
           DEFAULT:
+            allow_automatic_l3agent_failover: false
             api_workers: 4
-            support_sync_ovs_info: true
-            support_sync_ha_routers_info: true
-            router_processes_greentlet_max: 10
             dhcp_agents_per_network: 2
             dns_domain: openstack.internal.
             dnsmasq_dns_servers: 10.172.1.100
             external_dns_driver: designate
             l3_ha: true
-            allow_automatic_l3agent_failover: false
             l3_ha_network_type: vxlan
             max_l3_agents_per_router: 2
+            router_processes_greentlet_max: 10
             service_plugins: router,metering,qos,bgpvpn,vpnaas,portprober
-          nova:
-            live_migration_events: true
+            support_sync_ha_routers_info: true
+            support_sync_ovs_info: true
+          audit_middleware_notifications:
+            driver: noop
           cache:
             backend: oslo_cache.memcache_pool
+          ironic:
+            valid_interfaces: internal
           keystone_authtoken:
             memcache_secret_key: 4zDhycwch09UPx4j
             memcache_security_strategy: ENCRYPT
             service_type: network
-          audit_middleware_notifications:
-            driver: noop
+          nova:
+            live_migration_events: true
           oslo_messaging_notifications:
             topics: notifications,stacklight_notifications
           oslo_policy:
@@ -261,10 +260,8 @@ spec:
             service_provider:
               type: multistring
               values:
-               - 'BGPVPN:BaGPipe:networking_bgpvpn.neutron.services.service_drivers.bagpipe.bagpipe_v2.BaGPipeBGPVPNDriver:default'
-               - 'VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ipsec.IPsecVPNDriver:default'
-          ironic:
-            valid_interfaces: internal
+              - BGPVPN:BaGPipe:networking_bgpvpn.neutron.services.service_drivers.bagpipe.bagpipe_v2.BaGPipeBGPVPNDriver:default
+              - VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ipsec.IPsecVPNDriver:default
         paste:
           app:neutronversions:
             paste.app_factory: neutron.pecan_wsgi.app:versions_factory
@@ -278,8 +275,8 @@ spec:
               - port_security
               - qos
               - dns_domain_ports
+              mechanism_drivers: openvswitch,l2population
               tenant_network_types: vxlan
-              mechanism_drivers: 'openvswitch,l2population'
             ml2_type_flat:
               flat_networks: physnet1
           openvswitch_agent:
@@ -291,6 +288,10 @@ spec:
               bridge_mappings: physnet1:br-ex
             securitygroup:
               firewall_driver: openvswitch
+        policy.d:
+          01-controller-default.yaml:
+            networking_rule1: networking_value1
+          02-custom.yaml: {}
       dependencies:
         static:
           db_init:
@@ -316,20 +317,20 @@ spec:
               username: admin
             designate:
               password: KBecvsPZsWBFzDqYnevHWArm7tFycZKr
+              region_name: RegionOne
               username: designateLeRjiDsyT
-              region_name: 'RegionOne'
             neutron:
               password: 9d4CIP5ismqTa7l5N5FdD8MAuFMXx9EV
+              region_name: RegionOne
               username: neutronnmAhFsr
-              region_name: 'RegionOne'
             nova:
               password: BLFKrb8JhAMBb1v9BnRGDckMaYY7XUbq
+              region_name: RegionOne
               username: novaZzHG
-              region_name: 'RegionOne'
             test:
               password: q38BqVBqRH8mwfvI3uZeTmwe7JhKm3q1
+              region_name: RegionOne
               username: testLJtA
-              region_name: 'RegionOne'
         network:
           host_fqdn_override:
             public:
@@ -435,7 +436,6 @@ spec:
           ks_user: ks-user:latest
           neutron_bagpipe_bgp: neutron-bagpipe-bgp:latest
           neutron_db_sync: neutron-db-sync:latest
-          neutron_ovn_db_sync_migrate: neutron-ovn-db-sync-migrate:latest
           neutron_dhcp: neutron-dhcp:latest
           neutron_ironic_agent: neutron-ironic-agent:latest
           neutron_l2gw: neutron-l2gw:latest
@@ -443,6 +443,7 @@ spec:
           neutron_linuxbridge_agent: neutron-linuxbridge-agent:latest
           neutron_metadata: neutron-metadata:latest
           neutron_openvswitch_agent: neutron-openvswitch-agent:latest
+          neutron_ovn_db_sync_migrate: neutron-ovn-db-sync-migrate:latest
           neutron_rpc_server: neutron-rpc-server:latest
           neutron_server: neutron-server:latest
           neutron_sriov_agent: neutron-sriov-agent:latest
@@ -457,23 +458,30 @@ spec:
           restartPolicy: Never
         ks_user:
           restartPolicy: Never
+      labels:
+        netns_cleanup_cron:
+          node_selector_key: openvswitch
+          node_selector_value: enabled
+        sriov:
+          node_selector_key: openstack-compute-node
+          node_selector_value: enabled
       manifests:
+        daemonset_bagpipe_bgp: true
+        daemonset_portprober_agent: true
         job_rabbit_init: false
         network_policy: false
         secret_ca_bundle: true
-        daemonset_bagpipe_bgp: true
-        daemonset_portprober_agent: true
       network:
-        server:
-          ingress:
-            annotations:
-              nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+        backend:
+        - openvswitch
+        - l2population
         core_plugin: ml2
         interface:
           tunnel: ens3
-        backend:
-          - openvswitch
-          - l2population
+        server:
+          ingress:
+            annotations:
+              nginx.ingress.kubernetes.io/proxy-read-timeout: '120'
       overrides:
         neutron_ovs-agent:
           labels:
@@ -483,35 +491,9 @@ spec:
                   plugins:
                     openvswitch_agent:
                       agent:
-                        extensions: 'qos,bagpipe_bgpvpn'
-      labels:
-        sriov:
-          node_selector_key: openstack-compute-node
-          node_selector_value: enabled
-        netns_cleanup_cron:
-          node_selector_key: openvswitch
-          node_selector_value: enabled
+                        extensions: qos,bagpipe_bgpvpn
       pod:
         probes:
-          server:
-            server:
-              readiness:
-                enabled: true
-                params:
-                  periodSeconds: 15
-                  timeoutSeconds: 15
-              liveness:
-                enabled: true
-                params:
-                  initialDelaySeconds: 60
-                  periodSeconds: 30
-                  timeoutSeconds: 30
-              startup:
-                enabled: true
-                params:
-                  periodSeconds: 30
-                  successThreshold: 1
-                  timeoutSeconds: 30
           dhcp_agent:
             dhcp_agent:
               liveness:
@@ -563,5 +545,24 @@ spec:
                   timeoutSeconds: 30
           rpc_retries: 2
           rpc_timeout: 30
+          server:
+            server:
+              liveness:
+                enabled: true
+                params:
+                  initialDelaySeconds: 60
+                  periodSeconds: 30
+                  timeoutSeconds: 30
+              readiness:
+                enabled: true
+                params:
+                  periodSeconds: 15
+                  timeoutSeconds: 15
+              startup:
+                enabled: true
+                params:
+                  periodSeconds: 30
+                  successThreshold: 1
+                  timeoutSeconds: 30
         use_fqdn:
           neutron_agent: false

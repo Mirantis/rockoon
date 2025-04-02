@@ -4,14 +4,11 @@ spec:
     name: openstack-neutron-rabbitmq
     values:
       conf:
-        enabled_plugins:
-          - rabbitmq_management
-          - rabbitmq_prometheus
         aux_conf:
           policies:
           - definition:
-              message-ttl: 120000
               expires: 600000
+              message-ttl: 120000
             name: default-policy
             pattern: ^(?!amq\.).*
             vhost: neutron
@@ -27,6 +24,9 @@ spec:
             pattern: ^tasks\.
             priority: 1
             vhost: neutron
+        enabled_plugins:
+        - rabbitmq_management
+        - rabbitmq_prometheus
         prometheus_exporter:
           rabbit_exporters: overview,exchange,node
         users:
@@ -73,53 +73,53 @@ spec:
           rabbitmq_scripted_test: rabbitmq-scripted-test:latest
       manifests:
         job_users_create: true
-        network_policy: false
         monitoring:
           prometheus:
             configmap_bin: true
             deployment_exporter: true
             service_exporter: true
+        network_policy: false
       monitoring:
         prometheus:
           enabled: true
       pod:
-        replicas:
-          server: 1
         probes:
           server:
             rabbitmq:
-              readiness:
-                params:
-                  periodSeconds: 60
-                  timeoutSeconds: 30
               liveness:
                 params:
                   periodSeconds: 60
                   timeoutSeconds: 30
+              readiness:
+                params:
+                  periodSeconds: 60
+                  timeoutSeconds: 30
+        replicas:
+          server: 1
       volume:
         enabled: false
   - chart: openvswitch
     name: openstack-openvswitch
     values:
-      endpoints:
-        cluster_domain_suffix: cluster.local
       conf:
         neutron:
           DEFAULT:
             support_sync_ovs_info: true
+      endpoints:
+        cluster_domain_suffix: cluster.local
       images:
         tags:
           dep_check: dep-check:latest
           image_repo_sync: image-repo-sync:latest
           openvswitch_db_server: openvswitch-db-server:latest
-          openvswitch_vswitchd: openvswitch-vswitchd:latest
-          openvswitch_vswitchd_dpdk: openvswitch-vswitchd-dpdk:latest
+          openvswitch_ovn_controller: openvswitch-ovn-controller:latest
+          openvswitch_ovn_db: openvswitch-ovn-db:latest
           openvswitch_ovn_db_nb: openvswitch-ovn-db-nb:latest
           openvswitch_ovn_db_sb: openvswitch-ovn-db-sb:latest
           openvswitch_ovn_northd: openvswitch-ovn-northd:latest
           openvswitch_ovn_vswitchd: openvswitch-ovn-vswitchd:latest
-          openvswitch_ovn_db: openvswitch-ovn-db:latest
-          openvswitch_ovn_controller: openvswitch-ovn-controller:latest
+          openvswitch_vswitchd: openvswitch-vswitchd:latest
+          openvswitch_vswitchd_dpdk: openvswitch-vswitchd-dpdk:latest
       pod:
         probes:
           ovs_db:

@@ -102,9 +102,28 @@ spec:
     name: openstack-openvswitch
     values:
       conf:
+        external-ids:
+          ovn-bridge: br-int
+          ovn-bridge-mappings: physnet1:br-ex,ironic:ironic-pxe
+          ovn-encap-type: geneve,vxlan
+          ovn-monitor-all: true
+          ovn-openflow-probe-interval: 60
+          ovn-remote-probe-interval: 60000
         neutron:
           DEFAULT:
-            support_sync_ovs_info: true
+            support_sync_ovs_info: false
+        openvswitch_db_server:
+          ptcp_port: 6640
+        ovn_vtep:
+          switches:
+            br-host1:
+              ovs_db_host: 10.10.0.64
+              ovs_db_port: 6640
+              ovs_db_proto: tcp
+            br-host2:
+              ovs_db_host: 10.10.0.65
+              ovs_db_port: 6640
+              ovs_db_proto: tcp
       endpoints:
         cluster_domain_suffix: cluster.local
       images:
@@ -120,8 +139,91 @@ spec:
           openvswitch_ovn_vswitchd: openvswitch-ovn-vswitchd:latest
           openvswitch_vswitchd: openvswitch-vswitchd:latest
           openvswitch_vswitchd_dpdk: openvswitch-vswitchd-dpdk:latest
+      manifests:
+        daemonset_ovn_controller: true
+        daemonset_ovs_db: false
+        daemonset_ovs_vswitchd: false
+        service_discovery_ovn_db: true
+        service_master_ovn_db: true
+        statefulset_ovn_db: true
+        statefulset_ovn_northd: true
+        statefulset_ovn_vtep: true
+      network:
+        interface:
+          tunnel: ens3
+      overrides:
+        openvswitch_ovn-controller:
+          labels:
+            rockoon-openstack-compute-node::controller:
+              values:
+                conf:
+                  ovn_controller:
+                    generate_ovn_chassis_mac_mappings: true
+                  ovs_bridges:
+                    br-ex:
+                      nics:
+                      - name: veth-phy
+                    ironic-pxe:
+                      nics:
+                      - name: ens7
+            rockoon-openstack-gateway::controller:
+              values:
+                conf:
+                  external-ids:
+                    ovn-cms-options: enable-chassis-as-gw
+                  ovs_bridges:
+                    br-ex:
+                      nics:
+                      - name: veth-phy
+                    ironic-pxe:
+                      nics:
+                      - name: ens7
+          overrides_default: false
       pod:
         probes:
+          ovn:
+            controller:
+              liveness:
+                params:
+                  initialDelaySeconds: 10
+              readiness:
+                params:
+                  initialDelaySeconds: 10
+            db:
+              liveness:
+                params:
+                  initialDelaySeconds: 10
+              readiness:
+                params:
+                  initialDelaySeconds: 10
+            nb:
+              liveness:
+                params:
+                  initialDelaySeconds: 10
+              readiness:
+                params:
+                  initialDelaySeconds: 10
+            northd:
+              liveness:
+                params:
+                  initialDelaySeconds: 10
+              readiness:
+                params:
+                  initialDelaySeconds: 10
+            sb:
+              liveness:
+                params:
+                  initialDelaySeconds: 10
+              readiness:
+                params:
+                  initialDelaySeconds: 10
+            vswitchd:
+              liveness:
+                params:
+                  initialDelaySeconds: 10
+              readiness:
+                params:
+                  initialDelaySeconds: 10
           ovs_db:
             ovs_db:
               liveness:
@@ -154,6 +256,9 @@ spec:
                   initialDelaySeconds: 0
                   periodSeconds: 10
                   timeoutSeconds: 5
+      volume:
+        ovn_db:
+          class_name: lvp-fake-root
   - chart: neutron
     name: openstack-neutron
     values:
@@ -196,6 +301,10 @@ spec:
             metadata_proxy_shared_secret: mN0aLDTcg1AVqyLWNDjCd2Jz6DA61cZJ
             nova_metadata_port: 8775
             nova_metadata_protocol: http
+          ovs:
+            ovsdb_connection: tcp:127.0.0.1:6640
+        netns_cleanup:
+          orphaned_ports: true
         neutron:
           DEFAULT:
             allow_automatic_l3agent_failover: false
@@ -205,12 +314,12 @@ spec:
             dnsmasq_dns_servers: 10.172.1.100
             external_dns_driver: designate
             l3_ha: true
-            l3_ha_network_type: vxlan
+            l3_ha_network_type: geneve
             max_l3_agents_per_router: 2
             router_processes_greentlet_max: 10
-            service_plugins: router,metering,qos
-            support_sync_ha_routers_info: true
-            support_sync_ovs_info: true
+            service_plugins: ovn-router,metering,qos,trunk
+            support_sync_ha_routers_info: false
+            support_sync_ovs_info: false
           audit_middleware_notifications:
             driver: noop
           cache:
@@ -221,11 +330,16 @@ spec:
             memcache_secret_key: 4zDhycwch09UPx4j
             memcache_security_strategy: ENCRYPT
             service_type: network
+          nova:
+            live_migration_events: true
           oslo_messaging_notifications:
             topics: notifications,stacklight_notifications
           oslo_policy:
             enforce_new_defaults: false
             enforce_scope: false
+          ovn:
+            dns_servers: 10.172.1.100
+            enable_distributed_floating_ip: false
         paste:
           app:neutronversions:
             paste.app_factory: neutron.pecan_wsgi.app:versions_factory
@@ -234,15 +348,30 @@ spec:
             linux_bridge:
               bridge_mappings: physnet1:br-ex,ironic:ironic-pxe
           ml2_conf:
+            genericswitch:br-host1:
+              device_type: ovs_vtep
+              ip: 10.10.0.64
+              ovsdb_connection: tcp:10.10.0.64:6640
+            genericswitch:br-host2:
+              device_type: ovs_vtep
+              ip: 10.10.0.65
+              ovsdb_connection: tcp:10.10.0.65:6640
             ml2:
               extension_drivers:
               - port_security
               - qos
               - dns_domain_ports
-              mechanism_drivers: openvswitch,l2population,baremetal,genericswitch
-              tenant_network_types: vxlan
+              mechanism_drivers: ovn,baremetal,genericswitch
+              tenant_network_types: geneve
+              type_drivers: local,flat,vlan,geneve,vxlan
             ml2_type_flat:
               flat_networks: physnet1,ironic
+            ml2_type_geneve:
+              max_header_size: 38
+              vni_ranges: 1:65536
+            ovn:
+              ovn_emit_need_to_frag: true
+              ovn_metadata_enabled: true
           openvswitch_agent:
             agent:
               extensions: qos
@@ -422,18 +551,11 @@ spec:
           restartPolicy: Never
         ks_user:
           restartPolicy: Never
-      kernel:
-        modules:
-          dhcp_agent:
-            ip6_tables:
-              enabled: true
-          l3_agent:
-            ip6_tables:
-              enabled: true
-          lb_agent:
-            ip6_tables:
-              enabled: true
       labels:
+        agent:
+          metadata:
+            node_selector_key: openvswitch
+            node_selector_value: enabled
         netns_cleanup_cron:
           node_selector_key: openvswitch
           node_selector_value: enabled
@@ -441,14 +563,18 @@ spec:
           node_selector_key: openstack-compute-node
           node_selector_value: enabled
       manifests:
+        daemonset_l3_agent: false
+        daemonset_lb_agent: false
+        daemonset_netns_cleanup_cron: false
+        daemonset_ovs_agent: false
         deployment_ironic_agent: true
         job_rabbit_init: false
         network_policy: false
+        pod_rally_test: false
         secret_ca_bundle: true
       network:
         backend:
-        - openvswitch
-        - l2population
+        - ovn
         - baremetal
         - genericswitch
         core_plugin: ml2
@@ -533,5 +659,11 @@ spec:
                   periodSeconds: 30
                   successThreshold: 1
                   timeoutSeconds: 30
+        security_context:
+          neutron_metadata_agent:
+            container:
+              neutron_metadata_agent:
+                allowPrivilegeEscalation: true
+                privileged: true
         use_fqdn:
           neutron_agent: false

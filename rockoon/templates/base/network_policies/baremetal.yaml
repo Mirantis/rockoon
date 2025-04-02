@@ -1,4 +1,5 @@
 {%- from 'macros/connections.j2' import from_namespaces %}
+{%- from 'macros/connections.j2' import from_all %}
 {%- set ns_list = ["os_controller", "lma_deployment"] | namespaces  %}
 {%- set ironic_api = "baremetal:ironic:Deployment:ironic-api" %}
         api:
@@ -12,3 +13,5 @@
 {{ network_policies["ingress"][ironic_api] | toyaml | indent(14, first=True) }}
               - from:
 {{ from_namespaces(ns_list, service_childs[ironic_api].get_np_ports(["m-api"])) | indent(16) }}
+              - from:
+{{ from_all(service_childs[ironic_api].get_np_ports(["m-api"])) | indent(16) }}

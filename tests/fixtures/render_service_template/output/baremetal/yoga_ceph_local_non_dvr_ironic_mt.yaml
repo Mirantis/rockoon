@@ -40,8 +40,8 @@ spec:
             fast_track: false
             shred_final_overwrite_with_zeros: false
           keystone_authtoken:
-            memcache_security_strategy: ENCRYPT
             memcache_secret_key: 4zDhycwch09UPx4j
+            memcache_security_strategy: ENCRYPT
             service_type: baremetal
           neutron:
             cleaning_network: ironic-provisioning
@@ -53,19 +53,20 @@ spec:
             enforce_new_defaults: false
             enforce_scope: false
           pxe:
-            pxe_append_params: nofb nomodeset vga=normal ipa-insecure=1 ipa-debug=1
             ipxe_timeout: 120
+            pxe_append_params: nofb nomodeset vga=normal ipa-insecure=1 ipa-debug=1
           service_catalog:
             valid_interfaces: public,internal
         logging:
           logger_ironic:
             level: INFO
-        policy.d:
-          01-controller-default.yaml: {'baremetal_rule1': 'baremetal_value1'}
-          02-custom.yaml: {}
         nodes:
-          deploy_kernel_image: 'ironic-agent-kernel:latest'
-          deploy_ramdisk_image: 'ironic-agent-initramfs:latest'
+          deploy_kernel_image: ironic-agent-kernel:latest
+          deploy_ramdisk_image: ironic-agent-initramfs:latest
+        policy.d:
+          01-controller-default.yaml:
+            baremetal_rule1: baremetal_value1
+          02-custom.yaml: {}
       dependencies:
         static:
           db_init:
@@ -125,20 +126,20 @@ spec:
               username: admin
             ironic:
               password: 9d4CIP5ismqTa7l5N5FdD8MAuFMXx9EV
+              region_name: RegionOne
               username: ironicAhFsr
-              region_name: 'RegionOne'
             neutron:
               password: KBecvsPZsWBFzDqYnevHWArm7tFycZKr
+              region_name: RegionOne
               username: neutronLeRjiDsyT
-              region_name: 'RegionOne'
             nova:
               password: BLFKrb8JhAMBb1v9BnRGDckMaYY7XUbq
+              region_name: RegionOne
               username: novaZzHG
-              region_name: 'RegionOne'
             test:
               password: q38BqVBqRH8mwfvI3uZeTmwe7JhKm3q1
+              region_name: RegionOne
               username: testLJtA
-              region_name: 'RegionOne'
         oslo_cache:
           statefulset:
             name: openstack-memcached-memcached
@@ -200,11 +201,11 @@ spec:
           ironic_conductor: ironic-conductor:latest
           ironic_db_sync: ironic-db-sync:latest
           ironic_manage_networks: ironic-manage-networks:latest
-          ironic_update_nodes_metadata: ironic-update-nodes-metadata:latest
           ironic_pxe: ironic-pxe:latest
           ironic_pxe_init: ironic-pxe-init:latest
           ironic_retrieve_networks: ironic-retrieve-networks:latest
           ironic_retrieve_swift_config: ironic-retrieve-swift-config:latest
+          ironic_update_nodes_metadata: ironic-update-nodes-metadata:latest
           ks_endpoints: ks-endpoints:latest
           ks_service: ks-service:latest
           ks_user: ks-user:latest
@@ -218,40 +219,19 @@ spec:
           restartPolicy: Never
       manifests:
         job_rabbit_init: false
+        job_update_nodes_metadata: true
         network_policy: true
         secret_ca_bundle: true
-        job_update_nodes_metadata: true
-      network_policy:
-        api:
-          spec:
-            ingress:
-              - from:
-                - default: selector
-              - from:
-                - namespaceSelector:
-                    matchLabels:
-                      kubernetes.io/metadata.name: osh-system
-                - namespaceSelector:
-                    matchLabels:
-                      kubernetes.io/metadata.name: stacklight
-                ports:
-                - port: 6385
-                  protocol: TCP
-            podSelector:
-              matchLabels:
-                application: ironic
-                component: api
-            policyTypes:
-            - Ingress
       network:
-        cleaning: &id001
+        cleaning:
+          enabled: true
           external: true
           name: ironic-provisioning
           network_type: vlan
           physnet: ironic
           segmentation_id: 1000
           shared: false
-          subnets:
+          subnets: &id001
             baremetal-subnet:
               gateway: 10.13.0.11
               ip_version: 4
@@ -261,7 +241,15 @@ spec:
               pool_end: 10.13.0.254
               pool_start: 10.13.0.100
               range: 10.13.0.0/24
-        provisioning: *id001
+        provisioning:
+          enabled: true
+          external: true
+          name: ironic-provisioning
+          network_type: vlan
+          physnet: ironic
+          segmentation_id: 1000
+          shared: false
+          subnets: *id001
         proxy:
           enabled: true
           env_vars:
@@ -271,3 +259,31 @@ spec:
           convert_cleaning_network_name_to_uuid: false
           device: pxe.1000
           loader_file_paths: snponly.efi:/usr/lib/ipxe/ipxe.efi
+      network_policy:
+        api:
+          spec:
+            ingress:
+            - from:
+              - default: selector
+            - from:
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: osh-system
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: stacklight
+              ports:
+              - port: 6385
+                protocol: TCP
+            - from:
+              - ipBlock:
+                  cidr: 0.0.0.0/0
+              ports:
+              - port: 6385
+                protocol: TCP
+            podSelector:
+              matchLabels:
+                application: ironic
+                component: api
+            policyTypes:
+            - Ingress

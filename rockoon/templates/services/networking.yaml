@@ -119,6 +119,16 @@
     {%- set l3_ha_network_type = 'flat' %}
 {%- endif %}
 
+{%- set ngs_ovs_vtep = namespace(enabled=false) %}
+{%- set ovn_encp_types = ['geneve'] %}
+{%- for hw_dev_name, hw_dev in spec.features.neutron.get('baremetal', {}).get('ngs', {}).get('hardware', {}).items() %}
+{%-   if hw_dev.device_type == "ovs_vtep" %}
+{%-       set ngs_ovs_vtep.enabled = true %}
+{%-       do ovn_encp_types.append('vxlan') %}
+{%-       break %}
+{%-   endif %}
+{%- endfor %}
+
 spec:
   releases:
 {%- if 'networking' in components_with_dedicated_messaging %}
@@ -210,11 +220,26 @@ spec:
           ptcp_port: 6640
         external-ids:
           ovn-bridge: br-int
-          ovn-encap-type: geneve
+          ovn-encap-type: {{ ','.join(ovn_encp_types) }}
           ovn-bridge-mappings: {{ ','.join(bridge_mappings) }}
           ovn-monitor-all: true
           ovn-remote-probe-interval: 60000
           ovn-openflow-probe-interval: 60
+        {%- if ngs_ovs_vtep.enabled %}
+        ovn_vtep:
+          switches:
+            {%- for hw_dev_name, hw_dev in spec.features.neutron.get('baremetal', {}).get('ngs', {}).get('hardware', {}).items() %}
+            {%- if hw_dev.device_type == "ovs_vtep" %}
+            {{ hw_dev_name }}:
+              ovs_db_host: {{ hw_dev.ip }}
+              ovs_db_proto: tcp
+              ovs_db_port: 6640
+              {%- for key, val in hw_dev.get('raw', {}).items() %}
+              {{ key }}: {{ val }}
+              {%- endfor %}
+            {%- endif %}
+            {%- endfor %}
+        {%- endif %}
       volume:
         ovn_db:
           class_name: {{ spec.get('local_volume_storage_class', 'openstack-operator-bind-mounts') }}
@@ -311,6 +336,7 @@ spec:
     "openvswitch_vswitchd_dpdk",
     "dep_check",
     "image_repo_sync",
+    "openvswitch_ovn_vtep",
     "openvswitch_ovn_db_nb",
     "openvswitch_ovn_db_sb",
     "openvswitch_ovn_northd",
@@ -330,6 +356,9 @@ spec:
         daemonset_ovn_controller: true
         daemonset_ovs_db: false
         daemonset_ovs_vswitchd: false
+{%-   if ngs_ovs_vtep.enabled %}
+        statefulset_ovn_vtep: true
+{%-   endif %}
 {%- endif %}
       endpoints:
         cluster_domain_suffix: {{ spec.internal_domain_name }}
@@ -752,7 +781,9 @@ spec:
       {%- endif %}
         secret_ca_bundle: true
       {%- if tungstenfabric_enabled or ovn_enabled %}
+      {%- if not ngs_ovs_vtep.enabled %}
         daemonset_dhcp_agent: false
+      {%- endif %}
         daemonset_l3_agent: false
         daemonset_lb_agent: false
         daemonset_ovs_agent: false
@@ -849,7 +880,7 @@ spec:
             support_sync_ovs_info: {{ support_sync_ovs_info }}
             support_sync_ha_routers_info: {{ support_sync_ovs_info }}
             router_processes_greentlet_max: 10
-            {%- if ovn_enabled %}
+            {%- if ovn_enabled and not ngs_ovs_vtep.enabled %}
             dhcp_agent_notification: false
             {%- endif %}
             api_workers: 4
@@ -992,11 +1023,15 @@ spec:
             genericswitch:{{ hw_dev_name }}:
               device_type: {{ hw_dev.device_type }}
               ip: {{ hw_dev.ip }}
+              {%- if hw_dev.device_type != 'ovs_vtep' %}
               username: {{ hw_dev.username }}
               {% if hw_dev.password is defined %}password: {{ hw_dev.password }}{% endif %}
               {% if hw_dev.secret is defined %}password: {{ hw_dev.secret }}{% endif %}
-              {%- if hw_dev.ssh_private_key is defined %}
+              {%-     if hw_dev.ssh_private_key is defined %}
               key_file: /etc/neutron/ngs/{{ hw_dev_name }}.key
+              {%-     endif %}
+              {%- else %}
+              ovsdb_connection: "tcp:{{ hw_dev.ip }}:6640"
               {%- endif %}
               {%- for key, val in hw_dev.get('raw', {}).items() %}
               {{ key }}: {{ val }}

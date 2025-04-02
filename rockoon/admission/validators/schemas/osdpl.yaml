@@ -1486,6 +1486,13 @@ properties:
                     description: |
                       name of baremetal network
                       default: "baremetal"
+                  bind_deployment_services:
+                    type: boolean
+                    description: |
+                      When enabled indicates that ironic services will be plugged
+                      directly into virtual network with help of Neutron. Enables
+                      usage of GENEVE, VXLAN network types with this option.
+                      Is used with OVN+VTEP integration.
                   physnet:
                     type: string
                     description: |
@@ -1496,8 +1503,11 @@ properties:
                     enum:
                       - flat
                       - vlan
+                      - vxlan
+                      - geneve
                     description: |
-                      type of provisioning/cleaning baremetal network
+                      Type of provisioning/cleaning baremetal network.
+                      In OVN deployment additionally be set to vxlan or geneve.
                       default: "vlan"
                   segmentation_id:
                     type: integer
