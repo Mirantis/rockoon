@@ -36,6 +36,9 @@ TYPE_FLAT = "flat"
 TYPE_VXLAN = "vxlan"
 TYPE_VLAN = "vlan"
 PROBLEMATIC_PROVIDER_TYPES = [TYPE_VLAN, TYPE_FLAT]
+# sriov is supported only with flat and vlan networks
+SRIOV_PROVIDER_TYPES = [TYPE_VLAN, TYPE_FLAT]
+SRIOV_VNIC_TYPES = ["direct", "macvtap", "direct-physical", "virtio-forwarder"]
 DEFAULT_GENEVE_HEADER_SIZE = 38
 IP_HEADER_LENGTH = {
     4: 20,
@@ -451,13 +454,13 @@ class NetworksProviderTypeCheck(CheckBase):
     name = "Networks provider type check"
     impact = CheckImpact.MAJOR
     error_message = (
-        f"Found networks (containing instances) which have problematic provider network type. "
+        "Found networks (containing instances) which have problematic provider network type. "
         f"OVN has multiple issues related to usage of {PROBLEMATIC_PROVIDER_TYPES} networks."
     )
 
     def check(self):
         nets = {}
-        LOG.info(f"Checking networks provider type")
+        LOG.info("Checking networks provider type")
         for net_type in PROBLEMATIC_PROVIDER_TYPES:
             for net in self.oc.network.networks(
                 provider_network_type=net_type
@@ -469,7 +472,7 @@ class NetworksProviderTypeCheck(CheckBase):
                         nets.setdefault(net.id, {"instances": []})
                         nets[net.id]["instances"].append(port.device_id)
                         nets[net.id]["provider_type"] = net_type
-        LOG.info(f"Finished checking networks provider type")
+        LOG.info("Finished checking networks provider type")
         return nets
 
 
@@ -478,7 +481,7 @@ class NetworksProviderTypeRoutingCheck(CheckBase):
     name = "Networks provider type routing check"
     impact = CheckImpact.CRITICAL
     error_message = (
-        "Found networks (containing instances) which have problematic network type and "
+        "Found networks (containing instances) which have problematic provider network type and "
         f"are connected to routers. OVN has issues with routing of {PROBLEMATIC_PROVIDER_TYPES} "
         "networks. Each use case should be carefully checked. Migration "
         "is not recommended."
@@ -486,7 +489,7 @@ class NetworksProviderTypeRoutingCheck(CheckBase):
 
     def check(self):
         routed_nets = {}
-        LOG.info(f"Checking networks provider type and routing")
+        LOG.info("Checking networks provider type and routing")
         for net_type in PROBLEMATIC_PROVIDER_TYPES:
             for net in self.oc.network.networks(
                 provider_network_type=net_type
@@ -508,7 +511,7 @@ class NetworksProviderTypeRoutingCheck(CheckBase):
                                 }
                             }
                         )
-        LOG.info(f"Finished checking networks provider type and routing")
+        LOG.info("Finished checking networks provider type and routing")
         return routed_nets
 
 
@@ -562,6 +565,38 @@ class SubnetsDNSServersCheck(CheckBase):
                 no_dns_subnets.append(subnet.id)
         LOG.info("Finished checking subnets have dns_nameservers set")
         return no_dns_subnets
+
+
+class PortsSRIOVFloatingIPsCheck(CheckBase):
+
+    name = "SRIOV ports floating ip check"
+    impact = CheckImpact.CRITICAL
+    error_message = (
+        "Found SRIOV ports attached to instances with floating ip addresses."
+        "OVN has issues with connectivity to SRIOV ports through floating ip "
+        "addresses. Migration is not recommended."
+    )
+
+    def check(self):
+        sriov_with_fips = {}
+        LOG.info("Checking sriov ports and floating ips")
+        for net_type in SRIOV_PROVIDER_TYPES:
+            for net in self.oc.network.networks(
+                provider_network_type=net_type
+            ):
+                for port in self.oc.network.ports(
+                    network_id=net.id, device_owner="compute:nova"
+                ):
+                    if port.binding_vnic_type in SRIOV_VNIC_TYPES:
+                        # one port can have several fixed ips each with own floating ip
+                        floating_ips = [
+                            fip.floating_ip_address
+                            for fip in self.oc.network.ips(port_id=port.id)
+                        ]
+                        if floating_ips:
+                            sriov_with_fips.update({port.id: floating_ips})
+        LOG.info("Finished checking sriov ports and floating ips")
+        return sriov_with_fips
 
 
 class PortsDHCPAccessCheck(CheckBase):
