@@ -49,6 +49,9 @@ images:
     ironic_pxe: docker.io/openstackhelm/ironic:ocata-ubuntu_xenial
     ironic_pxe_init: docker.io/openstackhelm/ironic:ocata-ubuntu_xenial
     ironic_pxe_http: docker.io/nginx:1.13.3
+    ironic_nic_init_pre: docker.io/openstackhelm/ironic:ocata-ubuntu_xenial
+    ironic_nic_init: docker.io/openstackhelm/ironic:ocata-ubuntu_xenial
+    ironic_nic_init_post: docker.io/openstackhelm/ironic:ocata-ubuntu_xenial
     dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
     image_repo_sync: docker.io/docker:17.07.0
   pull_policy: "IfNotPresent"
@@ -242,6 +245,21 @@ conf:
 
 network:
   provisioning: {}
+  deployment_network:
+    enabled: false
+    network:
+      name: baremetal-network
+      external: false
+      network_type: geneve
+      shared: false
+      port_security_enabled: false
+      subnets:
+        baremetal-subnet:
+          name: baremetal-subnet
+          ip_version: 4
+          pool_end: 192.168.100.254
+          pool_start: 192.168.100.10
+          range: 192.168.100.0/24
   cleaning:
     physnet: ironic
     name: baremetal
@@ -695,6 +713,25 @@ pod:
           capabilities:
             drop:
               - NET_RAW
+        ironic_conductor_nic_init_pre:
+          capabilities:
+            drop:
+              - ALL
+        ironic_conductor_nic_init:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          runAsUser: 0
+          capabilities:
+            add:
+              - NET_ADMIN
+              - DAC_OVERRIDE
+            drop:
+              - ALL
+          runAsNonRoot: false
+        ironic_conductor_nic_init_post:
+          capabilities:
+            drop:
+              - ALL
         ironic_conductor_http:
           capabilities:
             drop:

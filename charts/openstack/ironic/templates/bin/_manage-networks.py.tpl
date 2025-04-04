@@ -153,7 +153,8 @@ if __name__ == "__main__":
     for name, network in networks.items():
         if not network:
             continue
-
+        if not network.pop("enabled", True):
+            continue
         name = network.get('name', name)
         network['name'] = name
         LOG.info('Handling network: %s' % name)
@@ -162,6 +163,7 @@ if __name__ == "__main__":
         if len(nets) == 0:
             LOG.info('The network is not present, creating...')
             net_obj = _get_network_api_object(network)
+            LOG.info(f"Creating network {net_obj}")
             net = _send_request(adapter, 'post', '/networks', json={'network': net_obj}).get('network', {})
         else:
             net = nets[0]

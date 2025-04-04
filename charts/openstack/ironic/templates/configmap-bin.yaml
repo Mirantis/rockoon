@@ -32,6 +32,10 @@ data:
 {{ tuple "bin/_manage-networks.py.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   networks-data.yaml: |
     networks:
+{{- if .Values.network.deployment_network.enabled }}
+      baremetal:
+{{ toYaml .Values.network.deployment_network.network | indent 8 }}
+{{- end }}
       provisioning:
 {{ toYaml .Values.network.provisioning | indent 8 }}
       cleaning:
@@ -64,6 +68,12 @@ data:
 {{ tuple "bin/_ironic-conductor-pxe.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   ironic-conductor-http.sh: |
 {{ tuple "bin/_ironic-conductor-http.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  ironic-conductor-nic-init-pre.sh: |
+{{ tuple "bin/_ironic-conductor-nic-init-pre.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  ironic-conductor-nic-init.sh: |
+{{ tuple "bin/_ironic-conductor-nic-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  ironic-conductor-nic-init-post.sh: |
+{{ tuple "bin/_ironic-conductor-nic-init-post.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   rabbit-init.sh: |
 {{- include "helm-toolkit.scripts.rabbit_init" . | indent 4 }}
   update-nodes-metadata.py: |

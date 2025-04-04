@@ -68,4 +68,10 @@ tftp_server = ${PXE_IP}
 # http://192.1.2.3:8080 (string value)
 # from .deploy.ironic.http_url
 http_url = http://${PXE_IP}:{{ tuple "baremetal" "internal" "pxe_http" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- if .Values.network.api.node_port.enabled }}
+external_callback_url = http://${PXE_IP}:{{ .Values.network.api.node_port.port }}
+
+[conductor]
+api_url = http://${PXE_IP}:{{ .Values.network.api.node_port.port }}
+{{- end }}
 EOF
