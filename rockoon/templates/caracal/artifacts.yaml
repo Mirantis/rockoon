@@ -243,3 +243,6 @@ os_image_fedora_2716_checksum: e0713a4f26427691da90701ff7a823da
 os_image_ubuntu_1804_checksum: 30d459e0dc0562e629d3683970e55efa
 os_image_cirros_060_checksum: f4027b89e99e238184e13089a3155b74
 os_image_cirros_060_raw_checksum: f756328a32fad36f7239223b030caab5
+ironic_nic_init_pre: '{{ images_base_url }}/openstack/heat:caracal-jammy-20250307074151'
+ironic_nic_init_post: '{{ images_base_url }}/openstack/heat:caracal-jammy-20250307074151'
+ironic_nic_init: '{{ images_base_url }}/general/openvswitch:2.17-jammy-20250321084644'
