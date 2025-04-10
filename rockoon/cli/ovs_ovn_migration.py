@@ -379,6 +379,12 @@ class CheckBase(ABC):
                 routers.append(port.device_id)
         return routers
 
+    def _get_port_floating_ips(self, port_id):
+        return [
+            fip.floating_ip_address
+            for fip in self.oc.network.ips(port_id=port_id)
+        ]
+
 
 class SubnetsIpAvailabilityCheck(CheckBase):
 
@@ -515,6 +521,56 @@ class NetworksProviderTypeRoutingCheck(CheckBase):
         return routed_nets
 
 
+class LoadBalancersDefaultProviderCheck(CheckBase):
+
+    name = "LoadBalancers default provider check"
+    impact = CheckImpact.MAJOR
+    error_message = (
+        "Found existing loadbalancers and default provider after migration will be OVN. "
+        "OVN loadbalancers provider does not support amphorav2 L7 balancing features. "
+        f"Also it has issues with lbs in {PROBLEMATIC_PROVIDER_TYPES} networks and floating ips [1] and DVR. "
+        "To use amphorav2 as default provider please set it in osdpl. "
+        "[1] https://bugs.launchpad.net/neutron/+bug/2095807"
+    )
+
+    def check(self):
+        osdpl = kube.get_osdpl()
+        mspec = osdpl.mspec
+        result = {}
+        LOG.info("Checking loadbalancers default provider")
+
+        default_provider = utils.get_in(
+            mspec, ["features", "octavia", "default_provider"]
+        )
+        if not default_provider or default_provider == "ovn":
+            all_lbs = [lb for lb in self.oc.load_balancer.load_balancers()]
+            if all_lbs:
+                result["loadbalancers_total"] = len(all_lbs)
+                if utils.get_in(
+                    mspec, ["features", "neutron", "dvr", "enabled"], False
+                ):
+                    for net_type in PROBLEMATIC_PROVIDER_TYPES:
+                        for net in self.oc.network.networks(
+                            provider_network_type=net_type
+                        ):
+                            for lb in self.oc.load_balancer.load_balancers(
+                                vip_network_id=net.id
+                            ):
+                                floating_ips = self._get_port_floating_ips(
+                                    lb.vip_port_id
+                                )
+                                if floating_ips:
+                                    result.setdefault(
+                                        f"loadbalancers_in_{net_type}_networks",
+                                        {},
+                                    )
+                                    result[
+                                        f"loadbalancers_in_{net_type}_networks"
+                                    ].update({lb.id: floating_ips})
+        LOG.info("Finished checking loadbalancers default provider")
+        return result
+
+
 class SubnetsNoDHCPCheck(CheckBase):
     name = "Subnets without enabled DHCP check"
     impact = CheckImpact.CRITICAL
@@ -589,10 +645,7 @@ class PortsSRIOVFloatingIPsCheck(CheckBase):
                 ):
                     if port.binding_vnic_type in SRIOV_VNIC_TYPES:
                         # one port can have several fixed ips each with own floating ip
-                        floating_ips = [
-                            fip.floating_ip_address
-                            for fip in self.oc.network.ips(port_id=port.id)
-                        ]
+                        floating_ips = self._get_port_floating_ips(port.id)
                         if floating_ips:
                             sriov_with_fips.update({port.id: floating_ips})
         LOG.info("Finished checking sriov ports and floating ips")
