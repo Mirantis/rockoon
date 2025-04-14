@@ -212,6 +212,8 @@ conf:
       flavor_ref_alt: m1.tiny_test
       image_full_ref: Ubuntu-18.04
       image_full_flavor_ref: m1.tiny_test
+    baremetal:
+      vm_flavor_id: m1.tiny_test
     identity:
       default_domain_id: Default
     share:

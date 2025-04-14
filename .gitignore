@@ -118,6 +118,8 @@ charts/openstack/*/charts
 charts/infra/*/charts
 charts/openstack/*/requirements.lock
 charts/infra/*/requirements.lock
+charts/infra/*/Chart.lock
+charts/openstack/*/Chart.lock
 virtual_lab/ansible/inventory/artifacts/
 virtual_lab/terraform/.terraform/
 virtual_lab/terraform/.terraform.lock.ld/hcl

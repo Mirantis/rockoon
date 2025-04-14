@@ -8,6 +8,17 @@
 {%- else %}
   {%- set cirros_image_name = "Cirros-5.1" %}
 {%- endif %}
+{%- set hybrid_topology_netA_network_types = [] %}
+{%- set hybrid_topology_netB_network_types = [] %}
+{%- if ovn_enabled %}
+{%-   do hybrid_topology_netA_network_types.append('vlan') %}
+{%-   do hybrid_topology_netB_network_types.append('vlan') %}
+{%-   do hybrid_topology_netB_network_types.append('geneve') %}
+{%- else %}
+{%-   do hybrid_topology_netA_network_types.append('vlan') %}
+{%-   do hybrid_topology_netB_network_types.append('vlan') %}
+{%-   do hybrid_topology_netB_network_types.append('vxlan') %}
+{%- endif %}
 internal_domain_name: cluster.local
 common:
   charts:
@@ -342,6 +353,11 @@ services:
             baremetal_feature_enabled:
               trunks_supported: true
               adoption: true
+            {%-   if ironic_mt_enabled %}
+              hybrid_topology: true
+            {%-   endif %}
+              hybrid_topology_netA_network_types: {{ hybrid_topology_netA_network_types }}
+              hybrid_topology_netB_network_types: {{ hybrid_topology_netB_network_types }}
             {%- endif %}
             # TODO (mshalamov): Will be removed during process of completing PRODX-1192
             compute:

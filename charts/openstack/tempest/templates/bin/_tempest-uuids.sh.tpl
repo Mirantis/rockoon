@@ -175,6 +175,17 @@ die_if_not_set $LINENO IDENTITY_DEFAULT_DOMAIN_ID "Failure getting IDENTITY_DEFA
 
 iniset $TEMPEST_CONF identity default_domain_id $IDENTITY_DEFAULT_DOMAIN_ID
 
+
+{{- $flavorVMRef := .Values.conf.convert_to_uuid.baremetal.vm_flavor_id }}
+# Get flavor ref id
+FLAVOR_VM_REF=$(openstack flavor show {{ $flavorVMRef }} -f value -c id)
+
+# Check if flavor ref id not set
+die_if_not_set $LINENO FLAVOR_VM_REF "Failure getting FLAVOR_VM_REF for {{ $flavorVMRef }}"
+
+# Set flavor ref id to tempest configuration file
+iniset $TEMPEST_CONF baremetal vm_flavor_id $FLAVOR_VM_REF
+
 # Get fixed/baremetal network id for load balancer tests
 {{- if and (hasKey .Values.conf.tempest.auth "create_isolated_networks") (hasKey .Values.conf.tempest "compute") }}
 {{- if and .Values.conf.tempest.compute.fixed_network_name (eq .Values.conf.tempest.auth.create_isolated_networks false) }}
