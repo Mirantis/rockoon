@@ -13,17 +13,23 @@ spec:
             v: 3
           suspend: false
         policy:
-          evictLocalStoragePods: true
-          strategies:
-            RemoveDuplicates:
-              enabled: true
-              params:
-                namespaces:
-                  include:
-                  - "openstack"
-                removeDuplicates:
+          profiles:
+            - name: DefaultProfile
+              pluginConfig:
+              - name: "DefaultEvictor"
+                args:
+                  evictLocalStoragePods: true
+              - name: "RemoveDuplicates"
+                args:
                   excludeOwnerKinds:
                   - "StatefulSet"
+                  namespaces:
+                    include:
+                    - "openstack"
+              plugins:
+                balance:
+                  enabled:
+                  - "RemoveDuplicates"
       manifests:
         rbac: true
         configmap_bin: true
