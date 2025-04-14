@@ -22,7 +22,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
 data:
   policy.yaml: |
-    apiVersion: "descheduler/v1alpha1"
+    apiVersion: "descheduler/v1alpha2"
     kind: "DeschedulerPolicy"
 {{ toYaml .Values.conf.policy | trim | indent 4 }}
 {{- end }}

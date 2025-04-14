@@ -14,13 +14,22 @@ limitations under the License.
 
 {{- if .Values.manifests.rbac }}
 {{- $envAll := . }}
+
+{{- $namespaces := list }}
+{{- range $profile := .Values.conf.policy.profiles }}
+{{-   range $config := $profile.pluginConfig }}
+{{-     if hasKey (index $config.args "namespaces" | default dict) "include" }}
+{{-       $namespaces = concat $namespaces $config.args.namespaces.include }}
+{{-     end }}
+{{-   end }}
+{{- end }}
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: descheduler-sa
   namespace: {{ .Release.Namespace }}
-{{- range $namespace := .Values.conf.policy.strategies.RemoveDuplicates.params.namespaces.include }}
+{{- range $namespace := $namespaces | uniq }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -72,6 +81,9 @@ rules:
   verbs: ["get", "watch", "list"]
 - apiGroups: ["scheduling.k8s.io"]
   resources: ["priorityclasses"]
+  verbs: ["get", "watch", "list"]
+- apiGroups: ["policy"]
+  resources: ["poddisruptionbudgets"]
   verbs: ["get", "watch", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
