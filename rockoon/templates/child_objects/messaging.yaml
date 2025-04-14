@@ -1,22 +1,5 @@
 {%- from 'macros/connections.j2' import to_child_object %}
 rabbitmq:
-  Deployment:
-    openstack-rabbitmq-rabbitmq-exporter:
-      connections:
-        egress:
-          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["http"]) | indent(12)}}
-      images:
-      - prometheus_rabbitmq_exporter
-      manifest: ''
-      hash_fields: []
-      pod_labels:
-        application: prometheus_rabbitmq_exporter
-        component: exporter
-        release_group: openstack-rabbitmq
-      ports:
-      - port: 9095
-        name: metrics
-        protocol: TCP
   Job:
     openstack-rabbitmq-cluster-wait:
       connections:

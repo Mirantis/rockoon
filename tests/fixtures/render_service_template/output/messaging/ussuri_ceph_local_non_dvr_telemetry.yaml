@@ -288,8 +288,6 @@ spec:
         enabled_plugins:
           - rabbitmq_management
           - rabbitmq_prometheus
-        prometheus_exporter:
-          rabbit_exporters: overview,exchange,node
         users:
           barbican_service:
             auth:
@@ -480,37 +478,13 @@ spec:
         tags:
           dep_check: dep-check:latest
           image_repo_sync: image-repo-sync:latest
-          prometheus_rabbitmq_exporter: prometheus-rabbitmq-exporter:latest
-          prometheus_rabbitmq_exporter_helm_tests: prometheus-rabbitmq-exporter-helm-tests:latest
           rabbitmq: rabbitmq:latest
           rabbitmq_init: rabbitmq-init:latest
           rabbitmq_scripted_test: rabbitmq-scripted-test:latest
       manifests:
         job_users_create: true
         network_policy: true
-        monitoring:
-          prometheus:
-            configmap_bin: true
-            deployment_exporter: true
-            service_exporter: true
       network_policy:
-        exporter:
-          spec:
-            ingress:
-              - from:
-                - namespaceSelector:
-                    matchLabels:
-                      kubernetes.io/metadata.name: stacklight
-                ports:
-                - port: 9095
-                  protocol: TCP
-            podSelector:
-              matchLabels:
-                application: prometheus_rabbitmq_exporter
-                component: exporter
-                release_group: openstack-rabbitmq
-            policyTypes:
-            - Ingress
         server:
           spec:
             ingress:
@@ -546,9 +520,6 @@ spec:
                 release_group: openstack-rabbitmq
             policyTypes:
             - Ingress
-      monitoring:
-        prometheus:
-          enabled: true
       pod:
         replicas:
           server: 1

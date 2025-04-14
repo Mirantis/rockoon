@@ -3,7 +3,6 @@
 {%- from 'macros/connections.j2' import from_namespaces %}
 {%- set lma_ns_list = ["lma_deployment"] | namespaces  %}
 {%- set rabbitmq_server = "messaging:rabbitmq:StatefulSet:openstack-rabbitmq-rabbitmq" %}
-{%- set rabbitmq_exporter = "messaging:rabbitmq:Deployment:openstack-rabbitmq-rabbitmq-exporter" %}
         server:
           spec:
             podSelector:
@@ -19,13 +18,3 @@
 {{ from_all(service_childs[rabbitmq_server].get_np_ports(["amqp", "amqp-tls"])) | indent(16) }}
               - from:
 {{ from_namespaces(lma_ns_list, service_childs[rabbitmq_server].get_np_ports(["metrics"])) | indent(16) }}
-        exporter:
-          spec:
-            podSelector:
-              matchLabels:
-{{ service_childs[rabbitmq_exporter].get_pod_labels() | toyaml | indent(16, first=True) }}
-            policyTypes:
-            - Ingress
-            ingress:
-              - from:
-{{ from_namespaces(lma_ns_list, service_childs[rabbitmq_exporter].get_np_ports(["metrics"])) | indent(16) }}

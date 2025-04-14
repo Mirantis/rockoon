@@ -464,23 +464,6 @@ nova:
         application: nova
         component: scheduler
 rabbitmq:
-  Deployment:
-    openstack-nova-rabbitmq-rabbitmq-exporter:
-      connections:
-        egress:
-          - {{ to_child_object("compute", "rabbitmq", "StatefulSet", "openstack-nova-rabbitmq-rabbitmq", ["http"]) | indent(12)}}
-      images:
-      - prometheus_rabbitmq_exporter
-      manifest: ''
-      hash_fields: []
-      pod_labels:
-        application: prometheus_rabbitmq_exporter
-        component: exporter
-        release_group: openstack-nova-rabbitmq
-      ports:
-      - port: 9095
-        name: metrics
-        protocol: TCP
   StatefulSet:
     openstack-nova-rabbitmq-rabbitmq:
       images:

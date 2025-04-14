@@ -17,21 +17,11 @@ def ident(meta):
     application = meta.get("labels", {}).get("application", name)
     component = meta.get("labels", {}).get("component", name)
 
-    # single out prometheus-exported Deployments
-    if application.startswith("prometheus") and component == "exporter":
-        application = "prometheus-exporter"
-        # examples:
-        # name=openstack-barbican-rabbitmq-rabbitmq-exporter
-        # name=openstack-memcached-memcached-exporter
-        # name=prometheus-mysql-exporter
-        prefix, component, *parts = name.split("-")
-        if parts[0] == "rabbitmq" and component != "rabbitmq":
-            component += "-rabbitmq"
     # single out rabbitmq StatefulSets
     # examples:
     # name=openstack-nova-rabbitmq-rabbitmq
     # name=openstack-rabbitmq-rabbitmq
-    elif application == "rabbitmq" and component == "server":
+    if application == "rabbitmq" and component == "server":
         prefix, service, *parts = name.split("-")
         if service != "rabbitmq":
             application = service
