@@ -280,6 +280,9 @@ services:
           plugins:
             ml2_conf:
               ml2_type_vxlan:
+                # For ovn when vxlan is enabled it should be set to
+                # less than 4095
+                # https://bugs.launchpad.net/neutron/+bug/1951517
                 vni_ranges: 1:65535
             openvswitch_agent:
               oslo_messaging_rabbit:
