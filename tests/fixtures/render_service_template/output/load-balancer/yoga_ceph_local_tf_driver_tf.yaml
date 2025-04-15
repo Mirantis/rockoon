@@ -21,6 +21,8 @@ spec:
         logging:
           logger_octavia:
             level: INFO
+          logger_cotyledon_config:
+            level: INFO
         octavia:
           apiserver:
             api_server_ip: tf-config-api.tf.svc.cluster.local

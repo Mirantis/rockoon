@@ -22,6 +22,8 @@ spec:
         logging:
           logger_octavia:
             level: INFO
+          logger_cotyledon_config:
+            level: INFO
         octavia:
           driver_agent:
             enabled_provider_agents: ovn
