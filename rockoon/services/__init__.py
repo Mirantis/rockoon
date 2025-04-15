@@ -2080,6 +2080,7 @@ class Octavia(OpenStackService):
             self.namespace, "octavia", "octavia-amphora-ca"
         )
         cert_secret.ensure()
+        t_args["tls_certificates"] = cert_secret.get()
         ssh_secret = secrets.SSHSecret(self.namespace, self.service)
         ssh_secret.ensure()
         t_args["ssh_credentials"] = ssh_secret.get()

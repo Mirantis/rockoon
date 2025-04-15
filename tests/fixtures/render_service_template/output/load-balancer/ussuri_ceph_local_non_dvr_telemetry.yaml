@@ -254,7 +254,6 @@ spec:
         network_policy: true
         secret_amphora_ssh_key: true
         secret_ca_bundle: true
-        secret_octavia_certs: false
       octavia:
         settings:
           enable_amphorav2: true
@@ -263,6 +262,13 @@ spec:
             - pool_end: 10.255.255.254
               pool_start: 10.255.1.0
               range: 10.255.0.0/16
+          certs:
+            ca_pem: |
+              LOAD BALANCER TEST TLS CA
+            client_pem: |
+              LOAD BALANCER TEST TLS CA + KEY
+            cakey: |
+              LOAD BALANCER TEST TLS KEY
       pod:
         security_context:
           octavia_health_manager:

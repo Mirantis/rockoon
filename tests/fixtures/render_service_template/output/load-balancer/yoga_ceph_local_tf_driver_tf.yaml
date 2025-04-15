@@ -234,7 +234,6 @@ spec:
         network_policy: false
         secret_amphora_ssh_key: true
         secret_ca_bundle: true
-        secret_octavia_certs: false
         octavia_driver_agent: true
       octavia:
         settings:
@@ -243,6 +242,13 @@ spec:
             - pool_end: 192.168.0.254
               pool_start: 192.168.0.1
               range: 192.168.0.0/24
+          certs:
+            ca_pem: |
+              LOAD BALANCER TEST TLS CA
+            client_pem: |
+              LOAD BALANCER TEST TLS CA + KEY
+            cakey: |
+              LOAD BALANCER TEST TLS KEY
       pod:
         replicas:
           health_manager: 3
