@@ -336,8 +336,11 @@ services:
               ca_certificates_file: /certs/ca-bundle.pem
             volume:
               build_timeout: 600
-            {%- if ironic_enabled %}
             baremetal:
+              available_nodes: 10
+              hybrid_topology_netA_network_types: {{ hybrid_topology_netA_network_types }}
+              hybrid_topology_netB_network_types: {{ hybrid_topology_netB_network_types }}
+            {%- if ironic_enabled %}
               active_timeout: 2700
               adjusted_root_disk_size_gb: 4
               available_nodes: 2
@@ -356,8 +359,6 @@ services:
             {%-   if ironic_mt_enabled %}
               hybrid_topology: true
             {%-   endif %}
-              hybrid_topology_netA_network_types: {{ hybrid_topology_netA_network_types }}
-              hybrid_topology_netB_network_types: {{ hybrid_topology_netB_network_types }}
             {%- endif %}
             # TODO (mshalamov): Will be removed during process of completing PRODX-1192
             compute:
