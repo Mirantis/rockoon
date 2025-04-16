@@ -340,6 +340,7 @@ spec:
           ovn:
             dns_servers: 10.172.1.100
             enable_distributed_floating_ip: false
+            ovn_l3_scheduler: noop
         paste:
           app:neutronversions:
             paste.app_factory: neutron.pecan_wsgi.app:versions_factory
