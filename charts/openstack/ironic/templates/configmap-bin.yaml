@@ -32,10 +32,6 @@ data:
 {{ tuple "bin/_manage-networks.py.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   networks-data.yaml: |
     networks:
-{{- if .Values.network.deployment_network.enabled }}
-      baremetal:
-{{ toYaml .Values.network.deployment_network.network | indent 8 }}
-{{- end }}
       provisioning:
 {{ toYaml .Values.network.provisioning | indent 8 }}
       cleaning:

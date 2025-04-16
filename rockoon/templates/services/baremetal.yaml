@@ -105,8 +105,13 @@ spec:
 {%- endif %}
         proxy:
 {% include 'base/_proxy_vars.yaml' %}
+{%- if network.get('bind_deployment_services', false) %}
+        deployment_network:
+          name: {{ network.get('name', 'baremetal') }}
+          enabled: true
+{%- endif %}
         cleaning: &bm_network
-          enabled: {{ not network.get('bind_deployment_services', false) }}
+          enabled: true
           name: {{ network.get('name', 'baremetal') }}
           {%- if network.get('network_type', 'vlan') in ['vlan', 'flat'] %}
           physnet: {{ network.get('physnet', 'ironic') }}
@@ -135,11 +140,6 @@ spec:
           {%- endfor %}
         provisioning:
           <<: *bm_network
-        {%- if network.get('bind_deployment_services', false) %}
-        deployment_network:
-          <<: *bm_network
-          enabled: true
-        {%- endif %}
         pxe:
 {%- set default_provisioning_interface = 'ironic-pxe' %}
 {%- if ngs_ovs_vtep.enabled %}

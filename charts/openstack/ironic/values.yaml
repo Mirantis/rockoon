@@ -245,21 +245,11 @@ conf:
 
 network:
   provisioning: {}
+  # The name of network where bind ironic conductor for
+  # provisioning. Typically used with OVN+VTEP
   deployment_network:
     enabled: false
-    network:
-      name: baremetal-network
-      external: false
-      network_type: geneve
-      shared: false
-      port_security_enabled: false
-      subnets:
-        baremetal-subnet:
-          name: baremetal-subnet
-          ip_version: 4
-          pool_end: 192.168.100.254
-          pool_start: 192.168.100.10
-          range: 192.168.100.0/24
+    name: baremetal-network
   cleaning:
     physnet: ironic
     name: baremetal

@@ -105,7 +105,7 @@ spec:
             - /tmp/ironic-conductor-nic-init-pre.sh
           env:
             - name: IC_PORT_NETWORK_NAME
-              value: {{ $envAll.Values.network.deployment_network.network.name }}
+              value: {{ $envAll.Values.network.deployment_network.name }}
 {{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" "ironic" ) | indent 12 }}
           volumeMounts:
             - name: pod-tmp
