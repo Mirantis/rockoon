@@ -2,6 +2,7 @@ from rockoon.filters.tempest import base_section
 
 
 MICROVERSION_RELEASE_MAPPING = {
+    "epoxy": {"min_microversion": "2.1", "max_microversion": "2.100"},
     "caracal": {"min_microversion": "2.1", "max_microversion": "2.96"},
     "antelope": {"min_microversion": "2.1", "max_microversion": "2.95"},
     "yoga": {"min_microversion": "2.1", "max_microversion": "2.90"},

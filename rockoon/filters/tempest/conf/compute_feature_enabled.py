@@ -2,6 +2,7 @@ from rockoon.filters.tempest import base_section
 
 
 MULTIATTACH_CEPH_RELEASE_MAPPING = {
+    "epoxy": True,
     "caracal": True,
     "antelope": True,
     "yoga": True,
