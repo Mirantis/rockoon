@@ -408,7 +408,7 @@ def render_artifacts(spec):
 
 def substitude_osdpl(obj):
     subs_secrets = {
-        s.name: s.obj["data"]
+        s.name: s.obj.get("data", {})
         for s in kube.resource_list(
             kube.Secret,
             selector=f"{constants.OSCTL_SECRET_LABEL[0]}={constants.OSCTL_SECRET_LABEL[1]}",
