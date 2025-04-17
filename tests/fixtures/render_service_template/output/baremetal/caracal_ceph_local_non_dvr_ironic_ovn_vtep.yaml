@@ -233,6 +233,7 @@ spec:
           name: ironic-provisioning
           network_type: flat
           physnet: ironic
+          port_security_enabled: false
           shared: true
           subnets: &id001
             baremetal-subnet:
@@ -253,6 +254,7 @@ spec:
           name: ironic-provisioning
           network_type: flat
           physnet: ironic
+          port_security_enabled: false
           shared: true
           subnets: *id001
         proxy:

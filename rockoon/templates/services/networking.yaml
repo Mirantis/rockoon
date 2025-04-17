@@ -119,15 +119,23 @@
     {%- set l3_ha_network_type = 'flat' %}
 {%- endif %}
 
+# For ovn when vxlan is enabled it should be set to
+# less than 4095
+# https://bugs.launchpad.net/neutron/+bug/1951517
+{%- set geneve_vni_ranges = "1:65536" %}
 {%- set ngs_ovs_vtep = namespace(enabled=false) %}
 {%- set ovn_encp_types = ['geneve'] %}
 {%- for hw_dev_name, hw_dev in spec.features.neutron.get('baremetal', {}).get('ngs', {}).get('hardware', {}).items() %}
 {%-   if hw_dev.device_type == "ovs_vtep" %}
 {%-       set ngs_ovs_vtep.enabled = true %}
-{%-       do ovn_encp_types.append('vxlan') %}
 {%-       break %}
 {%-   endif %}
 {%- endfor %}
+
+{%- if ngs_ovs_vtep.enabled %}
+{%-   do ovn_encp_types.append('vxlan') %}
+{%-   set geneve_vni_ranges = "1:4095" %}
+{%- endif %}
 
 spec:
   releases:
@@ -988,7 +996,7 @@ spec:
             {%- if ovn_enabled %}
             ml2_type_geneve:
               max_header_size: 38
-              vni_ranges: 1:65536
+              vni_ranges: {{ geneve_vni_ranges }}
             {%- endif %}
             ml2:
               mechanism_drivers: {{ ','.join(neutron_backends) }}

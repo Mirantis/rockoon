@@ -369,7 +369,7 @@ spec:
               flat_networks: physnet1,ironic
             ml2_type_geneve:
               max_header_size: 38
-              vni_ranges: 1:65536
+              vni_ranges: 1:4095
             ovn:
               ovn_emit_need_to_frag: true
               ovn_metadata_enabled: true

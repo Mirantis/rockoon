@@ -112,6 +112,9 @@ spec:
 {%- endif %}
         cleaning: &bm_network
           enabled: true
+          {%- if network.get('bind_deployment_services', false) %}
+          port_security_enabled: false
+          {%- endif %}
           name: {{ network.get('name', 'baremetal') }}
           {%- if network.get('network_type', 'vlan') in ['vlan', 'flat'] %}
           physnet: {{ network.get('physnet', 'ironic') }}
