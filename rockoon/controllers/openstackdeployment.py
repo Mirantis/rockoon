@@ -460,7 +460,7 @@ async def _delete(name, meta, body, spec, logger, reason, **kwargs):
 def check_osdpl_fingerprint(**kwargs):
     global OSCTL_APPLYING_WAITING_STARTED
     osdpl = kube.get_osdpl()
-    if not osdpl:
+    if not osdpl or osdpl.obj["spec"].get("draft", False):
         OSCTL_APPLYING_WAITING_STARTED = None
         return OSCTL_APPLYING_WAITING_STARTED
 
