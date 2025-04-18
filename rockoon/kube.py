@@ -402,7 +402,7 @@ class StatefulSet(pykube.StatefulSet, HelmBundleMixin, ObjectStatusMixin):
     def ready(self):
         self.reload()
         return (
-            self.obj["status"]["observedGeneration"]
+            self.obj["status"].get("observedGeneration", 0)
             >= self.obj["metadata"]["generation"]
             and self.obj["status"].get("updatedReplicas") == self.replicas
             and self.obj["status"].get("readyReplicas") == self.replicas
@@ -716,7 +716,7 @@ class Deployment(pykube.Deployment, HelmBundleMixin, ObjectStatusMixin):
     def ready(self):
         self.reload()
         return (
-            self.obj["status"]["observedGeneration"]
+            self.obj["status"].get("observedGeneration", 0)
             >= self.obj["metadata"]["generation"]
             and self.obj["status"].get("updatedReplicas") == self.replicas
             and self.obj["status"].get("readyReplicas") == self.replicas
@@ -742,7 +742,7 @@ class DaemonSet(pykube.DaemonSet, HelmBundleMixin, ObjectStatusMixin):
     def ready(self):
         self.reload()
         if (
-            self.obj["status"]["observedGeneration"]
+            self.obj["status"].get("observedGeneration", 0)
             < self.obj["metadata"]["generation"]
         ):
             return False
