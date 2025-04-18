@@ -310,7 +310,7 @@ def merge_spec(spec, logger):
             .get("networks", {})
             .get("baremetal", {})
             .get("network_type")
-            == "vlan",
+            in ["vlan", "geneve", "vxlan"],
             ovn_enabled=spec.get("features", {})
             .get("neutron", {})
             .get("backend", "ml2")
