@@ -441,9 +441,9 @@ manifests:
   pod_test: true
   monitoring:
     prometheus:
-      configmap_bin: true
-      deployment_exporter: true
-      service_exporter: true
+      configmap_bin: false
+      deployment_exporter: false
+      service_exporter: false
       network_policy_exporter: false
   network_policy: false
   secret_erlang_cookie: true

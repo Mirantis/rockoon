@@ -1,8 +1,6 @@
       images:
         tags:
 {%- for image in [
-    'prometheus_rabbitmq_exporter',
-    'prometheus_rabbitmq_exporter_helm_tests',
     'rabbitmq_init',
     'rabbitmq',
     'dep_check',

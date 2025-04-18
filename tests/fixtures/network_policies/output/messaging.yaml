@@ -266,11 +266,6 @@ messaging:rabbitmq:StatefulSet:openstack-rabbitmq-rabbitmq:
 - from:
   - podSelector:
       matchLabels:
-        application: prometheus_rabbitmq_exporter
-        component: exporter
-        release_group: openstack-rabbitmq
-  - podSelector:
-      matchLabels:
         application: rabbitmq
         component: cluster-wait
         release_group: openstack-rabbitmq

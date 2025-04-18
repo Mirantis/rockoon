@@ -66,11 +66,6 @@ spec:
     chart: rabbitmq
     values:
 {% include 'base/_rabbitmq_images.yaml' %}
-  {%- if stacklight_enabled %}
-      monitoring:
-        prometheus:
-          enabled: true
-  {%- endif %}
       pod:
         replicas:
           server: 1
@@ -88,13 +83,6 @@ spec:
       manifests:
         job_users_create: true
         network_policy: {{ spec.features.network_policies.enabled }}
-        {%- if stacklight_enabled %}
-        monitoring:
-          prometheus:
-            configmap_bin: true
-            deployment_exporter: true
-            service_exporter: true
-        {%- endif %}
 {%- if spec.features.network_policies.enabled %}
       network_policy:
 {% include 'base/network_policies/compute-rabbitmq.yaml' %}
@@ -132,10 +120,6 @@ spec:
             definition:
               expires: 600000
             priority: 1
-  {%- if stacklight_enabled %}
-        prometheus_exporter:
-          rabbit_exporters: "overview,exchange,node"
-  {%- endif %}
 {%- endif %}
   - name: openstack-libvirt
     chart: libvirt

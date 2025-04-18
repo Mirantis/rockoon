@@ -24,11 +24,6 @@ spec:
     chart: rabbitmq
     values:
 {% include 'base/_rabbitmq_images.yaml' %}
-  {%- if stacklight_enabled %}
-      monitoring:
-        prometheus:
-          enabled: true
-  {%- endif %}
       pod:
         replicas:
           server: 1
@@ -48,13 +43,6 @@ spec:
         job_users_create: true
         {%- if external_notifications_enabled %}
         service_external: true
-        {%- endif %}
-        {%- if stacklight_enabled %}
-        monitoring:
-          prometheus:
-            configmap_bin: true
-            deployment_exporter: true
-            service_exporter: true
         {%- endif %}
 {%- if spec.features.network_policies.enabled %}
       network_policy:
@@ -212,10 +200,6 @@ spec:
               expires: 600000
             priority: 1
   {%- endfor %}
-  {%- if stacklight_enabled %}
-        prometheus_exporter:
-          rabbit_exporters: "overview,exchange,node"
-  {%- endif %}
       endpoints:
         cluster_domain_suffix: {{ spec.internal_domain_name }}
         oslo_messaging:

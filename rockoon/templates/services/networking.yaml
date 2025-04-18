@@ -144,11 +144,6 @@ spec:
     chart: rabbitmq
     values:
 {% include 'base/_rabbitmq_images.yaml' %}
-  {%- if stacklight_enabled %}
-      monitoring:
-        prometheus:
-          enabled: true
-  {%- endif %}
 {%- if spec.features.network_policies.enabled %}
       network_policy:
 {% include 'base/network_policies/networking-rabbitmq.yaml' %}
@@ -170,13 +165,6 @@ spec:
       manifests:
         job_users_create: true
         network_policy: {{ spec.features.network_policies.enabled }}
-        {%- if stacklight_enabled %}
-        monitoring:
-          prometheus:
-            configmap_bin: true
-            deployment_exporter: true
-            service_exporter: true
-        {%- endif %}
       volume:
         enabled: false
       endpoints:
@@ -210,10 +198,6 @@ spec:
             definition:
               expires: 600000
             priority: 1
-  {%- if stacklight_enabled %}
-        prometheus_exporter:
-          rabbit_exporters: "overview,exchange,node"
-  {%- endif %}
 {%- endif %}
   {%- if not tungstenfabric_enabled %}
   - name: openstack-openvswitch

@@ -163,11 +163,6 @@ networking:rabbitmq:StatefulSet:openstack-neutron-rabbitmq-rabbitmq:
 - from:
   - podSelector:
       matchLabels:
-        application: prometheus_rabbitmq_exporter
-        component: exporter
-        release_group: openstack-neutron-rabbitmq
-  - podSelector:
-      matchLabels:
         application: rabbitmq
         component: cluster-wait
         release_group: openstack-neutron-rabbitmq

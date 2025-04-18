@@ -391,23 +391,6 @@ openvswitch:
         application: openvswitch_ovn
         component: northd
 rabbitmq:
-  Deployment:
-    openstack-neutron-rabbitmq-rabbitmq-exporter:
-      connections:
-        egress:
-          - {{ to_child_object("networking", "rabbitmq", "StatefulSet", "openstack-neutron-rabbitmq-rabbitmq", ["http"]) | indent(12)}}
-      images:
-      - prometheus_rabbitmq_exporter
-      manifest: ''
-      hash_fields: []
-      pod_labels:
-        application: prometheus_rabbitmq_exporter
-        component: exporter
-        release_group: openstack-neutron-rabbitmq
-      ports:
-      - port: 9095
-        name: metrics
-        protocol: TCP
   StatefulSet:
     openstack-neutron-rabbitmq-rabbitmq:
       images:
