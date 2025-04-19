@@ -37,7 +37,8 @@ properties:
       - xena # not supported, only for migration
       - yoga # LTS version
       - antelope # LTS version
-      - caracal # not supported, technical release
+      - caracal # LTS version
+      - epoxy # not supported, technical release
       - master # not supported, only for example
   preset:
     description: Preset of features to deploy
