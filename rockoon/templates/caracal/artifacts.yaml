@@ -246,3 +246,4 @@ os_image_cirros_060_raw_checksum: f756328a32fad36f7239223b030caab5
 ironic_nic_init_pre: '{{ images_base_url }}/openstack/heat:caracal-jammy-20250307074151'
 ironic_nic_init_post: '{{ images_base_url }}/openstack/heat:caracal-jammy-20250307074151'
 ironic_nic_init: '{{ images_base_url }}/general/openvswitch:2.17-jammy-20250321084644'
+openvswitch_ovn_vtep: '{{ images_base_url }}/general/openvswitch:2.17-jammy-20250321084644'
