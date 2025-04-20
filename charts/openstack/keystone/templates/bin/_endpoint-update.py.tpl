@@ -1,35 +1,25 @@
-{{/*
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/}}
-
 #!/usr/bin/env python
 import os
+import logging
 import sys
+
+from sqlalchemy import create_engine
+from sqlalchemy import text
+
 try:
     import ConfigParser
     PARSER_OPTS = {}
 except ImportError:
     import configparser as ConfigParser
     PARSER_OPTS = {"strict": False}
-import logging
-from sqlalchemy import create_engine
 
 # Create logger, console handler and formatter
 logger = logging.getLogger('OpenStack-Helm Keystone Endpoint management')
 logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 # Set the formatter and add the handler
 ch.setFormatter(formatter)
@@ -41,7 +31,8 @@ if "OPENSTACK_CONFIG_FILE" in os.environ:
     if "OPENSTACK_CONFIG_DB_SECTION" in os.environ:
         os_conf_section = os.environ['OPENSTACK_CONFIG_DB_SECTION']
     else:
-        logger.critical('environment variable OPENSTACK_CONFIG_DB_SECTION not set')
+        logger.critical(
+            'environment variable OPENSTACK_CONFIG_DB_SECTION not set')
         sys.exit(1)
     if "OPENSTACK_CONFIG_DB_KEY" in os.environ:
         os_conf_key = os.environ['OPENSTACK_CONFIG_DB_KEY']
@@ -57,13 +48,15 @@ if "OPENSTACK_CONFIG_FILE" in os.environ:
         user_db_conn = config.get(os_conf_section, os_conf_key)
         logger.info("Got config from {0}".format(os_conf))
     except:
-        logger.critical("Tried to load config from {0} but failed.".format(os_conf))
+        logger.critical(
+            "Tried to load config from {0} but failed.".format(os_conf))
         raise
 elif "DB_CONNECTION" in os.environ:
     user_db_conn = os.environ['DB_CONNECTION']
     logger.info('Got config from DB_CONNECTION env var')
 else:
-    logger.critical('Could not get db config, either from config file or env var')
+    logger.critical(
+        'Could not get db config, either from config file or env var')
     sys.exit(1)
 
 # User DB engine
@@ -76,8 +69,17 @@ except:
 # Set Internal Endpoint
 try:
     endpoint_url = os.environ['OS_BOOTSTRAP_INTERNAL_URL']
-    cmd = "update endpoint set url = %s where interface ='internal' and service_id = (select id from service where service.type = 'identity')"
-    user_engine.execute(cmd, (endpoint_url,))
+    region_id = os.environ['OS_REGION_NAME']
+    cmd = text("update endpoint set url = :endpoint_url where interface ='internal' and "
+               "service_id = (select id from service where "
+               "service.type = 'identity') and "
+               "region_id = :region_id")
+    with user_engine.connect() as connection:
+        connection.execute(cmd, {"endpoint_url": endpoint_url, "region_id": region_id})
+        try:
+            connection.commit()
+        except AttributeError:
+            pass
 except:
     logger.critical("Could not update internal endpoint")
     raise
@@ -85,8 +87,17 @@ except:
 # Set Admin Endpoint
 try:
     endpoint_url = os.environ['OS_BOOTSTRAP_ADMIN_URL']
-    cmd = "update endpoint set url = %s where interface ='admin' and service_id = (select id from service where service.type = 'identity')"
-    user_engine.execute(cmd, (endpoint_url,))
+    region_id = os.environ['OS_REGION_NAME']
+    cmd = text("update endpoint set url = :endpoint_url where interface ='admin' "
+               "and service_id = (select id from service where "
+               "service.type = 'identity') "
+               "and region_id = :region_id")
+    with user_engine.connect() as connection:
+        connection.execute(cmd, {"endpoint_url": endpoint_url, "region_id": region_id})
+        try:
+            connection.commit()
+        except AttributeError:
+            pass
 except:
     logger.critical("Could not update admin endpoint")
     raise
@@ -94,17 +105,28 @@ except:
 # Set Public Endpoint
 try:
     endpoint_url = os.environ['OS_BOOTSTRAP_PUBLIC_URL']
-    cmd = "update endpoint set url = %s where interface ='public' and service_id = (select id from service where service.type = 'identity')"
-    user_engine.execute(cmd, (endpoint_url,))
+    region_id = os.environ['OS_REGION_NAME']
+    cmd = text("update endpoint set url = :endpoint_url where interface ='public' "
+               "and service_id = (select id from service where "
+               "service.type = 'identity') "
+               "and region_id = :region_id")
+    with user_engine.connect() as connection:
+        connection.execute(cmd, {"endpoint_url": endpoint_url, "region_id": region_id})
+        try:
+            connection.commit()
+        except AttributeError:
+            pass
 except:
     logger.critical("Could not update public endpoint")
     raise
 
 # Print endpoints
 try:
-    endpoints = user_engine.execute(
-        "select interface, url from endpoint where service_id = (select id from service where service.type = 'identity')"
-    ).fetchall()
+    with user_engine.connect() as connection:
+        endpoints = connection.execute(
+            text("select interface, url from endpoint where service_id = "
+                 "(select id from service where service.type = 'identity')")
+        ).fetchall()
     for row in endpoints:
         logger.info("endpoint ({0}): {1}".format(row[0], row[1]))
 except:
