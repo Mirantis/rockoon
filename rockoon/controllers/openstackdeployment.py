@@ -143,7 +143,7 @@ def cleanup_helm_cache():
             os.remove(os.path.join(root, file))
 
 
-async def _rotate_creds(
+async def _regenerate_creds(
     group_name,
     rotation_id,
     enabled_services,
@@ -189,7 +189,45 @@ async def _rotate_creds(
                 service_secret.rotate(rotation_id)
 
 
-async def rotate_credentials(
+async def _regenerate_certs(
+    service_name,
+    component_name,
+    rotation_id,
+    enabled_services,
+    mspec,
+    logger,
+    osdplst,
+    reason,
+    body,
+    meta,
+    spec,
+    child_view,
+    **kwargs,
+):
+    if service_name == "octavia" and component_name == "amphora":
+        cert_secret = secrets.SignedCertificateSecret(
+            namespace=osdplst.namespace,
+            service="octavia",
+            common_name="octavia-amphora-ca",
+        )
+        cert_secret.save(cert_secret.create())
+        # TODO waiting for octavia deployments restarted and osdplst is applied
+        # TODO run job octavia-amphorae-failover
+
+
+def _get_rotation_id_if_changed(new_auth_data, old_data, component, path):
+    new_rotation_id = utils.get_in(
+        new_auth_data, [component, "rotation_id"], 0
+    )
+    old_rotation_id = utils.get_in(
+        old_data, ["status"] + path + ["rotation_id"], 0
+    )
+    if new_rotation_id and new_rotation_id != old_rotation_id:
+        LOG.info(f"Starting regeneration for {path}")
+        return new_rotation_id
+
+
+async def regenerate_auth_data(
     enabled_services,
     mspec,
     logger,
@@ -204,21 +242,21 @@ async def rotate_credentials(
     new_credentials = utils.get_in(
         kwargs.get("new", {}), ["status", "credentials"], {}
     )
-    for group_name in ["admin", "service"]:
-        new_rotation_id = utils.get_in(
-            new_credentials, [group_name, "rotation_id"], 0
-        )
+    new_certificates = utils.get_in(
+        kwargs.get("new", {}), ["status", "certificates"], {}
+    )
 
-        if new_rotation_id:
-            old_credentials = utils.get_in(
-                kwargs["old"], ["status", "credentials"], {}
+    if new_credentials:
+        for group_name in ["admin", "service"]:
+            path = ["credentials", group_name]
+            new_rotation_id = _get_rotation_id_if_changed(
+                new_credentials,
+                kwargs["old"],
+                group_name,
+                path,
             )
-            old_rotation_id = utils.get_in(
-                old_credentials, [group_name, "rotation_id"], 0
-            )
-            if new_rotation_id != old_rotation_id:
-                LOG.info(f"Starting rotation for {group_name}")
-                await _rotate_creds(
+            if new_rotation_id:
+                await _regenerate_creds(
                     group_name,
                     new_rotation_id,
                     enabled_services,
@@ -232,13 +270,46 @@ async def rotate_credentials(
                     child_view,
                     **kwargs,
                 )
-                LOG.info(f"Finished rotation for {group_name}")
+                LOG.info(f"Finished credentials regeneration for {group_name}")
+
+    if new_certificates:
+        for service_name, components in new_certificates.items():
+            for component_name, new_component in components.items():
+                path = ["certificates", service_name, component_name]
+                new_rotation_id = _get_rotation_id_if_changed(
+                    components,
+                    kwargs["old"],
+                    component_name,
+                    path,
+                )
+                if new_rotation_id:
+                    await _regenerate_certs(
+                        service_name,
+                        component_name,
+                        new_rotation_id,
+                        enabled_services,
+                        mspec,
+                        logger,
+                        osdplst,
+                        reason,
+                        body,
+                        meta,
+                        spec,
+                        child_view,
+                        **kwargs,
+                    )
+                    LOG.info(
+                        f"Finished certificate regeneration for {service_name} {component_name}"
+                    )
 
 
 # on.field to force storing that field to be reacting on its changes
 @kopf.on.field(*kube.OpenStackDeployment.kopf_on_args, field="status.watched")
 @kopf.on.field(
     *kube.OpenStackDeployment.kopf_on_args, field="status.credentials"
+)
+@kopf.on.field(
+    *kube.OpenStackDeployment.kopf_on_args, field="status.certificates"
 )
 @kopf.on.resume(*kube.OpenStackDeployment.kopf_on_args)
 @kopf.on.update(*kube.OpenStackDeployment.kopf_on_args)
@@ -290,7 +361,7 @@ async def _handle(body, meta, spec, logger, reason, **kwargs):
 
         update, delete = layers.services(mspec, logger, **kwargs)
 
-        await rotate_credentials(
+        await regenerate_auth_data(
             update,
             mspec,
             logger,

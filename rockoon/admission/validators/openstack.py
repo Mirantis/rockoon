@@ -54,7 +54,20 @@ class OpenStackValidator(base.BaseValidator):
     def validate_status(self, review_request):
         old_obj = review_request.get("oldObject", {})
         new_obj = review_request.get("object", {})
-        self._validate_credentials(old_obj, new_obj, review_request)
+        old_credentials = old_obj.get("status", {}).get("credentials", {})
+        new_credentials = new_obj.get("status", {}).get("credentials", {})
+        self._validate_rotation_data(
+            old_credentials, new_credentials, review_request
+        )
+
+        old_certificates = old_obj.get("status", {}).get("certificates", {})
+        new_certificates = new_obj.get("status", {}).get("certificates", {})
+        for service_name, service in new_certificates.items():
+            old_service = old_certificates.get(service_name, {})
+            new_service = new_certificates.get(service_name, {})
+            self._validate_rotation_data(
+                old_service, new_service, review_request
+            )
 
     def validate_delete(self, review_request):
         self._check_delete_allowed(review_request)
@@ -183,24 +196,22 @@ class OpenStackValidator(base.BaseValidator):
                 "changing other values in the spec is not permitted."
             )
 
-    def _validate_credentials(self, old_obj, new_obj, review_request):
-        _old_status = copy.deepcopy(old_obj.get("status", {}))
-        _old_credentials = _old_status.get("credentials", {})
-        _new_status = copy.deepcopy(new_obj.get("status", {}))
-        _new_credentials = _new_status.get("credentials", {})
+    def _validate_rotation_data(
+        self, old_rotation_data, new_rotation_data, review_request
+    ):
 
-        if _new_credentials != _old_credentials:
+        if new_rotation_data != old_rotation_data:
             if self._is_osdpl_locked(review_request):
                 raise exception.OsDplValidationFailed(
-                    "OpenStack credentials update is not possible while another operation is in progress."
+                    "OpenStack rotation data update is not possible while another operation is in progress."
                 )
 
-            for group_name, group in _old_credentials.items():
+            for group_name, group in old_rotation_data.items():
                 if "rotation_id" not in group.keys():
                     return
 
                 new_rotation_id = get_in(
-                    _new_credentials,
+                    new_rotation_data,
                     [group_name, "rotation_id"],
                     0,
                 )
@@ -209,13 +220,13 @@ class OpenStackValidator(base.BaseValidator):
                         f"Removing {group_name} rotation config is not allowed"
                     )
 
-            for group_name, group in _new_credentials.items():
+            for group_name, group in new_rotation_data.items():
                 # in future it is possible there can be other options except rotation_id
                 if "rotation_id" not in group.keys():
                     return
 
                 old_rotation_id = get_in(
-                    _old_credentials,
+                    old_rotation_data,
                     [group_name, "rotation_id"],
                     0,
                 )
