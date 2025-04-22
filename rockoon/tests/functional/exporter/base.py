@@ -177,3 +177,17 @@ class BaseFunctionalExporterTestCase(
                 if pool["name"].split("#")[1] == host.split("#")[1]
             ][0]
         return pool
+
+    def assert_metric_value(self, metric_name, expected_value, error_message):
+        metric = self.get_metric_after_refresh(
+            metric_name, self.scrape_collector
+        )
+        self.assertIsNotNone(metric)
+        self.assertTrue(len(metric.samples) > 0)
+        totype = type(expected_value)
+        self.assertEqual(
+            totype(metric.samples[0].value),
+            expected_value,
+            f"{error_message}: metric '{metric_name}'"
+            f" does not match expected value ({expected_value})",
+        )

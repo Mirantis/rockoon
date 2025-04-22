@@ -29,16 +29,6 @@ class CinderCollectorFunctionalTestCase(base.BaseFunctionalExporterTestCase):
         "osdpl_cinder_pool_allocated_capacity": {"labels": ["name"]},
     }
 
-    def _test_cinder_volumes(self, metric_name, expected_value, phase):
-        metric = self.get_metric_after_refresh(
-            metric_name, self.scrape_collector
-        )
-        self.assertEqual(
-            int(metric.samples[0].value),
-            expected_value,
-            f"{phase}: Number of volumes is not correct.",
-        )
-
     @classmethod
     def openstack_version(cls, version=None):
         if version is None:
@@ -50,15 +40,15 @@ class CinderCollectorFunctionalTestCase(base.BaseFunctionalExporterTestCase):
 
         metric_name = "osdpl_cinder_volumes"
         volumes = len(list(self.ocm.oc.volume.volumes(all_tenants=True)))
-        self._test_cinder_volumes(metric_name, volumes, "Before create")
+        self.assert_metric_value(metric_name, volumes, "Before create")
 
         # Create one test volume
         created_volume = self.volume_create()
-        self._test_cinder_volumes(metric_name, volumes + 1, "After create")
+        self.assert_metric_value(metric_name, volumes + 1, "After create")
 
         # Delete volume and check that the volumes metric is changed
         self.volume_delete(created_volume)
-        self._test_cinder_volumes(metric_name, volumes, "After delete")
+        self.assert_metric_value(metric_name, volumes, "After delete")
 
     def _test_cinder_volumes_size(self, expected_value, phase):
         metric_name = "osdpl_cinder_volumes_size"
@@ -174,17 +164,17 @@ class CinderCollectorFunctionalTestCase(base.BaseFunctionalExporterTestCase):
                 )
             )
         )
-        self._test_cinder_volumes(metric_name, volumes, "Before create")
+        self.assert_metric_value(metric_name, volumes, "Before create")
 
         # Create one test volume
         created_volume = self.volume_create(
             availability_zone=availability_zone
         )
-        self._test_cinder_volumes(metric_name, volumes + 1, "After create")
+        self.assert_metric_value(metric_name, volumes + 1, "After create")
 
         # Delete volume and check that the zone's volumes metric is changed
         self.volume_delete(created_volume)
-        self._test_cinder_volumes(metric_name, volumes, "After delete")
+        self.assert_metric_value(metric_name, volumes, "After delete")
 
     def test_osdpl_cinder_zone_volumes_count(self):
         total_zones = len(list(self.ocm.oc.volume.availability_zones()))
