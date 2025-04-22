@@ -408,6 +408,8 @@ conf:
     house_keeping:
       load_balancer_expiry_age: 3600
       amphora_expiry_age: 3600
+    neutron:
+      auth_type: password
     service_auth:
       auth_type: password
       cafile: ""
