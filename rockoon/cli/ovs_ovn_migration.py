@@ -1002,7 +1002,7 @@ def cleanup_api_resources():
                 LOG.exception(f"Failed to clean agent {agent}")
         LOG.info(f"Finished cleaning Neutron {agent_type} agents")
     for net in ocm.oc.network.networks():
-        if re.match("^HA network tenant\s", net.name):
+        if re.match(r"^HA network tenant\s", net.name):
             LOG.info(f"Cleaning Neutron HA tenant network {net.name}")
             try:
                 ocm.oc.network.delete_network(net)
