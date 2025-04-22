@@ -2,6 +2,7 @@ import abc
 import asyncio
 import base64
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 import inspect
 import json
 from os import urandom
@@ -472,6 +473,23 @@ class StatefulSet(pykube.StatefulSet, HelmBundleMixin, ObjectStatusMixin):
                         f"Deleting PVC {pvc.name} tied to node {node_name}"
                     )
                     pvc.delete()
+
+    def restart(self):
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        self.reload()
+        self.patch(
+            {
+                "spec": {
+                    "template": {
+                        "metadata": {
+                            "annotations": {
+                                "kubectl.kubernetes.io/restartedAt": timestamp
+                            }
+                        }
+                    }
+                }
+            }
+        )
 
 
 class Ingress(pykube.objects.NamespacedAPIObject, HelmBundleMixin):

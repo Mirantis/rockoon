@@ -133,7 +133,7 @@ spec:
               subPath: ovs_interfaces.json
               readOnly: true
         - name: db
-{{ tuple $envAll "openvswitch_ovn_db" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll "openvswitch_ovn_controller" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ dict "envAll" $envAll "application" "openvswitch_ovn_controller" "container" "db" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.ovn_controller.db | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
 {{ dict "envAll" $envAll "component" "ovn" "container" "db" "type" "liveness" "probeTemplate" (include "ovsdblivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
