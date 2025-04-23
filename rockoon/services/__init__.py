@@ -1408,6 +1408,9 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
         4. neutron-server upgrade/restart
         """
 
+        if not await self.helm_manager.exist("openstack-openvswitch"):
+            return
+
         def _extract_ovs_version(image):
             try:
                 return image.split(":")[-1].split("-")[0]
