@@ -38,12 +38,28 @@ function get_remotes {
 }
 
 DB_NAME="OVN_Northbound"
+DB_DIRECTORY="/var/lib/ovn/"
+UPGRADE_ARGS=""
 
 if [[ "${DB_TYPE}" == "sb" ]]; then
     DB_NAME="OVN_Southbound"
 fi
 
 function start () {
+
+    # Upgrade logic
+    if [[ ! -f ${DB_DIRECTORY}/ovsdb_server_version ]]; then
+        ovsdb-server --version > ${DB_DIRECTORY}/ovsdb_server_version
+    fi
+    OLD_VERSION=$(cat ${DB_DIRECTORY}/ovsdb_server_version)
+    NEW_VERSION=$(ovsdb-server --version)
+
+    if [[ "${OLD_VERSION}" != "${NEW_VERSION}" ]]; then
+        echo "OVS DB version changed ${OLD_VERSION} to ${NEW_VERSION}"
+
+        # Is needed during cluster upgrade from 3.1 and earlier to 3.2 and later
+        UPGRADE_ARGS="--disable-file-no-data-conversion"
+    fi
 
     CLUSTER_OPTS=""
     if [[ "${CLUSTER_SIZE}" -gt 1 ]]; then
@@ -55,13 +71,16 @@ function start () {
         OPTS="$OPTS --db-${DB_TYPE}-cluster-remote-proto=tcp --db-${DB_TYPE}-cluster-remote-addr=${PEER_PREFIX_NAME}-0.${SERVICE_NAME}.${NAMESPACE}.svc.${INTERNAL_DOMAIN} --db-${DB_TYPE}-cluster-remote-port=${RAFT_PORT}"
 
     fi
+
+    ovsdb-server --version > ${DB_DIRECTORY}/ovsdb_server_version
+
     /usr/share/ovn/scripts/ovn-ctl \
         run_${DB_TYPE}_ovsdb \
         ${CLUSTER_OPTS} \
         --ovn-northd-sb-db=tcp:$(get_remotes) \
         ${OPTS} \
         --ovn-${DB_TYPE}-log="-vconsole:info -vfile:off" \
-        -- --remote ptcp:${DB_PORT}
+        -- --remote ptcp:${DB_PORT} ${UPGRADE_ARGS}
 
 }
 

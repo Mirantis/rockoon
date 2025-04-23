@@ -14,6 +14,7 @@
 
 import asyncio
 import base64
+from datetime import datetime, timezone
 import json
 import random
 
@@ -1396,6 +1397,123 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
             for child_obj in child_objs:
                 await child_obj.enable(self.openstack_version, True)
 
+    async def _upgrade_ovn(self, event, **kwargs):
+        """Perform OVN upgrade to major version
+
+        For OVN we use the following upgrade order:
+
+        1. Upgrade of ovn-conroller on computes and gateways
+        2. Upgrade of ovn-sb, ovn-nb
+        3. Upgrade of ovn-northd
+        4. neutron-server upgrade/restart
+        """
+
+        def _extract_ovs_version(image):
+            try:
+                return image.split(":")[-1].split("-")[0]
+            except Exception:
+                return None
+
+        new_ovn_image = self.get_image(
+            "openvswitch_ovn_db_nb", "openvswitch", self.openstack_version
+        )
+        old_ovn_image = (
+            (
+                await self.helm_manager.get_release_values(
+                    "openstack-openvswitch"
+                )
+            )
+            .get("images", {})
+            .get("tags", {})
+            .get("openvswitch_ovn_db_nb")
+        )
+        new_ovn_image = _extract_ovs_version(new_ovn_image)
+        old_ovn_image = _extract_ovs_version(old_ovn_image)
+
+        # Apply new startap scripts, but do not change images
+        # this is needed when custom startup flags are
+        # passed to service
+        if old_ovn_image != new_ovn_image:
+            LOG.info(
+                f"OVN upgrade: image was changed, initiating update from {old_ovn_image} to {new_ovn_image}"
+            )
+            timestamp = datetime.now(timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"
+            )
+            LOG.info(
+                "OVN upgrade: updating deploy scripts for OVN components."
+            )
+            await self.set_release_values(
+                "openvswitch",
+                {
+                    f"{self.group}/{self.version}": {
+                        "rockoon": {"updated_at": timestamp}
+                    }
+                },
+            )
+            await asyncio.sleep(
+                CONF.getint("helmbundle", "manifest_apply_delay")
+            )
+            ovndb_sts = self.get_child_object(
+                "StatefulSet", "openvswitch-ovn-db"
+            )
+            await ovndb_sts.wait_ready()
+            await self.wait_service_healthy()
+
+            for ovnc_ds in self.get_child_objects_dynamic(
+                "DaemonSet", "ovn-controller"
+            ):
+                # TODO(vsaienko): fix need_apply_images for multiple child objects
+                if ovnc_ds.need_apply_images(self.openstack_version):
+                    LOG.info(
+                        "OVN upgrade: updating image for ovn-controllers."
+                    )
+                    await ovnc_ds.enable(
+                        self.openstack_version,
+                        wait_completion=True,
+                        timeout=None,
+                    )
+                await ovnc_ds.ensure_pod_generation()
+                await ovnc_ds.wait_ready()
+            ovndb_sts = self.get_child_object(
+                "StatefulSet", "openvswitch-ovn-db"
+            )
+            if ovndb_sts.need_apply_images(self.openstack_version):
+                LOG.info("OVN upgrade: updating image for ovn-dbs.")
+                await ovndb_sts.enable(
+                    self.openstack_version,
+                    wait_completion=True,
+                    timeout=None,
+                )
+                await ovndb_sts.wait_ready()
+
+            ovnnb_sts = self.get_child_object(
+                "StatefulSet", "openvswitch-ovn-northd"
+            )
+
+            if ovnnb_sts.need_apply_images(self.openstack_version):
+                LOG.info("OVN upgrade: scaling ovn-northd to 0.")
+                ovnnb_sts.scale(0)
+                await ovnnb_sts.wait_for_replicas(0)
+
+                # Restart db pods to remove flags set before running update
+                # like --disable-file-no-data-conversion
+                LOG.info("OVN upgrade: restarting ovn-dbs.")
+                ovndb_sts.restart()
+
+                await ovndb_sts.wait_ready()
+
+                await ovnnb_sts.enable(
+                    self.openstack_version,
+                    wait_completion=True,
+                    timeout=None,
+                )
+
+                await ovnnb_sts.wait_ready()
+                await self.wait_service_healthy()
+            LOG.info("OVN upgrade: finished")
+            # With later super().apply() neutron-server will be retarted.
+
     async def apply(self, event, **kwargs):
         if (
             self.mspec.get("migration", {})
@@ -1493,6 +1611,12 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
                             wait_completion=True,
                             timeout=None,
                         )
+
+        if (
+            utils.get_in(self.mspec["features"], ["neutron", "backend"])
+            == "ml2/ovn"
+        ):
+            await self._upgrade_ovn(event, **kwargs)
 
         await super().apply(event, **kwargs)
         if utils.get_in(

@@ -345,7 +345,6 @@ openvswitch:
       images:
       - openvswitch_ovn_controller
       - openvswitch_ovn_vswitchd
-      - openvswitch_ovn_db
       manifest: daemonset_ovn_controller
       pod_labels:
         application: openvswitch_ovn
