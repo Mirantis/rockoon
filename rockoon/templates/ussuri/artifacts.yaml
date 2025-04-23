@@ -206,7 +206,7 @@ masakari_db_purge: '{{ images_base_url }}/openstack/masakari:ussuri-bionic-20230
 neutron_bootstrap: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250415072626'
 cinder_drop_default_volume_type: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250415072626'
 cinder_create_internal_tenant: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250415072626'
-descheduler: '{{ images_base_url }}/openstack/extra/descheduler-20240910121701:v0.30.1-amd64-20240910114244'
+descheduler: '{{ images_base_url }}/openstack/extra/descheduler-20250422051959:v0.32.2-amd64-20250418101136'
 ironic_agent_kernel: '{{ binary_base_url }}/openstack/bin/ironic/tinyipa/tinyipa-stable-ussuri-20230128064912.vmlinuz'
 ironic_agent_initramfs: '{{ binary_base_url }}/openstack/bin/ironic/tinyipa/tinyipa-stable-ussuri-20230128064912.gz'
 ironic_agent_kernel_checksum: ab3a8196df5a84889f16494fde188799

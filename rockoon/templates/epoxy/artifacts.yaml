@@ -148,7 +148,7 @@ placement_db_sync: '{{ images_base_url }}/openstack/placement:epoxy-noble-202504
 keystone_db_sync_expand: '{{ images_base_url }}/openstack/keystone:epoxy-noble-20250421114654'
 keystone_db_sync_migrate: '{{ images_base_url }}/openstack/keystone:epoxy-noble-20250421114654'
 keystone_db_sync_contract: '{{ images_base_url }}/openstack/keystone:epoxy-noble-20250421114654'
-octavia_amphora: '{{ binary_base_url }}/openstack/bin/octavia/amphora-x64-haproxy-epoxy-20250421120759.qcow2'
+octavia_amphora: '{{ binary_base_url }}/openstack/bin/octavia/amphora-x64-haproxy-epoxy-20250423065807.qcow2'
 etcd: '{{ images_base_url }}/openstack/extra/etcd:v3.5.21-alpine-20250421162920'
 etcd_db_compact: '{{ images_base_url }}/openstack/extra/etcd:v3.5.21-alpine-20250421162920'
 cinder_db_sync_online: '{{ images_base_url }}/openstack/cinder:epoxy-noble-20250421114654'
@@ -185,7 +185,7 @@ mariadb_controller: '{{ images_base_url }}/general/mariadb:11.4.5-jammy-20250326
 horizon_mirantis_theme_sha256summ: b9e62299ed34f3867e86af278696490ca82fb8ae289f900cf56d62812d073c8d
 horizon_mirantis_theme_url: '{{ binary_base_url }}/openstack/bin/horizon/mirantis-epoxy-98953cb-20250419120248.tar.gz'
 ceph_config_helper: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250415072626'
-octavia_amphora_checksum: f518635254bff38ff811a3eec4fd8243
+octavia_amphora_checksum: f15db9c810498afb2fc350b1d86a0d33
 masakari_db_sync: '{{ images_base_url }}/openstack/masakari:epoxy-noble-20250421114654'
 masakari_api: '{{ images_base_url }}/openstack/masakari:epoxy-noble-20250421114654'
 masakari_engine: '{{ images_base_url }}/openstack/masakari:epoxy-noble-20250421114654'
@@ -209,7 +209,7 @@ barbican_db_purge: '{{ images_base_url }}/openstack/barbican:epoxy-noble-2025042
 neutron_bootstrap: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250415072626'
 cinder_drop_default_volume_type: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250415072626'
 cinder_create_internal_tenant: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250415072626'
-descheduler: '{{ images_base_url }}/openstack/extra/descheduler-20240910121701:v0.30.1-amd64-20240910114244'
+descheduler: '{{ images_base_url }}/openstack/extra/descheduler-20250422051959:v0.32.2-amd64-20250418101136'
 ironic_agent_kernel: '{{ binary_base_url }}/openstack/bin/ironic/tinyipa/tinyipa-stable-epoxy-20250419125436.vmlinuz'
 ironic_agent_initramfs: '{{ binary_base_url }}/openstack/bin/ironic/tinyipa/tinyipa-stable-epoxy-20250419125436.gz'
 ironic_agent_kernel_checksum: 04cb17bbf7fbca9aaaa2e1356a936d7c
