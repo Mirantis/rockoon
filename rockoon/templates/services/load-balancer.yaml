@@ -267,6 +267,8 @@ spec:
         logging:
           logger_octavia:
             level: {{ spec.get('features', {}).get('logging', {}).get('octavia', {}).get('level', 'INFO') }}
+          logger_cotyledon_config:
+            level: {{ spec.get('features', {}).get('logging', {}).get('octavia', {}).get('level', 'INFO') }}
       secrets:
         amphora_ssh_key:
           private: {{ ssh_credentials.private| encode | b64encode | decode }}

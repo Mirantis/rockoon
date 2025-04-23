@@ -426,6 +426,7 @@ conf:
         - root
         - octavia
         - oslo_notification_audit
+        - cotyledon_config
     handlers:
       keys:
         - stdout
@@ -442,6 +443,10 @@ conf:
       level: WARNING
       handlers: ""
       qualname: octavia
+    logger_cotyledon_config:
+      level: WARNING
+      handlers: ""
+      qualname: cotyledon.oslo_config_glue
     logger_oslo_notification_audit:
       level: INFO
       handlers: ""

@@ -21,6 +21,8 @@ spec:
         logging:
           logger_octavia:
             level: INFO
+          logger_cotyledon_config:
+            level: INFO
         octavia:
           api_settings:
             default_provider_driver: amphora
