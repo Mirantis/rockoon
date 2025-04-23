@@ -199,7 +199,7 @@ barbican_db_purge: '{{ images_base_url }}/openstack/barbican:rocky-bionic-202302
 neutron_bootstrap: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250415072626'
 cinder_drop_default_volume_type: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250415072626'
 cinder_create_internal_tenant: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250415072626'
-descheduler: '{{ images_base_url }}/openstack/extra/descheduler-20240910121701:v0.30.1-amd64-20240910114244'
+descheduler: '{{ images_base_url }}/openstack/extra/descheduler-20250422051959:v0.32.2-amd64-20250418101136'
 ironic_agent_kernel: '{{ binary_base_url }}/openstack/bin/ironic/tinyipa/tinyipa-stable-rocky.vmlinuz'
 ironic_agent_initramfs: '{{ binary_base_url }}/openstack/bin/ironic/tinyipa/tinyipa-stable-rocky.gz'
 ironic_agent_kernel_checksum: 8bffc2d4ca84e7b6d1310fef7b8c6ddc
