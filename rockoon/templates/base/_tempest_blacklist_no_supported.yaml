@@ -110,3 +110,5 @@
             # Skip ironic rescue mode tests, rescue mode is not configured in MOSK properly as of now
             # TODO: PRODX-28092 - support configuration of rescue mode in Ironic
             - (?:ironic_tempest_plugin.tests.scenario.test_baremetal_basic_ops.BaremetalBasicOpsAndRescue)
+            # Paritioned images were deprecated in upstream.
+            - (?:ironic_tempest_plugin.tests.scenario.test_baremetal_basic_ops.BaremetalBasicOps.test_baremetal_server_ops_partition_image)
