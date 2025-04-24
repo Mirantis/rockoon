@@ -277,6 +277,10 @@ load-balancer:
   ssh_credentials:
     private: "LOAD BALANCER TEST SSH PRIVATE KEY"
     public: "LOAD BALANCER TEST SSH PUBLIC KEY"
+  tls_certificates:
+    cert: "LOAD BALANCER TEST TLS CA"
+    key: "LOAD BALANCER TEST TLS KEY"
+    cert_all: "LOAD BALANCER TEST TLS CA + KEY"
 memcached:
   credentials: null
   keystone_creds: {}

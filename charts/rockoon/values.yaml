@@ -288,9 +288,9 @@ exporter:
           namespace: openstack
           key_name: client_cert
         octavia_amphora_ca:
-          name: octavia-certs
+          name: octavia-amphora-tls-certs
           namespace: openstack
-          key_name: cert
+          key_name: ca_01.pem
         keystone_public:
           name: keystone-tls-public
           namespace: openstack

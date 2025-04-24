@@ -621,6 +621,7 @@ octavia:
         pool_start: "192.168.100.2"
         pool_end: "192.168.100.254"
     hm_remote_port: "9443"
+    certs: {}
 
 endpoints:
   cluster_domain_suffix: cluster.local

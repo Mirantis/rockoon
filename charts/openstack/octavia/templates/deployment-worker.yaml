@@ -83,6 +83,7 @@ spec:
         configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
         configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
         endpoints-hash: {{ .Values.endpoints | include "helm-toolkit.utils.get_hash" }}
+        octavia-settings-certs-hash: {{ .Values.octavia.settings.certs | include "helm-toolkit.utils.get_hash" }}
     spec:
       serviceAccountName: {{ $serviceAccountName }}
 {{ dict "envAll" $envAll "application" "octavia_worker" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
@@ -145,13 +146,13 @@ spec:
               mountPath: /etc/octavia/updated_conf
             - name: octavia-certs
               mountPath: /etc/octavia/certs/private/cakey.pem
-              subPath: key
+              subPath: cakey.pem
             - name: octavia-certs
               mountPath: /etc/octavia/certs/ca_01.pem
-              subPath: cert
+              subPath: ca_01.pem
             - name: octavia-certs
               mountPath: /etc/octavia/certs/client.pem
-              subPath: cert_all
+              subPath: client.pem
 {{ if $mounts_octavia_worker.volumeMounts }}{{ toYaml $mounts_octavia_worker.volumeMounts | indent 12 }}{{ end }}
       volumes:
 {{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "octavia" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
@@ -173,7 +174,7 @@ spec:
             defaultMode: 416
         - name: octavia-certs
           secret:
-            secretName: octavia-certs
+            secretName: octavia-amphora-tls-certs
             defaultMode: 416
 {{ if $mounts_octavia_worker.volumes }}{{ toYaml $mounts_octavia_worker.volumes | indent 8 }}{{ end }}
 {{- end }}

@@ -60,6 +60,13 @@ spec:
 {%- if 'amphorav2' in provider_map.keys() %}
           enable_amphorav2: true
 {%- endif %}
+          certs:
+            ca_pem: |
+{{ tls_certificates.cert | indent(width=14, first=True) }}
+            cakey: |
+{{ tls_certificates.key | indent(width=14, first=True) }}
+            client_pem: |
+{{ tls_certificates.cert_all | indent(width=14, first=True) }}
       images:
         tags:
 {%- for image in [
@@ -148,12 +155,10 @@ spec:
         deployment_worker: false
         deployment_housekeeping: false
         job_create_resources: false
-        secret_octavia_certs: false
 {%- endif %}
         network_policy: {{ spec.features.network_policies.enabled }}
         job_rabbit_init: false
         secret_amphora_ssh_key: true
-        secret_octavia_certs: false
         secret_ca_bundle: true
 {%- if OSVer[spec.openstack_version] >= OSVer.stein and tungstenfabric_enabled %}
         octavia_driver_agent: true
