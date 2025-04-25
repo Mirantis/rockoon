@@ -44,6 +44,7 @@ class Baremetal(base_section.BaseSection):
         "whole_disk_image_checksum",
         "whole_disk_image_ref",
         "whole_disk_image_url",
+        "tenant_network_types",
     ]
 
     @property
@@ -186,3 +187,9 @@ class Baremetal(base_section.BaseSection):
     @property
     def whole_disk_image_url(self):
         pass
+
+    @property
+    def tenant_network_types(self):
+        return self.get_values_item(
+            "neutron", "conf.plugins.ml2_conf.ml2.tenant_network_types"
+        )
