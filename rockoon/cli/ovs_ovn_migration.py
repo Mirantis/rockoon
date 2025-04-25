@@ -844,8 +844,16 @@ def get_objects_by_id(svc, id):
         return svc.get_child_objects_dynamic(
             "DaemonSet", "neutron-metadata-agent"
         )
+    elif id == "neutron-server":
+        return svc.get_child_objects_dynamic("DaemonSet", "neutron-server")
     elif id == "mariadb-server":
         return [svc.get_child_object("StatefulSet", "mariadb-server")]
+    elif id == "neutron-rabbitmq":
+        return [
+            svc.get_child_object(
+                "StatefulSet", "openstack-neutron-rabbitmq-rabbitmq"
+            )
+        ]
     else:
         raise ValueError("Unknown object id {id}")
 
@@ -1243,6 +1251,22 @@ def deploy_ovn_controllers(script_args):
     ovn_daemonsets = get_objects_by_id(network_svc, "ovn-controller")
     helm_manager = helm.HelmManager(namespace=osdpl.namespace)
     osdpl.patch({"spec": {"draft": True}})
+
+    LOG.info("Disable Neutron rabbimq")
+    disable_rabbitmq_patch = {"manifests": {"statefulset": False}}
+    update_service_release(
+        helm_manager,
+        network_svc,
+        "openstack-neutron-rabbitmq",
+        disable_rabbitmq_patch,
+    )
+    rabbitmq_sts = get_objects_by_id(network_svc, "neutron-rabbitmq")
+    for sts in rabbitmq_sts:
+        while sts.exists():
+            LOG.info("Waiting for rabbitmq sts to be absent")
+            time.sleep(10)
+    LOG.info("Neutron rabbimq is disabled")
+
     if not ovn_daemonsets:
         LOG.info("Deploying ovn controllers in migration mode")
         ovs_patch = {
@@ -1268,8 +1292,33 @@ def deploy_ovn_controllers(script_args):
         helm_manager, network_svc, "openstack-neutron", neutron_patch
     )
     # On large environments ovn db sync can take a lot of time
-    wait_for_objects_ready(network_svc, ["neutron-ovn-db-sync-migrate"])
+    wait_for_objects_ready(
+        network_svc, ["neutron-ovn-db-sync-migrate"], timeout=3600
+    )
     LOG.info("Neutron database sync to OVN database is completed")
+    # Enable server without messaging dependency
+    LOG.info("Starting neutron server to process OVN ports")
+    enable_server_patch = {
+        "manifests": {"deployment_server": True},
+        "dependencies": {
+            "static": {
+                "server": {
+                    "services": [
+                        {"endpoint": "internal", "service": "oslo_db"},
+                        {"endpoint": "internal", "service": "oslo_cache"},
+                        {"endpoint": "internal", "service": "identity"},
+                    ]
+                }
+            }
+        },
+    }
+    update_service_release(
+        helm_manager, network_svc, "openstack-neutron", enable_server_patch
+    )
+    wait_for_objects_ready(network_svc, ["neutron-server"])
+    LOG.info("Sleeping for 1200 seconds to let neutron process all ports")
+    time.sleep(1200)
+    LOG.info("Finished waiting neutron server to process OVN ports")
 
 
 def migrate_dataplane(script_args):
@@ -1338,18 +1387,29 @@ def migrate_dataplane(script_args):
 def finalize_migration(script_args):
     osdpl = kube.get_osdpl()
     network_svc = get_service(osdpl, "networking")
-    LOG.info("Turning off ovn controller pods migration mode")
+    LOG.info("After dataplane migration removing neutron L3 agents")
+    neutron_l3_daemonsets = get_objects_by_id(network_svc, "neutron-l3-agent")
+    for ds in neutron_l3_daemonsets:
+        LOG.info(f"Removing DaemonSet {ds}")
+        ds.ensure_finalizer_absent(MIGRATION_FINALIZER)
+
+    LOG.info("Patching Openstack deployment to exit from draft mode")
     osdpl.patch(
         {
             "spec": {
                 "draft": False,
                 "services": {
                     "networking": {
+                        "neutron": {
+                            "values": {
+                                "manifests": {"deployment_server": True}
+                            }
+                        },
                         "openvswitch": {
                             "values": {
                                 "manifests": {"daemonset_ovn_controller": True}
                             }
-                        }
+                        },
                     }
                 },
             }
@@ -1359,9 +1419,14 @@ def finalize_migration(script_args):
     time.sleep(30)
     asyncio.run(osdpl.wait_applied())
     wait_for_objects_ready(
-        network_svc, ["openvswitch-ovn-db", "openvswitch-ovn-northd"]
+        network_svc,
+        [
+            "openvswitch-ovn-db",
+            "openvswitch-ovn-northd",
+        ],
     )
-    neutron_l3_daemonsets = get_objects_by_id(network_svc, "neutron-l3-agent")
+
+    LOG.info("Switching dataplane from openvswitch pods to ovn pods")
     vswitchd_daemonsets = get_objects_by_id(
         network_svc, "openvswitch-vswitchd"
     )
@@ -1378,15 +1443,12 @@ def finalize_migration(script_args):
                     asyncio.run(ovn_ds.ensure_pod_generation_on_node(node))
                     LOG.info(f"Updated ovn pod on node {node}")
                     break
+        LOG.info(f"Removing DaemonSet {ovs_ds}")
+        ovs_ds.ensure_finalizer_absent(MIGRATION_FINALIZER)
 
-    # Remove unused DaemonSets
-    # TODO: add waiter that no ds are left
-    for ds_list in [neutron_l3_daemonsets, vswitchd_daemonsets]:
-        for ds in ds_list:
-            LOG.info(f"Removing DaemonSet {ds}")
-            ds.ensure_finalizer_absent(MIGRATION_FINALIZER)
-    # Enable neutron-server and disable migration in osdpl
-    LOG.info("Patching Openstack deployment to deploy neutron-server")
+    LOG.info(
+        "Disabling migration mode in Osdpl and deploying neutron metadata agent"
+    )
     osdpl.patch(
         {
             "spec": {
@@ -1397,10 +1459,7 @@ def finalize_migration(script_args):
                     "networking": {
                         "neutron": {
                             "values": {
-                                "manifests": {
-                                    "deployment_server": True,
-                                    "daemonset_metadata_agent": True,
-                                }
+                                "manifests": {"daemonset_metadata_agent": True}
                             }
                         },
                     }
@@ -1499,18 +1558,22 @@ WORKFLOW = [
         "name": "30_DEPLOY_OVN_CONTROLLERS",
         "impact": """
             WORKLOADS: No downtime expected.
-            OPENSTACK API: Neutron API and Metadata downtime continues in this stage.""",
+            OPENSTACK API: Neutron Metadata downtime continues in this stage.
+                           Neutron API is started to process existing ports, however
+                           API operations may fail as OVN is not functional yet.""",
         "description": """
+            Stop Neutron rabbitmq.
             Deploy OVN controllers in migration mode.
-            Sync neutron database with flag migrate to OVN database
-            (requires ovn controllers to be running and ready).""",
+            Sync neutron database with flag migrate to OVN database.
+            (requires ovn controllers to be running and ready).
+            Start Neutron server.""",
     },
     {
         "executable": migrate_dataplane,
         "name": "40_MIGRATE_DATAPLANE",
         "impact": """
             WORKLOADS: Short periods of downtime ARE EXPECTED.
-            OPENSTACK API: Neutron API and Metadata downtime continues in this stage.""",
+            OPENSTACK API: Neutron Metadata downtime continues in this stage.""",
         "description": """
             Deploy OVN controller on the same nodes as openvswitch pods are running.
             Switch dataplane to be managed by OVN controller.""",
@@ -1520,12 +1583,12 @@ WORKFLOW = [
         "name": "50_FINALIZE_MIGRATION",
         "impact": """
             WORKLOADS: Short periods of downtime ARE EXPECTED.
-            OPENSTACK API: Neutron API downtime stops in this stage.""",
+            OPENSTACK API: Neutron Metadata downtime stops in this stage.""",
         "description": """
+            Remove neutron l3 agent daemonsets.
             Stop openvswitch pods and disbale migration mode (switch ovn
             controllers to start own vswitchd and ovs db containers).
-            Remove neutron l3 agent daemonsets.
-            Enable Neutron server and metadata agents.""",
+            Enable Neutron metadata agents and Neutron rabbitmq.""",
     },
     {
         "executable": cleanup,
