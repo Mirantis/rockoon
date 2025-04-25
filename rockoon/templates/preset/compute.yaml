@@ -343,7 +343,6 @@ services:
             {%- if ironic_enabled %}
               active_timeout: 2700
               adjusted_root_disk_size_gb: 4
-              available_nodes: 2
               boot_mode: bios
               default_rescue_interface: ''
               deploywait_timeout: 2700
