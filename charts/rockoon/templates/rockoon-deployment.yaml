@@ -75,6 +75,13 @@ spec:
           image: {{ tuple . .Values.image | include "getImageUrl" }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
 {{ end }}
+        - name: rename-octavia-certs-secret
+          command:
+          - osctl-rename-octavia-certs-secret
+          env:
+{{ tuple . | include "rockoon.common_env" | indent 12 }}
+          image: {{ tuple . .Values.image | include "getImageUrl" }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
       containers:
         - name: osdpl
           image: {{ tuple . .Values.image | include "getImageUrl" }}
