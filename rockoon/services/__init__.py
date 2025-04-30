@@ -1522,15 +1522,21 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
         ):
             # Restart openvswitch daemonsets
             # Prevent restarting l3 agents simulteniously with openvswitch
-            for daemonset in [
-                "ovn-controller",
-                "openvswitch-vswitchd",
-                "neutron-l3-agent",
-            ]:
-                for ovs_ds in self.get_child_objects_dynamic(
+            ds_to_restart = ["neutron-l3-agent"]
+            if CONF.getboolean("maintenance", "automated_openvswitch_restart"):
+                ds_to_restart.extend(
+                    ["ovn-controller", "openvswitch-vswitchd"]
+                )
+            else:
+                LOG.info(
+                    "Automated openvswitch restarts not allowed. Please check [maintenance]/automated_openvswitch_restart configuration option."
+                )
+
+            for daemonset in ds_to_restart:
+                for ds_inst in self.get_child_objects_dynamic(
                     "DaemonSet", daemonset
                 ):
-                    await ovs_ds.ensure_pod_generation()
+                    await ds_inst.ensure_pod_generation()
 
     async def remove_node_from_scheduling(self, node):
         pass
