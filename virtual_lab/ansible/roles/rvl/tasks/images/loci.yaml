@@ -36,7 +36,7 @@
       metadata:
         name: osh-dev-artifacts
         labels:
-          penstack.lcm.mirantis.com/watch: "true"
+          openstack.lcm.mirantis.com/watch: "true"
       data:
         caracal: |
           {% for component, images in rvl_images_loci_images_mapping.items() %}
