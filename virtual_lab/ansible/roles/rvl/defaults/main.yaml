@@ -44,6 +44,7 @@ rvl_images_build_loci: true
 rvl_images_build_tag: m2
 rvl_images_rockoon: "{{ rvl_registry_host }}/openstack/rockoon"
 rvl_images_ubuntu_base: "{{ rvl_images_public_base_url }}/openstack/base/ubuntu/base-ubuntu:jammy-20230712102344"
+rvl_chart_ref_rockoon: "{{ rvl_directory }}/charts/rockoon"
 
 rvl_images_base_url: "{{ rvl_images_public_base_url }}"
 rvl_binary_base_url: "{{ rvl_binary_public_base_url }}"
