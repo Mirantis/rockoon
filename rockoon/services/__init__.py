@@ -14,6 +14,7 @@
 
 import asyncio
 import base64
+import copy
 import json
 import random
 
@@ -1422,6 +1423,9 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
                         ]
                     },
                 )
+                # NOTE(vsaienko): we need to copy object as we modify it in next line
+                # to prevent self.mspec modification
+                octavia_mgmt_network = copy.deepcopy(octavia_mgmt_network)
                 octavia_mgmt_network.setdefault("name", "lb-mgmt-net")
                 b64encode = lambda v: base64.b64encode(v.encode()).decode()
                 secret_data = {
