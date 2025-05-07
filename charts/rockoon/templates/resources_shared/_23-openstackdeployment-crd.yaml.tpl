@@ -53,7 +53,22 @@ spec:
                             Integer incremental field for triggering service user password rotation.
                             Which includes credential rotation for OpenStack services to mysql/rabbitmq and
                             memcached secret. Should be grather than 0. Increase only by one is allowed.
-                            Once added, removing this field is not allowed. 
+                            Once added, removing this field is not allowed.
+                certificates:
+                  type: object
+                  properties:
+                    octavia:
+                      type: object
+                      properties:
+                        amphora:
+                          type: object
+                          properties:
+                            rotation_id:
+                              type: integer
+                              description: |
+                                Integer incremental field for triggering rotation of amphora certificates
+                                used by Octavia loadbalancers. Should be greater than 0. Increase only
+                                by one is allowed. Once added, removing this field is not allowed.
                 watched:
                   type: object
                   description: |
