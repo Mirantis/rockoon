@@ -207,7 +207,7 @@ async def _regenerate_certs(
     if service_name == "octavia" and component_name == "amphora":
         cert_secret = secrets.SignedCertificateSecret(
             namespace=osdplst.namespace,
-            service="octavia",
+            service="generated-octavia-amphora",
             common_name="octavia-amphora-ca",
         )
         cert_secret.save(cert_secret.create())

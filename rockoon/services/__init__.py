@@ -2214,7 +2214,7 @@ class Octavia(OpenStackService):
     def template_args(self):
         t_args = super().template_args()
         cert_secret = secrets.SignedCertificateSecret(
-            self.namespace, "octavia", "octavia-amphora-ca"
+            self.namespace, "generated-octavia-amphora", "octavia-amphora-ca"
         )
         cert_secret.ensure()
         t_args["tls_certificates"] = cert_secret.get()
