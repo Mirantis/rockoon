@@ -162,7 +162,7 @@ def does_respond_to_rpc():
 
 
 if __name__ == "__main__":
-    cfg = configparser.ConfigParser()
+    cfg = configparser.ConfigParser(strict=False)
     parser = argparse.ArgumentParser()
     parser.add_argument("--config-file", action="append")
     parser.add_argument("--probe-type", required=True, choices=["liveness", "readiness"])

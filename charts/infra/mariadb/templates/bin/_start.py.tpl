@@ -260,7 +260,7 @@ def mysqld_write_cluster_conf(mode='run'):
             or 'bootstrap' (default 'run')
     """
     logger.info("Setting up cluster config")
-    cluster_config = configparser.ConfigParser()
+    cluster_config = configparser.ConfigParser(strict=False)
     cluster_config['mysqld'] = {}
     cluster_config_params = cluster_config['mysqld']
     wsrep_cluster_members = []
