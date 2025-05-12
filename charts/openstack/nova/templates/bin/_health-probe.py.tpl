@@ -209,7 +209,7 @@ def check_process_is_our(proc):
 if __name__ == "__main__":
     # Mask permissions to files 416 dirs 0750
     os.umask(0o027)
-    cfg = configparser.ConfigParser()
+    cfg = configparser.ConfigParser(strict=False)
     parser = argparse.ArgumentParser()
     parser.add_argument("--config-file", action="append")
     parser.add_argument("--probe-type", required=True, choices=["liveness", "readiness"])
