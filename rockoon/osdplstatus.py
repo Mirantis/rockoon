@@ -21,6 +21,8 @@ APPLIED = "APPLIED"
 DELETING = "DELETING"
 # When waiting for Applying changes, ie waiting other services to upgrade
 WAITING = "WAITING"
+# When something went completely wrong, and retries were exhausted
+FAILED = "FAILED"
 
 
 class OpenStackDeploymentStatus(pykube.objects.NamespacedAPIObject):
