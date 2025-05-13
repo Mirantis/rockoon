@@ -754,6 +754,48 @@ class RouterInternalMtuCheck(CheckBase):
         return internal_mtu
 
 
+class UnsupportedFeaturesCheck(CheckBase):
+
+    name = "Unsupported features check"
+    impact = CheckImpact.CRITICAL
+    error_message = (
+        "Found unsupported features enabled on environment. These "
+        "features become unavailable after migration to OVN and can "
+        "block migration itself. To proceed with migration they should "
+        "be disabled by editing OsDpl object."
+    )
+
+    def check(self):
+        LOG.info("Checking unsupported features")
+        osdpl = kube.get_osdpl()
+        mspec = osdpl.mspec
+        result = {}
+        bgpvpn = ["features", "neutron", "bgpvpn", "enabled"]
+        bgpvpn_enabled = utils.get_in(mspec, bgpvpn, False)
+        portprober = [
+            "features",
+            "neutron",
+            "extensions",
+            "portprober",
+            "enabled",
+        ]
+        portprober_enabled = utils.get_in(mspec, portprober, True)
+        ipsec = ["features", "neutron", "ipsec", "enabled"]
+        ipsec_enabled = utils.get_in(mspec, ipsec, False)
+        if bgpvpn_enabled:
+            result.update(
+                {"bgpvpn": f"Please set {':'.join(bgpvpn)} to False"}
+            )
+        if portprober_enabled:
+            result.update(
+                {"portprober": f"Please set {':'.join(portprober)} to False"}
+            )
+        if ipsec_enabled:
+            result.update({"ipsec": f"Please set {':'.join(ipsec)} to False"})
+        LOG.info("Finished checking unsupported features")
+        return result
+
+
 class StateCM:
 
     labels = {"lcm.mirantis.com/ovs-ovn-migration": "state"}
