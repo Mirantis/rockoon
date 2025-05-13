@@ -76,6 +76,8 @@ spec:
                 help_text: 'Your password does not meet the requirements. Password must contain at least one letter, one number and be longer than eight characters.'
               disallow_iframe_embed: "True"
               raw:
+                DEFAULT_SERVICE_REGIONS:
+                  '*': 'RegionOne'
                 DEFAULT_THEME: default
               secure_proxy_ssl_header: true
               tungstenfabric:

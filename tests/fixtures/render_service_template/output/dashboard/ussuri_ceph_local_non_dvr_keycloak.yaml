@@ -174,6 +174,8 @@ spec:
                 help_text: 'Your password does not meet the requirements. Password must contain at least one letter, one number and be longer than eight characters.'
               disallow_iframe_embed: "True"
               raw:
+                DEFAULT_SERVICE_REGIONS:
+                  '*': 'RegionOne'
                 DEFAULT_THEME: default
                 LOGOUT_URL: https://keystone.it.just.works/v3/auth/OS-FEDERATION/identity_providers/keycloak/protocols/mapped/websso/?logout=https://horizon.it.just.works/auth/logout
                 WEBSSO_DEFAULT_REDIRECT_LOGOUT: https://keystone.it.just.works/v3/auth/OS-FEDERATION/identity_providers/keycloak/protocols/mapped/websso/?logout=https://horizon.it.just.works/auth/logout
