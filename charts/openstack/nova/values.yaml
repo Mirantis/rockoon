@@ -1677,7 +1677,7 @@ conf:
     logger_os.brick:
       level: INFO
       handlers: ""
-      qualname: os.brick
+      qualname: os_brick
     logger_oslo_notification_audit:
       level: INFO
       handlers: ""
