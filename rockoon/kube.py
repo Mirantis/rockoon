@@ -982,13 +982,14 @@ class Pod(pykube.Pod):
             "stdout": "",
             "error_json": {},
         }
+        exc_to_raise = None
         try:
             wsclient = websocket_client.KubernetesWebSocketsClient(
                 self.api.config, **data
             )
             try:
                 wsclient.run_forever(timeout=timeout)
-            except TimeoutError:
+            except TimeoutError as e:
                 LOG.error(
                     "Timed out while runing command %s in %s/%s",
                     command,
@@ -996,12 +997,14 @@ class Pod(pykube.Pod):
                     container,
                 )
                 res["timed_out"] = True
+                exc_to_raise = e
             res.update(wsclient.read_all())
         except Exception as e:
             LOG.exception(
                 "Got exception when running command in pod", exc_info=e
             )
             res["exception"] = e
+            exc_to_raise = e
         finally:
             if wsclient is not None:
                 wsclient.close()
@@ -1018,12 +1021,12 @@ class Pod(pykube.Pod):
                         self.name,
                         container,
                     )
-                    if raise_on_error:
-                        raise exception.PodExecCommandFailed()
-            except Exception:
-                LOG.error(
-                    "Failed to extract error from response %s", res["error"]
-                )
+                    raise exception.PodExecCommandFailed(stderr=res["stderr"])
+            except Exception as e:
+                LOG.exception(e)
+                exc_to_raise = e
+        if raise_on_error and exc_to_raise:
+            raise exc_to_raise
         return res
 
     @property
