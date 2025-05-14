@@ -340,6 +340,8 @@ services:
               available_nodes: 10
               hybrid_topology_netA_network_types: {{ ','.join(hybrid_topology_netA_network_types) }}
               hybrid_topology_netB_network_types: {{ ','.join(hybrid_topology_netB_network_types) }}
+              hybrid_topology_bm_netA_network_types: {{ ','.join(hybrid_topology_netA_network_types) }}
+              hybrid_topology_bm_netB_network_types: {{ ','.join(hybrid_topology_netA_network_types) }}
             {%- if ironic_enabled %}
               active_timeout: 2700
               adjusted_root_disk_size_gb: 4
