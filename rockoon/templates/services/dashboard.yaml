@@ -12,6 +12,7 @@
 {%- set horizon_features = spec.get('features', {}).get('horizon', {}) %}
 {%- set neutron_backend = spec.features.neutron.get('backend', 'ml2') %}
 {%- set custom_policies = {} %}
+{%- set region_name = spec.get('region_name', 'RegionOne') %}
 {%- for service_name in os_policy_services %}
 {%- if service_name in spec.get("features", {}).get("policies", {}) %}
 {%- do custom_policies.update({service_name: {"01-custom.yaml": spec.features.policies.get(service_name) }}) %}
@@ -328,6 +329,10 @@ spec:
             config:
               raw:
                 DEFAULT_THEME: {{ horizon_features.get('default_theme', 'default') }}
+{%- if OSVer[spec.openstack_version] >= OSVer.rocky %}
+                DEFAULT_SERVICE_REGIONS:
+                  '*': {{ region_name }}
+{%- endif %}
 {%- if federation.get("openid", {}).get("enabled") %}
 {%- set sso_logout_url = "https://keystone." + spec.public_domain_name + "/v3/auth/OS-FEDERATION/identity_providers/keycloak/protocols/mapped/websso/?logout=https://horizon." + spec.public_domain_name + "/auth/logout" %}
                 LOGOUT_URL: {{ sso_logout_url }}
