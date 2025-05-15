@@ -306,6 +306,7 @@ conf:
         - oslo_notification_audit
         - oslo_concurrency
         - os_brick
+        - glance_store
         - eventletwsgi
     handlers:
       keys:
@@ -323,6 +324,10 @@ conf:
       level: INFO
       handlers: ""
       qualname: glance
+    logger_glance_store:
+      level: INFO
+      handlers: ""
+      qualname: glance_store
     logger_oslo_notification_audit:
       level: INFO
       handlers: ""

@@ -193,6 +193,8 @@ spec:
         logging:
           logger_glance:
             level: INFO
+          logger_glance_store:
+            level: INFO
           logger_os.brick:
             level: INFO
       dependencies:

@@ -339,6 +339,8 @@ spec:
             level: {{ spec.get('features', {}).get('logging', {}).get('glance', {}).get('level', 'INFO') }}
           logger_glance:
             level: {{ spec.get('features', {}).get('logging', {}).get('glance', {}).get('level', 'INFO') }}
+          logger_glance_store:
+            level: {{ spec.get('features', {}).get('logging', {}).get('glance', {}).get('level', 'INFO') }}
 {%- if 'cinder' in multi_backends %}
         enable_iscsi: true
 {%- endif %}
