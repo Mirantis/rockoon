@@ -1054,6 +1054,7 @@ conf:
       keys:
         - root
         - cinder
+        - os.brick
         - oslo_notification_audit
     handlers:
       keys:
@@ -1075,6 +1076,10 @@ conf:
       level: INFO
       handlers: ""
       qualname: oslo.messaging.notification.audit
+    logger_os.brick:
+      level: INFO
+      handlers: ""
+      qualname: os_brick
     logger_amqp:
       level: WARNING
       handlers: ""
