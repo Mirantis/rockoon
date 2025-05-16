@@ -70,8 +70,33 @@ def read_json_file(file_name):
         LOG.warning("Invalid JSON file %s", file_name)
     return {}
 
+def check_socket(host, port):
+    sock = None
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(10)
+        result = sock.connect_ex((host, port))
+        if result != 0:
+            return False
+    finally:
+        if sock:
+            sock.close()
+    return True
 
-def is_connected_to(process_name, ports):
+def _can_resolve(host):
+    try:
+        socket.gethostbyname(host)
+        return True
+    except Exception:
+        return False
+
+def is_connected_to(process_name, host, port):
+    if not _can_resolve(host):
+        LOG.warning(f"Can't resolve target host {host}. Skipping port check.")
+        return True
+    if not check_socket(host, port):
+        LOG.warning(f"Server {host} not responding on port {port}")
+        return True
     for pr in psutil.pids():
         try:
             p = psutil.Process(pr)
@@ -79,11 +104,11 @@ def is_connected_to(process_name, ports):
                 pcon = p.connections()
                 for con in pcon:
                     try:
-                        port = con.raddr[1]
+                        _port = con.raddr[1]
                         status = con.status
                     except IndexError:
                         continue
-                    if port in ports and status in [tcp_established, tcp_syn]:
+                    if _port == port and status in [tcp_established, tcp_syn]:
                         return True
         except psutil.NoSuchProcess:
             continue
@@ -92,13 +117,15 @@ def is_connected_to(process_name, ports):
 def get_rabbitmq_ports():
     "Get RabbitMQ ports"
     transport_url = cfg.get("DEFAULT", "transport_url")
-    port = urlparse.urlparse(transport_url.split(",")[0]).port
-    return [port]
+    parsed_url = urlparse.urlparse(transport_url.split(",")[0])
+    port = parsed_url.port
+    host = parsed_url.hostname
+    return host, port
 
 
 def is_connected_to_rabbitmq(process_name):
-    ports = get_rabbitmq_ports()
-    return is_connected_to(process_name, ports)
+    host, port = get_rabbitmq_ports()
+    return is_connected_to(process_name, host=host, port=port)
 
 
 def _get_hostname():
