@@ -15,7 +15,7 @@ limitations under the License.
 {{- define "apiProbeTemplate" }}
 httpGet:
   scheme: HTTP
-  path: /
+  path: /healthcheck
   port: {{ tuple "volumev3" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
 {{- end }}
 
