@@ -41,7 +41,7 @@ metadata:
   name: {{ $secretPrefix }}-ca-bundle
 type: Opaque
 data:
-{{- $cabundle := "" }}
+{{- $cabundles := list }}
 {{- $endpoint_name := index . "endpoint" | default "public" }}
 {{- range $key, $val := $envAll.Values.endpoints }}
 {{- if kindIs "map" ( index $envAll.Values.endpoints $key) }}
@@ -51,12 +51,12 @@ data:
 {{- if hasKey (index $endpoint.host_fqdn_override $endpoint_name) "tls" }}
 {{- if hasKey (index $endpoint.host_fqdn_override $endpoint_name "tls") "ca" }}
 {{- $ca := index $endpoint.host_fqdn_override $endpoint_name "tls" "ca" }}
-{{- $cabundle = printf "%s%s" $cabundle $ca }}
+{{- $cabundles = append $cabundles $ca }}
 {{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
-  ca_bundle: {{ $cabundle | trim | b64enc}}
+  ca_bundle: {{ join "" ($cabundles | uniq) | trim | b64enc}}
 {{- end }}
