@@ -1367,7 +1367,6 @@ class ProxySecret:
     def get_proxy_vars(self, no_proxy=None):
         data = self.decode(get_secret_data(self.namespace, self.name))
         proxy_vars = {}
-        custom_vars = {}
 
         def _set_proxy_var(key, value):
             if key.lower() == "no_proxy" and no_proxy:
@@ -1384,6 +1383,8 @@ class ProxySecret:
         for key, value in data.items():
             if key in constants.PROXY_VARS_NAMES:
                 _set_proxy_var(key, value)
-            else:
-                custom_vars[key.lower()] = value
-        return proxy_vars, custom_vars
+        return proxy_vars
+
+    def get_proxy_certs(self):
+        data = self.decode(get_secret_data(self.namespace, self.name))
+        return data.get("PROXY_CA_CERTIFICATE", "")

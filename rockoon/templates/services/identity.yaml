@@ -266,11 +266,6 @@ spec:
 {%- if rgw_internal_cacert is defined %}
 {{ rgw_internal_cacert | indent( width=18, first=True) }}
 {%- endif %}
-{%- if proxy_settings is defined %}
-{%- if proxy_settings.get("proxy_ca_certificate") %}
-{{ proxy_settings["proxy_ca_certificate"] | indent( width=18, first=True) }}
-{%- endif %}
-{%- endif %}
                 crt: |
 {{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
                 key: |

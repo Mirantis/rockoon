@@ -67,6 +67,7 @@ spec:
               tls:
                 ca: |
                   TEST CA
+                  PROXY CA
                 crt: |
                   TEST CRT
                 key: |
@@ -104,6 +105,7 @@ spec:
               tls:
                 ca: |
                   TEST CA
+                  PROXY CA
                 crt: |
                   TEST CRT
                 key: |
@@ -117,6 +119,7 @@ spec:
               tls:
                 ca: |
                   TEST CA
+                  PROXY CA
                 crt: |
                   TEST CRT
                 key: |

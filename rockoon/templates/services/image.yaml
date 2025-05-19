@@ -404,11 +404,6 @@ spec:
               tls:
                 ca: |
 {{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
-{%- if proxy_settings is defined %}
-{%- if proxy_settings.get("proxy_ca_certificate") %}
-{{ proxy_settings["proxy_ca_certificate"] | indent( width=18, first=True) }}
-{%- endif %}
-{%- endif %}
                 crt: |
 {{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
                 key: |

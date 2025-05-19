@@ -21,6 +21,7 @@ from rockoon.filters.common_filters import (
 )
 from rockoon import utils
 from rockoon import kube
+from rockoon import secrets
 from rockoon.utils import merger
 
 LOG = utils.get_logger(__name__)
@@ -364,6 +365,22 @@ def merge_spec(spec, logger):
 
     # Merge operator defaults with user context.
     return merger.merge(base, spec)
+
+
+def update_ca_bundles(spec):
+    ca_bundles = [
+        spec["features"]["ssl"]["public_endpoints"]["ca_cert"].strip()
+    ]
+    # Add extra proxy CA bundle to mspec
+    if settings.OSCTL_PROXY_DATA["enabled"]:
+        proxy_secret = secrets.ProxySecret()
+        proxy_ca = proxy_secret.get_proxy_certs().strip()
+
+        if proxy_ca:
+            ca_bundles.append(proxy_ca)
+    spec["features"]["ssl"]["public_endpoints"]["ca_cert"] = "\n".join(
+        ca_bundles
+    )
 
 
 def render_cache_template(mspec, name, images, node_selector):

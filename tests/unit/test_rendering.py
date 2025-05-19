@@ -227,9 +227,6 @@ def get_render_kwargs(service, context, default_args):
         service_t_args["proxy_vars"] = context_template_args.get(
             "proxy_vars", default_args["proxy_vars"]
         )
-        service_t_args["proxy_settings"] = context_template_args.get(
-            "proxy_settings", default_args["proxy_settings"]
-        )
         service_t_args["network_policies"] = context_template_args.get(
             "network_policies", default_args["network_policies"]
         )

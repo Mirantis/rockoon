@@ -284,17 +284,13 @@ spec:
             public:
               host: neutron.it.just.works
               tls:
-                ca: 'TEST CA
-
+                ca: |
+                  TEST CA
                   PROXY CA
-
-                  '
-                crt: 'TEST CRT
-
-                  '
-                key: 'TEST KEY
-
-                  '
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
           hosts:
             admin:
               host: neutron-server
@@ -303,15 +299,13 @@ spec:
             public:
               host: neutron
               tls:
-                ca: 'TEST CA
-
-                  '
-                crt: 'TEST CRT
-
-                  '
-                key: 'TEST KEY
-
-                  '
+                ca: |
+                  TEST CA
+                  PROXY CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
           port:
             api:
               admin: 9696

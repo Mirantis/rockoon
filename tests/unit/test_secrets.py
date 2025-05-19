@@ -301,9 +301,11 @@ def test_get_proxy_vars_from_secret(mock_data, override_setting):
 
     secret = secrets.ProxySecret()
 
-    proxy_vars, proxy_settings = secret.get_proxy_vars(
+    proxy_vars = secret.get_proxy_vars(
         no_proxy=["svc.cluster.local", "it.just.works"]
     )
+    proxy_certs = secret.get_proxy_certs()
+
     expected_proxy = "http://squid.openstack.svc.cluster.local:80"
     expected_no_proxy = "it.just.works,svc.cluster.local,test.domain.local"
 
@@ -321,10 +323,9 @@ def test_get_proxy_vars_from_secret(mock_data, override_setting):
         "test_ca\n"
         "-----END CERTIFICATE-----\n"
     )
-    expected_settings = {"proxy_ca_certificate": expected_ca_cert}
 
     assert expected_vars == proxy_vars
-    assert expected_settings == proxy_settings
+    assert expected_ca_cert == proxy_certs
 
 
 @mock.patch("rockoon.secrets.Secret.save")

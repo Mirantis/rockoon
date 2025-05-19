@@ -74,7 +74,9 @@ features:
     public_endpoints:
       api_cert: "TEST CRT"
       api_key: "TEST KEY"
-      ca_cert: "TEST CA"
+      ca_cert: |
+        TEST CA
+        PROXY CA
       enabled: true
   stacklight:
     enabled: true

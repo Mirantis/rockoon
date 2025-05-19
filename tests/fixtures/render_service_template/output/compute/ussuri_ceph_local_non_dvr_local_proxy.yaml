@@ -186,17 +186,13 @@ spec:
             public:
               host: nova.it.just.works
               tls:
-                ca: 'TEST CA
-
+                ca: |
+                  TEST CA
                   PROXY CA
-
-                  '
-                crt: 'TEST CRT
-
-                  '
-                key: 'TEST KEY
-
-                  '
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
           hosts:
             admin:
               host: nova-api
@@ -205,15 +201,13 @@ spec:
             public:
               host: nova
               tls:
-                ca: 'TEST CA
-
-                  '
-                crt: 'TEST CRT
-
-                  '
-                key: 'TEST KEY
-
-                  '
+                ca: |
+                  TEST CA
+                  PROXY CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
           port:
             api:
               admin: 8774
@@ -228,29 +222,25 @@ spec:
             public:
               host: metadata.it.just.works
               tls:
-                ca: 'TEST CA
-
-                  '
-                crt: 'TEST CRT
-
-                  '
-                key: 'TEST KEY
-
-                  '
+                ca: |
+                  TEST CA
+                  PROXY CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
           hosts:
             default: nova-metadata
             public:
               host: metadata
               tls:
-                ca: 'TEST CA
-
-                  '
-                crt: 'TEST CRT
-
-                  '
-                key: 'TEST KEY
-
-                  '
+                ca: |
+                  TEST CA
+                  PROXY CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
           port:
             metadata:
               default: 8775
@@ -263,29 +253,25 @@ spec:
             public:
               host: novncproxy.it.just.works
               tls:
-                ca: 'TEST CA
-
-                  '
-                crt: 'TEST CRT
-
-                  '
-                key: 'TEST KEY
-
-                  '
+                ca: |
+                  TEST CA
+                  PROXY CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
           hosts:
             default: nova-novncproxy
             public:
               host: novncproxy
               tls:
-                ca: 'TEST CA
-
-                  '
-                crt: 'TEST CRT
-
-                  '
-                key: 'TEST KEY
-
-                  '
+                ca: |
+                  TEST CA
+                  PROXY CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
           port:
             novnc_proxy:
               default: 6080
@@ -390,15 +376,13 @@ spec:
             public:
               host: placement.it.just.works
               tls:
-                ca: 'TEST CA
-
-                  '
-                crt: 'TEST CRT
-
-                  '
-                key: 'TEST KEY
-
-                  '
+                ca: |
+                  TEST CA
+                  PROXY CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
           hosts:
             admin:
               host: placement-api
@@ -407,15 +391,13 @@ spec:
             public:
               host: placement
               tls:
-                ca: 'TEST CA
-
-                  '
-                crt: 'TEST CRT
-
-                  '
-                key: 'TEST KEY
-
-                  '
+                ca: |
+                  TEST CA
+                  PROXY CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
           port:
             api:
               admin: 8778

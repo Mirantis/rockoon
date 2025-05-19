@@ -8,6 +8,7 @@ import kopf
 import pytest
 
 from rockoon import constants, layers
+from rockoon import secrets
 
 
 CREDS_KWARGS = {
@@ -579,3 +580,48 @@ def test_render_cache_template(
     with open("tests/fixtures/cache_images.yaml") as f:
         expected = yaml.safe_load(f)
     assert expected == cache
+
+
+@mock.patch.object(secrets.ProxySecret, "decode")
+@pytest.mark.parametrize(
+    "override_setting",
+    [
+        {
+            "name": "OSCTL_PROXY_DATA",
+            "value": {"enabled": "true", "secretName": "cc_secret"},
+        }
+    ],
+    indirect=["override_setting"],
+)
+def test_update_ca_bundles(
+    mock_proxy_secret, override_setting, openstackdeployment
+):
+    mock_proxy_secret.return_value = {
+        "HTTP_PROXY": "http://squid.openstack.svc.cluster.local:80",
+        "HTTPS_PROXY": "http://squid.openstack.svc.cluster.local:80",
+        "NO_PROXY": "test.domain.local",
+        "PROXY_CA_CERTIFICATE": (
+            "-----BEGIN CERTIFICATE-----\n"
+            "test_proxy_ca\n"
+            "-----END CERTIFICATE-----\n"
+        ),
+    }
+    osdpl_spec = openstackdeployment["spec"]
+    osdpl_spec["features"]["ssl"]["public_endpoints"]["ca_cert"] = (
+        "-----BEGIN CERTIFICATE-----\n"
+        "main_test_ca\n"
+        "-----END CERTIFICATE-----\n"
+    )
+    expected_ca_bundle = (
+        "-----BEGIN CERTIFICATE-----\n"
+        "main_test_ca\n"
+        "-----END CERTIFICATE-----\n"
+        "-----BEGIN CERTIFICATE-----\n"
+        "test_proxy_ca\n"
+        "-----END CERTIFICATE-----"
+    )
+    layers.update_ca_bundles(osdpl_spec)
+    assert (
+        osdpl_spec["features"]["ssl"]["public_endpoints"]["ca_cert"]
+        == expected_ca_bundle
+    )

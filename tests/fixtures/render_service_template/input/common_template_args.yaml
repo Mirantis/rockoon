@@ -231,7 +231,6 @@ images:
 proxy_vars:
   HTTP_PROXY: http://127.0.0.1:3128
   NO_PROXY: .svc.cluster.local
-proxy_settings: {}
 credentials_secret_name: keystone-credential-data
 fernet_secret_name: keystone-fernet-data
 network_policies:

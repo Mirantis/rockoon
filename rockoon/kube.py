@@ -1,6 +1,7 @@
 import abc
 import asyncio
 import base64
+import copy
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import inspect
@@ -94,7 +95,10 @@ class OpenStackDeployment(pykube.objects.NamespacedAPIObject):
 
     @property
     def mspec(self):
-        subs_spec = layers.substitude_osdpl(self.obj["spec"])
+        # NOTE(okononenko) we want to avoid spec modification
+        spec_copy = copy.deepcopy(self.obj["spec"])
+        subs_spec = layers.substitude_osdpl(spec_copy)
+        layers.update_ca_bundles(subs_spec)
         mspec = layers.merge_spec(subs_spec, LOG)
         return mspec
 
