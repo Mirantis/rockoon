@@ -1467,6 +1467,55 @@ def cleanup(script_args):
     cleanup_linux_netns(script_args)
 
 
+def run_mariadb_cmd(pod, cmd, timeout=120):
+    command = ["/bin/sh", "-c", cmd]
+    result = pod.exec(
+        command,
+        container="mariadb",
+        timeout=timeout,
+        raise_on_error=True,
+    )
+    return result
+
+
+def check_galera_state(expected, pod):
+    vars = ",".join(["'" + var + "'" for var in expected.keys()])
+    cmd = (
+        'mariadb --user=root --password="${MYSQL_DBADMIN_PASSWORD}" '
+        f'-N -B -e "SHOW GLOBAL STATUS WHERE Variable_name IN ({vars});"'
+    )
+    result = run_mariadb_cmd(pod, cmd)
+    res_state = set()
+    for item in result["stdout"].strip().split("\n"):
+        key, value = item.split("\t")
+        res_state.add((key, value))
+    return res_state.difference(set(expected.items()))
+
+
+def wait_mariadb_desynced(pod, cluster_size, tries=60, delay=10):
+    start = 0
+    expected = {
+        "wsrep_ready": "ON",
+        "wsrep_cluster_status": "Primary",
+        "wsrep_local_state_comment": "Donor/Desynced",
+        "wsrep_cluster_size": str(cluster_size),
+        "wsrep_connected": "ON",
+    }
+    while start < tries:
+        LOG.info("Waiting galera to become Desynced")
+        pod.reload()
+        if not pod.ready:
+            diff = check_galera_state(expected, pod)
+            if diff:
+                LOG.info(f"Galera is not in expected state, diff is {diff}")
+            else:
+                LOG.info("Galera cluster member is Desynced.")
+                return
+        time.sleep(delay)
+        start += 1
+    raise RuntimeError("Tired waiting for mariadb to be Desynced")
+
+
 WORKFLOW = [
     {
         "executable": prepare,
@@ -1647,19 +1696,51 @@ def do_neutron_db_backup():
     LOG.info("Backing up Neutron database")
     database_svc = get_service(osdpl, "database")
     database_obj = get_objects_by_id(database_svc, "mariadb-server")[0]
-    database_pods = database_obj.pods
-    for pod in database_pods:
+    mariadb_pods = sorted(
+        database_obj.pods, key=lambda p: p.name, reverse=True
+    )
+    # get replica with highest index
+    target_pod = mariadb_pods[0]
+    cluster_size = int(
+        run_mariadb_cmd(target_pod, "echo ${MARIADB_REPLICAS}")[
+            "stdout"
+        ].strip()
+    )
+    if cluster_size != len(mariadb_pods):
+        raise RuntimeError(
+            f"Found {len(mariadb_pods)} mariadb pods, need {cluster_size} to make backup"
+        )
+    synced_state = {
+        "wsrep_ready": "ON",
+        "wsrep_cluster_status": "Primary",
+        "wsrep_local_state_comment": "Synced",
+        "wsrep_cluster_size": str(cluster_size),
+        "wsrep_connected": "ON",
+    }
+    for pod in mariadb_pods:
+        diff = check_galera_state(synced_state, pod)
+        if diff:
+            raise RuntimeError(
+                f"Mariadb {pod} is not in expected state {synced_state}"
+            )
+    asyncio.run(database_obj.wait_ready(timeout=600))
+    try:
+        LOG.info(f"Desyncing mariadb on {target_pod} from Galera cluster")
+        cmd = (
+            'mariadb --user=root --password="${MYSQL_DBADMIN_PASSWORD}" '
+            '-e "SET GLOBAL wsrep_desync = ON"'
+        )
+        run_mariadb_cmd(target_pod, cmd)
+        wait_mariadb_desynced(target_pod, cluster_size)
+        LOG.info(f"Desynced mariadb on {target_pod} from Galera cluster")
+        LOG.info(f"Starting Neutron database backup on {target_pod}")
         timestamp = time.strftime("%Y%m%d%H%M%S")
         cmd = (
-            'mysqldump --user=root --password="${MYSQL_DBADMIN_PASSWORD}" --lock-tables '
+            'mariadb-dump --user=root --password="${MYSQL_DBADMIN_PASSWORD}" --single-transaction '
             f"--databases neutron --result-file={BACKUP_NEUTRON_DB_PATH}/neutron-ovs-ovn-migration-{timestamp}.sql"
         )
-        command = ["/bin/sh", "-c", cmd]
-        result = pod.exec(
-            command,
-            container="mariadb",
-            timeout=MARIADB_NEUTRON_BACKUP_TIMEOUT,
-            raise_on_error=True,
+        result = run_mariadb_cmd(
+            target_pod, cmd, timeout=MARIADB_NEUTRON_BACKUP_TIMEOUT
         )
         if result["timed_out"]:
             raise RuntimeError(
@@ -1669,8 +1750,16 @@ def do_neutron_db_backup():
             raise RuntimeError(
                 f"Failed to do backup because of exception {result['exception']}"
             )
-        LOG.info(f"Neutron database dump on {pod} is completed")
-    LOG.info(f"Neutron database dumps are completed")
+        LOG.info(f"Neutron database dump on {target_pod} is completed")
+    finally:
+        LOG.info(f"Syncing mariadb on {target_pod} back to Galera cluster")
+        cmd = (
+            'mariadb --user=root --password="${MYSQL_DBADMIN_PASSWORD}" '
+            '-e "SET GLOBAL wsrep_desync = OFF"'
+        )
+        run_mariadb_cmd(target_pod, cmd)
+        asyncio.run(database_obj.wait_ready(timeout=600))
+        LOG.info(f"Synced mariadb on {target_pod} back to Galera cluster")
 
 
 def main():
