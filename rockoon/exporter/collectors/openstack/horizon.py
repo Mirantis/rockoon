@@ -15,6 +15,7 @@ import hashlib
 import html.parser
 import http.cookiejar
 import ssl
+import keystoneauth1
 
 from time import perf_counter
 from urllib import parse
@@ -66,14 +67,23 @@ class OsdplHorizonMetricCollector(base.OpenStackBaseMetricCollector):
     _name = "osdpl_horizon"
     _description = "OpenStack Dashboard service metrics"
     _os_service_types = ["dashboard"]
-    # The 'dashboard' service is not listed in identity services
-    is_service_available = True
 
     def __init__(self):
         self._opener = None
         self.ca_cert_checksum = None
         self.cookie_jar = http.cookiejar.CookieJar()
         super().__init__()
+
+    # Override base property. The 'dashboard' service is not listed in identity services
+    @property
+    def is_service_available(self):
+        try:
+            list(self.oc.oc.identity.services())
+        except keystoneauth1.exceptions.http.Unauthorized:
+            LOG.warning("Unauthorized. Resetting OpenStack client.")
+            self._oc = None
+        finally:
+            return True
 
     @utils.timeit
     def init_families(self):
