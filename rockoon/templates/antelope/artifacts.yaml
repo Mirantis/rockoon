@@ -79,7 +79,7 @@ nova_spiceproxy_assets: '{{ images_base_url }}/openstack/nova:antelope-jammy-202
 nova_placement: '{{ images_base_url }}/openstack/nova:antelope-jammy-20250415072626'
 nova_scheduler: '{{ images_base_url }}/openstack/nova:antelope-jammy-20250415072626'
 nova_service_cleaner: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250415072626'
-libvirt: '{{ images_base_url }}/general/libvirt:8.0.x-jammy-reef-20250419095835'
+libvirt: '{{ images_base_url }}/general/libvirt:8.0.x-jammy-reef-20250514041009'
 octavia_api: '{{ images_base_url }}/openstack/octavia:antelope-jammy-20250415072626'
 octavia_db_sync: '{{ images_base_url }}/openstack/octavia:antelope-jammy-20250415072626'
 octavia_health_manager: '{{ images_base_url }}/openstack/octavia:antelope-jammy-20250415072626'
