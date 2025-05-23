@@ -92,10 +92,10 @@ def _can_resolve(host):
 
 def is_connected_to(process_name, host, port):
     if not _can_resolve(host):
-        LOG.warning(f"Can't resolve target host {host}. Skipping port check.")
+        LOG.warning("Can't resolve target host %s. Skipping port check.", host)
         return True
     if not check_socket(host, port):
-        LOG.warning(f"Server {host} not responding on port {port}")
+        LOG.warning("Server %s not responding on port %s", host, port)
         return True
     for pr in psutil.pids():
         try:
