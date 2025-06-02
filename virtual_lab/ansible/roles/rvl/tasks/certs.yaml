@@ -87,11 +87,15 @@
   when: osdpl_api_cert_result is changed
 
 - name: Copy the certificate
+  become: true
+  become_user: root
   copy:
     src: "{{ rvl_ca_certs_path }}/ca-certificate.pem"
     dest: "/usr/local/share/ca-certificates/osdpl-ca.crt"
   register: copy_osdpl_ca_result
 
 - name: Update CA Trust (Debian, Ubuntu)
+  become: true
+  become_user: root
   command: update-ca-certificates
   when: copy_osdpl_ca_result is changed
