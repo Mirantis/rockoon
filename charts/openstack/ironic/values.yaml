@@ -501,7 +501,7 @@ endpoints:
         default: 6385
         public: 80
       pxe_http:
-        default: 8080
+        default: 6380
   image:
     name: glance
     hosts:
