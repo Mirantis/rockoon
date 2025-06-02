@@ -27,6 +27,7 @@ RUN_SSHD_USER_ID=${RUN_SSHD_USER_ID:-${NOVA_USER_UID}}
 
 # Directory /run/sshd should not be group or world-writable
 RUN_SSHD_DIR=/run/sshd
+mkdir -p ${RUN_SSHD_DIR}
 chmod 00755 ${RUN_SSHD_DIR}
 chown -R ${RUN_SSHD_USER_ID} ${RUN_SSHD_DIR}
 

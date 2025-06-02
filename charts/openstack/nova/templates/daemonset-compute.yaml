@@ -132,8 +132,8 @@ spec:
             - name: nova-ssh
               mountPath: /root/.ssh/authorized_keys
               subPath: ssh-key-public
-            - name: runsshd
-              mountPath: /run/sshd
+            - name: runempty
+              mountPath: /run
         - name: lock-perms
 {{ tuple $envAll "nova_compute" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ dict "envAll" $envAll "application" "nova" "container" "lock_perms" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
@@ -374,8 +374,6 @@ spec:
               mountPath: /tmp
             - name: varlibnova
               mountPath: /var/lib/nova
-            - name: runsshd
-              mountPath: /run/sshd
             - name: nova-etc
               mountPath: /etc/ssh/sshd_config
               subPath: sshd-config
@@ -384,6 +382,9 @@ spec:
               mountPath: /tmp/ssh-start.sh
               subPath: ssh-start.sh
               readOnly: true
+            # avoid conflicting with sshd running on host
+            - name: runempty
+              mountPath: /run
 {{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.compute.osapi.internal "path" "/etc/nova/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
         {{ end }}
         {{- if .Values.conf.inhibit_lock.enabled }}
@@ -463,7 +464,7 @@ spec:
         - name: run
           hostPath:
             path: /run
-        - name: runsshd
+        - name: runempty
           emptyDir: {}
         - name: cgroup
           hostPath:

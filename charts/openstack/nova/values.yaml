@@ -728,8 +728,11 @@ conf:
   ssh_private: 'null'
   ssh_public: 'null'
   sshd_config: |
+    SyslogFacility AUTH
+    Subsystem sftp internal-sftp
+    PrintLastLog no
     ChallengeResponseAuthentication no
-    UsePAM yes
+    UsePAM no
     X11Forwarding no
     PrintMotd no
     AcceptEnv LANG LC_*
