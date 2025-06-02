@@ -8,6 +8,8 @@
     - "{{ rvl_ca_certs_path }}"
 
 - name: Install helm if not exists
+  become: true
+  become_user: root
   unarchive:
     src: "https://get.helm.sh/helm-{{ rvl_clients_helm_release }}-linux-amd64.tar.gz"
     dest: /usr/local/bin
@@ -20,6 +22,8 @@
     creates: /usr/local/bin/helm
 
 - name: Install kubectl if not exists
+  become: true
+  become_user: root
   ansible.builtin.get_url:
     url: "https://dl.k8s.io/release/{{ rvl_clients_kubectl_release }}/bin/linux/amd64/kubectl"
     dest: /usr/local/bin/kubectl

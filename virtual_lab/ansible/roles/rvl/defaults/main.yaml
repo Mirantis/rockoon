@@ -14,6 +14,7 @@ rvl_sources_charts: /src/sources/charts/
 rvl_directory: "{{ playbook_dir }}/../../"
 rvl_clients_helm_release: v3.16.1
 rvl_clients_kubectl_release: v1.31.0
+rvl_osdpl_create: true
 rvl_osdpl_live_migration_interface: "{{ ansible_default_ipv4.interface }}"
 rvl_osdpl_tunnel_interface: "{{ ansible_default_ipv4.interface }}"
 rvl_osdpl_floating_network:
@@ -131,3 +132,8 @@ rvl_images_loci_images_mapping:
   placement:
     - placement
     - placement_db_sync
+
+rvl_deploy_ceph: false
+rvl_chart_ref_ceph_operator: "{{ rvl_binary_public_base_url }}/ceph/helm/ceph-operator-1.0.0-mcc-2.29.0-7.tgz"
+rvl_metallb_address_pool_addresses:
+  - 10.172.1.100-10.172.1.255

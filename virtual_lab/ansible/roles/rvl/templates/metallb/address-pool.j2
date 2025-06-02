@@ -5,7 +5,6 @@ metadata:
   name: openstack-default
   namespace: metallb
 spec:
-  addresses:
-  - 10.172.1.100-10.172.1.255
+  addresses: {{ rvl_metallb_address_pool_addresses }}
   autoAssign: true
   avoidBuggyIPs: true

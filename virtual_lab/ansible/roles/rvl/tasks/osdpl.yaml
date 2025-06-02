@@ -16,9 +16,7 @@
 - name: Template a file secret /src/k8s/secret-osdpl-hidden.yaml
   ansible.builtin.template:
     src: secret-osdpl-hidden.j2
-    dest: /src/k8s/secret-osdpl-hidden.yaml
-    owner: bin
-    group: root
+    dest: "{{ rvl_k8s_objects_path }}/secret-osdpl-hidden.yaml"
     mode: '0644'
   vars:
     api_key: "{{ osdpl_api_key_result.content }}"
@@ -32,13 +30,10 @@
     state: present
     src: "{{rvl_k8s_objects_path }}/secret-osdpl-hidden.yaml"
   when: osdpl_hidden is changed
-
 - name: Template a file osdpl /src/k8s/osdpl.yaml
   ansible.builtin.template:
     src: osdpl.j2
     dest: "{{rvl_k8s_objects_path }}/osdpl.yaml"
-    owner: bin
-    group: root
     mode: '0644'
   vars:
     rockoon:
@@ -52,7 +47,7 @@
     kubeconfig: "{{ kubeconfig }}"
     state: present
     src: "{{rvl_k8s_objects_path }}/osdpl.yaml"
-  when: osdpl is changed
+  when: rvl_osdpl_create and osdpl is changed
 
 - name: Install the latest jq
   ansible.builtin.package:
@@ -66,6 +61,7 @@
     NAMESPACE: openstack
     OSDPL_NAME: osh-dev
   ansible.builtin.script: osdpl-wait.sh
+  when: rvl_osdpl_create
   tags:
   - never
   - wait
