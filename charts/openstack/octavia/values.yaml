@@ -103,6 +103,7 @@ images:
     octavia_health_manager: docker.io/loci/octavia:master-ubuntu
     octavia_health_manager_init: docker.io/kolla/ubuntu-source-octavia-health-manager:rocky
     openvswitch_vswitchd: docker.io/kolla/centos-source-openvswitch-vswitchd:rocky
+    octavia_lb_failover: docker.io/openstackhelm/heat:ocata
   pull_policy: "IfNotPresent"
   local_registry:
     active: false
@@ -324,6 +325,10 @@ dependencies:
           service: load_balancer
         - endpoint: internal
           service: identity
+    lb_failover:
+      services:
+        - endpoint: internal
+          service: load_balancer
 conf:
   api_audit_map:
     DEFAULT:
@@ -1013,6 +1018,13 @@ pod:
         limits:
           memory: "1024Mi"
           cpu: "2000m"
+      lb_failover:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
   probes:
     octavia_api:
       octavia_api:
@@ -1196,6 +1208,19 @@ pod:
           capabilities:
             drop:
               - ALL
+    lb_failover:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+        fsGroup: 42424
+      container:
+        lb_failover:
+          runAsNonRoot: true
+          runAsUser: 42424
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
     octavia_api:
       pod:
         runAsUser: 42424
@@ -1274,6 +1299,20 @@ jobs:
   create_resources:
     backoffLimit: 20
     restartPolicy: OnFailure
+  lb_failover:
+    backoffLimit: 0
+    completions: 1
+    parallelism: 1
+    restartPolicy: Never
+    env:
+      LB_FAILOVER_MAX_WORKERS: 5
+      LB_FAILOVER_LOG_LEVEL: "debug"
+      LB_FAILOVER_FAIL_ON_ERROR: true
+      LB_FAILOVER_AMPHORA_AGENT_PORT: "9443"
+      LB_FAILOVER_FAILOVER_LB_CASES: "AMPHORA_CERT_EXPIRED,PROVISIONING_STATUS_ERROR,AMPHORA_UNREACHABLE"
+      LB_FAILOVER_RETRY_DELAY: 5
+      LB_FAILOVER_RETRY_BACKOFF: 10
+      LB_FAILOVER_RETRY_ATTAMPTS: 7
 
 manifests:
   secret_ca_bundle: false
@@ -1298,6 +1337,7 @@ manifests:
   job_ks_service: true
   job_ks_user: true
   job_create_resources: true
+  job_lb_failover: false
   pdb_api: true
   pod_rally_test: false
   network_policy: false

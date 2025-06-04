@@ -42,6 +42,7 @@ images:
   cloudprober: cloudprober:latest
   cloudprober_openstack_discovery: cloudprober-openstack-discovery:latest
   create_resources: create-resources:latest
+  octavia_lb_failover: octavia_lb_failover:latest
   stepler_run_tests: stepler-run-tests:latest
   db_drop: db-drop:latest
   db_init: db-init:latest

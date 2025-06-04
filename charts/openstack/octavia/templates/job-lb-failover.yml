@@ -1,0 +1,92 @@
+{{/*
+Copyright 2025 Mirantis Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- if .Values.manifests.job_lb_failover }}
+{{- $envAll := . }}
+
+{{- $serviceName := "octavia" -}}
+{{- $serviceUser := index . "serviceUser" | default $serviceName -}}
+{{- $serviceUserPretty := $serviceUser | replace "_" "-" -}}
+
+{{- $serviceAccountName := printf "%s-%s" $serviceUserPretty "loadbalancers-failover" }}
+{{ tuple $envAll "lb_failover" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ printf "%s-%s" $serviceUserPretty "loadbalancers-failover" | quote }}
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+spec:
+  backoffLimit: {{ $envAll.Values.jobs.lb_failover.backoffLimit }}
+  completions: {{ $envAll.Values.jobs.lb_failover.completions }}
+  parallelism: {{ $envAll.Values.jobs.lb_failover.parallelism }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll $serviceName "lb_failover" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName | quote }}
+{{ dict "envAll" $envAll "application" "lb_failover" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      restartPolicy: {{ $envAll.Values.jobs.lb_failover.restartPolicy }}
+      nodeSelector:
+        {{ .Values.labels.job.node_selector_key }}: {{ .Values.labels.job.node_selector_value }}
+      initContainers:
+{{ tuple $envAll "lb_failover" list | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+      containers:
+        - name: octavia-loadbalancers-failover
+          image: {{ $envAll.Values.images.tags.octavia_lb_failover }}
+          imagePullPolicy: {{ $envAll.Values.images.pull_policy }}
+{{ dict "envAll" $envAll "application" "lb_failover" "container" "lb_failover" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - /tmp/octavia-loadbalancers-failover.py
+{{ tuple $envAll $envAll.Values.pod.resources.jobs.lb_failover | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: ks-octavia-loadbalancers-failover
+              mountPath: /tmp/octavia-loadbalancers-failover.py
+              subPath: octavia-loadbalancers-failover.py
+              readOnly: true
+            - name: os-clouds
+              mountPath: /etc/openstack/clouds.yaml
+              subPath: clouds.yaml
+              readOnly: true
+            - name: octavia-certs
+              mountPath: /etc/octavia/certs/ca_01.pem
+              subPath: ca_01.pem
+            - name: octavia-certs
+              mountPath: /etc/octavia/certs/client.pem
+              subPath: client.pem
+          env:
+{{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" "octavia" "osCloudNameSystem" "admin-system") | indent 12 }}
+{{ include "helm-toolkit.utils.to_k8s_env_vars" $envAll.Values.jobs.lb_failover.env | indent 12 }}
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: ks-octavia-loadbalancers-failover
+          configMap:
+            name: "octavia-bin"
+            defaultMode: 504
+        - name: os-clouds
+          secret:
+            secretName: "octavia-os-clouds"
+            defaultMode: 416
+        - name: octavia-certs
+          secret:
+            secretName: octavia-amphora-tls-certs
+            defaultMode: 416
+{{- end -}}

@@ -143,6 +143,43 @@ def cleanup_helm_cache():
             os.remove(os.path.join(root, file))
 
 
+async def _trigger_octavia_lb_failover(
+    mspec,
+    logger,
+    osdplst,
+    reason,
+    body,
+    meta,
+    spec,
+    child_view,
+    **kwargs,
+):
+    octavia_service = services.registry["load-balancer"](
+        mspec, logger, osdplst, child_view
+    )
+    task_def = {}
+    task_def[
+        asyncio.create_task(
+            octavia_service.apply(
+                event=reason,
+                body=body,
+                meta=meta,
+                spec=spec,
+                logger=logger,
+                **kwargs,
+            )
+        )
+    ] = (octavia_service.apply, reason, body, meta, spec, logger, kwargs)
+    await run_task(task_def)
+    await asyncio.sleep(60)
+    await octavia_service.wait_service_healthy()
+    failover_job = octavia_service.get_child_object(
+        "Job", "octavia-loadbalancers-failover"
+    )
+    await failover_job.purge()
+    await failover_job.enable(spec["openstack_version"], True)
+
+
 async def _regenerate_creds(
     group_name,
     rotation_id,
@@ -211,8 +248,6 @@ async def _regenerate_certs(
             common_name="octavia-amphora-ca",
         )
         cert_secret.save(cert_secret.create())
-        # TODO waiting for octavia deployments restarted and osdplst is applied
-        # TODO run job octavia-amphorae-failover
 
 
 def _get_rotation_id_if_changed(new_auth_data, old_data, component, path):
@@ -301,6 +336,21 @@ async def regenerate_auth_data(
                     LOG.info(
                         f"Finished certificate regeneration for {service_name} {component_name}"
                     )
+                    if (
+                        service_name == "octavia"
+                        and component_name == "amphora"
+                    ):
+                        await _trigger_octavia_lb_failover(
+                            mspec,
+                            logger,
+                            osdplst,
+                            reason,
+                            body,
+                            meta,
+                            spec,
+                            child_view,
+                            **kwargs,
+                        )
 
 
 # on.field to force storing that field to be reacting on its changes

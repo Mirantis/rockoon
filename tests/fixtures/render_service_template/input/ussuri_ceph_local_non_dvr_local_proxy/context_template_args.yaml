@@ -28,6 +28,7 @@ images:
   cinder_volume_usage_audit: cinder-volume-usage-audit:latest
   cinder_service_cleaner: cinder-service-cleaner:latest
   create_resources: create-resources:latest
+  octavia_lb_failover: octavia_lb_failover:latest
   stepler_run_tests: stepler-run-tests:latest
   db_drop: db-drop:latest
   db_init: db-init:latest

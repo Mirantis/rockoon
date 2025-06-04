@@ -18,6 +18,10 @@ load-balancer:octavia:Deployment:octavia-api:
         component: server
   - podSelector:
       matchLabels:
+        application: octavia
+        component: lb_failover
+  - podSelector:
+      matchLabels:
         application: heat
         component: engine
   - podSelector:

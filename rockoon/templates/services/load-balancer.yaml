@@ -89,7 +89,8 @@ spec:
     "octavia_health_manager",
     "octavia_housekeeping",
     "octavia_driver_agent",
-    "create_resources",] %}
+    "create_resources",
+    "octavia_lb_failover",] %}
         {%- if image in images %}
           {{ image }}: {{ images[image] }}
         {%- endif %}

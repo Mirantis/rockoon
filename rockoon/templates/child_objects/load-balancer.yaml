@@ -180,3 +180,15 @@ octavia:
       pod_labels:
         application: octavia
         component: ks-user
+    octavia-loadbalancers-failover:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+          - {{ to_child_object("load-balancer", "octavia", "Deployment", "octavia-api", ["o-api"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - octavia_lb_failover
+      manifest: job_lb_failover
+      pod_labels:
+        application: octavia
+        component: lb_failover

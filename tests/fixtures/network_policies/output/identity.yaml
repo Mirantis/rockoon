@@ -399,6 +399,10 @@ identity:keystone:Deployment:keystone-api:
         component: ks-user
   - podSelector:
       matchLabels:
+        application: octavia
+        component: lb_failover
+  - podSelector:
+      matchLabels:
         application: ceilometer
         component: compute
   - podSelector:

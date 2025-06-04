@@ -206,6 +206,7 @@ spec:
           openvswitch_vswitchd: openvswitch-vswitchd:latest
           rabbit_init: rabbit-init:latest
           test: test:latest
+          octavia_lb_failover: octavia_lb_failover:latest
       jobs:
         create_resources:
           restartPolicy: Never
