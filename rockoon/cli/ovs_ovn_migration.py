@@ -1194,6 +1194,34 @@ def deploy_ovn_db(script_args):
                 },
                 "features": {"neutron": {"backend": "ml2/ovn"}},
                 "services": {
+                    "compute": {
+                        "nova": {
+                            "values": {
+                                "pod": {
+                                    "lifecycle": {
+                                        "upgrades": {
+                                            "daemonsets": {
+                                                "pod_replacement_strategy": "OnDelete"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "libvirt": {
+                            "values": {
+                                "pod": {
+                                    "lifecycle": {
+                                        "upgrades": {
+                                            "daemonsets": {
+                                                "pod_replacement_strategy": "OnDelete"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                    },
                     "networking": {
                         "neutron": {
                             "values": {
@@ -1210,7 +1238,7 @@ def deploy_ovn_db(script_args):
                                 }
                             }
                         },
-                    }
+                    },
                 },
             }
         }
@@ -1428,13 +1456,41 @@ def finalize_migration(script_args):
                     "neutron": {"ovs_ovn_migration": False},
                 },
                 "services": {
+                    "compute": {
+                        "nova": {
+                            "values": {
+                                "pod": {
+                                    "lifecycle": {
+                                        "upgrades": {
+                                            "daemonsets": {
+                                                "pod_replacement_strategy": "RollingUpdate"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "libvirt": {
+                            "values": {
+                                "pod": {
+                                    "lifecycle": {
+                                        "upgrades": {
+                                            "daemonsets": {
+                                                "pod_replacement_strategy": "RollingUpdate"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                    },
                     "networking": {
                         "neutron": {
                             "values": {
                                 "manifests": {"daemonset_metadata_agent": True}
                             }
                         },
-                    }
+                    },
                 },
             }
         }

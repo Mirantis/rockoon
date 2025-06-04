@@ -11,20 +11,56 @@ OVN_BRIDGE="br-int"
 OVS_DB_SOCK="/run/openvswitch/db.sock"
 OVN_CONTROLLER_PID="/run/openvswitch/ovn-controller.pid"
 
-trap err_trap EXIT
-function err_trap {
-    local r=$?
-    if [[ $r -ne 0 ]]; then
-        echo "${0##*/} FAILED"
-    fi
-    exit $r
-}
-
-
 function start () {
+    trap err_trap EXIT
+    function err_trap {
+        local r=$?
+        if [[ $r -ne 0 ]]; then
+            echo "${0##*/} FAILED"
+        fi
+        exit $r
+    }
+
+    function warning_action {
+        echo "[WARNING] Command \"${BASH_COMMAND} line ${BASH_LINENO} FAILED\"" >> /tmp/migration_warnings
+    }
+
+    function post_migration_configuration {
+        set +e
+        trap warning_action ERR
+        echo "Start handling trunk interfaces"
+        for br in $(ovs-vsctl list-br | grep '^tbr-'); do
+            for int in $(ovs-vsctl list-ifaces $br | grep "^tap"); do
+                ifmac=$(ovs-vsctl get Interface $int external-ids:attached-mac)
+                ifstatus=$(ovs-vsctl get Interface $int external-ids:iface-status)
+                ifid=$(ovs-vsctl get Interface $int external-ids:iface-id)
+                vm_uuid=$(ovs-vsctl get Interface $int external-ids:vm-uuid)
+                ovs-vsctl del-port $br $int
+                ovs-vsctl -- --may-exist add-port $OVN_BRIDGE $int tag=4095 \
+                    -- set Interface $int external-ids:iface-status=$ifstatus \
+                    -- set Interface $int external-ids:attached-mac=$ifmac \
+                    -- set Interface $int external-ids:iface-id=$ifid \
+                    -- set Interface $int external-ids:vm-uuid=$vm_uuid
+            done
+            ovs-vsctl --if-exists del-br $br
+        done
+        echo "Finished handling trunk interfaces"
+        # Remove manager settings from db, to avoid address already in-use errors
+        ovs-vsctl del-manager
+        # Removing if backup of mapping should be always the last step
+        # in the procedure as it is checked by readiness probe
+        ovs-vsctl remove Open_Vswitch . external-ids ovn-bridge-mappings-back
+        trap - ERR
+        set -e
+    }
+
+    rm -f /tmp/migration_warnings
+    touch /tmp/migration_warnings
+
+    OVN_BRIDGE="br-int"
 
     declare -a PORTS_REMOVE_ARGS=()
-    for i in $(ovs-vsctl list interface | awk '/name[ ]*: qr-|ha-|qg-|rfp-|sg-|fg-/ { print $3 }'); do
+    for i in $(ovs-vsctl list interface | awk '/name[ ]*: qr-|ha-|qg-|rfp-|sg-|fg-|tpi-|spi-/ { print $3 }'); do
         PORTS_REMOVE_ARGS+=("-- --if-exists del-port $i");
     done
     PORTS_REMOVE_NUM=${#PORTS_REMOVE_ARGS[@]}
@@ -87,11 +123,7 @@ function start () {
     -vconsole:info \
     --pidfile=${OVN_CONTROLLER_PID} &
 
-    # Remove manager settings from db, to avoid address already in-use errors
-    ovs-vsctl del-manager
-    # Removing if backup of mapping should be always the last step
-    # in the procedure as it is checked by readiness probe
-    ovs-vsctl remove Open_Vswitch . external-ids ovn-bridge-mappings-back
+    post_migration_configuration
     sleep infinity
 }
 
@@ -100,6 +132,10 @@ function ready () {
 
     if ovs-vsctl --no-wait get Open_vSwitch . external_ids:ovn-bridge-mappings-back; then
         echo "Dataplane migration is not completed yet"
+        exit 1
+    fi
+    if [[ -s "/tmp/migration_warnings" ]]; then
+        echo "Migration encountered non-critical errors, please check /tmp/migration_warnings"
         exit 1
     fi
 }
