@@ -34,7 +34,7 @@
     {%- set service_plugins = ['ovn-router', 'metering', 'qos'] %}
   {%- endif %}
 {%- endif %}
-{%- set portprober_enabled_default = "cloudprober" in spec.features.services and OSVer[spec.openstack_version] >= OSVer.antelope and not tungstenfabric_enabled and not ovn_enabled %}
+{%- set portprober_enabled_default = "cloudprober" in spec.features.services and OSVer[spec.openstack_version] >= OSVer.antelope and not tungstenfabric_enabled %}
 {%- set portprober_enabled = spec.features.neutron.get("extensions", {}).get("portprober", {}).get("enabled", portprober_enabled_default) %}
 
 {%- do service_plugins.append('bgpvpn') if bgpvpn.enabled %}
