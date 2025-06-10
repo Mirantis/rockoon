@@ -11,7 +11,7 @@ cinder_volume_daemonset: '{{ images_base_url }}/openstack/cinder:epoxy-noble-202
 cinder_volume_usage_audit: '{{ images_base_url }}/openstack/cinder:epoxy-noble-20250609060027'
 cloudprober: '{{ images_base_url }}/openstack/osprober:0.0.1-e43ca40'
 cloudprober_openstack_discovery: '{{ images_base_url }}/openstack/openstack-tools:epoxy-noble-20250609060027'
-stepler_run_tests: '{{ images_base_url }}/openstack/stepler:caracal-jammy-20250418201240'
+stepler_run_tests: '{{ images_base_url }}/openstack/stepler:epoxy-noble-20250610084158'
 db_drop: '{{ images_base_url }}/openstack/heat:epoxy-noble-20250609060027'
 db_init: '{{ images_base_url }}/openstack/heat:epoxy-noble-20250609060027'
 dep_check: '{{ images_base_url }}/openstack/extra/kubernetes-entrypoint:v1.0.1-94cbbf5-20250227101657'
