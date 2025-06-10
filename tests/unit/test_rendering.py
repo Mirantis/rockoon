@@ -1,3 +1,4 @@
+import json
 import logging
 import copy
 import os
@@ -378,3 +379,50 @@ def test_render_child_object_template_ensure_images(
                     assert (
                         image in images.keys()
                     ), f"Image {image} is not present in {openstack_version}/artifacts.yaml"
+
+
+def test_render_horizon_complex_data():
+    """Proof of logic of local_settings.config.raw handling in Horizon chart"""
+    test_data = [
+        ("string", '"string"'),
+        (False, "false"),
+        (True, "true"),
+        (None, "null"),
+        (10, "10"),
+        (1.5, "1.5"),
+        (
+            dict(
+                _TRUE=True,
+                _FALSE=False,
+                _NONE=None,
+                _STRING="string",
+                _INT=10,
+                _FLOAT=1.5,
+                _DICT={"_NONE": None, "_TRUE": True},
+                _LIST=[True, False],
+            ),
+            '{"_TRUE": true, "_FALSE": false, "_NONE": null, '
+            '"_STRING": "string", "_INT": 10, "_FLOAT": 1.5, '
+            '"_DICT": {"_NONE": null, "_TRUE": true}, '
+            '"_LIST": [true, false]}',
+        ),
+        (
+            [
+                True,
+                False,
+                None,
+                "string",
+                10,
+                1.5,
+                {"_NONE": None, "_TRUE": True},
+                [True, False],
+            ],
+            '[true, false, null, "string", 10, 1.5, '
+            '{"_NONE": null, "_TRUE": true}, [true, false]]',
+        ),
+    ]
+    errors = []
+    for value, json_str in test_data:
+        if value != json.loads(f""" {json_str} """):
+            errors.append((value, json_str))
+    assert not errors, f"Pairs that rendered incorrectly: {errors}"

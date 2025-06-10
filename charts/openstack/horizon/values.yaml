@@ -303,6 +303,7 @@ conf:
       #   sha256summ:
       #   description: Theme
       template: |
+        import json
         import os
         import warnings
 
@@ -1063,10 +1064,10 @@ conf:
           {{- end }}
         {{- end }}
         ]
+        # NOTE(pas-ha): spaces inside tripple-quotes are important
         {{- range $option, $value := .Values.conf.horizon.local_settings.config.raw }}
-        {{ $option }} = {{ toJson $value }}
+        {{ $option }} = json.loads(""" {{ toJson $value }} """)
         {{- end }}
-
     policy: {}
     # nova:
     #   rule1: val1
