@@ -240,3 +240,4 @@ ironic_nic_init_pre: '{{ images_base_url }}/openstack/heat:wallaby-focal-2024011
 ironic_nic_init_post: '{{ images_base_url }}/openstack/heat:wallaby-focal-20240112082933'
 ironic_nic_init: '{{ images_base_url }}/general/openvswitch:2.13-focal-20231018050930'
 openvswitch_ovn_vtep: '{{ images_base_url }}/general/openvswitch:2.13-focal-20231018050930'
+octavia_loadbalancers_failover: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250415072626'
