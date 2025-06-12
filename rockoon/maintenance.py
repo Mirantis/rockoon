@@ -132,6 +132,9 @@ class LockBase(pykube.objects.APIObject):
             # Explicitly set state to active to do not rely on default.
             self.set_state(LockState.active.value)
         else:
+            # Ensure status if we failed on previous step PRODX-52414
+            if "status" not in self.obj:
+                self.set_state(LockState.active.value)
             merger.merge(self.obj, self.dummy(self.name))
             self.update()
         if settings.OSCTL_CLUSTER_RELEASE:

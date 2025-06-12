@@ -314,7 +314,7 @@ async def _node_workloadlock_request_delete_handler(body, **kwargs):
     # doing what was requested.
     # It is important to cleanup metadata when node is reamoved and services are
     # not running anymore, otherwise they will add itself into the service tables.
-    node = kube.safe_get_node(name)
+    node = kube.safe_get_node(node_name)
     if node.exists():
         msg = "The kubernetes node {node_name} still exists. Deffer OpenStack service metadata removal."
         raise kopf.TemporaryError(msg)
