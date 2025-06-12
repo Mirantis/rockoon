@@ -598,7 +598,7 @@ class MaintenanceApiMixin:
         pass
 
     @abstractmethod
-    async def prepare_node_after_reboot(self, node):
+    async def prepare_node_after_reboot(self, node, scope=None):
         pass
 
     @abstractmethod
@@ -612,7 +612,9 @@ class MaintenanceApiMixin:
             await self.prepare_node_for_reboot(node)
 
     async def delete_nmr(self, node, nmr):
-        await self.prepare_node_after_reboot(node)
+        await self.prepare_node_after_reboot(
+            node, scope=nmr.obj["spec"].get("scope")
+        )
         await self.add_node_to_scheduling(node)
 
     async def can_handle_nmr(self, node, locks):

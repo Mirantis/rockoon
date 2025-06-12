@@ -311,7 +311,7 @@ class Coordination(Service, MaintenanceApiMixin):
     async def prepare_node_for_reboot(self, node):
         pass
 
-    async def prepare_node_after_reboot(self, node):
+    async def prepare_node_after_reboot(self, node, scope=None):
         pass
 
     async def add_node_to_scheduling(self, node):
@@ -436,7 +436,7 @@ class Redis(Service, MaintenanceApiMixin):
     async def prepare_node_for_reboot(self, node):
         pass
 
-    async def prepare_node_after_reboot(self, node):
+    async def prepare_node_after_reboot(self, node, scope=None):
         pass
 
     async def add_node_to_scheduling(self, node):
@@ -506,7 +506,7 @@ class MariaDB(Service, MaintenanceApiMixin):
     async def prepare_node_for_reboot(self, node):
         pass
 
-    async def prepare_node_after_reboot(self, node):
+    async def prepare_node_after_reboot(self, node, scope=None):
         pass
 
     async def add_node_to_scheduling(self, node):
@@ -836,7 +836,7 @@ class Cinder(OpenStackServiceWithCeph, MaintenanceApiMixin):
     async def prepare_node_for_reboot(self, node):
         pass
 
-    async def prepare_node_after_reboot(self, node):
+    async def prepare_node_after_reboot(self, node, scope=None):
         pass
 
     async def add_node_to_scheduling(self, node):
@@ -1671,7 +1671,7 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
     async def prepare_node_for_reboot(self, node):
         pass
 
-    async def prepare_node_after_reboot(self, node):
+    async def prepare_node_after_reboot(self, node, scope=None):
         if (
             utils.get_in(self.mspec["features"], ["neutron", "backend"])
             == "tungstenfabric"
@@ -1689,12 +1689,17 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
 
         nwl = maintenance.NodeWorkloadLock.get_by_node(node.name)
 
-        # Restart openvswitch daemonsets
-        for daemonset in [
+        ds_to_restart = [
             "ovn-controller",
-            "openvswitch-vswitchd",
             "neutron-l3-agent",
-        ]:
+        ]
+        if scope == "os" or CONF.getboolean(
+            "maintenance", "automated_openvswitch_restart"
+        ):
+            ds_to_restart.append("openvswitch-vswitchd")
+
+        for daemonset in ds_to_restart:
+
             for ovs_ds in self.get_child_objects_dynamic(
                 "DaemonSet", daemonset
             ):
@@ -2050,7 +2055,7 @@ class Nova(OpenStackServiceWithCeph, MaintenanceApiMixin):
             nwl.set_error_message(msg)
             raise kopf.TemporaryError(msg)
 
-    async def prepare_node_after_reboot(self, node):
+    async def prepare_node_after_reboot(self, node, scope=None):
         nwl = maintenance.NodeWorkloadLock.get_by_node(node.name)
         if not node.has_role(constants.NodeRole.compute):
             return
