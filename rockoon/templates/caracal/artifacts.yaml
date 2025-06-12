@@ -248,3 +248,4 @@ ironic_nic_init_pre: '{{ images_base_url }}/openstack/heat:caracal-jammy-2025061
 ironic_nic_init_post: '{{ images_base_url }}/openstack/heat:caracal-jammy-20250610212440'
 ironic_nic_init: '{{ images_base_url }}/general/openvswitch:3.3-noble-src-20250523053641'
 openvswitch_ovn_vtep: '{{ images_base_url }}/general/openvswitch:3.3-noble-src-20250523053641'
+octavia_loadbalancers_failover: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250415072626'
