@@ -18,7 +18,7 @@ replicaCount: 1
 image:
   repository: openstack
   name: rockoon
-  tag: 1.0.4
+  tag: 1.1.4
   pullPolicy: IfNotPresent
 
 nameOverride: ""
