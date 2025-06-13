@@ -141,3 +141,7 @@ rvl_metallb_address_pool_addresses:
 rvl_lvp_local_volume_provisioner_chart: "{{ rvl_directory }}/charts/infra/local-volume-provisioner"
 rvl_lvp_local_volume_provisioner_mounts_image: "{{ rvl_images_base_url }}/openstack/openstack-controller:0.1.1"
 rvl_lvp_local_volume_provisioner_image: "{{ rvl_images_base_url }}/bm/external/local-volume-provisioner:v2.4.0"
+
+rvl_metallb_metallb_crds_chart: "{{ rvl_binary_base_url }}/core/helm/metallb-crds-1.37.20.tgz"
+rvl_metallb_metallb_chart: "{{ rvl_binary_base_url }}/core/helm/metallb-1.37.20.tgz"
+rvl_metallb_metallb_dockerBaseUrl: "{{ rvl_images_base_url }}"
