@@ -1,3 +1,4 @@
+---
 - name: Create a directory if it does not exist
   ansible.builtin.file:
     path: "{{ item }}"
@@ -6,63 +7,6 @@
   loop:
     - "{{ rvl_sources_charts }}"
 
-- name: Read osdpl ca
-  slurp:
-    src: "{{ rvl_ca_certs_path }}/ca-certificate.pem"
-  register: osdpl_ca_certificate_result
-
-- name: Read osdpl key
-  slurp:
-    src: "{{ rvl_ca_certs_path }}/osdpl.key"
-  register: osdpl_api_key_result
-
-- name: Read osdpl cert
-  slurp:
-    src: "{{ rvl_ca_certs_path }}/osdpl.pem"
-  register: osdpl_api_cert_result
-
-- name: Create a k8s namespace
-  kubernetes.core.k8s:
-    name: "{{ rvl_registry_namespace }}"
-    api_version: v1
-    kind: Namespace
-    state: present
-
-- name: Create registry public secret
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: v1
-      kind: Secret
-      type: kubernetes.io/tls
-      metadata:
-        name: registry-tls-public
-        namespace: "{{ rvl_registry_namespace }}"
-      data:
-        ca.crt: "{{ osdpl_ca_certificate_result.content }}"
-        tls.crt: "{{ osdpl_api_cert_result.content }}"
-        tls.key: "{{ osdpl_api_key_result.content }}"
-
-- name: Clone registry helm chart
-  ansible.builtin.git:
-    repo: https://github.com/twuni/docker-registry.helm
-    dest: "{{ rvl_sources_charts }}/docker-registry.helm"
-    single_branch: yes
-    version: main
-
-- name: Deploy registry chart
-  kubernetes.core.helm:
-    kubeconfig: "{{ kubeconfig }}"
-    name: registry
-    chart_ref: "{{ rvl_sources_charts }}/docker-registry.helm"
-    release_namespace: "{{ rvl_registry_namespace }}"
-    create_namespace: true
-    values:
-      image:
-        repository: "{{ rvl_images_public_base_url }}/lcm/registry"
-        tag: "{{ rvl_registry_image_tag }}"
-        pullPolicy: IfNotPresent
-      tlsSecretName: registry-tls-public
-      service:
-        type: NodePort
-        nodePort: "{{ rvl_registry_node_port }}"
+- name: Install local Docker registry as docker container
+  ansible.builtin.include_tasks:
+    file: "registry/{{ rvl_registry_source }}.yaml"

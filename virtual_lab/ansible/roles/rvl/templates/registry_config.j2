@@ -1,0 +1,24 @@
+version: 0.1
+log:
+  fields:
+    service: registry
+storage:
+  filesystem:
+    rootdirectory: {{ rvl_registry_dir }}/images
+  delete:
+    enabled: true
+  cache:
+    blobdescriptor: inmemory
+http:
+  addr: :{{ rvl_registry_node_port }}
+  host: https://{{ rvl_registry_host }}
+  tls:
+    certificate: {{ rvl_registry_dir }}/certs/registry.pem
+    key: {{ rvl_registry_dir }}/certs/registry.key
+  headers:
+    X-Content-Type-Options: [nosniff]
+health:
+  storagedriver:
+    enabled: true
+    interval: 10s
+    threshold: 3
