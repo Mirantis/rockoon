@@ -25,6 +25,11 @@ exec:
     - list
     - Open_Vswitch
 {{- end }}
+{{- define "ovnctlreadinessProbeTemplate" }}
+exec:
+  command:
+    - /tmp/ovn_controller_readiness.sh
+{{- end }}
 
 {{- define "openvswitch.ovn.controller.daemonset" }}
 {{- $daemonset := index . 0 }}
@@ -164,7 +169,7 @@ spec:
 {{ dict "envAll" $envAll "application" "openvswitch_ovn_controller" "container" "controller" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.ovn_controller.controller | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
 {{ dict "envAll" $envAll "component" "ovn" "container" "controller" "type" "liveness" "probeTemplate" (include "ovsdblivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
-{{ dict "envAll" $envAll "component" "ovn" "container" "controller" "type" "readiness" "probeTemplate" (include "ovsdbreadinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "ovn" "container" "controller" "type" "readiness" "probeTemplate" (include "ovnctlreadinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
           command:
             - /tmp/ovn-controller.sh
             - start
@@ -180,6 +185,10 @@ spec:
             - name: openvswitch-bin
               mountPath: /tmp/ovn-controller.sh
               subPath: ovn-controller.sh
+              readOnly: true
+            - name: openvswitch-bin
+              mountPath: /tmp/ovn_controller_readiness.sh
+              subPath: ovn_controller_readiness.sh
               readOnly: true
 {{- if $ovn_migration }}
             - name: openvswitch-bin

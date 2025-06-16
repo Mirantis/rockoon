@@ -34,6 +34,8 @@ data:
 {{ tuple "bin/_openvswitch-vswitchd-init-modules.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   vswitchd_readiness.sh: |
 {{ tuple "bin/_vswitchd_readiness.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  ovn_controller_readiness.sh: |
+{{ tuple "bin/_ovn_controller_readiness.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   ovn-db-generic.sh: |
 {{ tuple "bin/_ovn-db-generic.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   ovn-db-probe.sh: |
