@@ -15,7 +15,6 @@ from enum import Enum, auto
 from concurrent.futures import ThreadPoolExecutor, ALL_COMPLETED, wait
 from pykube import ConfigMap
 
-from rockoon import constants
 from rockoon import health
 from rockoon import helm
 from rockoon import kube
@@ -86,20 +85,6 @@ def set_args():
             equal to number of target pods.
             """
         ),
-    )
-    migrate_subparcer.add_argument(
-        "--cmp-threshold",
-        type=int,
-        default=0,
-        dest="cmp_threshold",
-        help="Maximum number of compute nodes allowed to fail migration.",
-    )
-    migrate_subparcer.add_argument(
-        "--gtw-threshold",
-        type=int,
-        default=0,
-        dest="gtw_threshold",
-        help="Maximum number of gateway nodes allowed to fail migration.",
     )
 
     args = parser.parse_args()
@@ -926,6 +911,30 @@ def wait_for_objects_ready(service, object_ids, timeout=1200):
     LOG.info(f"{object_ids} are ready")
 
 
+def wait_for_objects_absent(service, object_ids, timeout=600):
+    """
+    Waits for child objects of the service to be absent
+
+    :param service: Object of type Service
+    :param object_ids: List of strings
+    :returns None
+    """
+    for id in object_ids:
+        for obj in get_objects_by_id(service, id):
+            LOG.info(f"Waiting {timeout} for {obj} to be absent")
+            start_time = int(time.time())
+            while True:
+                if not obj.exists():
+                    break
+                time.sleep(30)
+                timed_out = int(time.time()) - start_time
+                if timed_out >= timeout:
+                    msg = f"Failed to wait for {obj} to be absent"
+                    LOG.error(msg)
+                    raise TimeoutError(msg)
+            LOG.info(f"{obj} is absent")
+
+
 def daemonsets_check_exec(results, raise_on_error=True):
     failed_nodes = []
     for res in results:
@@ -1045,37 +1054,6 @@ def daemonsets_exec_parallel(
     return results
 
 
-def check_nodes_results(results, role, threshold):
-    """Check results list according to failed nodes threshold and node role.
-
-    :param results: List of maps with command execution results on nodes
-    :param role: NodeRole object
-    :param threshold: Integer number of nodes which are allowed to fail migration
-    :returns: tuple with failed nodes set and boolean result of threshold check
-    """
-    failed_nodes = set()
-    threshold_fail = False
-    for res in results:
-        kube_node = kube.safe_get_node(res["node"])
-        if kube_node.has_role(role):
-            if res["status"] != "Success":
-                failed_nodes.add(res["node"])
-    if failed_nodes:
-        LOG.warning(
-            f"Got failed command results on next {role.name} nodes: {failed_nodes}"
-        )
-        if len(failed_nodes) <= threshold:
-            LOG.warning(
-                f"Number of {role.name} nodes {len(failed_nodes)} doesn't exceed threshold {threshold}."
-            )
-        else:
-            LOG.error(
-                f"Number of {role.name} nodes {len(failed_nodes)} exceeds threshold {threshold}."
-            )
-            threshold_fail = True
-    return failed_nodes, threshold_fail
-
-
 def cleanup_api_resources():
     """Cleanup resources from Openstack API related to neutron ovs backend"""
     ocm = OpenStackClientManager()
@@ -1113,44 +1091,6 @@ def cleanup_api_resources():
                 LOG.exception(f"Failed to clean network {net.name}")
             LOG.info(f"Finished cleaning Neutron HA tenant network {net.name}")
     LOG.info("Finished Neutron API resources cleanup")
-
-
-def cleanup_ovs_bridges(script_args):
-    """Cleanup OVS interfaces, bridges on nodes"""
-    osdpl = kube.get_osdpl()
-    network_svc = get_service(osdpl, "networking")
-    metadata_daemonsets = get_objects_by_id(
-        network_svc, "neutron-metadata-agent"
-    )
-    cleanup_ovs_command = """
-    set -ex
-    trap err_trap EXIT
-    function err_trap {
-        local r=$?
-        if [[ $r -ne 0 ]]; then
-            echo "cleanup_ovs FAILED"
-        fi
-        exit $r
-    }
-    OVS_DB_SOCK="--db=tcp:127.0.0.1:6640"
-    ovs-vsctl ${OVS_DB_SOCK} --if-exists del-br br-tun
-    echo "Remove tunnel and migration bridges"
-    ovs-vsctl ${OVS_DB_SOCK} --if-exists del-br br-migration
-    ovs-vsctl ${OVS_DB_SOCK} --if-exists del-port br-int patch-tun
-    echo "Cleaning all migration fake bridges"
-    for br in $(egrep '^migbr-' <(ovs-vsctl ${OVS_DB_SOCK} list-br)); do
-        ovs-vsctl ${OVS_DB_SOCK} del-br $br
-    done
-    """
-    LOG.info("Cleaning OVS bridges")
-    daemonsets_exec_parallel(
-        metadata_daemonsets,
-        ["bash", "-c", cleanup_ovs_command],
-        "neutron-metadata-agent",
-        max_workers=script_args.max_workers,
-        timeout=120,
-    )
-    LOG.info("Finished cleaning OVS bridges")
 
 
 def cleanup_linux_netns(script_args):
@@ -1302,11 +1242,7 @@ def deploy_ovn_controllers(script_args):
         "openstack-neutron-rabbitmq",
         disable_rabbitmq_patch,
     )
-    rabbitmq_sts = get_objects_by_id(network_svc, "neutron-rabbitmq")
-    for sts in rabbitmq_sts:
-        while sts.exists():
-            LOG.info("Waiting for rabbitmq sts to be absent")
-            time.sleep(10)
+    wait_for_objects_absent(network_svc, ["neutron-rabbitmq"])
     LOG.info("Neutron rabbimq is disabled")
 
     if not ovn_daemonsets:
@@ -1340,22 +1276,27 @@ def deploy_ovn_controllers(script_args):
     LOG.info("Neutron database sync to OVN database is completed")
     # Enable server without messaging dependency
     LOG.info("Starting neutron server to process OVN ports")
-    enable_server_patch = {
-        "manifests": {"deployment_server": True},
-        "dependencies": {
-            "static": {
-                "server": {
-                    "services": [
-                        {"endpoint": "internal", "service": "oslo_db"},
-                        {"endpoint": "internal", "service": "oslo_cache"},
-                        {"endpoint": "internal", "service": "identity"},
-                    ]
+    utils.merger.merge(
+        neutron_patch,
+        {
+            "manifests": {
+                "deployment_server": True,
+            },
+            "dependencies": {
+                "static": {
+                    "server": {
+                        "services": [
+                            {"endpoint": "internal", "service": "oslo_db"},
+                            {"endpoint": "internal", "service": "oslo_cache"},
+                            {"endpoint": "internal", "service": "identity"},
+                        ]
+                    }
                 }
-            }
+            },
         },
-    }
+    )
     update_service_release(
-        helm_manager, network_svc, "openstack-neutron", enable_server_patch
+        helm_manager, network_svc, "openstack-neutron", neutron_patch
     )
     wait_for_objects_ready(network_svc, ["neutron-server"])
     LOG.info("Sleeping for 1200 seconds to let neutron process all ports")
@@ -1366,6 +1307,7 @@ def deploy_ovn_controllers(script_args):
 def migrate_dataplane(script_args):
     osdpl = kube.get_osdpl()
     network_svc = get_service(osdpl, "networking")
+    helm_manager = helm.HelmManager(namespace=osdpl.namespace)
     ovn_daemonsets = get_objects_by_id(network_svc, "ovn-controller")
     LOG.info(
         "Pre-migration check: Checking ovs db connectivity in ovn controllers"
@@ -1384,46 +1326,34 @@ def migrate_dataplane(script_args):
         raise e
     LOG.info("Pre-migration check: Ovs db connectivity check completed")
 
-    tries = 0
-    failed_nodes = set()
-    gtw_threshold_fail = False
-    cmp_threshold_fail = False
-    while tries < 3:
-        results = daemonsets_exec_parallel(
-            ovn_daemonsets,
-            ["/tmp/ovn-migrate-dataplane.sh"],
-            "controller",
-            max_workers=script_args.max_workers,
-            raise_on_error=False,
-            timeout=60,
-            nodes=failed_nodes,
-        )
+    for ds in ovn_daemonsets:
+        ds.delete(propagation_policy="Foreground")
+    wait_for_objects_absent(network_svc, ["ovn-controller"])
+
+    ovs_patch = {
+        "conf": {
+            "ovn_migration": True,
+            "ovn_dataplane_migration": True,
+        },
+        "manifests": {"daemonset_ovn_controller": True},
+    }
+    update_service_release(
+        helm_manager,
+        network_svc,
+        "openstack-openvswitch",
+        ovs_patch,
+    )
+    try:
+        wait_for_objects_ready(network_svc, ["ovn-controller"], timeout=600)
+    except TimeoutError as e:
+        LOG.error("Timed out waiting for dataplane migration to complete")
         failed_nodes = set()
-        failed_gtw, gtw_threshold_fail = check_nodes_results(
-            results, constants.NodeRole.gateway, script_args.gtw_threshold
-        )
-        failed_cmp, cmp_threshold_fail = check_nodes_results(
-            results, constants.NodeRole.compute, script_args.cmp_threshold
-        )
-        failed_nodes = failed_gtw.union(failed_cmp)
-        tries += 1
-        if not (gtw_threshold_fail or cmp_threshold_fail):
-            break
-    if gtw_threshold_fail or cmp_threshold_fail:
-        LOG.error(
-            f"""Still have failed nodes thresholds exceeded after {tries} retries,
-            Stage will be marked as failed, if decided to rerun whole script, this
-            stage will be rerun.
-            """
-        )
-        raise RuntimeError("Failed nodes thresholds exceeded")
-    elif failed_nodes:
-        LOG.warning(
-            f"""Still have some failed nodes after {tries} retries,
-            Stage will be marked as completed, if decided to rerun whole script, this
-            stage will be NOT rerun.
-            """
-        )
+        for ds in ovn_daemonsets:
+            for pod in ds.pods:
+                if not pod.ready:
+                    failed_nodes.add(pod.obj["spec"].get("nodeName"))
+        LOG.error(f"Found not ready pods on nodes {failed_nodes}")
+        raise e
 
 
 def finalize_migration(script_args):
@@ -1522,7 +1452,6 @@ def finalize_migration(script_args):
 
 def cleanup(script_args):
     cleanup_api_resources()
-    cleanup_ovs_bridges(script_args)
     cleanup_linux_netns(script_args)
 
 
@@ -1618,7 +1547,8 @@ WORKFLOW = [
             OPENSTACK API: Neutron Metadata downtime continues in this stage.""",
         "description": """
             Deploy OVN controller on the same nodes as openvswitch pods are running.
-            Switch dataplane to be managed by OVN controller.""",
+            Switch dataplane to be managed by OVN controller and cleanup old dataplane
+            leftovers.""",
     },
     {
         "executable": finalize_migration,

@@ -73,6 +73,7 @@ function start () {
     echo "Found config for migration, overriding migration bridge"
     echo "Setting ovn bridge to br-migration"
     ovs-vsctl --db=unix:${OVS_DB_SOCK} --no-wait set Open_Vswitch . external-ids:ovn-bridge=br-migration
+    ovs-vsctl --db=unix:${OVS_DB_SOCK} --no-wait --may-exist add-br br-migration
 
     echo "Overriding migration bridge mapping and creating temporary bridges"
     MIGRATION_BRIDGE_MAPPINGS=''
@@ -90,13 +91,41 @@ function start () {
     done
     echo "Changing original bridge mappings ${OVN_BRIDGE_MAPPINGS_BACKUP} to ${MIGRATION_BRIDGE_MAPPINGS}"
     ovs-vsctl --db=unix:${OVS_DB_SOCK} --no-wait set Open_Vswitch . external-ids:ovn-bridge-mappings="${MIGRATION_BRIDGE_MAPPINGS}"
-  fi
 
+    interfaces=$(ovs-vsctl --db=unix:${OVS_DB_SOCK} list-ifaces br-int | egrep -v 'qr-|ha-|qg-|rfp-|sg-|fg-')
+    for interface in $interfaces; do
+        if [[ "$interface" == "br-int" ]]; then
+            continue
+        fi
+        set +e
+        ifmac=$(ovs-vsctl --db=unix:${OVS_DB_SOCK} get Interface $interface external-ids:attached-mac)
+        ifmac_res=$?
+        if [ $ifmac_res -eq 0 ]; then
+            ifstatus=$(ovs-vsctl --db=unix:${OVS_DB_SOCK} get Interface $interface external-ids:iface-status)
+            ifstatus_res=$?
+            ifid=$(ovs-vsctl --db=unix:${OVS_DB_SOCK} get Interface $interface external-ids:iface-id)
+            ifid_res=$?
+        fi
+        if [ $ifmac_res -ne 0 ] || [ $ifstatus_res -ne 0 ] || [ $ifid_res -ne 0 ]; then
+            echo "Can't get port details for $interface, skipping copy"
+            continue
+        fi
+        set -e
+        ifname=x$interface
+        ovs-vsctl --db=unix:${OVS_DB_SOCK} -- --may-exist add-port br-migration $ifname \
+             -- set Interface $ifname type=internal \
+             -- set Interface $ifname external-ids:iface-status=$ifstatus \
+             -- set Interface $ifname external-ids:attached-mac=$ifmac \
+             -- set Interface $ifname external-ids:iface-id=$ifid
+
+        echo cloned port $interface from br-int as $ifname on br-migration
+    done
+  fi
   exec /usr/bin/ovn-controller unix:${OVS_DB_SOCK} \
-      -vconsole:emer \
-      -vconsole:err \
-      -vconsole:info \
-      --pidfile=${OVN_CONTROLLER_PID}
+    -vconsole:emer \
+    -vconsole:err \
+    -vconsole:info \
+    --pidfile=${OVN_CONTROLLER_PID}
 }
 
 function stop () {

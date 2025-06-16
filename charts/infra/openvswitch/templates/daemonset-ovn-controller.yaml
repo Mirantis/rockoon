@@ -30,6 +30,12 @@ exec:
   command:
     - /tmp/ovn_controller_readiness.sh
 {{- end }}
+{{- define "ovnmigratereadinessProbeTemplate" }}
+exec:
+  command:
+    - /tmp/ovn-migrate-dataplane.sh
+    - ready
+{{- end }}
 
 {{- define "openvswitch.ovn.controller.daemonset" }}
 {{- $daemonset := index . 0 }}
@@ -38,6 +44,11 @@ exec:
 {{- $envAll := index . 3 }}
 {{- with $envAll }}
 {{- $ovn_migration := index $envAll.Values.conf "ovn_migration" | default false }}
+{{- $ovn_dataplane_migration := index $envAll.Values.conf "ovn_dataplane_migration" | default false }}
+{{- $ctlProbe := "ovnctlreadinessProbeTemplate" }}
+{{- if $ovn_dataplane_migration }}
+  {{- $ctlProbe = "ovnmigratereadinessProbeTemplate" }}
+{{- end }}
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -169,9 +180,13 @@ spec:
 {{ dict "envAll" $envAll "application" "openvswitch_ovn_controller" "container" "controller" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.ovn_controller.controller | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
 {{ dict "envAll" $envAll "component" "ovn" "container" "controller" "type" "liveness" "probeTemplate" (include "ovsdblivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
-{{ dict "envAll" $envAll "component" "ovn" "container" "controller" "type" "readiness" "probeTemplate" (include "ovnctlreadinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "ovn" "container" "controller" "type" "readiness" "probeTemplate" (include $ctlProbe $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
           command:
+{{- if (and $ovn_migration $ovn_dataplane_migration) }}
+            - /tmp/ovn-migrate-dataplane.sh
+{{- else }}
             - /tmp/ovn-controller.sh
+{{- end }}
             - start
           lifecycle:
             preStop:
@@ -190,7 +205,7 @@ spec:
               mountPath: /tmp/ovn_controller_readiness.sh
               subPath: ovn_controller_readiness.sh
               readOnly: true
-{{- if $ovn_migration }}
+{{- if (and $ovn_migration $ovn_dataplane_migration) }}
             - name: openvswitch-bin
               mountPath: /tmp/ovn-migrate-dataplane.sh
               subPath: ovn-migrate-dataplane.sh
