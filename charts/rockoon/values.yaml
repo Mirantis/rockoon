@@ -6,6 +6,8 @@ global:
   # clusterRelease: 8.4.0-rc+22.1
   dockerBaseUrl: mirantis.azurecr.io
   helmBaseUrl: https://binary.mirantis.com
+  cdn:
+    caBundleSecret: null
   proxy:
     enabled: false
   podNetworks:

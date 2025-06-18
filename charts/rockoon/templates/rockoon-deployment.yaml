@@ -115,6 +115,8 @@ spec:
               value: '{{ toJson .Values.global.proxy }}'
             - name: OSCTL_POD_NETWORKS_DATA
               value: '{{ toJson .Values.global.podNetworks }}'
+            - name: OSCTL_CDN_CA_BUNDLE_DATA
+              value: '{{ toJson .Values.global.cdn }}'
 {{ tuple . | include "rockoon.common_env" | indent 12 }}
           livenessProbe:
             exec:

@@ -374,10 +374,16 @@ def update_ca_bundles(spec):
     # Add extra proxy CA bundle to mspec
     if settings.OSCTL_PROXY_DATA["enabled"]:
         proxy_secret = secrets.ProxySecret()
-        proxy_ca = proxy_secret.get_proxy_certs().strip()
-
+        proxy_ca = proxy_secret.get_proxy_certs()
         if proxy_ca:
             ca_bundles.append(proxy_ca)
+
+    if settings.OSCTL_CDN_CA_BUNDLE_DATA.get("caBundleSecret"):
+        cdn_secret = secrets.CdnCaBundleSecret()
+        cdn_ca = cdn_secret.get_cdn_ca_bundle()
+        if cdn_ca:
+            ca_bundles.append(cdn_ca)
+
     spec["features"]["ssl"]["public_endpoints"]["ca_cert"] = "\n".join(
         ca_bundles
     )
