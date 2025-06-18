@@ -55,6 +55,8 @@ data:
 {{- include "helm-toolkit.scripts.generic_health_probe" . | indent 4 }}
   neutron-server-liveness-probe.sh: |
 {{ tuple "bin/_neutron-server-liveness-probe.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  neutron-server-startup-probe.sh: |
+{{ tuple "bin/_neutron-server-startup-probe.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   neutron-dhcp-agent.sh: |
 {{ tuple "bin/_neutron-dhcp-agent.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   neutron-dhcp-agent-init.sh: |

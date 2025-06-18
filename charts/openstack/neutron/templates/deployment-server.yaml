@@ -37,6 +37,11 @@ exec:
     - -f
     - /tmp/logrotate.status
 {{- end }}
+{{- define "serverStartupProbeTemplate" }}
+exec:
+  command:
+    - /tmp/neutron-server-startup-probe.sh
+{{- end }}
 
 {{- if .Values.manifests.deployment_server }}
 {{- $envAll := . }}
@@ -112,7 +117,7 @@ spec:
 {{ dict "envAll" $envAll "application" "neutron_server" "container" "neutron_server" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
 {{ dict "envAll" $envAll "component" "server" "container" "server" "type" "readiness" "probeTemplate" (include "serverReadinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
 {{ dict "envAll" $envAll "component" "server" "container" "server" "type" "liveness" "probeTemplate" (include "serverLivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
-{{ dict "envAll" $envAll "component" "server" "container" "server" "type" "startup" "probeTemplate" (include "serverLivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "server" "container" "server" "type" "startup" "probeTemplate" (include "serverStartupProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
           command:
             - /tmp/neutron-server.sh
             - start
@@ -214,8 +219,15 @@ spec:
               subPath: generic-health-probe.py
               readOnly: true
             - name: neutron-bin
+              mountPath: /tmp/health-probe.py
+              subPath: health-probe.py
+              readOnly: true
+            - name: neutron-bin
               mountPath: /tmp/neutron-server-liveness-probe.sh
               subPath: neutron-server-liveness-probe.sh
+            - name: neutron-bin
+              mountPath: /tmp/neutron-server-startup-probe.sh
+              subPath: neutron-server-startup-probe.sh
 {{- dict "enabled" .Values.manifests.certificates "name" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
 {{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.network.server.internal "path" "/etc/neutron/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
 {{ if $mounts_neutron_server.volumeMounts }}{{ toYaml $mounts_neutron_server.volumeMounts | indent 12 }}{{ end }}

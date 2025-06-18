@@ -404,18 +404,55 @@ def is_portprober_agent_synced():
             )
             return False
 
+def is_neutron_server_startup_completed():
+    """Check that oneshot periodic tasks are completed."""
+
+    if not cfg.getboolean("DEFAULT", "support_ovn_maintenance_check", fallback=False):
+        LOG.info("Checking ovn maintenance is skipped")
+        return True
+
+    ovn_maintenance_path = os.path.join(
+        cfg.get("DEFAULT", "state_path", fallback="/var/lib/neutron"),
+        'ovn_maintenance.json',
+    )
+
+    if not os.path.exists(ovn_maintenance_path):
+        LOG.info("File %s doesn't exists, waiting for maintenance job is done.",
+                 ovn_maintenance_path)
+        return False
+
+    with open(ovn_maintenance_path, "r") as f:
+        states = json.load(f)
+        # if all task wait for lock no need to wait,
+        # another server is acquired it
+        if all(s['state'] == 'waiting_lock' for s in states.values()):
+           return True
+        not_ready = list(n for n, s in states.items()
+                         if (s['type'] == 'oneshot' and
+                             (s['state'] not in ('completed', 'skipped'))))
+        if not not_ready:
+            LOG.info("Maintenance job has been completed.")
+            return True
+        else:
+            LOG.info(
+                "Waiting for maintenance jobs %s to be completed.",
+                not_ready,
+            )
+            return False
+
 
 if __name__ == "__main__":
-    cfg = configparser.ConfigParser(strict=False)
+    cfg = configparser.ConfigParser()
     parser = argparse.ArgumentParser()
     parser.add_argument("--config-file", action="append")
-    parser.add_argument("--probe-type", required=True, choices=["liveness", "readiness"])
+    parser.add_argument("--probe-type", required=True, choices=["liveness", "readiness", "startup"])
     parser.add_argument("--use-fqdn", required=False)
-    parser.add_argument("--rabbitmq-queue-name", required=True)
+    parser.add_argument("--rabbitmq-queue-name", required=False)
     parser.add_argument("--rabbitmq-exchange", default="neutron")
-    parser.add_argument("--process-name", required=True)
-    parser.add_argument("--rabbitmq-rpc-timeout", type=int, required=True)
+    parser.add_argument("--process-name", required=False)
+    parser.add_argument("--rabbitmq-rpc-timeout", type=int, default=30, required=False)
     parser.add_argument("--rabbitmq-connect-timeout", type=int, default=15)
+    parser.add_argument("--check", action="append", choices=["ovn_maintenance"])
     opts = parser.parse_args()
 
     cfg.read(opts.config_file)
@@ -470,6 +507,11 @@ if __name__ == "__main__":
             if not is_sriov_ready():
                 LOG.error("The sriov readiness failed.")
                 sys.exit(1)
+
+    if opts.check and "ovn_maintenance" in opts.check:
+        if not is_neutron_server_startup_completed():
+            LOG.error("Neutron server is not synced yet.")
+            sys.exit(1)
 
     if opts.probe_type == "liveness":
         # NOTE(vsaienko): the metadata agent doesn't respond to RPC
