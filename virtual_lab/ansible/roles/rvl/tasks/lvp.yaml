@@ -11,5 +11,7 @@
     release_namespace: lvp
     create_namespace: true
     values:
-      local_volume_provisioner_mounts: "{{ rvl_lvp_local_volume_provisioner_mounts_image }}"
-      local_volume_provisioner: "{{ rvl_lvp_local_volume_provisioner_image }}"
+      images:
+        tags:
+          local_volume_provisioner_mounts: "{{ rvl_lvp_local_volume_provisioner_mounts_image }}"
+          local_volume_provisioner: "{{ rvl_lvp_local_volume_provisioner_image }}"
