@@ -50,4 +50,5 @@
       - docker.io
     state: latest
   when: rvl_images_build_rockoon or
-        rvl_images_build_loci
+        rvl_images_build_loci or
+        rvl_mirror_images
