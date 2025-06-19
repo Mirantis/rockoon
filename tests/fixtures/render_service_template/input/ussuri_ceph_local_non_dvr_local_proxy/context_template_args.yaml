@@ -174,7 +174,6 @@ images:
   prometheus_mysql_exporter: prometheus-mysql-exporter:latest
   prometheus_mysql_exporter_helm_tests: prometheus-mysql-exporter-helm-tests:latest
   prometheus_rabbitmq_exporter: prometheus-rabbitmq-exporter:latest
-  prometheus_rabbitmq_exporter_helm_tests: prometheus-rabbitmq-exporter-helm-tests:latest
   purge_test: purge-test:latest
   rabbit_init: rabbit-init:latest
   rabbitmq: rabbitmq:latest
