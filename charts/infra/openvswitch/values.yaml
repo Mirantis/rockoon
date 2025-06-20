@@ -533,6 +533,10 @@ conf:
     ovn-encap-type: geneve,vxlan
   ovn_controller:
     generate_ovn_chassis_mac_mappings: false
+  ovn_nb:
+    election_timer: 30000
+  ovn_sb:
+    election_timer: 30000
   neutron:
     DEFAULT:
       support_sync_ovs_info: true
