@@ -1343,16 +1343,9 @@ class BGPVPNSecret(JsonSecret):
         return peers
 
 
-class ProxySecret:
-    """The secret supports next data format:
-    data:
-      HTTP_PROXY: {base64 encoded string}
-      http_proxy: {base64 encoded string}
-    """
-
-    def __init__(self):
-        self.namespace = settings.OSCTL_PROXY_SECRET_NAMESPACE
-        self.name = settings.OSCTL_PROXY_DATA["secretName"]
+class MccSecret:
+    namespace: str
+    name: str
 
     def decode(self, data):
         params = {}
@@ -1363,6 +1356,18 @@ class ProxySecret:
 
     def wait(self):
         kube.wait_for_secret(self.namespace, self.name)
+
+
+class ProxySecret(MccSecret):
+    """The secret supports next data format:
+    data:
+      HTTP_PROXY: {base64 encoded string}
+      http_proxy: {base64 encoded string}
+    """
+
+    def __init__(self):
+        self.namespace = settings.OSCTL_PROXY_SECRET_NAMESPACE
+        self.name = settings.OSCTL_PROXY_DATA["secretName"]
 
     def get_proxy_vars(self, no_proxy=None):
         data = self.decode(get_secret_data(self.namespace, self.name))
@@ -1387,4 +1392,19 @@ class ProxySecret:
 
     def get_proxy_certs(self):
         data = self.decode(get_secret_data(self.namespace, self.name))
-        return data.get("PROXY_CA_CERTIFICATE", "")
+        return data.get("PROXY_CA_CERTIFICATE", "").strip()
+
+
+class CdnCaBundleSecret(MccSecret):
+    """The secret supports next data format:
+    data:
+      CDN_CA_BUNDLE: {base64 encoded string}
+    """
+
+    def __init__(self):
+        self.namespace = settings.OSCTL_CDN_CA_BUNDLE_SECRET_NAMESPACE
+        self.name = settings.OSCTL_CDN_CA_BUNDLE_DATA["caBundleSecret"]
+
+    def get_cdn_ca_bundle(self):
+        data = self.decode(get_secret_data(self.namespace, self.name))
+        return data.get("CDN_CA_BUNDLE", "").strip()

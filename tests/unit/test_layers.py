@@ -583,18 +583,17 @@ def test_render_cache_template(
 
 
 @mock.patch.object(secrets.ProxySecret, "decode")
-@pytest.mark.parametrize(
-    "override_setting",
-    [
-        {
-            "name": "OSCTL_PROXY_DATA",
-            "value": {"enabled": "true", "secretName": "cc_secret"},
-        }
-    ],
-    indirect=["override_setting"],
+@mock.patch.object(secrets.CdnCaBundleSecret, "decode")
+@mock.patch(
+    "rockoon.settings.OSCTL_PROXY_DATA",
+    {"enabled": "true", "secretName": "cc_secret"},
+)
+@mock.patch(
+    "rockoon.settings.OSCTL_CDN_CA_BUNDLE_DATA",
+    {"caBundleSecret": "cdn_secret"},
 )
 def test_update_ca_bundles(
-    mock_proxy_secret, override_setting, openstackdeployment
+    mock_cdn_secret, mock_proxy_secret, openstackdeployment
 ):
     mock_proxy_secret.return_value = {
         "HTTP_PROXY": "http://squid.openstack.svc.cluster.local:80",
@@ -603,6 +602,13 @@ def test_update_ca_bundles(
         "PROXY_CA_CERTIFICATE": (
             "-----BEGIN CERTIFICATE-----\n"
             "test_proxy_ca\n"
+            "-----END CERTIFICATE-----\n"
+        ),
+    }
+    mock_cdn_secret.return_value = {
+        "CDN_CA_BUNDLE": (
+            "-----BEGIN CERTIFICATE-----\n"
+            "test_cdn_ca\n"
             "-----END CERTIFICATE-----\n"
         ),
     }
@@ -618,6 +624,9 @@ def test_update_ca_bundles(
         "-----END CERTIFICATE-----\n"
         "-----BEGIN CERTIFICATE-----\n"
         "test_proxy_ca\n"
+        "-----END CERTIFICATE-----\n"
+        "-----BEGIN CERTIFICATE-----\n"
+        "test_cdn_ca\n"
         "-----END CERTIFICATE-----"
     )
     layers.update_ca_bundles(osdpl_spec)

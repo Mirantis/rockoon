@@ -319,9 +319,7 @@ def test_get_proxy_vars_from_secret(mock_data, override_setting):
     }
 
     expected_ca_cert = (
-        "-----BEGIN CERTIFICATE-----\n"
-        "test_ca\n"
-        "-----END CERTIFICATE-----\n"
+        "-----BEGIN CERTIFICATE-----\n" "test_ca\n" "-----END CERTIFICATE-----"
     )
 
     assert expected_vars == proxy_vars
@@ -460,3 +458,26 @@ def test_galera_secret_new_credentials(
     mock_secret_data.assert_called_once_with("ns", galera_secret.secret_name)
 
     assert new == expected
+
+
+@mock.patch("rockoon.secrets.get_secret_data")
+@mock.patch(
+    "rockoon.settings.OSCTL_CDN_CA_BUNDLE_DATA",
+    {"caBundleSecret": "cdn_secret"},
+)
+def test_get_cdn_ca_bundle_from_secret(mock_data):
+    mock_data.return_value = {
+        "CDN_CA_BUNDLE": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCnRlc3RfY2RuX2NhCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K",
+    }
+
+    secret = secrets.CdnCaBundleSecret()
+
+    cdn_ca = secret.get_cdn_ca_bundle()
+
+    expected_ca_cert = (
+        "-----BEGIN CERTIFICATE-----\n"
+        "test_cdn_ca\n"
+        "-----END CERTIFICATE-----"
+    )
+
+    assert expected_ca_cert == cdn_ca
