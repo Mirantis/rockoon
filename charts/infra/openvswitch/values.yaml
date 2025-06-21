@@ -534,9 +534,9 @@ conf:
   ovn_controller:
     generate_ovn_chassis_mac_mappings: false
   ovn_nb:
-    election_timer: 30000
+    election_timer: 10000
   ovn_sb:
-    election_timer: 30000
+    election_timer: 10000
   neutron:
     DEFAULT:
       support_sync_ovs_info: true

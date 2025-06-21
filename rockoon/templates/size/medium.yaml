@@ -306,6 +306,11 @@ services:
                   enabled: true
                   pod_replacement_strategy: OnDelete
                   max_unavailable: 1
+        conf:
+          ovn_nb:
+            election_timer: 60000
+          ovn_sb:
+            election_timer: 60000
     rabbitmq:
       values:
         conf:
