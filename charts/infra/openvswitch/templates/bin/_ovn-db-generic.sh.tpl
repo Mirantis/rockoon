@@ -24,6 +24,7 @@ INTERNAL_DOMAIN="cluster.local"
 DB_TYPE=${DB_TYPE}
 DB_PORT=${DB_PORT}
 RAFT_PORT=${RAFT_PORT}
+RAFT_ELECTION_TIMER=${RAFT_ELECTION_TIMER}
 
 function get_remotes {
     local remotes=""
@@ -63,7 +64,7 @@ function start () {
 
     CLUSTER_OPTS=""
     if [[ "${CLUSTER_SIZE}" -gt 1 ]]; then
-        CLUSTER_OPTS="--db-${DB_TYPE}-election-timer=10000 --db-${DB_TYPE}-cluster-local-proto=tcp --db-${DB_TYPE}-cluster-local-addr=${HOSTNAME}.${SERVICE_NAME}.${NAMESPACE}.svc.${INTERNAL_DOMAIN} --db-${DB_TYPE}-cluster-local-port=${RAFT_PORT}"
+        CLUSTER_OPTS="--db-${DB_TYPE}-election-timer=${RAFT_ELECTION_TIMER} --db-${DB_TYPE}-cluster-local-proto=tcp --db-${DB_TYPE}-cluster-local-addr=${HOSTNAME}.${SERVICE_NAME}.${NAMESPACE}.svc.${INTERNAL_DOMAIN} --db-${DB_TYPE}-cluster-local-port=${RAFT_PORT}"
     fi
 
     OPTS=""

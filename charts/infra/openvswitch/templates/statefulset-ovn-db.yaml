@@ -105,6 +105,8 @@ spec:
               value: {{ tuple "ovn_db" "direct" "nb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | quote }}
             - name: RAFT_PORT
               value: {{ tuple "ovn_db" "raft" "nb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | quote }}
+            - name: RAFT_ELECTION_TIMER
+              value: {{ $envAll.Values.conf.ovn_nb.election_timer | quote }}
           lifecycle:
             preStop:
               exec:
@@ -152,6 +154,8 @@ spec:
               value: {{ tuple "ovn_db" "direct" "sb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | quote }}
             - name: RAFT_PORT
               value: {{ tuple "ovn_db" "raft" "sb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | quote }}
+            - name: RAFT_ELECTION_TIMER
+              value: {{ $envAll.Values.conf.ovn_sb.election_timer | quote }}
           lifecycle:
             preStop:
               exec:
