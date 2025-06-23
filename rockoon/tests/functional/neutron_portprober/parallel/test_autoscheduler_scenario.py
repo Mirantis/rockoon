@@ -19,6 +19,17 @@ class AutoschedulerTestCase(
     base.BaseFunctionalPortProberTestCase, exporter_base.PrometheusMixin
 ):
 
+    def setUp(self):
+        super().setUp()
+
+        # Number of portprober ports in network when no subnet
+        # is created.
+        self.portprober_ports_no_subnet = 0
+        if self.is_ovn_enabled():
+            self.portprober_ports_no_subnet = (
+                CONF.PORTPROBER_AGENTS_PER_NETWORK
+            )
+
     def test_agents_present(self):
         agents = len(self.get_portprober_agent())
         self.assertEqual(
@@ -156,11 +167,11 @@ class AutoschedulerTestCase(
     )
     def test_portprober_autoscheduler_ipv4(self, net_type, shared, external):
         net = self.network_create(shared=shared, external=external)
-        self._test_network_sits_on_agents(net["id"], 0)
+        self._test_network_sits_on_agents(
+            net["id"], self.portprober_ports_no_subnet
+        )
         self.subnet_create(cidr=CONF.TEST_SUBNET_RANGE, network_id=net["id"])
-        # TODO(vsaienko): handle fast network create/delete when portprober did not setup
-        # its port but network is deleted.
-        time.sleep(1)
+        self.wait_portprober_ports(net["id"])
         self._test_network_sits_on_agents(
             net["id"], CONF.PORTPROBER_AGENTS_PER_NETWORK
         )
@@ -177,15 +188,15 @@ class AutoschedulerTestCase(
     )
     def test_portprober_autoscheduler_ipv6(self, net_type, shared, external):
         net = self.network_create(shared=shared, external=external)
-        self._test_network_sits_on_agents(net["id"], 0)
+        self._test_network_sits_on_agents(
+            net["id"], self.portprober_ports_no_subnet
+        )
         self.subnet_create(
             cidr=CONF.TEST_IPV6_SUBNET_RANGE,
             ip_version=6,
             network_id=net["id"],
         )
-        # TODO(vsaienko): handle fast network create/delete when portprober did not setup
-        # its port but network is deleted.
-        time.sleep(1)
+        self.wait_portprober_ports(net["id"])
         self._test_network_sits_on_agents(
             net["id"], CONF.PORTPROBER_AGENTS_PER_NETWORK
         )
@@ -193,10 +204,13 @@ class AutoschedulerTestCase(
         self._test_network_sits_on_agents(net["id"], 0)
 
     def test_enable_disable_dhcp_port(self):
+        if self.is_ovn_enabled():
+            self.skipTest("DHCP ports are not present in ovn deployment")
         net = self.network_create()
         subnet = self.subnet_create(
             cidr=CONF.TEST_SUBNET_RANGE, network_id=net["id"]
         )
+        self.wait_portprober_ports(net["id"])
 
         dhcp_port = self._get_active_ports(
             subnet_id=subnet["id"],
@@ -267,6 +281,7 @@ class AutoschedulerTestCase(
         subnet = bundle["subnet"]
         network = bundle["network"]
         fixed_ips = [{"subnet_id": subnet["id"]}]
+        self.wait_portprober_ports(network["id"])
         port = self.port_create(network["id"], fixed_ips=fixed_ips)
         self._test_server_basic_ops(network, port)
 
@@ -276,6 +291,7 @@ class AutoschedulerTestCase(
         )[0]
         subnet = self.ocm.oc.network.get_subnet(public_net["subnets"][0])
         fixed_ips = [{"subnet_id": subnet["id"]}]
+        self.wait_portprober_ports(public_net["id"])
         port = self.port_create(public_net["id"], fixed_ips=fixed_ips)
         image = self.ocm.oc.get_image_id(CONF.UBUNTU_TEST_IMAGE_NAME)
         flavor = self.ocm.oc.compute.find_flavor(

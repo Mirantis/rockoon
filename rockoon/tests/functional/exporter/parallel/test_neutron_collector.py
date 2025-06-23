@@ -382,15 +382,21 @@ class NeutronPortsTestCase(base.BaseFunctionalExporterTestCase):
         # enable_dhcp=False sets the default behavior of not enabling DHCP
         # for the subnet and not creating unnecessary ports in tests
         expected_ports_after_create = len(active_ports) + 1
-        # When portprober is enabled 2 additional ports are added per subnet
-        if self.neutron_portprober_enabled:
-            expected_ports_after_create = expected_ports_after_create + 2
+
         subnet = self.subnet_create(
             cidr=CONF.TEST_SUBNET_RANGE,
             network_id=self.network["id"],
             gateway_ip=None,
             enable_dhcp=False,
         )
+
+        # When portprober is enabled 2 additional ports are added per subnet
+        if self.neutron_portprober_enabled:
+            expected_ports_after_create = (
+                expected_ports_after_create
+                + CONF.PORTPROBER_AGENTS_PER_NETWORK
+            )
+            self.wait_portprober_ports(self.network["id"])
         fixed_ips = [{"subnet_id": subnet["id"]}]
         port = self.port_create(self.network["id"], fixed_ips=fixed_ips)
         self.server_create(networks=[{"port": port.id}])

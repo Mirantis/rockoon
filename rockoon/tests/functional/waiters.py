@@ -86,6 +86,30 @@ def wait_for_port_status(openstack_client, port, status):
             raise TimeoutError(message)
 
 
+def wait_for_network_portprober_ports(
+    openstack_client, network_id, port_number
+):
+    start_time = int(time.time())
+    timeout = CONF.PORTPROBER_METRIC_TIMEOUT
+    while True:
+        ports = list(
+            openstack_client.oc.network.ports(
+                network_id=network_id, device_owner="network:portprober"
+            )
+        )
+        if len(ports) == port_number:
+            return
+        time.sleep(10)
+        timed_out = int(time.time()) - start_time
+        if timed_out >= timeout:
+            message = (
+                f"Timeoud out waiting network:portprober ports {port_number} "
+                f"for network {network_id} within the required time {timeout}"
+            )
+            LOG.error(message)
+            raise TimeoutError(message)
+
+
 def wait_resource_field(
     get_resource_func, resource_id, fields, timeout, interval
 ):
