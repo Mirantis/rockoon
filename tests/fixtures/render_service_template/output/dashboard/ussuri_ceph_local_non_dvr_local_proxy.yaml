@@ -59,6 +59,7 @@ spec:
                 description: Mirantis
                 sha256summ: horizon-mirantis-theme-sha256summ
                 url: http://${NODE_IP}:8282/bin/horizon-theme-latest
+                enabled: true
       dependencies:
         static:
           db_init:

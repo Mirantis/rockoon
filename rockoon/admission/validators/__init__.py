@@ -9,6 +9,7 @@ from rockoon.admission.validators import openstack
 from rockoon.admission.validators import nodes
 from rockoon.admission.validators import cinder
 from rockoon.admission.validators import manila
+from rockoon.admission.validators import horizon
 
 __all__ = [
     barbican.BarbicanValidator,
@@ -22,4 +23,5 @@ __all__ = [
     ironic.IronicValidator,
     cinder.CinderValidator,
     manila.ManilaValidator,
+    horizon.HorizonValidator,
 ]

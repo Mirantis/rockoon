@@ -284,6 +284,7 @@ conf:
         raw: {}
       #custom_themes:
       # <theme_name>:
+      #   enabled: true
       #   url:
       #   sha256summ:
       #   description: Theme
@@ -1051,7 +1052,9 @@ conf:
           ('default', 'Default', 'themes/default'),
           ('material', 'Material', 'themes/material'),
         {{- range $theme_name, $theme := .Values.conf.horizon.local_settings.custom_themes }}
+          {{- if $theme.enabled }}
           ('{{ $theme_name }}', '{{ $theme.description }}', 'custom_themes/{{ $theme_name }}'),
+          {{- end }}
         {{- end }}
         ]
         {{- range $option, $value := .Values.conf.horizon.local_settings.config.raw }}

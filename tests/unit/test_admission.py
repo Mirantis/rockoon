@@ -2705,3 +2705,54 @@ def test_openstack_keystone_two_providers_default_not_allowed(
         "Multiple oidc providers supperted only with oauth2 type"
         in response.json["response"]["status"]["message"]
     )
+
+
+def test_openstack_hortizon_additional_theme(client):
+    req = copy.deepcopy(ADMISSION_REQ)
+    req["request"]["object"]["spec"]["features"]["horizon"] = {
+        "themes": [
+            {
+                "url": "https://foo.bar/themea.tar.gz",
+                "description": "themeA",
+                "name": "themeA",
+                "sha256summ": "123456",
+            }
+        ]
+    }
+    response = client.simulate_post("/validate", json=req)
+    assert response.status == falcon.HTTP_OK
+    assert response.json["response"]["allowed"] is True
+
+
+def test_openstack_hortizon_additiona_theme_missing_keys(client):
+    req = copy.deepcopy(ADMISSION_REQ)
+    req["request"]["object"]["spec"]["features"]["horizon"] = {
+        "themes": [
+            {
+                "description": "themeA",
+                "name": "themeA",
+            }
+        ]
+    }
+    response = client.simulate_post("/validate", json=req)
+    assert response.status == falcon.HTTP_OK
+    assert response.json["response"]["allowed"] is False
+    assert (
+        "Horion theme is missing mandatory keys"
+        in response.json["response"]["status"]["message"]
+    )
+
+
+def test_openstack_hortizon_mirantis_disabled(client):
+    req = copy.deepcopy(ADMISSION_REQ)
+    req["request"]["object"]["spec"]["features"]["horizon"] = {
+        "themes": [
+            {
+                "name": "mirantis",
+                "enabled": False,
+            }
+        ]
+    }
+    response = client.simulate_post("/validate", json=req)
+    assert response.status == falcon.HTTP_OK
+    assert response.json["response"]["allowed"] is True

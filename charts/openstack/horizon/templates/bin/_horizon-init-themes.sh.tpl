@@ -50,9 +50,13 @@ function download_theme() {
 
 {{- if hasKey .Values.conf.horizon.local_settings "custom_themes" }}
   {{- range $theme_name, $theme := .Values.conf.horizon.local_settings.custom_themes }}
+      {{- if $theme.enabled }}
 download_theme {{ $theme_name }} {{ $theme.url }} {{ $theme.sha256summ }}
   if [[ ! -e {{ $envAll.Values.conf.software.horizon.dashboard_path }}/custom_themes/{{ $theme_name }} ]]; then
     ln -s /var/lib/horizon/custom_themes/{{ $theme_name }}/{{ $theme.sha256summ }}/ {{ $envAll.Values.conf.software.horizon.dashboard_path }}/custom_themes/{{ $theme_name }}
   fi
+      {{- else }}
+    rm -rf /var/lib/horizon/custom_themes/{{ $theme_name }}/{{ $theme.sha256summ }}/ {{ $envAll.Values.conf.software.horizon.dashboard_path }}/custom_themes/{{ $theme_name }}
+      {{- end }}
   {{- end }}
 {{- end }}
