@@ -30,6 +30,14 @@ exec:
     - readiness
 {{- end }}
 
+{{- define "ovn_db.configurator.ProbeTemplate" }}
+exec:
+  command:
+    - /usr/bin/test
+    - -f
+    - /tmp/ovn_db_configurator_ready
+{{- end }}
+
 {{- if .Values.manifests.statefulset_ovn_db }}
 
 {{- $serviceAccountName := "openvswitch-ovn-db" }}
@@ -187,7 +195,23 @@ spec:
             - name: sb-raft
               protocol: TCP
               containerPort: {{ tuple "ovn_db" "raft" "sb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
-
+        - name: configurator
+{{ tuple $envAll "openvswitch_ovn_db_configurator" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "openvswitch_ovn_db" "container" "configurator" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ dict "envAll" $envAll "component" "ovn" "container" "configurator" "type" "liveness" "probeTemplate" (include "ovn_db.configurator.ProbeTemplate" $envAll  | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "ovn" "container" "configurator" "type" "readiness" "probeTemplate" (include "ovn_db.configurator.ProbeTemplate" $envAll  | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.ovn_db.configurator | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+          command:
+            - /tmp/ovn-db-configurator.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: openvswitch-bin
+              mountPath: /tmp/ovn-db-configurator.sh
+              subPath: ovn-db-configurator.sh
+              readOnly: true
+            - name: run
+              mountPath: /run/ovn
       volumes:
         - name: pod-tmp
           emptyDir: {}
