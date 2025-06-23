@@ -305,22 +305,28 @@ spec:
               {%- endraw %}
           {%- endif %}
           local_settings:
-            custom_themes:
-{%- set horizon_themes = horizon_features.get('themes', []) %}
-{%- if OSVer[spec.openstack_version] >= OSVer.ussuri %}
-{%- do horizon_themes.append({'url': images["horizon_mirantis_theme_url"],
-                              'name': 'mirantis',
-                              'description': 'Mirantis',
-                              'sha256summ': images["horizon_mirantis_theme_sha256summ"]
-                             }) %}
-{%- endif %}
-{%- for theme in horizon_themes %}
-  {%- set theme_url = theme.url | substitute_local_proxy_hostname("${NODE_IP}") %}
-              {{ theme.name }}:
-                url: {{ theme_url }}
-                sha256summ: {{ theme.sha256summ }}
-                description: {{ theme.description }}
+{%- set horizon_themes = {} %}
+{%- for theme in horizon_features.get('themes', []) %}
+{%-   set theme_dict = {"enabled": theme.get("enabled", true)} %}
+{%-   for key in ["sha256summ", "description"]%}
+{%-   if key in theme %}
+{%-     do theme_dict.update({key: theme[key]}) %}
+{%-   endif %}
+{%-   endfor %}
+{%-   if "url" in theme %}
+{%-     do theme_dict.update({"url": theme.url | substitute_local_proxy_hostname("${NODE_IP}")}) %}
+{%-   endif %}
+
+{%-   do horizon_themes.update({theme.name: theme_dict}) %}
 {%- endfor %}
+{%- if OSVer[spec.openstack_version] >= OSVer.ussuri  and "mirantis" not in horizon_themes %}
+{%-   do horizon_themes.update({"mirantis": {'url': images["horizon_mirantis_theme_url"] | substitute_local_proxy_hostname("${NODE_IP}"),
+                                            'description': 'Mirantis',
+                                            'sha256summ': images["horizon_mirantis_theme_sha256summ"],
+                                            'enabled': true}
+                               }) %}
+{%- endif %}
+            custom_themes: {{ horizon_themes }}
             config:
               raw:
                 DEFAULT_THEME: {{ horizon_features.get('default_theme', 'default') }}

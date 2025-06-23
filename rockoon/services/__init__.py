@@ -612,7 +612,7 @@ class RabbitMQ(Service):
                 "zed",
             ]
             and utils.get_in(self.mspec["features"], ["neutron", "backend"])
-            not in ["tungstenfabric", "ml2/ovn"]
+            not in ["tungstenfabric"]
             and cloudprober_enabled
         )
         portprober_enabled = (

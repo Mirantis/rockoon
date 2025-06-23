@@ -884,9 +884,6 @@ properties:
               additionalProperties: false
               required:
                 - name
-                - url
-                - sha256summ
-                - description
               properties:
                 name:
                   type: string
@@ -900,6 +897,11 @@ properties:
                 description:
                   type: string
                   description: Theme description showed to user
+                enabled:
+                  type: boolean
+                  description: |
+                    Trigger to enable specific theme.
+                    default True.
           motd:
             type: object
             description: Message of the Day files to show to users
