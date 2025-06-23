@@ -23,6 +23,7 @@ images:
     openvswitch_db_server: docker.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
     openvswitch_ovn_db_nb: docker.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
     openvswitch_ovn_db_sb: docker.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
+    openvswitch_ovn_db_configurator: docker.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
     openvswitch_ovn_northd: docker.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
     openvswitch_ovn_vswitchd: docker.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
     openvswitch_ovn_db: docker.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
@@ -113,6 +114,19 @@ pod:
           enabled: true
           params:
             initialDelaySeconds: 90
+            periodSeconds: 30
+            timeoutSeconds: 5
+      configurator:
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+        readiness:
+          enabled: true
+          params:
+            initialDelaySeconds: 10
             periodSeconds: 30
             timeoutSeconds: 5
       vtep:
@@ -220,6 +234,14 @@ pod:
             drop:
               - ALL
         sb:
+          runAsUser: 42424
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+        configurator:
           runAsUser: 42424
           runAsNonRoot: true
           allowPrivilegeEscalation: false
@@ -535,8 +557,14 @@ conf:
     generate_ovn_chassis_mac_mappings: false
   ovn_nb:
     election_timer: 10000
+    NB_Global:
+      options:
+        northd_probe_interval: 60000
   ovn_sb:
     election_timer: 10000
+    SB_Global:
+      options:
+        sbctl_probe_interval: 60000
   neutron:
     DEFAULT:
       support_sync_ovs_info: true

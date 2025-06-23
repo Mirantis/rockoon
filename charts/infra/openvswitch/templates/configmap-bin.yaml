@@ -38,6 +38,8 @@ data:
 {{ tuple "bin/_ovn_controller_readiness.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   ovn-db-generic.sh: |
 {{ tuple "bin/_ovn-db-generic.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+  ovn-db-configurator.sh: |
+{{ tuple "bin/_ovn-db-configurator.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   ovn-db-probe.sh: |
 {{ tuple "bin/_ovn_db_probe.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   ovn-northd.sh: |
