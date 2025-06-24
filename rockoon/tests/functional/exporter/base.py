@@ -72,15 +72,6 @@ class BaseFunctionalExporterTestCase(
         internal_ip = svc.obj["spec"]["clusterIPs"][0]
         return f"http://{internal_ip}:9102"
 
-    @classmethod
-    def is_ovn_enabled(cls):
-        return (
-            cls.osdpl.obj["spec"]["features"]
-            .get("neutron", {})
-            .get("backend", None)
-            == "ml2/ovn"
-        )
-
     @property
     def metric_families(self):
         return self.get_metric_families()

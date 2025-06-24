@@ -157,6 +157,15 @@ class BaseFunctionalTestCase(TestCase):
         )
 
     @classmethod
+    def is_ovn_enabled(cls):
+        return (
+            cls.osdpl.obj["spec"]["features"]
+            .get("neutron", {})
+            .get("backend", None)
+            == "ml2/ovn"
+        )
+
+    @classmethod
     def job_delete(cls, job, propagation_policy="Foreground"):
         job.delete(propagation_policy=propagation_policy)
 
@@ -799,4 +808,10 @@ class BaseFunctionalTestCase(TestCase):
     def remove_interface_from_router(cls, router, subnet_id):
         cls.ocm.oc.network.remove_interface_from_router(
             router=router, subnet_id=subnet_id
+        )
+
+    @classmethod
+    def wait_portprober_ports(cls, network_id):
+        waiters.wait_for_network_portprober_ports(
+            cls.ocm, network_id, CONF.PORTPROBER_AGENTS_PER_NETWORK
         )
