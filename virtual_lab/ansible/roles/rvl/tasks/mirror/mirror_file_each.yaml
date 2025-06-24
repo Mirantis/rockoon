@@ -1,0 +1,27 @@
+---
+- name: Get file name
+  set_fact:
+    file_name: "{{ url_for_mirror | regex_replace('^.*/(.*)$', '\\1') }}"
+
+- name: Get binary path
+  set_fact:
+    file_path: "{{ url_for_mirror | regex_replace('^http(s)?://.*?/(.*)/.*$', '\\2') }}"
+
+- name: "Create a directory {{ rvl_registry_binaries_dir }}/{{ file_path }} if it does not exist"
+  ansible.builtin.file:
+    path: "{{ rvl_registry_binaries_dir }}/{{ file_path }}"
+    state: directory
+    mode: '0755'
+
+- name: "Check if file {{ file_name }}  exists locally"
+  ansible.builtin.stat:
+    path: "{{ rvl_registry_binaries_dir }}/{{ file_path }}/{{ file_name }}"
+  register: file_stat
+
+- name: "Download binary {{ file_name }}"
+  ansible.builtin.get_url:
+    url: "{{ url_for_mirror }}"
+    dest: "{{ rvl_registry_binaries_dir }}/{{ file_path }}/{{ file_name }}"
+    timeout: 900
+    mode: 0644
+  when: not file_stat.stat.exists
