@@ -757,23 +757,11 @@ class UnsupportedFeaturesCheck(CheckBase):
         result = {}
         bgpvpn = ["features", "neutron", "bgpvpn", "enabled"]
         bgpvpn_enabled = utils.get_in(mspec, bgpvpn, False)
-        portprober = [
-            "features",
-            "neutron",
-            "extensions",
-            "portprober",
-            "enabled",
-        ]
-        portprober_enabled = utils.get_in(mspec, portprober, True)
         ipsec = ["features", "neutron", "ipsec", "enabled"]
         ipsec_enabled = utils.get_in(mspec, ipsec, False)
         if bgpvpn_enabled:
             result.update(
                 {"bgpvpn": f"Please set {':'.join(bgpvpn)} to False"}
-            )
-        if portprober_enabled:
-            result.update(
-                {"portprober": f"Please set {':'.join(portprober)} to False"}
             )
         if ipsec_enabled:
             result.update({"ipsec": f"Please set {':'.join(ipsec)} to False"})
