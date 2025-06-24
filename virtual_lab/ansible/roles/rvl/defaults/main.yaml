@@ -10,6 +10,7 @@ kubeconfig: "{{ inventory_dir }}/artifacts/k0s-kubeconfig.yml"
 rvl_k8s_objects_path: /src/k8s
 rvl_ca_certs_path: /src/ca
 rvl_dns_coredns: /src/coredns
+rvl_tmp_path: /src/tmp
 rvl_sources_charts: /src/sources/charts/
 rvl_directory: "{{ playbook_dir }}/../../"
 rvl_clients_helm_release: v3.16.1
@@ -150,3 +151,10 @@ rvl_registry_dir: /var/lib/docker-registry
 rvl_registry_user: docker-registry
 # rvl_registry_source can have value k8s or systemd
 rvl_registry_source: k8s
+
+rvl_mirror_images: false
+rvl_mirror_images_extra:
+ - mirantis.azurecr.io/bm/metallb/controller:v0.13.9-53df4a9c-amd64
+ - mirantis.azurecr.io/bm/metallb/speaker:v0.13.9-53df4a9c-amd64
+ - mirantis.azurecr.io/bm/external/local-volume-provisioner:v2.4.0
+ - mirantis.azurecr.io/openstack/openstack-controller:0.1.1
