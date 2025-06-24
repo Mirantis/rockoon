@@ -79,6 +79,8 @@ nav:
     - Custom Resources:
       - OpenStackDeployment: architecture/custom-resources/openstackdeployment.md
       - OpenStackDeploymentStatus: architecture/custom-resources/openstackdeploymentstatus.md
+    - Cloud Services:
+      - Horizon: architecture/cloud_services/horizon.md
   - Quick Start:
     - AIO Installation: quick-start/aio-installation.md
     - Access OpenStack: quick-start/access-openstack.md
