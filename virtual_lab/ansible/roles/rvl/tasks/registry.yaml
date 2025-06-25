@@ -14,4 +14,4 @@
 - name: Install local HTTPS registry for binary
   ansible.builtin.include_tasks:
     file: "registry/https.yaml"
-  when: rvl_mirror_binaries
+  when: rvl_mirror_binaries  or rvl_mirror_charts

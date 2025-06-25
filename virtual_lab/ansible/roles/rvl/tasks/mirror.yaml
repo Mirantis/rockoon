@@ -77,3 +77,11 @@
   loop_control:
     loop_var: url_for_mirror
   when: rvl_mirror_binaries
+
+- name: Caching charts to local folder
+  ansible.builtin.include_tasks:
+    file: mirror/mirror_file_each.yaml
+  loop: "{{ [rvl_mirror_rockoon_chart] + rvl_mirror_charts_extra }}"
+  loop_control:
+    loop_var: url_for_mirror
+  when: rvl_mirror_charts

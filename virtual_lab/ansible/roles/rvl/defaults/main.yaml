@@ -164,3 +164,9 @@ rvl_mirror_images_extra:
 
 rvl_mirror_binaries: false
 rvl_registry_binaries_dir: /var/lib/https-registry
+
+rvl_mirror_charts: false
+rvl_mirror_charts_extra:
+ - "{{ rvl_binary_public_base_url }}/core/helm/metallb-crds-1.37.20.tgz"
+ - "{{ rvl_binary_public_base_url }}/core/helm/metallb-1.37.20.tgz"
+rvl_mirror_rockoon_chart: "{{ rvl_binary_public_base_url }}/openstack/helm/rockoon/rockoon-1.0.7.tgz"
