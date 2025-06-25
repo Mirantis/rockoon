@@ -120,6 +120,7 @@ spec:
           openvswitch_ovn_db: openvswitch-ovn-db:latest
           openvswitch_ovn_db_nb: openvswitch-ovn-db-nb:latest
           openvswitch_ovn_db_sb: openvswitch-ovn-db-sb:latest
+          openvswitch_ovn_db_configurator: openvswitch-ovn-db-sb:latest
           openvswitch_ovn_northd: openvswitch-ovn-northd:latest
           openvswitch_ovn_vswitchd: openvswitch-ovn-vswitchd:latest
           openvswitch_vswitchd: openvswitch-vswitchd:latest

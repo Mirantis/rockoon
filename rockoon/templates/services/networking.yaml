@@ -331,6 +331,7 @@ spec:
     "openvswitch_ovn_vtep",
     "openvswitch_ovn_db_nb",
     "openvswitch_ovn_db_sb",
+    "openvswitch_ovn_db_configurator",
     "openvswitch_ovn_northd",
     "openvswitch_ovn_vswitchd",
     "openvswitch_ovn_db",

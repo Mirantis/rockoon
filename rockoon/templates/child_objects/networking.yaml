@@ -377,6 +377,7 @@ openvswitch:
       - openvswitch_ovn_db
       - openvswitch_ovn_db_nb
       - openvswitch_ovn_db_sb
+      - openvswitch_ovn_db_configurator
       manifest: statefulset_ovn_db
       pod_labels:
         application: openvswitch_ovn
