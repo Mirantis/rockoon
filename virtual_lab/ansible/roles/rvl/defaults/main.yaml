@@ -35,10 +35,13 @@ rvl_dns_nameservers:
 rvl_dns_discover_ingress_ip: true
 
 rvl_registry_node_port: 32500
+rvl_registry_https_port: 32443
 rvl_registry_image_tag: v2.8.1-14
 rvl_registry_ip_address: "{{ ansible_default_ipv4.address|default(ansible_all_ipv4_addresses[0]) }}"
 rvl_registry_namespace: registry
-rvl_registry_host: "registry.it.just.works:{{ rvl_registry_node_port }}"
+rvl_registry_base_url: registry.it.just.works
+rvl_registry_https_url: "https://{{ rvl_registry_base_url }}:{{ rvl_registry_https_port }}"
+rvl_registry_host: "{{ rvl_registry_base_url }}:{{ rvl_registry_node_port }}"
 
 rvl_images_public_base_url: docker-dev-kaas-virtual.mcp.mirantis.com
 rvl_binary_public_base_url: https://binary-dev-kaas-virtual.mcp.mirantis.com
@@ -158,3 +161,6 @@ rvl_mirror_images_extra:
  - mirantis.azurecr.io/bm/metallb/speaker:v0.13.9-53df4a9c-amd64
  - mirantis.azurecr.io/bm/external/local-volume-provisioner:v2.4.0
  - mirantis.azurecr.io/openstack/openstack-controller:0.1.1
+
+rvl_mirror_binaries: false
+rvl_registry_binaries_dir: /var/lib/https-registry

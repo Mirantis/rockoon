@@ -1,0 +1,46 @@
+---
+- name: Install Nginx
+  ansible.builtin.apt:
+    name: nginx
+    state: present
+
+- name: Template a file to /etc/nginx/nginx.conf
+  ansible.builtin.template:
+    src: nginx_config.j2
+    dest: /etc/nginx/nginx.conf
+    owner: bin
+    group: root
+    mode: '0644'
+
+- name: Create a directory for binaries if it does not exist
+  ansible.builtin.file:
+    path: "{{ rvl_registry_binaries_dir }}"
+    state: directory
+    owner: www-data
+    mode: '0750'
+
+- name: Create a directory certs if it does not exist
+  ansible.builtin.file:
+    path: /etc/nginx/certs
+    state: directory
+    owner: www-data
+    mode: '0750'
+
+- name: Create a directory for registry if it does not exist
+  ansible.builtin.copy:
+    src: "{{ rvl_ca_certs_path }}/{{ item.src }}"
+    dest: "/etc/nginx/certs/{{ item.dest }}"
+    owner: www-data
+    mode: '0640'
+    remote_src: true
+  loop:
+    - src: osdpl.key
+      dest: nginx.key
+    - src: osdpl.pem
+      dest: nginx.pem
+
+- name: Restart Nginx
+  ansible.builtin.service:
+    name: nginx.service
+    state: restarted
+    enabled: yes

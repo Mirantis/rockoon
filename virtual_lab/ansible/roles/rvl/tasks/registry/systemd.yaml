@@ -23,7 +23,7 @@
     - "certs"
     - "images"
 
-- name: Create a directory for registry if it does not exist
+- name: Copy SSL certificates for docker registry service
   ansible.builtin.copy:
     src: "{{ rvl_ca_certs_path }}/{{ item.src }}"
     dest: "{{ rvl_registry_dir }}/certs/{{ item.dest }}"

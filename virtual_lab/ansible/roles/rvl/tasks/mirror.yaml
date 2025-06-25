@@ -58,6 +58,10 @@
   set_fact:
     mirror_images: "{{ artifacts | select('match', '^' + rvl_images_public_base_url + '.*') }}"
 
+- name: Extract binary urls list from artifacts
+  set_fact:
+    mirror_binaries: "{{ artifacts | select('match', '^' + rvl_binary_public_base_url + '.*') }}"
+
 - name: Create images cache in local registry
   ansible.builtin.include_tasks:
     file: mirror/mirror_image_each.yaml
@@ -65,3 +69,11 @@
   loop_control:
     loop_var: image_for_mirror
   when: rvl_mirror_images
+
+- name: Caching binaries to local registry
+  ansible.builtin.include_tasks:
+    file: mirror/mirror_file_each.yaml
+  loop: "{{ mirror_binaries }}"
+  loop_control:
+    loop_var: url_for_mirror
+  when: rvl_mirror_binaries
