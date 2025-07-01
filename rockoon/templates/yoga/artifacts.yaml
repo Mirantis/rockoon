@@ -22,7 +22,7 @@ designate_mdns: '{{ images_base_url }}/openstack/designate:yoga-jammy-2024112007
 designate_producer: '{{ images_base_url }}/openstack/designate:yoga-jammy-20241120070553'
 designate_sink: '{{ images_base_url }}/openstack/designate:yoga-jammy-20241120070553'
 designate_worker: '{{ images_base_url }}/openstack/designate:yoga-jammy-20241120070553'
-drb_controller: '{{ images_base_url }}/openstack/extra/drb-controller:0.1.0-20250216082520'
+drb_controller: '{{ images_base_url }}/openstack/extra/drb-controller:0.1.0-20250624110441'
 glance_api: '{{ images_base_url }}/openstack/glance:yoga-jammy-20241120070553'
 glance_db_sync: '{{ images_base_url }}/openstack/glance:yoga-jammy-20241120070553'
 glance_db_expand: '{{ images_base_url }}/openstack/glance:yoga-jammy-20241120070553'
@@ -209,7 +209,7 @@ ironic_agent_initramfs: '{{ binary_base_url }}/openstack/bin/ironic/tinyipa/tiny
 ironic_agent_kernel_checksum: ab718135381e05da26455c216ca698a3
 ironic_agent_initramfs_checksum: 10079f158eb64e837e64cbda34fdee72
 ironic_update_nodes_metadata: '{{ images_base_url }}/openstack/openstack-tools:yoga-jammy-20241120070553'
-ironic_pxe_http: '{{ images_base_url }}/openstack/extra/nginx:1.27.2-20250213141444'
+ironic_pxe_http: '{{ images_base_url }}/openstack/extra/nginx:1.27.4-20250624093033'
 ingress_tls_proxy: '{{ images_base_url }}/openstack/tls-proxy:jammy-fipster-1.0.0.dev2'
 manila_service_image: '{{ binary_base_url }}/openstack/bin/manila/manila-service-image-20241024092252.qcow2'
 manila_db_sync: '{{ images_base_url }}/openstack/manila:yoga-jammy-20241120070553'
@@ -226,7 +226,7 @@ ingress_init_config: '{{ images_base_url }}/openstack/openstack-tools:yoga-jammy
 cinder_wait_for_backends: '{{ images_base_url }}/openstack/openstack-tools:yoga-jammy-20241120070553'
 neutron_portprober_agent: '{{ images_base_url }}/openstack/neutron:yoga-jammy-20241120070553'
 neutron_ovn_db_sync_migrate: '{{ images_base_url }}/openstack/neutron:yoga-jammy-20241120070553'
-redis-operator: '{{ images_base_url }}/openstack/extra/redis-operator:v1.2.4-20241024111938'
+redis-operator: '{{ images_base_url }}/openstack/extra/redis-operator:v1.2.4-20250624100054'
 designate_zone_setup: '{{ images_base_url }}/openstack/openstack-tools:yoga-jammy-20241120070553'
 nova_placement_audit: '{{ images_base_url }}/openstack/nova:yoga-jammy-20241120070553'
 os_image_fedora_2716: '{{ binary_base_url }}/openstack/bin/Fedora/27/Fedora-Cloud-Base-27-1.6.x86_64.qcow2'
