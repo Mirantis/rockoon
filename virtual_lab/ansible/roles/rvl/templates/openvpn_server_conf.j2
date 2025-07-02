@@ -1,0 +1,31 @@
+port {{ rvl_openvpn_port }}
+proto {{ rvl_openvpn_proto }}
+dev tun
+ca ca.crt
+cert {{ rvl_openvpn_server_crt_name }}.crt
+key {{ rvl_openvpn_server_crt_name }}.key
+dh none
+server {{ rvl_openvpn_network }}
+ifconfig-pool-persist /var/log/openvpn/ipp.txt
+{% if rvl_openvpn_push_dns %}
+push "dhcp-option DNS {{ rvl_resolved_ip_address }}"
+{% endif %}
+push "route {{ rvl_resolved_ip_address }} 255.255.255.255"
+{% for route in rvl_openvpn_client_routes %}
+push "route {{ route }}"
+{% endfor %}
+keepalive 10 120
+tls-auth ta.key 0
+cipher {{ rvl_openvpn_cipher }}
+auth {{ rvl_openvpn_auth }}
+user nobody
+group nogroup
+persist-key
+persist-tun
+status /var/log/openvpn/openvpn-status.log
+verb 3
+{% if rvl_openvpn_proto == 'udp' %}
+explicit-exit-notify 1
+{% else %}
+explicit-exit-notify 0
+{% endif %}
