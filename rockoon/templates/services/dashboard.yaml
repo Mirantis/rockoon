@@ -57,6 +57,12 @@ spec:
           ingress:
             annotations:
               nginx.ingress.kubernetes.io/proxy-body-size: "0"
+              # NOTE(vsaienko): we use service ip for memchached
+              # so need to make sure client uses same horizon instance
+              nginx.ingress.kubernetes.io/affinity: cookie
+              nginx.ingress.kubernetes.io/session-cookie-expires: "1800"
+              nginx.ingress.kubernetes.io/session-cookie-max-age: "1800"
+              nginx.ingress.kubernetes.io/session-cookie-name: horizon-client
       endpoints:
         cluster_domain_suffix: {{ spec.internal_domain_name }}
 {% include 'base/_admin_identity.yaml' %}

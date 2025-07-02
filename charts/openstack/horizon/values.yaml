@@ -418,11 +418,11 @@ conf:
         # SECRET_KEY for all of them.
         SECRET_KEY='{{ .Values.conf.horizon.local_settings.config.horizon_secret_key }}'
 
+        # NOTE(vsaienko): Use lb for memcached here with sessionAffinity ClientIP
         CACHES = {
             'default': {
                 'BACKEND': '{{ .Values.conf.horizon.local_settings.config.cache.backend }}',
-                {{- $memcache_servers := splitList "," (tuple "oslo_cache" "internal" "memcache" . | include "helm-toolkit.endpoints.host_and_port_endpoint_uri_lookup") }}
-                'LOCATION': {{ toJson $memcache_servers | replace "\"" "'" }},
+                'LOCATION': '{{ tuple "oslo_cache" "internal" . | include "helm-toolkit.endpoints.hostname_fqdn_endpoint_lookup" }}',
                 # Use uniq memecache key prefix based on image version
                 'KEY_PREFIX': '{{ (split ":" .Values.images.tags.horizon)._1 }}'
             }
