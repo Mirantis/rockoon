@@ -158,6 +158,18 @@ database:mariadb:StatefulSet:mariadb-server:
         component: scheduler
   - podSelector:
       matchLabels:
+        application: horizon
+        component: server
+  - podSelector:
+      matchLabels:
+        application: horizon
+        component: db-init
+  - podSelector:
+      matchLabels:
+        application: horizon
+        component: db-sync
+  - podSelector:
+      matchLabels:
         application: mariadb
         component: backup
   - podSelector:

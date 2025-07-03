@@ -8,6 +8,7 @@ horizon:
     horizon:
       connections:
         egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
           - {{ to_child_object("orchestration", "heat", "Deployment", "heat-api", ["h-api"]) | indent(12)}}
           - {{ to_child_object("orchestration", "heat", "Deployment", "heat-cfn", ["h-cfn"]) | indent(12)}}
           - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
@@ -32,3 +33,29 @@ horizon:
         - name: web
           port: 4999
           protocol: TCP
+  Job:
+    horizon-db-init:
+      hash_fields:
+      - endpoints.oslo_db.*
+      images:
+      - db_init
+      manifest: job_db_init
+      pod_labels:
+        application: horizon
+        component: db-init
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+    horizon-db-sync:
+      hash_fields:
+      - endpoints.oslo_db.*
+      - endpoints.oslo_messaging.*
+      images:
+      - horizon_db_sync
+      manifest: job_db_sync
+      pod_labels:
+        application: horizon
+        component: db-sync
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}

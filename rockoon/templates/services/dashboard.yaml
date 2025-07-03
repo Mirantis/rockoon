@@ -383,3 +383,19 @@ spec:
               cache:
                 backend: "django.core.cache.backends.memcached.PyMemcacheCache"
 {%- endif %}
+              installed_apps:
+                - openstack_dashboard
+                - django.contrib.contenttypes
+                - django.contrib.auth
+                - django.contrib.sessions
+                - django.contrib.messages
+                - django.contrib.staticfiles
+                - django.contrib.humanize
+                - debreach
+                - compressor
+                - horizon
+                - openstack_auth
+{%- if OSVer[spec.openstack_version] <= OSVer.antelope %}
+                - openstack_dashboard.django_pyscss_fix
+                - django_pyscss
+{%- endif %}
