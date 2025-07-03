@@ -177,22 +177,22 @@ pod:
         liveness:
           enabled: True
           params:
-            initialDelaySeconds: 10
-            periodSeconds: 15
-            timeoutSeconds: 10
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            timeoutSeconds: 5
       memcached_exporter:
         liveness:
           enabled: True
           params:
-            initialDelaySeconds: 15
-            periodSeconds: 60
-            timeoutSeconds: 10
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            timeoutSeconds: 5
         readiness:
           enabled: True
           params:
-            initialDelaySeconds: 5
-            periodSeconds: 60
-            timeoutSeconds: 10
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            timeoutSeconds: 5
   affinity:
     anti:
       topologyKey:
