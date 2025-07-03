@@ -58,6 +58,20 @@ spec:
               secure_proxy_ssl_header: true
               tungstenfabric:
                 enabled: false
+              installed_apps:
+                - openstack_dashboard
+                - django.contrib.contenttypes
+                - django.contrib.auth
+                - django.contrib.sessions
+                - django.contrib.messages
+                - django.contrib.staticfiles
+                - django.contrib.humanize
+                - debreach
+                - compressor
+                - horizon
+                - openstack_auth
+                - openstack_dashboard.django_pyscss_fix
+                - django_pyscss
             custom_themes:
               mirantis:
                 description: Mirantis

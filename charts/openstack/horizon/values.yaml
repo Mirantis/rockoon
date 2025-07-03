@@ -278,6 +278,20 @@ conf:
           enabled: False
           version: "5.1"
           dashboard_name: "tf_dashboard.overrides"
+        installed_apps:
+        -  openstack_dashboard
+        -  django.contrib.contenttypes
+        -  django.contrib.auth
+        -  django.contrib.sessions
+        -  django.contrib.messages
+        -  django.contrib.staticfiles
+        -  django.contrib.humanize
+        -  debreach
+        -  compressor
+        -  horizon
+        -  openstack_auth
+        session:
+          engine: "django.contrib.sessions.backends.db"
         cache:
           backend: "django.core.cache.backends.memcached.MemcachedCache"
         # Pass any settings to the end of local_settings.py
@@ -427,29 +441,21 @@ conf:
                 'KEY_PREFIX': '{{ (split ":" .Values.images.tags.horizon)._1 }}'
             }
         }
+        INSTALLED_APPS = {{ toJson .Values.conf.horizon.local_settings.config.installed_apps }}
         # DATABASES section is commented because we don't use mysql as horizon backend
-        #DATABASES = {
-        #    'default': {
-        #        # Database configuration here
-        #        'ENGINE': 'django.db.backends.mysql',
-        #        'NAME': '{{ .Values.endpoints.oslo_db.path | base }}',
-        #        'USER': '{{ .Values.endpoints.oslo_db.auth.horizon.username }}',
-        #        'PASSWORD': '{{ .Values.endpoints.oslo_db.auth.horizon.password }}',
-        #        'HOST': '{{ tuple "oslo_db" "internal" . | include "helm-toolkit.endpoints.hostname_fqdn_endpoint_lookup" }}',
-        #        'default-character-set': 'utf8',
-        #        {{- if .Values.manifests.certificates }}
-        #        'OPTIONS':{
-        #            'ssl': {
-        #                'ca': '/etc/mysql/certs/ca.crt',
-        #                'cert': '/etc/mysql/certs/tls.crt',
-        #                'key': '/etc/mysql/certs/tls.key'
-        #            }
-        #        },
-        #        {{- end }}
-        #        'PORT': '{{ tuple "oslo_db" "internal" "mysql" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}'
-        #    }
-        #}
-        SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+        DATABASES = {
+            'default': {
+                # Database configuration here
+                'ENGINE': 'django.db.backends.mysql',
+                'NAME': '{{ .Values.endpoints.oslo_db.path | base }}',
+                'USER': '{{ .Values.endpoints.oslo_db.auth.horizon.username }}',
+                'PASSWORD': '{{ .Values.endpoints.oslo_db.auth.horizon.password }}',
+                'HOST': '{{ tuple "oslo_db" "internal" . | include "helm-toolkit.endpoints.hostname_fqdn_endpoint_lookup" }}',
+                'default-character-set': 'utf8',
+                'PORT': '{{ tuple "oslo_db" "internal" "mysql" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}'
+            }
+        }
+        SESSION_ENGINE = '{{ .Values.conf.horizon.local_settings.config.session.engine }}'
 
         # Send email to the console by default
         EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
@@ -1405,8 +1411,8 @@ manifests:
   configmap_oslo_policy: true
   deployment: true
   ingress_api: true
-  job_db_init: false
-  job_db_sync: false
+  job_db_init: true
+  job_db_sync: true
   job_db_drop: false
   job_image_repo_sync: true
   pdb: true
