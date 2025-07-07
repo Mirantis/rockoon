@@ -15,8 +15,8 @@
 from rockoon.osctl.plugins import base
 from rockoon.osctl.plugins.sos import SosReportShell
 from rockoon.osctl.plugins.credentials import CredentialsShell
+from rockoon.osctl.plugins.certificates import CertificatesShell
 
-
-__all__ = (CredentialsShell, SosReportShell)
+__all__ = (CredentialsShell, SosReportShell, CertificatesShell)
 
 registry = base.OsctlShell.registry

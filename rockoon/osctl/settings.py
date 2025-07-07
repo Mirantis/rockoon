@@ -1,0 +1,3 @@
+OSDPL_NAMESPACE = "openstack"
+
+CERTIFICATE_ROTATION_CHOICES_LIST = ["octavia:amphora"]
