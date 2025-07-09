@@ -22,7 +22,7 @@ designate_mdns: '{{ images_base_url }}/openstack/designate:xena-focal-2024011208
 designate_producer: '{{ images_base_url }}/openstack/designate:xena-focal-20240112082932'
 designate_sink: '{{ images_base_url }}/openstack/designate:xena-focal-20240112082932'
 designate_worker: '{{ images_base_url }}/openstack/designate:xena-focal-20240112082932'
-drb_controller: '{{ images_base_url }}/openstack/extra/drb-controller:0.1.0-20250624110441'
+drb_controller: '{{ images_base_url }}/openstack/extra/drb-controller:0.1.0-20250709105323'
 glance_api: '{{ images_base_url }}/openstack/glance:xena-focal-20240112082932'
 glance_db_sync: '{{ images_base_url }}/openstack/glance:xena-focal-20240112082932'
 glance_db_expand: '{{ images_base_url }}/openstack/glance:xena-focal-20240112082932'
