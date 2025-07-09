@@ -14,17 +14,17 @@ from rockoon import resource_view
 LOG = utils.get_logger(__name__)
 
 
-class CredentialsShell(base.OsctlShell):
-    name = "credentials"
-    description = "Manage credentials of OpenStack deployment."
+class CertificatesShell(base.OsctlShell):
+    name = "certificates"
+    description = "Manage certificates of OpenStack deployment."
 
     def build_options(self):
-        credentials_sub = self.pl_parser.add_subparsers(
+        certificates_sub = self.pl_parser.add_subparsers(
             dest="sub_subcommand", required=True
         )
 
-        rotation_parser = credentials_sub.add_parser(
-            "rotate", help="Trigger openstack deployment credentials rotation"
+        rotation_parser = certificates_sub.add_parser(
+            "rotate", help="Trigger OpenStack deployment certificate rotation"
         )
         rotation_parser.add_argument(
             "--osdpl",
@@ -42,17 +42,15 @@ class CredentialsShell(base.OsctlShell):
             "--type",
             required=True,
             action="append",
-            choices=["admin", "service"],
-            help="""Type of credentials to rotate.
-                    Use `admin` to rotate admin credentials for keystone.
-                    Use `service` to rotate  mysql/rabbitmq/keystone credentials. Can be specified multiple time.""",
+            choices=settings.CERTIFICATE_ROTATION_CHOICES_LIST,
+            help="Service and component of certificates to rotate. Use multiple --type service:component options for more than one.",
         )
         rotation_parser.add_argument(
             "--wait", required=False, default=False, action="store_true"
         )
 
     def rotate(self, args):
-        creds_groups = set(args.type)
+        certs_groups = set(args.type)
         osdpl = kube.find(
             kube.OpenStackDeployment, args.osdpl, args.namespace, silent=True
         )
@@ -64,32 +62,34 @@ class CredentialsShell(base.OsctlShell):
         osdpl.reload()
 
         rotation_id = {}
-        for creds_group in creds_groups:
-            rotation_id[creds_group] = (
+        for certs_group in certs_groups:
+            service, component = certs_group.split(":")
+            rotation_id[certs_group] = (
                 utils.get_in(
                     osdpl.obj,
-                    ["status", "credentials", creds_group, "rotation_id"],
+                    [
+                        "status",
+                        "certificates",
+                        service,
+                        component,
+                        "rotation_id",
+                    ],
                     0,
                 )
                 + 1
             )
 
-        LOG.info(f"Starting rotation for {creds_groups}")
-        patch = {
-            "status": {
-                "credentials": {
-                    creds_group: {"rotation_id": rotation_id[creds_group]}
-                    for creds_group in creds_groups
-                }
-            }
-        }
-        osdplst = osdplstatus.OpenStackDeploymentStatus(
-            args.osdpl, args.namespace
-        )
+        LOG.info(f"Starting certificate rotation for {certs_groups}")
+        patch = {"status": {"certificates": {}}}
+        for certs_group in certs_groups:
+            service, component = certs_group.split(":")
+            patch["status"]["certificates"].setdefault(service, {})[
+                component
+            ] = {"rotation_id": rotation_id[certs_group]}
 
         osdpl.patch(patch, subresource="status")
         LOG.info(
-            f"Started credential rotation for {creds_groups}, please wait for OpenstackDeployment status becoming APPLIED."
+            f"Started certificate rotation for {certs_groups}, please wait for OpenstackDeployment status becoming APPLIED."
         )
 
         if args.wait is True:
@@ -105,7 +105,7 @@ class CredentialsShell(base.OsctlShell):
                 time.sleep(10)
             while True:
                 if osdplst.get_osdpl_status() == osdplstatus.APPLIED:
-                    LOG.info(f"Waiting openstack services are healty.")
+                    LOG.info(f"Waiting openstack services are healthy.")
                     if loop.run_until_complete(
                         health.wait_services_healthy(
                             osdpl.mspec, osdplst, child_view
