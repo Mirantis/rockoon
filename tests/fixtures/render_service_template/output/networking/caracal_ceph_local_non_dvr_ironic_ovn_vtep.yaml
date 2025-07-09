@@ -359,6 +359,8 @@ spec:
             ovn:
               ovn_emit_need_to_frag: true
               ovn_metadata_enabled: true
+            ngs_coordination:
+              backend_url: etcd3+http://etcd:2379?api_version=auto
           openvswitch_agent:
             agent:
               extensions: qos
