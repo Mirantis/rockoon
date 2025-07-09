@@ -170,3 +170,23 @@ rvl_mirror_charts_extra:
  - "{{ rvl_binary_public_base_url }}/core/helm/metallb-crds-1.37.20.tgz"
  - "{{ rvl_binary_public_base_url }}/core/helm/metallb-1.37.20.tgz"
 rvl_mirror_rockoon_chart: "{{ rvl_binary_public_base_url }}/openstack/helm/rockoon/rockoon-1.0.7.tgz"
+
+rvl_openvpn_enable: false
+rvl_openvpn_home: /etc/openvpn
+rvl_openvpn_environment:
+  EASYRSA_ALGO: ec
+  EASYRSA_DIGEST: sha512
+  EASYRSA_CURVE: secp384r1
+  EASYRSA_BATCH: 1
+  EASYRSA_DN: cn_only
+rvl_openvpn_server_crt_name: trymos
+rvl_openvpn_client_crt_name: client
+rvl_openvpn_port: 1194
+rvl_openvpn_proto: udp
+rvl_openvpn_cipher: AES-256-GCM
+rvl_openvpn_auth: SHA256
+rvl_openvpn_network: "10.8.0.0 255.255.255.0"
+rvl_openvpn_client_routes:
+  - "10.172.1.0 255.255.255.0"
+rvl_openvpn_push_dns: true
+rvl_openvpn_clients_config_path: /src/vpn/

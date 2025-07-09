@@ -1,0 +1,14 @@
+---
+- name: Install and configure VPN server
+  ansible.builtin.include_tasks:
+    file: "vpn/openvpn_server.yaml"
+  when: rvl_openvpn_enable
+  tags:
+    - openvpn_server
+
+- name: Configure client for VPN
+  ansible.builtin.include_tasks:
+    file: "vpn/openvpn_client.yaml"
+  when: rvl_openvpn_enable
+  tags:
+    - openvpn_client

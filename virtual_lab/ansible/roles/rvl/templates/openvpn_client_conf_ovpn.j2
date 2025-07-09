@@ -1,0 +1,37 @@
+client
+dev tun
+proto {{ rvl_openvpn_proto }}
+remote <Put your server public IP here> {{ rvl_openvpn_port }}
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+remote-cert-tls server
+cipher {{ rvl_openvpn_cipher }}
+auth {{ rvl_openvpn_auth }}
+user nobody
+group nogroup
+key-direction 1
+verb 3
+
+; script-security 2
+; up /etc/openvpn/update-resolv-conf
+; down /etc/openvpn/update-resolv-conf
+
+; script-security 2
+; up /etc/openvpn/update-systemd-resolved
+; down /etc/openvpn/update-systemd-resolved
+; down-pre
+; dhcp-option DOMAIN-ROUTE .
+<ca>
+{{ ca_cert }}
+</ca>
+<cert>
+{{ client_cert }}
+</cert>
+<key>
+{{ client_key }}
+</key>
+<tls-auth>
+{{ tls_crypt }}
+</tls-auth>

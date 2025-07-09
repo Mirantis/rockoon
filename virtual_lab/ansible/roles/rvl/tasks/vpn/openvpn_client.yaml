@@ -1,0 +1,51 @@
+---
+- name: Create a directory if it does not exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ rvl_openvpn_clients_config_path }}"
+
+- name: Generate request for client certificate
+  ansible.builtin.shell:
+    cmd: "./easyrsa --req-cn='OpenVPN client' gen-req {{ rvl_openvpn_client_crt_name }} nopass"
+    chdir: "{{ rvl_openvpn_home }}/easy-rsa"
+  environment: "{{ rvl_openvpn_environment }}"
+
+- name: Get client certificate
+  ansible.builtin.shell:
+    cmd: "./easyrsa sign-req client {{ rvl_openvpn_client_crt_name }}"
+    chdir: "{{ rvl_openvpn_home }}/easy-rsa"
+  environment: "{{ rvl_openvpn_environment }}"
+
+- name: Get content of ca.crt
+  ansible.builtin.slurp:
+    src: "{{ rvl_openvpn_home }}/easy-rsa/pki/ca.crt"
+  register: vpn_ca_crt
+
+- name: "Get content of {{  rvl_openvpn_client_crt_name }}.crt"
+  ansible.builtin.shell:
+    cmd: "openssl x509 -in {{ rvl_openvpn_home }}/easy-rsa/pki/issued/{{ rvl_openvpn_client_crt_name }}.crt"
+  register: vpn_client_crt
+
+- name: "Get content of {{  rvl_openvpn_client_crt_name }}.key"
+  ansible.builtin.slurp:
+    src: "{{ rvl_openvpn_home }}/easy-rsa/pki/private/{{  rvl_openvpn_client_crt_name }}.key"
+  register: vpn_client_key
+
+- name: "Get content of ta.key"
+  ansible.builtin.slurp:
+    src: "{{ rvl_openvpn_home }}/easy-rsa/ta.key"
+  register: vpn_ta_key
+
+- name: Template a config file for client
+  ansible.builtin.template:
+    src: openvpn_client_conf_ovpn.j2
+    dest: "{{ rvl_openvpn_clients_config_path }}/{{  rvl_openvpn_client_crt_name }}.ovpn"
+    mode: '0644'
+  vars:
+    ca_cert: "{{ vpn_ca_crt.content | b64decode }}"
+    client_cert: "{{ vpn_client_crt.stdout }}"
+    client_key: "{{ vpn_client_key.content | b64decode }}"
+    tls_crypt: "{{ vpn_ta_key.content | b64decode }}"
