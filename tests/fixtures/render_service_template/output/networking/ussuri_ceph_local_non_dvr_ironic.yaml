@@ -229,6 +229,8 @@ spec:
               tenant_network_types: vxlan
             ml2_type_flat:
               flat_networks: physnet1,ironic
+            ngs_coordination:
+              backend_url: etcd3+http://etcd:2379
           openvswitch_agent:
             agent:
               extensions: qos

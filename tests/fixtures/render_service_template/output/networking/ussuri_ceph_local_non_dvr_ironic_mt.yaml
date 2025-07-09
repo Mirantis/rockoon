@@ -226,6 +226,8 @@ spec:
               key_file: /etc/neutron/ngs/br-host.key
               port: 8022
               username: vbmc
+            ngs_coordination:
+              backend_url: etcd3+http://etcd:2379
             ml2:
               extension_drivers:
               - port_security

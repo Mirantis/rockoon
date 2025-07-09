@@ -1,6 +1,7 @@
 #apiVersion: lcm.mirantis.com/v1alpha1
 #kind: HelmBundle
 {%- from 'macros/messaging_service_creds.j2' import messaging_service_creds %}
+{%- from 'macros/etcd3.j2' import get_etcd3_endpoint %}
 {%- set service = 'neutron' %}
 {%- set components_with_dedicated_messaging = spec.get('features', {}).get('messaging', {}).get('components_with_dedicated_messaging', []) %}
 {%- set stacklight_enabled = spec.get('features', {}).get('stacklight', {}).get('enabled', False) %}
@@ -994,6 +995,8 @@ spec:
               {%- endif %}
               tenant_network_types: {{ spec.features.neutron.get('tenant_network_types', default_tenant_network_types)|join(',') }}
           {%- if baremetal_enabled %}
+            ngs_coordination:
+              backend_url: {{ get_etcd3_endpoint(spec.openstack_version, 'etcd3gw') }}
             {%- for gs_dev in spec.features.neutron.get('baremetal', {}).get('ngs', {}).get('devices', []) %}
             genericswitch:{{ gs_dev.name }}:
               device_type: {{ gs_dev.device_type }}
