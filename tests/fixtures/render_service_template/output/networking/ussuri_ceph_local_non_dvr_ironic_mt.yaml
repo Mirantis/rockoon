@@ -226,6 +226,8 @@ spec:
               key_file: /etc/neutron/ngs/br-host.key
               port: 8022
               username: vbmc
+              session_log: /var/lib/neutron/ngs/logs/br-host_session.log
+              session_log_file_mode: append
             ngs_coordination:
               backend_url: etcd3+http://etcd:2379
             ml2:
@@ -402,6 +404,7 @@ spec:
           neutron_openvswitch_agent: neutron-openvswitch-agent:latest
           neutron_ovn_db_sync_migrate: neutron-ovn-db-sync-migrate:latest
           neutron_rpc_server: neutron-rpc-server:latest
+          neutron_server_logrotate: neutron-logrotate:latest
           neutron_server: neutron-server:latest
           neutron_sriov_agent: neutron-sriov-agent:latest
           neutron_sriov_agent_init: neutron-sriov-agent-init:latest
@@ -455,6 +458,9 @@ spec:
         neutron_ovs-agent:
           labels: null
       pod:
+        logrotate:
+          neutron_server:
+            enabled: true
         mounts:
           neutron_server:
             neutron_server:

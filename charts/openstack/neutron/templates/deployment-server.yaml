@@ -30,6 +30,14 @@ exec:
     - /tmp/neutron-server-liveness-probe.sh
 {{- end }}
 
+{{- define "logrotateProbeTemplate" }}
+exec:
+  command:
+    - /usr/bin/test
+    - -f
+    - /tmp/logrotate.status
+{{- end }}
+
 {{- if .Values.manifests.deployment_server }}
 {{- $envAll := . }}
 
@@ -86,6 +94,17 @@ spec:
       terminationGracePeriodSeconds: {{ .Values.pod.lifecycle.termination_grace_period.server.timeout | default "30" }}
       initContainers:
 {{ tuple $envAll "pod_dependency" $mounts_neutron_server_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+        - name: perms
+{{ tuple $envAll "neutron_server" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "neutron_server" "container" "perms" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - chown
+            - -R
+            - {{ $envAll.Values.pod.security_context.neutron_server.pod.runAsUser | quote }}
+            - /var/lib/neutron
+          volumeMounts:
+            - name: varlibneutron
+              mountPath: /var/lib/neutron
       containers:
         - name: neutron-server
 {{ tuple $envAll "neutron_server" | include "helm-toolkit.snippets.image" | indent 10 }}
@@ -115,7 +134,7 @@ spec:
 {{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "neutron" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
             - name: pod-tmp
               mountPath: /tmp
-            - name: pod-var-neutron
+            - name: varlibneutron
               mountPath: {{ .Values.conf.neutron.DEFAULT.state_path }}
             - name: neutron-bin
               mountPath: /tmp/neutron-server.sh
@@ -269,16 +288,40 @@ spec:
 {{- dict "enabled" .Values.manifests.certificates "name" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
 {{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.network.server.internal "path" "/etc/neutron/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
 {{- end }}
+{{- if .Values.pod.logrotate.neutron_server.enabled }}
+        - name: logrotate
+{{ tuple $envAll "neutron_server_logrotate" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.logrotate | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "neutron_server" "container" "neutron_logrotate" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ dict "envAll" $envAll "component" "server" "container" "logrotate" "type" "readiness" "probeTemplate" (include "logrotateProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "server" "container" "logrotate" "type" "liveness" "probeTemplate" (include "logrotateProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          command:
+            - /tmp/neutron-server-logrotate.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: varlibneutron
+              mountPath: {{ .Values.conf.neutron.DEFAULT.state_path }}
+            - name: neutron-bin
+              mountPath: /tmp/neutron-server-logrotate.sh
+              subPath: neutron-server-logrotate.sh
+              readOnly: true
+            - name: neutron-etc
+              mountPath: /etc/logrotate.conf
+              subPath: logrotate.conf
+              readOnly: true
+{{- end }}
       volumes:
 {{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "neutron" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
+        - name: varlibneutron
+          hostPath:
+            path: /var/lib/neutron
         - name: pod-tmp
           emptyDir: {}
         {{- if .Values.manifests.certificates }}
         - name: wsgi-neutron
           emptyDir: {}
         {{- end }}
-        - name: pod-var-neutron
-          emptyDir: {}
         - name: neutron-bin
           configMap:
             name: neutron-bin

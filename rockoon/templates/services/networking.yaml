@@ -512,6 +512,7 @@ spec:
     "neutron_portprober_agent",
     "neutron_ovn_vpn_agent",
     "purge_test",
+    "neutron_server_logrotate",
     "test",] %}
         {%- if image in images %}
           {{ image }}: {{ images[image] }}
@@ -534,6 +535,11 @@ spec:
               enabled: true
 {%- endif %}
       pod:
+{%- if baremetal_enabled %}
+        logrotate:
+          neutron_server:
+            enabled: true
+{%- endif %}
         # NOTE(ohryhorov): use_fqdn is disabled not to use FQDN
         # in agent hostnames
         use_fqdn:
@@ -1002,6 +1008,8 @@ spec:
               device_type: {{ gs_dev.device_type }}
               ip: {{ gs_dev.ip }}
               username: {{ gs_dev.username }}
+              session_log: /var/lib/neutron/ngs/logs/{{ gs_dev.name }}_session.log
+              session_log_file_mode: append
               {% if gs_dev.password is defined %}password: {{ gs_dev.password }}{% endif %}
               {% if gs_dev.secret is defined %}password: {{ gs_dev.secret }}{% endif %}
               {%- if gs_dev.ssh_private_key is defined %}
@@ -1015,6 +1023,8 @@ spec:
             genericswitch:{{ hw_dev_name }}:
               device_type: {{ hw_dev.device_type }}
               ip: {{ hw_dev.ip }}
+              session_log: /var/lib/neutron/ngs/logs/{{ hw_dev_name }}_session.log
+              session_log_file_mode: append
               {%- if hw_dev.device_type != 'ovs_vtep' %}
               username: {{ hw_dev.username }}
               {% if hw_dev.password is defined %}password: {{ hw_dev.password }}{% endif %}

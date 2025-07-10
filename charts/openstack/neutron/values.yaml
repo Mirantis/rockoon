@@ -32,6 +32,7 @@ images:
     ks_endpoints: docker.io/openstackhelm/heat:stein-ubuntu_bionic
     neutron_bootstrap: docker.io/openstackhelm/heat:stein-ubuntu_bionic
     neutron_server: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
+    neutron_server_logrotate: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
     neutron_rpc_server: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
     neutron_dhcp: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
     neutron_metadata: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
@@ -417,6 +418,9 @@ dependencies:
 pod:
   use_fqdn:
     neutron_agent: true
+  logrotate:
+    neutron_server:
+      enabled: false
   probes:
     rpc_timeout: 30
     dhcp_agent:
@@ -602,7 +606,17 @@ pod:
           periodSeconds: 15
           successThreshold: 1
           timeoutSeconds: 5
-
+      logrotate:
+        readiness:
+          enabled: true
+          params:
+            periodSeconds: 15
+            timeoutSeconds: 5
+        liveness:
+          enabled: true
+          params:
+            periodSeconds: 15
+            timeoutSeconds: 5
     ironic_agent:
       default:
         readiness:
@@ -792,6 +806,16 @@ pod:
         runAsUser: 42424
         runAsNonRoot: true
       container:
+        perms:
+          readOnlyRootFilesystem: true
+          runAsUser: 0
+          runAsNonRoot: false
+          capabilities:
+            drop:
+              - ALL
+            add:
+              - CHOWN
+              - DAC_READ_SEARCH
         neutron_server:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -799,6 +823,12 @@ pod:
             drop:
               - ALL
         neutron_rpc_server:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+        neutron_logrotate:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
           capabilities:
@@ -1293,6 +1323,16 @@ pod:
           cpu: "2000m"
 
 conf:
+  logrotate_conf: |
+    /var/lib/neutron/ngs/logs/*.log {
+      size 100M
+      copytruncate
+      rotate 10
+      compress
+      delaycompress
+      missingok
+      notifempty
+    }
   rally_tests:
     force_project_purge: false
     run_tempest: false

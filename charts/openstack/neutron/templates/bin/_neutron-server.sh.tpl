@@ -24,7 +24,8 @@ umask 0027
 COMMAND="${@:-start}"
 
 function start () {
-mkdir -p /tmp/pod-shared
+mkdir -p /tmp/pod-shared {{ .Values.conf.neutron.DEFAULT.state_path }}/ngs/logs/
+
 {{- if ( has "ovn" .Values.network.backend ) }}
 # NOTE(vsaienko): unless PRODX-24795 is fixed Pick IP on the start
 ovn_db_host={{ tuple "ovn_db" "internal" . | include "helm-toolkit.endpoints.endpoint_host_lookup" }}
