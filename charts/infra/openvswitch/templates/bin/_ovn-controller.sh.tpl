@@ -92,7 +92,7 @@ function start () {
     echo "Changing original bridge mappings ${OVN_BRIDGE_MAPPINGS_BACKUP} to ${MIGRATION_BRIDGE_MAPPINGS}"
     ovs-vsctl --db=unix:${OVS_DB_SOCK} --no-wait set Open_Vswitch . external-ids:ovn-bridge-mappings="${MIGRATION_BRIDGE_MAPPINGS}"
 
-    interfaces=$(ovs-vsctl --db=unix:${OVS_DB_SOCK} list-ifaces br-int | egrep -v 'qr-|ha-|qg-|rfp-|sg-|fg-')
+    interfaces=$(ovs-vsctl --db=unix:${OVS_DB_SOCK} list-ifaces br-int | egrep -v 'qr-|ha-|qg-|rfp-|sg-|fg-|tpi-|spi-')
     for interface in $interfaces; do
         if [[ "$interface" == "br-int" ]]; then
             continue
