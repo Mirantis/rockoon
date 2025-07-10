@@ -245,3 +245,4 @@ ironic_nic_init: '{{ images_base_url }}/general/openvswitch:2.17-jammy-202504080
 openvswitch_ovn_vtep: '{{ images_base_url }}/general/openvswitch:2.17-jammy-20250408072712'
 octavia_loadbalancers_failover: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250415072626'
 openvswitch_ovn_db_configurator: '{{ images_base_url }}/general/openvswitch:2.17-jammy-20250408072712'
+neutron_server_logrotate: '{{ images_base_url }}/openstack/extra/logrotate:3.21.0-alpine-20250710120933'
