@@ -328,6 +328,7 @@ data:
   dpdk.conf: {{ toJson $envAll.Values.conf.ovs_dpdk | b64enc }}
   ovs_interfaces.json: {{ toJson $envAll.Values.conf.ovs_bridges | b64enc }}
   ports.conf: ""
+  logrotate.conf: {{ $envAll.Values.conf.logrotate_conf | b64enc }}
 {{-  if .Values.manifests.certificates }}
 {{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.mpm_event "key" "mpm_event.conf" "format" "Secret" ) | indent 2 }}
 {{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.wsgi_neutron_server "key" "wsgi-server.conf" "format" "Secret" ) | indent 2 }}

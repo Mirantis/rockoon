@@ -137,6 +137,7 @@ images:
   mariadb_phy_restore: mariadb-phy-restore:latest
   mariadb_scripted_test: mariadb-scripted-test:latest
   memcached: memcached:latest
+  neutron_server_logrotate: neutron-logrotate:latest
   neutron_bagpipe_bgp: neutron-bagpipe-bgp:latest
   neutron_db_sync: neutron-db-sync:latest
   neutron_ovn_db_sync_migrate: neutron-ovn-db-sync-migrate:latest

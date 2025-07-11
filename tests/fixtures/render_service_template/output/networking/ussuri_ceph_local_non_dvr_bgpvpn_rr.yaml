@@ -431,6 +431,7 @@ spec:
           neutron_openvswitch_agent: neutron-openvswitch-agent:latest
           neutron_ovn_db_sync_migrate: neutron-ovn-db-sync-migrate:latest
           neutron_rpc_server: neutron-rpc-server:latest
+          neutron_server_logrotate: neutron-logrotate:latest
           neutron_server: neutron-server:latest
           neutron_sriov_agent: neutron-sriov-agent:latest
           neutron_sriov_agent_init: neutron-sriov-agent-init:latest
