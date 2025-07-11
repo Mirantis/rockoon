@@ -28,7 +28,7 @@ spec:
           driver_agent:
             enabled_provider_agents: ovn
           api_settings:
-            default_provider_driver: ovn
+            default_provider_driver: amphorav2
             enabled_provider_drivers: amphora:The Octavia Amphora driver.,octavia:Deprecated
               alias of the Octavia Amphora driver.,amphorav2:Extented Octavia Amphora
               driver with jobboard support.,ovn:OVN provider driver
@@ -62,7 +62,7 @@ spec:
             memcache_security_strategy: ENCRYPT
           task_flow:
             jobboard_enabled: true
-            jobboard_backend_driver: redis_taskflow_driver
+            jobboard_backend_driver: etcd_taskflow_driver
             jobboard_expiration_time: 90
       dependencies:
         static:
@@ -253,18 +253,6 @@ spec:
             cakey: |
               LOAD BALANCER TEST TLS KEY
       pod:
-        security_context:
-          octavia_health_manager:
-            container:
-              nic_init:
-                capabilities:
-                  add:
-                   # Add NET_RAW as required for focal 2.13 openvswitch image and kernel on the host PRODX-37293
-                   - NET_RAW
-                   - NET_ADMIN
-                   - DAC_OVERRIDE
-                  drop:
-                   - ALL
         replicas:
           health_manager: 3
           housekeeping: 3

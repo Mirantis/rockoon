@@ -200,9 +200,8 @@ spec:
   {% set _default_provider_driver = 'tungstenfabric' %}
 {%- endif %}
         {%- if ovn_enabled %}
-          {% set _default_provider_driver = 'ovn' %}
           driver_agent:
-                    enabled_provider_agents: ovn
+            enabled_provider_agents: ovn
         {%- endif %}
 {% set default_provider_driver = spec.features.get('octavia', {}).get('default_provider', _default_provider_driver) %}
 {%- if tungstenfabric_enabled %}
