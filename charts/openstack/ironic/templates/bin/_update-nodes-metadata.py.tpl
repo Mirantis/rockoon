@@ -21,7 +21,6 @@ import os
 
 from keystoneauth1 import exceptions as ksa_exceptions
 from retry import retry
-from distutils.util import strtobool
 from uuid import UUID
 
 LOG = logging.getLogger(__name__)
@@ -30,6 +29,10 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 LOG.setLevel(logging.INFO)
+
+def strtobool(v):
+    # Clone from the now-deprecated distutils
+    return str(v).lower() in ("yes", "true", "t", "1")
 
 DEPLOY_KERNEL_IMAGE = os.environ.get("DEPLOY_KERNEL_IMAGE")
 DEPLOY_RAMDISK_IMAGE = os.environ.get("DEPLOY_RAMDISK_IMAGE")
