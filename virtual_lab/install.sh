@@ -16,14 +16,25 @@ OPENSTACK_CONTROLLER_DIR=${OPENSTACK_CONTROLLER_DIR:-"${TOP_DIR}/../"}
 INVENTORY_FILE=${INVENTORY_FILE:-"${OPENSTACK_CONTROLLER_DIR}/virtual_lab/ansible/inventory/single_node.yaml"}
 HOSTNAME=$(hostname)
 
-DEBIAN_FRONTEND=noninteractive apt install -y python3-pip
+if [[ -z $(apt --installed -qq list python3-pip) ]]; then
+    DEBIAN_FRONTEND=noninteractive apt install -y python3-pip
+fi
 
-PIP_BREAK_SYSTEM_PACKAGES=1 pip3 install ansible
+if ! pip3 show ansible 2>&1 >/dev/null ; then
+    PIP_BREAK_SYSTEM_PACKAGES=1 pip3 install ansible
+fi
 
-ansible-galaxy collection install bodsch.core
-ansible-galaxy collection install bodsch.scm
-ansible-galaxy role install bodsch.k0s
-ansible-galaxy role install cloudalchemy.coredns
+for collection in bodsch.core bodsch.scm; do
+    if [[ $(ansible-galaxy collection list | grep -cw $collection) != 1 ]]; then
+        ansible-galaxy collection install $collection
+    fi
+done
+
+for role in cloudalchemy.coredns bodsch.k0s; do
+    if [[ $(ansible-galaxy role list | grep -cw $role) != 1 ]]; then
+        ansible-galaxy role install $role
+    fi
+done
 
 cd "${OPENSTACK_CONTROLLER_DIR}/virtual_lab/ansible/"
 sed -i "s/oc-virtual-lab-server-ctl-01/${HOSTNAME}/g" "${INVENTORY_FILE}"
