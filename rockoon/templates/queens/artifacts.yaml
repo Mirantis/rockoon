@@ -233,6 +233,6 @@ ironic_nic_init_pre: '{{ images_base_url }}/openstack/heat:queens-bionic-2023022
 ironic_nic_init_post: '{{ images_base_url }}/openstack/heat:queens-bionic-20230227093206'
 ironic_nic_init: '{{ images_base_url }}/general/openvswitch:2.11-bionic-20250710094819'
 openvswitch_ovn_vtep: '{{ images_base_url }}/general/openvswitch:2.11-bionic-20250710094819'
-octavia_loadbalancers_failover: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250415072626'
 openvswitch_ovn_db_configurator: '{{ images_base_url }}/general/openvswitch:2.11-bionic-20250710094819'
 neutron_server_logrotate: '{{ images_base_url }}/openstack/extra/logrotate:3.21.0-alpine-20250710120933'
+octavia_lb_failover: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250415072626'
