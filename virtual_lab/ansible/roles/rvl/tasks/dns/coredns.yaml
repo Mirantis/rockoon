@@ -13,7 +13,7 @@
     name: ingress
     namespace: openstack
   register: ingress_service
-  until: ingress_service.get('resources') and ingress_service.resources[0].spec.clusterIP
+  until: ingress_service.get('resources') and ingress_service.resources[0].status.loadBalancer.ingress[0].ip
   retries: 60
   delay: 10
   ignore_errors: yes
@@ -42,7 +42,7 @@
     group: root
     mode: '0644'
   vars:
-    ingress_service_ip: "{{ ingress_service.resources[0].spec.clusterIP }}"
+    ingress_service_ip: "{{ ingress_service.resources[0].status.loadBalancer.ingress[0].ip }}"
   tags:
     - dns
   when: rvl_dns_discover_ingress_ip

@@ -8,6 +8,8 @@
     - "{{ rvl_ca_certs_path }}"
 
 - name: Install helm if not exists
+  become: true
+  become_user: root
   unarchive:
     src: "https://get.helm.sh/helm-{{ rvl_clients_helm_release }}-linux-amd64.tar.gz"
     dest: /usr/local/bin
@@ -20,9 +22,33 @@
     creates: /usr/local/bin/helm
 
 - name: Install kubectl if not exists
+  become: true
+  become_user: root
   ansible.builtin.get_url:
     url: "https://dl.k8s.io/release/{{ rvl_clients_kubectl_release }}/bin/linux/amd64/kubectl"
     dest: /usr/local/bin/kubectl
     owner: root
     group: root
     mode: 0755
+
+- name: Install nerdctl if not exists
+  become: true
+  become_user: root
+  unarchive:
+    src: "https://github.com/containerd/nerdctl/releases/download/v{{ rvl_clients_nerdctl_release }}/nerdctl-{{ rvl_clients_nerdctl_release }}-linux-amd64.tar.gz"
+    dest: /usr/local/bin
+    owner: root
+    group: root
+    mode: 0755
+    remote_src: true
+    include:
+    - nerdctl
+
+- name: Install the docker client
+  ansible.builtin.package:
+    name:
+      - docker.io
+    state: latest
+  when: rvl_images_build_rockoon or
+        rvl_images_build_loci or
+        rvl_mirror_images

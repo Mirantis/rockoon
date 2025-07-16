@@ -1,0 +1,20 @@
+- name: Deploy ceph operator
+  kubernetes.core.helm:
+    kubeconfig: "{{ kubeconfig }}"
+    name: ceph-operator
+    chart_ref: "{{ rvl_chart_ref_ceph_operator }}"
+    release_namespace: osh-system
+    create_namespace: true
+    values:
+      global:
+        dockerBaseUrl: "{{ rvl_images_base_url }}"
+        helmBaseUrl: "{{ rvl_binary_base_url }}"
+        podNetworks:
+          - cidr: 192.168.0.0/16
+      rookOperatorPlacement:
+        nodeSelector:
+          openstack-control-plane: enabled
+      rookExtraConfig:
+        csiKubeletPath: /var/lib/k0s/kubelet
+  tags:
+   - ceph

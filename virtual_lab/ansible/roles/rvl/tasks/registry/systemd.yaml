@@ -1,0 +1,43 @@
+---
+- name: Install local Docker registry
+  ansible.builtin.apt:
+    name: docker-registry
+    state: present
+
+- name: Template a file to /etc/docker/registry/config.yml
+  ansible.builtin.template:
+    src: registry_config.j2
+    dest: /etc/docker/registry/config.yml
+    owner: bin
+    group: root
+    mode: '0644'
+  register: registry_config
+
+- name: Create a directory for registry if it does not exist
+  ansible.builtin.file:
+    path: "{{ rvl_registry_dir }}/{{ item }}"
+    state: directory
+    owner: "{{ rvl_registry_user }}"
+    mode: '0750'
+  loop:
+    - "certs"
+    - "images"
+
+- name: Copy SSL certificates for docker registry service
+  ansible.builtin.copy:
+    src: "{{ rvl_ca_certs_path }}/{{ item.src }}"
+    dest: "{{ rvl_registry_dir }}/certs/{{ item.dest }}"
+    owner: "{{ rvl_registry_user }}"
+    mode: '0640'
+    remote_src: true
+  loop:
+    - src: osdpl.key
+      dest: registry.key
+    - src: osdpl.pem
+      dest: registry.pem
+
+- name: Restart Docker-registry
+  ansible.builtin.service:
+    name: docker-registry.service
+    state: restarted
+    enabled: yes

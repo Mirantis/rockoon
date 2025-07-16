@@ -7,8 +7,11 @@
   kubernetes.core.helm:
     kubeconfig: "{{ kubeconfig }}"
     name: local-volume-provisioner
-    chart_ref: "{{ rvl_directory }}/charts/infra/local-volume-provisioner"
+    chart_ref: "{{ rvl_lvp_local_volume_provisioner_chart }}"
     release_namespace: lvp
     create_namespace: true
     values:
-      local_volume_provisioner_mounts: mirantis.azurecr.io/openstack/openstack-controller:0.1.1
+      images:
+        tags:
+          local_volume_provisioner_mounts: "{{ rvl_lvp_local_volume_provisioner_mounts_image }}"
+          local_volume_provisioner: "{{ rvl_lvp_local_volume_provisioner_image }}"

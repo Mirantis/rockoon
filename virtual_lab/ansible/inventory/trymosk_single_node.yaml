@@ -1,0 +1,39 @@
+all:
+  vars:
+    ansible_ssh_user: ubuntu
+    k0s_worker_on_controller: true
+    k0s_no_taints: true
+    k0s_version: 1.27.16+k0s.0
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    kubeconfig: "{{ inventory_dir }}/artifacts/k0s-kubeconfig.yml"
+    rvl_images_build_rockoon: false
+    rvl_images_build_loci: false
+    rvl_registry_source: systemd
+    rvl_mirror_images: true
+    rvl_mirror_charts: true
+    rvl_mirror_binaries: true
+    rvl_images_build_tag: 1.0.9
+    rvl_images_base_url: "{{ rvl_registry_host }}"
+    rvl_binary_base_url: "{{ rvl_registry_https_url }}"
+    rvl_rockoon_chart_ref: "{{ rvl_registry_https_url }}/openstack/helm/rockoon/rockoon-{{ rvl_images_build_tag }}.tgz"
+    rvl_mirror_rockoon_chart: "{{ rvl_binary_public_base_url }}/openstack/helm/rockoon/rockoon-{{ rvl_images_build_tag }}.tgz"
+    rvl_lvp_local_volume_provisioner_chart: "{{  rvl_registry_https_url }}/local-volume-provisioner.tgz"
+    rvl_vpn_enable: true
+
+  hosts:
+    oc-virtual-lab-server-ctl-01:
+      ansible_host: localhost
+      ansible_connection: local
+
+  children:
+    computes:
+      hosts:
+        oc-virtual-lab-server-ctl-01:
+    controllers:
+      hosts:
+        oc-virtual-lab-server-ctl-01:
+    k8s_controllers:
+      hosts:
+        oc-virtual-lab-server-ctl-01:
+    k8s_workers:
+      hosts:

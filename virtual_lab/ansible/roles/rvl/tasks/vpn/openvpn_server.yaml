@@ -1,0 +1,85 @@
+---
+- name: Install packages
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - openvpn
+    - easy-rsa
+
+- name: "Check if easy-rsa infrastructure exists"
+  ansible.builtin.stat:
+    path: "{{ rvl_openvpn_home }}/easy-rsa"
+  register: easyrsa_stat
+
+- name: Create easy-rsa infrastructure
+  ansible.builtin.shell:
+    cmd: "make-cadir {{ rvl_openvpn_home }}/easy-rsa"
+  when: not easyrsa_stat.stat.exists
+
+- name: "Check if CA exists"
+  ansible.builtin.stat:
+    path: "{{ rvl_openvpn_home }}/easy-rsa/pki/ca.crt"
+  register: ca_stat
+
+- name: Create pki infrastructure
+  ansible.builtin.shell:
+    cmd: ./easyrsa init-pki
+    chdir: "{{ rvl_openvpn_home }}/easy-rsa"
+  environment: "{{ rvl_openvpn_environment }}"
+  when: not ca_stat.stat.exists
+
+- name: Generate CA
+  ansible.builtin.shell:
+    cmd: "./easyrsa --req-cn='TryMOS OpenVPN' build-ca nopass"
+    chdir: "{{ rvl_openvpn_home }}/easy-rsa"
+  environment: "{{ rvl_openvpn_environment }}"
+  when: not ca_stat.stat.exists
+
+- name: Generate request for server certificate
+  ansible.builtin.shell:
+    cmd: "./easyrsa --req-cn='TryMOS OpenVPN server' gen-req {{ rvl_openvpn_server_crt_name }} nopass"
+    chdir: "{{ rvl_openvpn_home }}/easy-rsa"
+  environment: "{{ rvl_openvpn_environment }}"
+
+- name: Get server certificate
+  ansible.builtin.shell:
+    cmd: "./easyrsa sign-req server {{ rvl_openvpn_server_crt_name }}"
+    chdir: "{{ rvl_openvpn_home }}/easy-rsa"
+  environment: "{{ rvl_openvpn_environment }}"
+
+- name: Generate ta.key
+  ansible.builtin.shell:
+    cmd: openvpn --genkey secret ta.key
+    chdir: "{{ rvl_openvpn_home }}/easy-rsa"
+  environment: "{{ rvl_openvpn_environment }}"
+
+- name: Copy keys and common certificates for server
+  ansible.builtin.copy:
+    src: "{{ rvl_openvpn_home }}/easy-rsa/pki/{{ item.src }}"
+    dest: "{{ rvl_openvpn_home }}/server/{{ item.dest }}"
+    mode: preserve
+    remote_src: true
+  loop:
+    - src: ca.crt
+      dest: ca.crt
+    - src: "private/{{ rvl_openvpn_server_crt_name }}.key"
+      dest: "{{ rvl_openvpn_server_crt_name }}.key"
+    - src: ../ta.key
+      dest: ta.key
+
+- name: Strip and copy server certificate
+  ansible.builtin.shell:
+    cmd: "openssl x509 -in {{ rvl_openvpn_home }}/easy-rsa/pki/issued/{{ rvl_openvpn_server_crt_name }}.crt -out {{ rvl_openvpn_home }}/server/{{ rvl_openvpn_server_crt_name }}.crt"
+
+- name: Template a config file for server
+  ansible.builtin.template:
+    src: openvpn_server_conf.j2
+    dest: "{{ rvl_openvpn_home }}/server/server.conf"
+    mode: '0644'
+
+- name: Restart OpenVPN service
+  ansible.builtin.service:
+    name: openvpn-server@server.service
+    state: restarted
+    enabled: yes

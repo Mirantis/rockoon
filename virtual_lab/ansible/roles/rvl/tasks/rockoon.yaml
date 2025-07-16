@@ -19,5 +19,7 @@
           - cidr: 192.168.0.0/16
       image:
         fullName: "{{ rvl_images_rockoon }}:{{ rvl_images_build_tag }}"
+      ceph:
+        createSharedNamespace: "{{ not rvl_deploy_ceph }}"
   tags:
    - oc

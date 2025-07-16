@@ -1,0 +1,87 @@
+---
+- name: Create temporary directory if it does not exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0777'
+  loop:
+    - "{{ rvl_tmp_path }}"
+  when: rvl_mirror_images
+
+- name: Set image name for Rockoon
+  set_fact:
+    mirror_rockoon_image: "{{ rvl_images_public_base_url }}/openstack/rockoon:{{ rvl_images_build_tag }}"
+  when: rvl_mirror_images
+
+- name: Create Rockoon container
+  community.docker.docker_container:
+    name: rockoon
+    auto_remove: true
+    detach: true
+    command: cat
+    pull: true
+    tty: true
+    image: "{{ mirror_rockoon_image }}"
+    volumes:
+      - "{{ rvl_tmp_path }}:/data"
+  when: rvl_mirror_images
+
+- name: Get path for Rockoon deirectory
+  community.docker.docker_container_exec:
+    container: rockoon
+    command: python3 -c 'import os,rockoon; print(os.path.dirname(rockoon.__file__))'
+    chdir: /root
+  register: rockoon_path
+  when: rvl_mirror_images
+
+- name: Get artifacts.yaml
+  community.docker.docker_container_exec:
+    container: rockoon
+    command: "cp -f {{ rockoon_path.stdout }}/templates/caracal/artifacts.yaml /data/"
+    chdir: /root
+  when: rvl_mirror_images
+
+- name: Remove Rockoon container
+  community.docker.docker_container:
+    name: rockoon
+    state: absent
+  when: rvl_mirror_images
+
+- name: Render artifacts.yaml template
+  set_fact:
+    artifacts: "{{ lookup('template', rvl_tmp_path + '/artifacts.yaml') | from_yaml | dict2items | community.general.json_query('[*].value') | unique }}"
+  vars:
+    images_base_url: "{{ rvl_images_public_base_url }}"
+    binary_base_url: "{{ rvl_binary_public_base_url }}"
+
+- name: Extract Docker images list from artifacts
+  set_fact:
+    mirror_images: "{{ artifacts | select('match', '^' + rvl_images_public_base_url + '.*') }}"
+
+- name: Extract binary urls list from artifacts
+  set_fact:
+    mirror_binaries: "{{ artifacts | select('match', '^' + rvl_binary_public_base_url + '.*') }}"
+
+- name: Create images cache in local registry
+  ansible.builtin.include_tasks:
+    file: mirror/mirror_image_each.yaml
+  loop: "{{ [mirror_rockoon_image] + mirror_images + rvl_mirror_images_extra }}"
+  loop_control:
+    loop_var: image_for_mirror
+  when: rvl_mirror_images
+
+- name: Caching binaries to local registry
+  ansible.builtin.include_tasks:
+    file: mirror/mirror_file_each.yaml
+  loop: "{{ mirror_binaries }}"
+  loop_control:
+    loop_var: url_for_mirror
+  when: rvl_mirror_binaries
+
+- name: Caching charts to local folder
+  ansible.builtin.include_tasks:
+    file: mirror/mirror_file_each.yaml
+  loop: "{{ [rvl_mirror_rockoon_chart] + rvl_mirror_charts_extra }}"
+  loop_control:
+    loop_var: url_for_mirror
+  when: rvl_mirror_charts

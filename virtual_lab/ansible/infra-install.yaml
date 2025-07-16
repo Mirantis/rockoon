@@ -79,6 +79,10 @@
       coredns_config_file: /src/coredns/Corefile
     tags:
       - dns
+  - name: Setup VPN server
+    include_role:
+      name: rvl
+      tasks_from: vpn
 
 - name: Configure resolver
   hosts: controllers:computes

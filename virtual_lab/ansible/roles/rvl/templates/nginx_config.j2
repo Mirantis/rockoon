@@ -1,0 +1,61 @@
+user www-data;
+worker_processes auto;
+pid /run/nginx.pid;
+
+events {
+  worker_connections 768;
+}
+
+http {
+
+  ##
+  # Basic Settings
+  ##
+
+  sendfile on;
+  tcp_nopush on;
+  types_hash_max_size 2048;
+
+  include /etc/nginx/mime.types;
+  default_type application/octet-stream;
+
+  ##
+  # SSL Settings
+  ##
+
+  ssl_protocols TLSv1.3;
+  ssl_prefer_server_ciphers on;
+  ssl_ciphers EECDH+AESGCM:EDH+AESGCM;
+  ssl_ecdh_curve secp384r1;
+  ssl_session_timeout  10m;
+  ssl_session_cache shared:SSL:10m;
+  ssl_session_tickets off;
+  ssl_stapling on;
+  ssl_stapling_verify on;
+  add_header X-Frame-Options DENY;
+  add_header X-Content-Type-Options nosniff;
+  add_header X-XSS-Protection "1; mode=block";
+
+  ##
+  # Logging Settings
+  ##
+
+  access_log /var/log/nginx/access.log;
+  error_log /var/log/nginx/error.log;
+
+  server {
+    listen {{ rvl_registry_https_port }} ssl;
+    listen [::]:{{ rvl_registry_https_port }} ssl;
+    ssl_certificate /etc/nginx/certs/nginx.pem;
+    ssl_certificate_key /etc/nginx/certs/nginx.key;
+
+    root {{ rvl_registry_binaries_dir }};
+    index index.html;
+
+    server_name {{ rvl_registry_base_url }};
+
+    location / {
+      try_files $uri $uri/ =404;
+    }
+  }
+}

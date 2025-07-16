@@ -10,10 +10,13 @@ kubeconfig: "{{ inventory_dir }}/artifacts/k0s-kubeconfig.yml"
 rvl_k8s_objects_path: /src/k8s
 rvl_ca_certs_path: /src/ca
 rvl_dns_coredns: /src/coredns
+rvl_tmp_path: /src/tmp
 rvl_sources_charts: /src/sources/charts/
 rvl_directory: "{{ playbook_dir }}/../../"
 rvl_clients_helm_release: v3.16.1
 rvl_clients_kubectl_release: v1.31.0
+rvl_clients_nerdctl_release: 2.1.2
+rvl_osdpl_create: true
 rvl_osdpl_live_migration_interface: "{{ ansible_default_ipv4.interface }}"
 rvl_osdpl_tunnel_interface: "{{ ansible_default_ipv4.interface }}"
 rvl_osdpl_floating_network:
@@ -32,10 +35,13 @@ rvl_dns_nameservers:
 rvl_dns_discover_ingress_ip: true
 
 rvl_registry_node_port: 32500
+rvl_registry_https_port: 32443
 rvl_registry_image_tag: v2.8.1-14
 rvl_registry_ip_address: "{{ ansible_default_ipv4.address|default(ansible_all_ipv4_addresses[0]) }}"
 rvl_registry_namespace: registry
-rvl_registry_host: "registry.it.just.works:{{ rvl_registry_node_port }}"
+rvl_registry_base_url: registry.it.just.works
+rvl_registry_https_url: "https://{{ rvl_registry_base_url }}:{{ rvl_registry_https_port }}"
+rvl_registry_host: "{{ rvl_registry_base_url }}:{{ rvl_registry_node_port }}"
 
 rvl_images_public_base_url: docker-dev-kaas-virtual.mcp.mirantis.com
 rvl_binary_public_base_url: https://binary-dev-kaas-virtual.mcp.mirantis.com
@@ -131,3 +137,56 @@ rvl_images_loci_images_mapping:
   placement:
     - placement
     - placement_db_sync
+
+rvl_deploy_ceph: false
+rvl_chart_ref_ceph_operator: "{{ rvl_binary_public_base_url }}/ceph/helm/ceph-operator-1.0.0-mcc-2.29.0-7.tgz"
+rvl_metallb_address_pool_addresses:
+  - 10.172.1.100-10.172.1.255
+rvl_lvp_local_volume_provisioner_chart: "{{ rvl_directory }}/charts/infra/local-volume-provisioner"
+rvl_lvp_local_volume_provisioner_mounts_image: "{{ rvl_images_base_url }}/openstack/openstack-controller:0.1.1"
+rvl_lvp_local_volume_provisioner_image: "{{ rvl_images_base_url }}/bm/external/local-volume-provisioner:v2.4.0"
+
+rvl_metallb_metallb_crds_chart: "{{ rvl_binary_base_url }}/core/helm/metallb-crds-1.37.20.tgz"
+rvl_metallb_metallb_chart: "{{ rvl_binary_base_url }}/core/helm/metallb-1.37.20.tgz"
+rvl_metallb_metallb_dockerBaseUrl: "{{ rvl_images_base_url }}"
+
+rvl_registry_dir: /var/lib/docker-registry
+rvl_registry_user: docker-registry
+# rvl_registry_source can have value k8s or systemd
+rvl_registry_source: k8s
+
+rvl_mirror_images: false
+rvl_mirror_images_extra:
+ - mirantis.azurecr.io/bm/metallb/controller:v0.13.9-53df4a9c-amd64
+ - mirantis.azurecr.io/bm/metallb/speaker:v0.13.9-53df4a9c-amd64
+ - mirantis.azurecr.io/bm/external/local-volume-provisioner:v2.4.0
+ - mirantis.azurecr.io/openstack/openstack-controller:0.1.1
+
+rvl_mirror_binaries: false
+rvl_registry_binaries_dir: /var/lib/https-registry
+
+rvl_mirror_charts: false
+rvl_mirror_charts_extra:
+ - "{{ rvl_binary_public_base_url }}/core/helm/metallb-crds-1.37.20.tgz"
+ - "{{ rvl_binary_public_base_url }}/core/helm/metallb-1.37.20.tgz"
+rvl_mirror_rockoon_chart: "{{ rvl_binary_public_base_url }}/openstack/helm/rockoon/rockoon-1.0.7.tgz"
+
+rvl_openvpn_enable: false
+rvl_openvpn_home: /etc/openvpn
+rvl_openvpn_environment:
+  EASYRSA_ALGO: ec
+  EASYRSA_DIGEST: sha512
+  EASYRSA_CURVE: secp384r1
+  EASYRSA_BATCH: 1
+  EASYRSA_DN: cn_only
+rvl_openvpn_server_crt_name: trymos
+rvl_openvpn_client_crt_name: client
+rvl_openvpn_port: 1194
+rvl_openvpn_proto: udp
+rvl_openvpn_cipher: AES-256-GCM
+rvl_openvpn_auth: SHA256
+rvl_openvpn_network: "10.8.0.0 255.255.255.0"
+rvl_openvpn_client_routes:
+  - "10.172.1.0 255.255.255.0"
+rvl_openvpn_push_dns: true
+rvl_openvpn_clients_config_path: /src/vpn/
