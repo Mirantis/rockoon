@@ -14,11 +14,11 @@ all:
     rvl_mirror_binaries: true
     rvl_images_public_base_url: docker-dev-kaas-virtual.artifactory-eu.mcp.mirantis.net
     rvl_binary_public_base_url: https://binary-dev-kaas-virtual.mcp.mirantis.com
-    rvl_images_build_tag: 1.1.6-dev27
+    rvl_images_build_tag: 1.1.6
     rvl_images_base_url: "{{ rvl_registry_host }}"
     rvl_binary_base_url: "{{ rvl_registry_https_url }}"
-    rvl_chart_ref_rockoon: "{{ rvl_registry_https_url }}/openstack/helm/rockoon/rockoon-1.1.6-dev28.tgz"
-    rvl_mirror_rockoon_chart: "{{ rvl_binary_public_base_url }}/openstack/helm/rockoon/rockoon-1.1.6-dev28.tgz"
+    rvl_chart_ref_rockoon: "{{ rvl_registry_https_url }}/openstack/helm/rockoon/rockoon-{{ rvl_images_build_tag }}.tgz"
+    rvl_mirror_rockoon_chart: "{{ rvl_binary_public_base_url }}/openstack/helm/rockoon/rockoon-{{ rvl_images_build_tag }}.tgz"
     rvl_vpn_enable: true
 
   hosts:
