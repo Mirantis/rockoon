@@ -23,7 +23,7 @@ images:
     openvswitch_db_server: docker.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
     openvswitch_ovn_db_nb: docker.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
     openvswitch_ovn_db_sb: docker.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
-    openvswitch_ovn_db_configurator: docker.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
+    openvswitch_ovn_db_configurator: mirantis.azurecr.io/general/openvswitch:3.3-noble-src-20250523053641
     openvswitch_ovn_northd: docker.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
     openvswitch_ovn_vswitchd: docker.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
     openvswitch_ovn_db: docker.io/openstackhelm/openvswitch:ubuntu_bionic-20191031
