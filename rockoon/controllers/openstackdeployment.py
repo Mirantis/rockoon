@@ -178,6 +178,9 @@ async def _trigger_octavia_lb_failover(
     )
     await failover_job.purge()
     await failover_job.enable(spec["openstack_version"], True)
+    for pod in failover_job.pods:
+        logs = pod.logs(container="octavia-loadbalancers-failover")
+        LOG.info("Octavia loadbalancer failover job logs:\n %s", logs)
 
 
 async def _regenerate_creds(
