@@ -8,6 +8,7 @@ import inspect
 import json
 from os import urandom
 import sys
+import time
 from typing import List
 import functools
 from urllib.parse import urlencode
@@ -611,6 +612,15 @@ class Job(pykube.Job, HelmBundleMixin, ObjectStatusMixin):
                 if i == tries - 1:
                     raise e
             await asyncio.sleep(10)
+
+    def wait_completed(self, timeout=600, delay=30):
+        LOG.info(f"Waiting job {self.name} is completed.")
+        start = time.time()
+        while time.time() - start < timeout:
+            if self.completed:
+                return
+            time.sleep(delay)
+        raise TimeoutError(f"Job {self.name} is not finished in time")
 
 
 class CronJob(pykube.CronJob, HelmBundleMixin):

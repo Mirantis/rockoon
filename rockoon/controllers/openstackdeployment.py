@@ -19,6 +19,7 @@ from rockoon import resource_view
 
 
 LOG = utils.get_logger(__name__)
+CONF = settings.CONF
 
 OSCTL_APPLYING_WAITING_STARTED = None
 
@@ -177,10 +178,24 @@ async def _trigger_octavia_lb_failover(
         "Job", "octavia-loadbalancers-failover"
     )
     await failover_job.purge()
-    await failover_job.enable(spec["openstack_version"], True)
-    for pod in failover_job.pods:
-        logs = pod.logs(container="octavia-loadbalancers-failover")
-        LOG.info("Octavia loadbalancer failover job logs:\n %s", logs)
+    timeout = CONF.getint("osctl", "octavia_lb_failover_job_timeout")
+    await failover_job.enable(spec["openstack_version"], wait_completion=False)
+    try:
+        failover_job.wait_completed(timeout=timeout, delay=30)
+    except Exception as e:
+        raise e
+    finally:
+        for pod in failover_job.pods:
+            logs = pod.logs(container="octavia-loadbalancers-failover")
+            LOG.info(
+                "Octavia loadbalancer failover job logs for pod %s :\n %s",
+                pod.name,
+                logs,
+            )
+    if not failover_job.ready:
+        raise kopf.TemporaryErrora(
+            "Loadbalancer failover job did not complete susccessfully after certificate rotation."
+        )
 
 
 async def _regenerate_creds(
