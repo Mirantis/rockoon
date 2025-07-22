@@ -284,6 +284,7 @@ def get_child_object_templates():
         ],
         "placement": ["queens", "rocky"],
         "instance-ha": ["queens", "rocky", "stein", "train", "ussuri"],
+        "event": ["xena", "yoga", "antelope", "caracal", "epoxy", "master"],
     }
     res = []
     for service in all_services:
