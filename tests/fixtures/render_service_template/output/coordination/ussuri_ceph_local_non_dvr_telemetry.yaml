@@ -42,6 +42,10 @@ spec:
             policyTypes:
             - Ingress
       pod:
+        env:
+          etcd:
+            ETCD_ELECTION_TIMEOUT: 5000
+            ETCD_HEARTBEAT_INTERVAL: 500
         replicas:
           etcd: 3
         affinity:
@@ -50,7 +54,3 @@ spec:
               default: requiredDuringSchedulingIgnoredDuringExecution
       volume:
         class_name: lvp-fake-root
-      conf:
-        etcd:
-          ETCD_ELECTION_TIMEOUT: 5000
-          ETCD_HEARTBEAT_INTERVAL: 500

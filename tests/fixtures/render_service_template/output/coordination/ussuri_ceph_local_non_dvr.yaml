@@ -21,9 +21,9 @@ spec:
           anti:
             type:
               default: requiredDuringSchedulingIgnoredDuringExecution
+        env:
+          etcd:
+            ETCD_ELECTION_TIMEOUT: 5000
+            ETCD_HEARTBEAT_INTERVAL: 500
       volume:
         class_name: lvp-fake-root
-      conf:
-        etcd:
-          ETCD_ELECTION_TIMEOUT: 5000
-          ETCD_HEARTBEAT_INTERVAL: 500
