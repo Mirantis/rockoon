@@ -15,10 +15,8 @@ all:
     rvl_images_build_tag: 1.0.9
     rvl_images_base_url: "{{ rvl_registry_host }}"
     rvl_binary_base_url: "{{ rvl_registry_https_url }}"
-    rvl_rockoon_chart_ref: "{{ rvl_registry_https_url }}/openstack/helm/rockoon/rockoon-{{ rvl_images_build_tag }}.tgz"
-    rvl_mirror_rockoon_chart: "{{ rvl_binary_public_base_url }}/openstack/helm/rockoon/rockoon-{{ rvl_images_build_tag }}.tgz"
-    rvl_lvp_local_volume_provisioner_chart: "{{  rvl_registry_https_url }}/local-volume-provisioner.tgz"
-    rvl_vpn_enable: true
+    rvl_chart_ref_rockoon: "{{ rvl_registry_https_url }}/openstack/helm/rockoon/rockoon-{{ rvl_images_build_tag }}.tgz"
+    rvl_openvpn_enable: true
 
   hosts:
     oc-virtual-lab-server-ctl-01:

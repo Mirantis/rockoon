@@ -78,6 +78,11 @@
     loop_var: url_for_mirror
   when: rvl_mirror_binaries
 
+- name: Predict Rockoon chart source URL by target address
+  set_fact:
+    rvl_mirror_rockoon_chart: "{{ rvl_chart_ref_rockoon | replace(rvl_registry_https_url, rvl_binary_public_base_url) }}"
+  when: rvl_mirror_charts
+
 - name: Caching charts to local folder
   ansible.builtin.include_tasks:
     file: mirror/mirror_file_each.yaml
