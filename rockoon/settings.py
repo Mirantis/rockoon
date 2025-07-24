@@ -84,7 +84,7 @@ class Config(configparser.ConfigParser):
         self.file_cache = {}
         self.conf_dir = "/etc/rockoon"
         self.filenames = self.get_config_files()
-        super().__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def __getitem__(self, item):
         self.read_config()
