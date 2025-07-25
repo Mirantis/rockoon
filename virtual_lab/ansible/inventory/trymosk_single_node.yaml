@@ -18,7 +18,6 @@ all:
     rvl_images_base_url: "{{ rvl_registry_host }}"
     rvl_binary_base_url: "{{ rvl_registry_https_url }}"
     rvl_chart_ref_rockoon: "{{ rvl_registry_https_url }}/openstack/helm/rockoon/rockoon-{{ rvl_images_build_tag }}.tgz"
-    rvl_mirror_rockoon_chart: "{{ rvl_binary_public_base_url }}/openstack/helm/rockoon/rockoon-{{ rvl_images_build_tag }}.tgz"
     rvl_openvpn_enable: true
 
   hosts:
