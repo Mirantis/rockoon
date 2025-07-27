@@ -1,5 +1,6 @@
 import asyncio
 import os
+import socket
 import time
 
 import kopf
@@ -609,12 +610,18 @@ def check_osdpl_fingerprint(**kwargs):
 
     osdplst_fingerprint = osdplst.get_osdpl_fingerprint()
     osdpl_fingerprint = osdpl.fingerprint
+    osdplst_controller_host = osdplst.get_osdpl_controller_host()
+    controller_host = socket.gethostname()
 
-    if osdpl_fingerprint != osdplst_fingerprint:
-        if osdplst.get_osdpl_status() == osdplstatus.APPLIED:
+    if osdplst.get_osdpl_status() == osdplstatus.APPLIED:
+        if (
+            osdpl_fingerprint != osdplst_fingerprint
+            or osdplst_controller_host != controller_host
+        ):
             LOG.error(
-                f"OpenStackDeployment status is APPLIED and fingerprint is changed."
-                f"Current osdplst fingerprint: {osdplst_fingerprint} expected {osdpl_fingerprint}"
+                f"OpenStackDeployment status is APPLIED and fingerprint or controller host is not changed."
+                f"Current osdplst fingerprint: {osdplst_fingerprint} expected {osdpl_fingerprint}."
+                f"Current osdplst controller host: {osdplst_controller_host} expected {controller_host}"
             )
             if not OSCTL_APPLYING_WAITING_STARTED:
                 OSCTL_APPLYING_WAITING_STARTED = int(time.time())
@@ -626,7 +633,7 @@ def check_osdpl_fingerprint(**kwargs):
                     f"OpenStackDeployment did not transition to APPLYING state within {settings.OSCTL_APPLYING_MAX_DELAY} seconds"
                 )
 
-            return OSCTL_APPLYING_WAITING_STARTED
+        return OSCTL_APPLYING_WAITING_STARTED
 
     OSCTL_APPLYING_WAITING_STARTED = None
     return OSCTL_APPLYING_WAITING_STARTED
