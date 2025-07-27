@@ -1,4 +1,5 @@
 import logging
+import socket
 
 import pykube
 import datetime
@@ -60,6 +61,7 @@ class OpenStackDeploymentStatus(pykube.objects.NamespacedAPIObject):
         osdpl_generic = {
             "openstack_version": mspec["openstack_version"],
             "controller_version": version.release_string,
+            "controller_host": socket.gethostname(),
             "fingerprint": layers.spec_hash(mspec),
             "timestamp": str(timestamp),
         }
@@ -125,6 +127,10 @@ class OpenStackDeploymentStatus(pykube.objects.NamespacedAPIObject):
     def get_osdpl_controller_version(self):
         self.reload()
         return self.obj["status"]["osdpl"]["controller_version"]
+
+    def get_osdpl_controller_host(self):
+        self.reload()
+        return self.obj["status"]["osdpl"].get("controller_host")
 
     @property
     def osdpl_health(self):

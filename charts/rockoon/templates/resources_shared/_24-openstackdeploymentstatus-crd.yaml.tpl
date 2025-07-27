@@ -134,6 +134,10 @@ spec:
                         type: string
                         description: >
                           The version of openstack controller that handle osdpl object.
+                      controller_host:
+                        type: string
+                        description: >
+                          Hostname of the controller.
                       release:
                         description: The MOSK release version.
                         type: string
