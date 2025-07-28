@@ -4,7 +4,7 @@ log:
     service: registry
 storage:
   filesystem:
-    rootdirectory: {{ rvl_registry_dir }}/images
+    rootdirectory: {{ rvl_registry_docker_dir }}/images
   delete:
     enabled: true
   cache:
@@ -13,8 +13,8 @@ http:
   addr: :{{ rvl_registry_node_port }}
   host: https://{{ rvl_registry_host }}
   tls:
-    certificate: {{ rvl_registry_dir }}/certs/registry.pem
-    key: {{ rvl_registry_dir }}/certs/registry.key
+    certificate: {{ rvl_registry_docker_dir }}/certs/registry.pem
+    key: {{ rvl_registry_docker_dir }}/certs/registry.key
   headers:
     X-Content-Type-Options: [nosniff]
 health:

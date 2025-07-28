@@ -150,8 +150,11 @@ rvl_metallb_metallb_crds_chart: "{{ rvl_binary_base_url }}/core/helm/metallb-crd
 rvl_metallb_metallb_chart: "{{ rvl_binary_base_url }}/core/helm/metallb-1.37.20.tgz"
 rvl_metallb_metallb_dockerBaseUrl: "{{ rvl_images_base_url }}"
 
-rvl_registry_dir: /var/lib/docker-registry
-rvl_registry_user: docker-registry
+rvl_registry_docker_release: 3.0.0
+rvl_registry_docker_archive_url: "https://github.com/distribution/distribution/releases/download/v{{ rvl_registry_docker_release }}/registry_{{ rvl_registry_docker_release }}_linux_amd64.tar.gz"
+rvl_registry_docker_dir: /var/lib/docker-registry
+rvl_registry_docker_config_dir: /etc/docker/registry
+rvl_registry_docker_user: docker-registry
 # rvl_registry_source can have value k8s or systemd
 rvl_registry_source: k8s
 
