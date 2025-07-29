@@ -1,23 +1,57 @@
 ---
-- name: Install local Docker registry
-  ansible.builtin.apt:
-    name: docker-registry
+- name: Create group for Docker registry service
+  ansible.builtin.group:
+    name: "{{ rvl_registry_docker_user }}"
     state: present
+
+- name: Create user for Docker registry service
+  ansible.builtin.user:
+    name: "{{ rvl_registry_docker_user }}"
+    comment: Docker Registry
+    group: "{{ rvl_registry_docker_user }}"
+    shell: /usr/sbin/nologin
+    password_lock: yes
+    home: "{{ rvl_registry_docker_dir }}"
+
+- name: Install Docker registry binary
+  unarchive:
+    src: "{{ rvl_registry_docker_archive_url }}"
+    dest: /usr/bin
+    owner: root
+    group: root
+    mode: 0755
+    remote_src: true
+    include:
+    - registry
+
+- name: Template a file to /lib/systemd/system/docker-registry.service
+  ansible.builtin.template:
+    src: docker-registry.service.j2
+    dest: /lib/systemd/system/docker-registry.service
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Create a directory for registry configuration if it does not exist
+  ansible.builtin.file:
+    path: "{{ rvl_registry_docker_config_dir }}"
+    state: directory
+    owner: root
+    mode: '0755'
 
 - name: Template a file to /etc/docker/registry/config.yml
   ansible.builtin.template:
-    src: registry_config.j2
-    dest: /etc/docker/registry/config.yml
+    src: docker-registry_config.j2
+    dest: "{{ rvl_registry_docker_config_dir }}/config.yml"
     owner: bin
     group: root
     mode: '0644'
-  register: registry_config
 
 - name: Create a directory for registry if it does not exist
   ansible.builtin.file:
-    path: "{{ rvl_registry_dir }}/{{ item }}"
+    path: "{{ rvl_registry_docker_dir }}/{{ item }}"
     state: directory
-    owner: "{{ rvl_registry_user }}"
+    owner: "{{ rvl_registry_docker_user }}"
     mode: '0750'
   loop:
     - "certs"
@@ -26,8 +60,8 @@
 - name: Copy SSL certificates for docker registry service
   ansible.builtin.copy:
     src: "{{ rvl_ca_certs_path }}/{{ item.src }}"
-    dest: "{{ rvl_registry_dir }}/certs/{{ item.dest }}"
-    owner: "{{ rvl_registry_user }}"
+    dest: "{{ rvl_registry_docker_dir }}/certs/{{ item.dest }}"
+    owner: "{{ rvl_registry_docker_user }}"
     mode: '0640'
     remote_src: true
   loop:
@@ -40,4 +74,5 @@
   ansible.builtin.service:
     name: docker-registry.service
     state: restarted
+    daemon-reload: yes
     enabled: yes
