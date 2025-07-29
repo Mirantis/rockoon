@@ -5,14 +5,18 @@ import traceback
 import ipaddress
 import json
 import logging
+import os
 import re
 import sys
 import time
 import yaml
 
+
 from abc import ABC, abstractmethod
 from enum import Enum, auto
+
 from concurrent.futures import ThreadPoolExecutor, ALL_COMPLETED, wait
+from jinja2 import Environment, BaseLoader
 from pykube import ConfigMap
 
 from rockoon import health
@@ -24,6 +28,7 @@ from rockoon import resource_view
 from rockoon import services
 from rockoon import settings
 from rockoon.openstack_utils import OpenStackClientManager
+from rockoon.layers import render_artifacts
 
 MIGRATION_FINALIZER = "lcm.mirantis.com/ovs-ovn-migration.finalizer"
 MIGRATION_STATE_CONFIGMAP_NAME = "ovs-ovn-migration-state"
@@ -46,6 +51,102 @@ IP_HEADER_LENGTH = {
 
 # Stage statuses
 STARTED, COMPLETED, FAILED = ("started", "completed", "failed")
+
+DAEMONSET_LOGS_PATH = "/tmp/ovs-ovn-migration"
+
+CLEANUP_NETNS_DS_TEMPLATE = """
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ovs-ovn-migration-cleanup
+  namespace: openstack
+  labels:
+    app: ovs-ovn-migration-cleanup
+spec:
+  selector:
+    matchLabels:
+      app: ovs-ovn-migration
+  template:
+    metadata:
+      labels:
+        app: ovs-ovn-migration
+    spec:
+      hostNetwork: true
+      nodeSelector:
+        openvswitch: enabled
+      initContainers:
+      - name: cleanup
+        image: {{image}}
+        securityContext:
+          privileged: true
+          readOnlyRootFilesystem: true
+          runAsNonRoot: false
+          runAsUser: 0
+        command:
+          - /bin/bash
+          - -c
+          - |
+            set -ex
+            trap err_trap EXIT
+            function err_trap {
+                local r=$?
+                if [[ $r -ne 0 ]]; then
+                    echo "cleanup_netns FAILED"
+                fi
+                exit $r
+            }
+            OVS_DB_SOCK="--db=tcp:127.0.0.1:6640"
+            EXIT_CODE=0
+            for ns in $(egrep 'qrouter-|qdhcp-|snat-|fip-' <(cut -d' ' -f1 <(ip netns))); do
+                for link in $(cut -d: -f2 <(grep -v LOOPBACK <(ip netns exec $ns ip -o link show))); do
+                    link=${link%%@*}
+                    ip netns exec $ns ip l delete $link || ovs-vsctl ${OVS_DB_SOCK} --if-exists del-port br-int $link
+                done
+                if [[ -n $(grep -v LOOPBACK <(ip netns exec $ns ip -o link show)) ]]; then
+                    echo "Failed to clean all interfaces in network namespace $ns, namespace will not be removed"
+                    EXIT_CODE=1
+                else
+                    echo "Cleaned all interfaces in network namespace $ns, removing namespace"
+                    ip netns delete $ns
+                fi
+            done
+            exit "${EXIT_CODE}"
+        volumeMounts:
+        - mountPath: /tmp
+          name: pod-tmp
+        - name: run-netns
+          mountPath: /run/netns
+          mountPropagation: Bidirectional
+        - name: run-ovs
+          mountPath: /run/openvswitch
+      containers:
+        - name: sleep
+          image: {{image}}
+          command:
+           - sleep
+           - infinity
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+      volumes:
+      - name: pod-tmp
+        emptyDir: {}
+      - name: run-netns
+        hostPath:
+          path: /run/netns
+      - name: run-ovs
+        hostPath:
+          path: /run/openvswitch
+      restartPolicy: Always
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+"""
 
 
 def set_args():
@@ -855,22 +956,34 @@ def wait_for_objects_absent(service, object_ids, timeout=600):
 
     :param service: Object of type Service
     :param object_ids: List of strings
+    :param timeout: integer
     :returns None
     """
     for id in object_ids:
         for obj in get_objects_by_id(service, id):
-            LOG.info(f"Waiting {timeout} for {obj} to be absent")
-            start_time = int(time.time())
-            while True:
-                if not obj.exists():
-                    break
-                time.sleep(30)
-                timed_out = int(time.time()) - start_time
-                if timed_out >= timeout:
-                    msg = f"Failed to wait for {obj} to be absent"
-                    LOG.error(msg)
-                    raise TimeoutError(msg)
-            LOG.info(f"{obj} is absent")
+            wait_for_object_absent(obj, timeout)
+
+
+def wait_for_object_absent(obj, timeout=600):
+    """
+    Waits for k8s object to be absent
+
+    :param obj: pykube obj
+    :param timeout: integer
+    :returns None
+    """
+    LOG.info(f"Waiting {timeout} for {obj} to be absent")
+    start_time = int(time.time())
+    while True:
+        if not obj.exists():
+            break
+        time.sleep(30)
+        timed_out = int(time.time()) - start_time
+        if timed_out >= timeout:
+            msg = f"Failed to wait for {obj} to be absent"
+            LOG.error(msg)
+            raise TimeoutError(msg)
+    LOG.info(f"{obj} is absent")
 
 
 def daemonsets_check_exec(results, raise_on_error=True):
@@ -992,6 +1105,64 @@ def daemonsets_exec_parallel(
     return results
 
 
+def get_pod_logs(name, namespace, container, base_path, timestamps=False):
+    """Get logs from pod and write them to file"""
+    log_path = f"{base_path}/{container}.log"
+    try:
+        if not os.path.exists(base_path):
+            os.makedirs(base_path)
+        pod = kube.find(kube.Pod, name, namespace)
+        with open(log_path, "w") as f:
+            f.write(pod.logs(container=container, timestamps=timestamps))
+        return True
+    except Exception as e:
+        LOG.exception(e)
+        LOG.warning(f"Failed to get logs from pod {name}")
+    return False
+
+
+def get_daemonset_logs(
+    ds, container, timestamps=False, max_workers=0, timeout=3600
+):
+    """Get logs from daemonset pods in parallel
+    :param ds: kube.DaemonSet object
+    :param container: name of container to gather logs from
+    :param timestamps: Boolean whether to add timestamps to logs.
+    :param max_workers: Integer number of max parallel threads to spawn
+    :param timeout: timeout for logs gathering from all pods.
+    :returns None
+    """
+    kwargs = {"timestamps": timestamps}
+    if not max_workers:
+        max_workers = os.cpu_count()
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        LOG.info(f"Start gathering pods logs for daemonset {ds.name}")
+        future_data = {}
+        for pod in ds.pods:
+            node = pod.obj["spec"].get("nodeName")
+            args = [
+                pod.name,
+                pod.namespace,
+                container,
+                f"{DAEMONSET_LOGS_PATH}/{node}/{pod.name}",
+            ]
+            future = executor.submit(get_pod_logs, *args, **kwargs)
+            future_data[pod] = future
+        done, not_done = wait(
+            future_data.values(),
+            return_when=ALL_COMPLETED,
+            timeout=timeout,
+        )
+        LOG.info(f"Done gathering pods logs for daemonset {ds.name}")
+    for pod, future in future_data.items():
+        node = pod.obj["spec"].get("nodeName")
+        if future in done:
+            if not future.result():
+                LOG.warning(f"Failed to get logs from node {node}")
+        elif future in not_done:
+            LOG.warning(f"Timed out getting logs from node {node}")
+
+
 def cleanup_api_resources():
     """Cleanup resources from Openstack API related to neutron ovs backend"""
     ocm = OpenStackClientManager()
@@ -1036,47 +1207,38 @@ def cleanup_linux_netns(script_args):
     related network interfaces
     """
     osdpl = kube.get_osdpl()
-    network_svc = get_service(osdpl, "networking")
-    metadata_daemonsets = get_objects_by_id(
-        network_svc, "neutron-metadata-agent"
+    cleanup_image = render_artifacts(osdpl.mspec)["openvswitch_vswitchd"]
+    rtemplate = Environment(loader=BaseLoader()).from_string(
+        CLEANUP_NETNS_DS_TEMPLATE
     )
-    cleanup_netns_command = """
-    set -ex
-    trap err_trap EXIT
-    function err_trap {
-        local r=$?
-        if [[ $r -ne 0 ]]; then
-            echo "cleanup_netns FAILED"
-        fi
-        exit $r
-    }
-    OVS_DB_SOCK="--db=tcp:127.0.0.1:6640"
-    IP_NETNS="sudo neutron-rootwrap /etc/neutron/rootwrap.conf ip netns"
-    EXIT_CODE=0
-    for ns in $(egrep 'qrouter-|qdhcp-|snat-|fip-' <(cut -d' ' -f1 <($IP_NETNS))); do
-        for link in $(cut -d: -f2 <(grep -v LOOPBACK <($IP_NETNS exec $ns ip -o link show))); do
-            link=${link%%@*}
-            $IP_NETNS exec $ns ip l delete $link || ovs-vsctl ${OVS_DB_SOCK} --if-exists del-port br-int $link
-        done
-        if [[ -n $(grep -v LOOPBACK <($IP_NETNS exec $ns ip -o link show)) ]]; then
-            echo "Failed to clean all interfaces in network namespace $ns, namespace will not be removed"
-            EXIT_CODE=1
-        else
-            echo "Cleaned all interfaces in network namespace $ns, removing namespace"
-            $IP_NETNS delete $ns
-        fi
-    done
-    exit "${EXIT_CODE}"
-    """
-    # using timeout 1200 as neutron-rootwrap takes a lot of time
+    data = rtemplate.render(image=cleanup_image)
+    cleanup_ds = kube.resource(yaml.safe_load(data))
+    if cleanup_ds and cleanup_ds.exists():
+        cleanup_ds.delete(propagation_policy="Foreground")
+        wait_for_object_absent(cleanup_ds)
     LOG.info("Cleaning network namespaces")
-    daemonsets_exec_parallel(
-        metadata_daemonsets,
-        ["bash", "-c", cleanup_netns_command],
-        "neutron-metadata-agent",
-        max_workers=script_args.max_workers,
-        timeout=1200,
-    )
+    try:
+        LOG.info("Creating cleaning daemonset")
+        cleanup_ds.create()
+        asyncio.run(cleanup_ds.wait_ready(timeout=3600))
+    finally:
+        LOG.info("Gathering cleanup network namespaces logs")
+        get_daemonset_logs(
+            cleanup_ds,
+            "cleanup",
+            timestamps=True,
+            max_workers=script_args.max_workers,
+        )
+        for pod in cleanup_ds.pods:
+            node = pod.obj["spec"].get("nodeName")
+            if not pod.ready:
+                LOG.error(
+                    f"Node {node} cleanup timeout"
+                    f"Check logs in {DAEMONSET_LOGS_PATH}/{node}/{pod.name}/"
+                )
+        LOG.info("Removing cleaning daemonset")
+        cleanup_ds.delete(propagation_policy="Foreground")
+        wait_for_object_absent(cleanup_ds)
     LOG.info("Finished cleaning network namespaces")
 
 
