@@ -10,8 +10,11 @@
 - name: Install local Docker registry as docker container
   ansible.builtin.include_tasks:
     file: "registry/{{ rvl_registry_source }}.yaml"
+  when: (rvl_images_base_url != rvl_images_public_base_url) or
+        rvl_images_build_loci or
+        rvl_images_build_rockoon
 
 - name: Install local HTTPS registry for binary
   ansible.builtin.include_tasks:
     file: "registry/https.yaml"
-  when: rvl_mirror_binaries  or rvl_mirror_charts
+  when: rvl_binary_base_url != rvl_binary_public_base_url
