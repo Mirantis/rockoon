@@ -255,3 +255,20 @@ def test_merge_allows_int_over_float():
     d1 = {"value": 1.1}
     d2 = {"value": 1}
     assert utils.merger.merge(d1, d2) == {"value": 1}
+
+
+def test_merge_allows_none():
+    """We allow overwriting none with any value"""
+    d1 = {"value": 1.1, "value2": None}
+    d2 = {"value2": 2}
+    assert utils.merger.merge(d1, d2) == {"value": 1.1, "value2": 2}
+
+
+def test_merge_allows_none_deep():
+    """We allow overwriting none with any value"""
+    d1 = {"value": 1.1, "value2": None}
+    d2 = {"value2": {"foo": "bar"}}
+    assert utils.merger.merge(d1, d2) == {
+        "value": 1.1,
+        "value2": {"foo": "bar"},
+    }
