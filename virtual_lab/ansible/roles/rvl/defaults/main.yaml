@@ -160,10 +160,10 @@ rvl_registry_source: k8s
 
 rvl_mirror_images: false
 rvl_mirror_images_extra:
- - mirantis.azurecr.io/bm/metallb/controller:v0.13.9-53df4a9c-amd64
- - mirantis.azurecr.io/bm/metallb/speaker:v0.13.9-53df4a9c-amd64
- - mirantis.azurecr.io/bm/external/local-volume-provisioner:v2.4.0
- - mirantis.azurecr.io/openstack/openstack-controller:0.1.1
+ - "{{ rvl_images_public_base_url }}/bm/metallb/controller:v0.13.9-53df4a9c-amd64"
+ - "{{ rvl_images_public_base_url }}/bm/metallb/speaker:v0.13.9-53df4a9c-amd64"
+ - "{{ rvl_images_public_base_url }}/bm/external/local-volume-provisioner:v2.4.0"
+ - "{{ rvl_images_public_base_url }}/openstack/openstack-controller:0.1.1"
 
 rvl_mirror_binaries: false
 rvl_registry_binaries_dir: /var/lib/https-registry
