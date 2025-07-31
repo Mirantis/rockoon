@@ -52,8 +52,6 @@ IP_HEADER_LENGTH = {
 # Stage statuses
 STARTED, COMPLETED, FAILED = ("started", "completed", "failed")
 
-DAEMONSET_LOGS_PATH = "/tmp/ovs-ovn-migration"
-
 CLEANUP_NETNS_DS_TEMPLATE = """
 ---
 apiVersion: apps/v1
@@ -154,6 +152,13 @@ def set_args():
         prog="osctl-ovs-ovn-migrate",
         description="Migrate from OVS neutron backend to OVN.",
     )
+    parser.add_argument(
+        "--log-dir",
+        type=str,
+        default="/tmp/ovs-ovn-migration",
+        dest="log_dir",
+        help=("Directory to store logs."),
+    )
     subparsers = parser.add_subparsers(
         help="Parse subcommands of migration script", dest="mode"
     )
@@ -195,6 +200,8 @@ def set_args():
 
 
 def get_logger():
+    if not os.path.exists(LOG_DIR):
+        os.makedirs(LOG_DIR)
     logging_conf = yaml.safe_load(
         f"""
     disable_existing_loggers: false
@@ -210,7 +217,7 @@ def get_logger():
       default_file:
         class: logging.FileHandler
         formatter: standard
-        filename: /tmp/ovs-ovn-migration.log
+        filename: {LOG_DIR}/ovs-ovn-migration.log
         level: DEBUG
     loggers:
       aiohttp:
@@ -235,9 +242,6 @@ def get_logger():
     )
     logging.config.dictConfig(logging_conf)
     return logging.getLogger(__name__)
-
-
-LOG = get_logger()
 
 
 def check_input(check, msg, error_string="Illegal Input"):
@@ -1107,7 +1111,7 @@ def daemonsets_exec_parallel(
 
 def get_pod_logs(name, namespace, container, base_path, timestamps=False):
     """Get logs from pod and write them to file"""
-    log_path = f"{base_path}/{container}.log"
+    log_path = os.path.join(base_path, f"{container}.log")
     try:
         if not os.path.exists(base_path):
             os.makedirs(base_path)
@@ -1144,7 +1148,7 @@ def get_daemonset_logs(
                 pod.name,
                 pod.namespace,
                 container,
-                f"{DAEMONSET_LOGS_PATH}/{node}/{pod.name}",
+                os.path.join(LOG_DIR, node, pod.name),
             ]
             future = executor.submit(get_pod_logs, *args, **kwargs)
             future_data[pod] = future
@@ -1234,7 +1238,7 @@ def cleanup_linux_netns(script_args):
             if not pod.ready:
                 LOG.error(
                     f"Node {node} cleanup timeout"
-                    f"Check logs in {DAEMONSET_LOGS_PATH}/{node}/{pod.name}/"
+                    f"Check logs in {os.path.join(LOG_DIR, node, pod.name)}"
                 )
         LOG.info("Removing cleaning daemonset")
         cleanup_ds.delete(propagation_policy="Foreground")
@@ -1786,7 +1790,8 @@ def do_migration(script_args):
 
 def do_preflight_checks():
     ocm = OpenStackClientManager()
-    report_file = f"/tmp/preflight_checks_{time.strftime('%Y%m%d%H%M%S')}.yaml"
+    report_file = f"preflight_checks_{time.strftime('%Y%m%d%H%M%S')}.yaml"
+    report_path = os.path.join(LOG_DIR, report_file)
     all_reports = {}
     errors = 0
     warnings = 0
@@ -1797,18 +1802,18 @@ def do_preflight_checks():
             errors += 1
         elif check.status == CheckStatus.WARNING:
             warnings += 1
-    with open(report_file, "w") as f:
+    with open(report_path, "w") as f:
         yaml.dump(all_reports, f)
     if errors:
         LOG.error(
             f"Found {errors} errors in the check results. "
-            f"Please check {report_file} for more details"
+            f"Please check {report_path} for more details"
         )
         sys.exit(1)
     elif warnings:
         LOG.warning(
             f"Found {warnings} warnings in the check results. "
-            f"Please check {report_file} for more details"
+            f"Please check {report_path} for more details"
         )
     else:
         LOG.info("All checks are successful.")
@@ -1913,6 +1918,10 @@ def do_neutron_db_backup():
 
 def main():
     args = set_args()
+    global LOG
+    global LOG_DIR
+    LOG_DIR = args.log_dir
+    LOG = get_logger()
     if args.mode == "migration":
         do_migration(args)
     elif args.mode == "preflight_checks":
