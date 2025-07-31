@@ -120,6 +120,8 @@ class TypeConflictFail(
 ):
     @staticmethod
     def strategy_fail(config, path, base, nxt):
+        if base is None:
+            return nxt
         if type(base) in (float, int) and type(nxt) in (float, int):
             return nxt
         raise deepmerge.exception.InvalidMerge(
