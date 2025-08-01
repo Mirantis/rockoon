@@ -61,7 +61,7 @@ This implementation is intended to handle those limitations:
 
   {{- $_ := unset $context ".Files" }}
   {{- $daemonset_root_name := printf (print $context.Chart.Name "_" $daemonset) }}
-  {{- $_ := set $context "__daemonset_list" list }}
+  {{- $_ := set $context.Values "__daemonset_list" list }}
   {{- $_ := set $context.Values "__default" dict }}
 
   {{- $default_enabled := true }}
@@ -94,11 +94,11 @@ This implementation is intended to handle those limitations:
 
               {{- $override_root_copy := $ldata.values }}
               {{/* Deep copy to prevent https://storyboard.openstack.org/#!/story/2005936 */}}
-              {{- $root_copy := omit (deepCopy $context.Values) "overrides" }}
+              {{- $root_copy := omit ($context.Values | toYaml | fromYaml) "overrides" }}
               {{- $merged_dict := mergeOverwrite $root_copy $override_root_copy }}
 
               {{- $root_conf_copy2 := dict "values" $merged_dict }}
-              {{- $context_values := omit (deepCopy $context.Values) "values" }}
+              {{- $context_values := omit (omit ($context.Values | toYaml | fromYaml) "values") "__daemonset_list" }}
               {{- $root_conf_copy3 := mergeOverwrite $context_values $root_conf_copy2.values }}
               {{- $root_conf_copy4 := dict "Values" $root_conf_copy3 }}
               {{- $_ := set $context.Values.__current_label "nodeData" $root_conf_copy4 }}
@@ -128,8 +128,8 @@ This implementation is intended to handle those limitations:
               {{- end }}
 
               {{/* store completed daemonset entry/info into global list */}}
-              {{- $list_aggregate := append $context.__daemonset_list $context.Values.__current_label }}
-              {{- $_ := set $context "__daemonset_list" $list_aggregate }}
+              {{- $list_aggregate := append $context.Values.__daemonset_list $context.Values.__current_label }}
+              {{- $_ := set $context.Values "__daemonset_list" $list_aggregate }}
               {{- $_ := unset $context.Values "__current_label" }}
 
             {{- end }}
@@ -174,18 +174,18 @@ This implementation is intended to handle those limitations:
 
   {{/* add to global list */}}
   {{- if $default_enabled }}
-    {{- $list_aggregate := append $context.__daemonset_list $context.Values.__default }}
-    {{- $_ := set $context "__daemonset_list" $list_aggregate }}
+    {{- $list_aggregate := append $context.Values.__daemonset_list $context.Values.__default }}
+    {{- $_ := set $context.Values "__daemonset_list" $list_aggregate }}
   {{- end }}
 
-  {{- range $current_dict := $context.__daemonset_list }}
+  {{- range $current_dict := $context.Values.__daemonset_list }}
 
     {{- $context_novalues := omit $context "Values" }}
     {{- $merged_dict := mergeOverwrite $context_novalues $current_dict.nodeData }}
     {{- $_ := set $current_dict "nodeData" $merged_dict }}
     {{/* Deep copy original daemonset_yaml */}}
     {{- $daemonset_yaml := list $daemonset $configmap_name $serviceAccountName $merged_dict | include $daemonSetTemplateName | toString | fromYaml }}
-    {{- $_ := set $context.Values "__daemonset_yaml" (deepCopy $daemonset_yaml) }}
+    {{- $_ := set $context.Values "__daemonset_yaml" ($daemonset_yaml | toYaml | fromYaml) }}
 
     {{/* Use the following name format $daemonset_root_name + sha256summ($current_dict.matchExpressions)
     as labels might be too long and contain wrong characters like / */}}
