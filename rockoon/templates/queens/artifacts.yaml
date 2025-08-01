@@ -187,7 +187,7 @@ frr_init: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-202507
 frr_info: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250728060024'
 frr: '{{ images_base_url }}/general/external/docker.io/frrouting/frr:v9.1.2-20250410070732'
 cinder_service_cleaner: '{{ images_base_url }}/openstack/cinder:queens-bionic-20230227093206'
-strongswan: '{{ images_base_url }}/openstack/extra/strongswan:alpine-5.9.14-20250421162917'
+strongswan: '{{ images_base_url }}/openstack/extra/strongswan:alpine-5.9.14-20250731072941'
 keystone_init_secrets: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250728060024'
 rsyslog: '{{ images_base_url }}/openstack/extra/rsyslog:v8.2001.0-20240829110216'
 glance_bootstrap: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250728060024'
