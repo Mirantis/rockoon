@@ -22,6 +22,6 @@
   ansible.builtin.get_url:
     url: "{{ url_for_mirror }}"
     dest: "{{ rvl_registry_binaries_dir }}/{{ mirror_binary_path }}/{{ mirror_binary_name }}"
-    timeout: 900
+    timeout: "{{ rvl_registry_binary_timeout }}"
     mode: 0644
   when: not file_stat.stat.exists

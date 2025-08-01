@@ -33,7 +33,7 @@
 - block:
   - name: Predict Rockoon chart source URL by target address
     set_fact:
-      rvl_mirror_rockoon_chart: "{{ rvl_chart_ref_rockoon | replace(rvl_registry_https_url, rvl_binary_public_base_url) }}"
+      rvl_mirror_rockoon_chart: "{{ rvl_chart_ref_rockoon | replace(rvl_registry_binary_url, rvl_binary_public_base_url) }}"
 
   - name: Caching charts to local folder
     ansible.builtin.include_tasks:

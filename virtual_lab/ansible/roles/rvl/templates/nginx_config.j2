@@ -43,12 +43,33 @@ http {
   access_log /var/log/nginx/access.log;
   error_log /var/log/nginx/error.log;
 
+{% if rvl_registry_binary_mode == 'proxy' %}
+  proxy_cache_path {{ rvl_registry_binaries_dir }} levels=1:2 keys_zone=binary_cache:10m inactive={{ rvl_registry_binary_cache_expire_time }} max_size={{ rvl_registry_binary_cache_size }} use_temp_path=off;
+{% endif %}
   server {
-    listen {{ rvl_registry_https_port }} ssl;
-    listen [::]:{{ rvl_registry_https_port }} ssl;
+    listen {{ rvl_registry_binary_port }} ssl;
+    listen [::]:{{ rvl_registry_binary_port }} ssl;
     ssl_certificate /etc/nginx/certs/nginx.pem;
     ssl_certificate_key /etc/nginx/certs/nginx.key;
 
+{% if rvl_registry_binary_mode == 'proxy' %}
+    location / {
+      proxy_cache binary_cache;
+      proxy_cache_use_stale error timeout http_500 http_502 http_503 http_504;
+      proxy_cache_lock on;
+      proxy_cache_lock_timeout 880s;
+      proxy_read_timeout {{ rvl_registry_binary_timeout }};
+      proxy_cache_valid 404  1m;
+      proxy_cache_valid {{ rvl_registry_binary_cache_expire_time }};
+      proxy_force_ranges on;
+      proxy_ignore_client_abort on;
+      proxy_cache_revalidate on;
+      proxy_hide_header      Set-Cookie;
+      proxy_ignore_headers   X-Accel-Expires Expires Cache-Control Set-Cookie;
+      proxy_ssl_server_name on;
+      proxy_pass {{ rvl_binary_public_base_url }}/ ;
+    }
+{% elif rvl_registry_binary_mode == 'registry' %}
     root {{ rvl_registry_binaries_dir }};
     index index.html;
 
@@ -57,5 +78,6 @@ http {
     location / {
       try_files $uri $uri/ =404;
     }
+{% endif %}
   }
 }
