@@ -157,6 +157,10 @@ rvl_registry_docker_config_dir: /etc/docker/registry
 rvl_registry_docker_user: docker-registry
 # rvl_registry_source can have value k8s or systemd
 rvl_registry_source: k8s
+# https://distribution.github.io/distribution/about/configuration/#proxy
+rvl_registry_docker_cache_expire_time: 0
+# rvl_registry_docker_mode can have value registry or proxy
+rvl_registry_docker_mode: registry
 
 rvl_mirror_images: false
 rvl_mirror_images_extra:

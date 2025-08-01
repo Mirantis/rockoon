@@ -22,3 +22,8 @@ health:
     enabled: true
     interval: 10s
     threshold: 3
+{% if rvl_registry_docker_mode == 'proxy' %}
+proxy:
+  remoteurl: https://{{ rvl_images_public_base_url }}
+  ttl: {{ rvl_registry_docker_cache_expire_time }}
+{% endif %}
