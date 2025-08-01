@@ -79,7 +79,7 @@ nova_spiceproxy_assets: '{{ images_base_url }}/openstack/nova:antelope-jammy-202
 nova_placement: '{{ images_base_url }}/openstack/nova:antelope-jammy-20250725183432'
 nova_scheduler: '{{ images_base_url }}/openstack/nova:antelope-jammy-20250725183432'
 nova_service_cleaner: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250725183432'
-libvirt: '{{ images_base_url }}/general/libvirt:8.0.x-jammy-reef-20250514041009'
+libvirt: '{{ images_base_url }}/general/libvirt:8.0.x-jammy-reef-20250729115649'
 octavia_api: '{{ images_base_url }}/openstack/octavia:antelope-jammy-20250725183432'
 octavia_db_sync: '{{ images_base_url }}/openstack/octavia:antelope-jammy-20250725183432'
 octavia_health_manager: '{{ images_base_url }}/openstack/octavia:antelope-jammy-20250725183432'
@@ -148,7 +148,7 @@ placement_db_sync: '{{ images_base_url }}/openstack/placement:antelope-jammy-202
 keystone_db_sync_expand: '{{ images_base_url }}/openstack/keystone:antelope-jammy-20250725183432'
 keystone_db_sync_migrate: '{{ images_base_url }}/openstack/keystone:antelope-jammy-20250725183432'
 keystone_db_sync_contract: '{{ images_base_url }}/openstack/keystone:antelope-jammy-20250725183432'
-octavia_amphora: '{{ binary_base_url }}/openstack/bin/octavia/amphora-x64-haproxy-antelope-20250725190032.qcow2'
+octavia_amphora: '{{ binary_base_url }}/openstack/bin/octavia/amphora-x64-haproxy-antelope-20250716080133.qcow2'
 etcd: '{{ images_base_url }}/openstack/extra/etcd:v3.5.21-alpine-20250421162920'
 etcd_db_compact: '{{ images_base_url }}/openstack/extra/etcd:v3.5.21-alpine-20250421162920'
 cinder_db_sync_online: '{{ images_base_url }}/openstack/cinder:antelope-jammy-20250725183432'
@@ -182,7 +182,7 @@ mariadb_controller: '{{ images_base_url }}/general/mariadb:10.6.20-jammy-2025021
 horizon_mirantis_theme_sha256summ: 901891de9cfe77dbf65f1c7cf3161408b4f3229f2426d400039af8e34e2c46ef
 horizon_mirantis_theme_url: '{{ binary_base_url }}/openstack/bin/horizon/mirantis-antelope-18a1377-20230817112356.tar.gz'
 ceph_config_helper: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250725183432'
-octavia_amphora_checksum: 4570e698f783db6b2e305fab4a17ff31
+octavia_amphora_checksum: 0c2d313079a430929e16b910cb011b3d
 masakari_db_sync: '{{ images_base_url }}/openstack/masakari:antelope-jammy-20250725183432'
 masakari_api: '{{ images_base_url }}/openstack/masakari:antelope-jammy-20250725183432'
 masakari_engine: '{{ images_base_url }}/openstack/masakari:antelope-jammy-20250725183432'
@@ -192,7 +192,7 @@ frr_init: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-202507
 frr_info: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250725183432'
 frr: '{{ images_base_url }}/general/external/docker.io/frrouting/frr:v9.1.2-20250410070732'
 cinder_service_cleaner: '{{ images_base_url }}/openstack/cinder:antelope-jammy-20250725183432'
-strongswan: '{{ images_base_url }}/openstack/extra/strongswan:alpine-5.9.14-20250421162917'
+strongswan: '{{ images_base_url }}/openstack/extra/strongswan:alpine-5.9.14-20250731072941'
 keystone_init_secrets: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250725183432'
 rsyslog: '{{ images_base_url }}/openstack/extra/rsyslog:v8.2001.0-20240829110216'
 glance_bootstrap: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250725183432'
