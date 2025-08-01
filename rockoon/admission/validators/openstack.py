@@ -12,6 +12,7 @@
 # limitations under the License.
 
 import copy
+import yaml
 
 from rockoon.admission.validators import base
 from rockoon import constants
@@ -165,6 +166,40 @@ class OpenStackValidator(base.BaseValidator):
         else:
             return 1
 
+    def _get_pinned_images_tags(self, obj):
+        return obj.get("values", {}).get("images", {}).get("tags", {})
+
+    def _validate_pinned_images_absent(self, spec):
+        pinned_images = {}
+        spec_services = spec.get("services", {})
+        for service_name, service in spec_services.items():
+            if not isinstance(service, dict):
+                continue
+            for component_name, component in service.items():
+                if not isinstance(component, dict):
+                    continue
+                tags = self._get_pinned_images_tags(component)
+                if tags:
+                    if service_name not in pinned_images:
+                        pinned_images[service_name] = {}
+                    pinned_images[service_name][component_name] = tags
+
+        spec_common = spec.get("common", {})
+        for chart_name, chart_data in spec_common.items():
+            if not isinstance(chart_data, dict):
+                continue
+            tags = self._get_pinned_images_tags(chart_data)
+            if tags:
+                if "common" not in pinned_images:
+                    pinned_images["common"] = {}
+                pinned_images["common"][chart_name] = tags
+
+        if pinned_images:
+            raise exception.OsDplValidationFailed(
+                "OpenStack upgrade with pinned images is not allowed.\n"
+                f"Found pinned images:\n{yaml.dump(pinned_images)}"
+            )
+
     def _validate_openstack_upgrade(self, old_obj, new_obj):
         # NOTE(pas-ha) this logic relies on 'master' already has been denied
         old_version = constants.OpenStackVersion[
@@ -195,6 +230,10 @@ class OpenStackValidator(base.BaseValidator):
                 "If spec.openstack_version is changed, "
                 "changing other values in the spec is not permitted."
             )
+
+        # validate that there are no pinned image tags defined
+        # in spec.services or spec.common
+        self._validate_pinned_images_absent(new_obj["spec"])
 
     def _validate_rotation_data(
         self, old_rotation_data, new_rotation_data, review_request

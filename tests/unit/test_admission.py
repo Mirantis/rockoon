@@ -344,6 +344,50 @@ def test_openstack_upgrade_on_slurp_release_fail(client, osdplst):
     )
 
 
+def test_openstack_upgrade_with_pinned_images_fail(client):
+    pinned_cases = {
+        "common": {
+            "openstack": {
+                "values": {
+                    "images": {
+                        "tags": {
+                            "neutron_server": "docker.io/openstackhelm/neutron:stein-ubuntu_bionic"
+                        }
+                    }
+                }
+            }
+        },
+        "services": {
+            "dashboard": {
+                "horizon": {
+                    "values": {
+                        "images": {
+                            "tags": {
+                                "horizon": "docker.io/openstackhelm/horizon:stein-ubuntu_bionic"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+    }
+    for case_key, data in pinned_cases.items():
+        req = copy.deepcopy(ADMISSION_REQ)
+        req["request"]["operation"] = "UPDATE"
+        req["request"]["oldObject"] = copy.deepcopy(req["request"]["object"])
+        req["request"]["oldObject"]["spec"]["openstack_version"] = "train"
+        req["request"]["oldObject"]["spec"][case_key] = data
+        req["request"]["object"]["spec"][case_key] = data
+        response = client.simulate_post("/validate", json=req)
+        assert response.status == falcon.HTTP_OK
+        assert response.json["response"]["allowed"] is False
+        assert response.json["response"]["status"]["code"] == 400
+        assert (
+            "OpenStack upgrade with pinned images is not allowed"
+            in response.json["response"]["status"]["message"]
+        )
+
+
 def test_credentials_rotation_ok(client, osdplst):
     req = copy.deepcopy(ADMISSION_REQ_STATUS)
     osdplst.return_value.obj = {
