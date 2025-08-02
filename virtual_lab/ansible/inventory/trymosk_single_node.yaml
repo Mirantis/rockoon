@@ -9,12 +9,11 @@ all:
     rvl_images_build_rockoon: false
     rvl_images_build_loci: false
     rvl_registry_source: systemd
-    rvl_mirror_images: true
-    rvl_mirror_charts: true
-    rvl_mirror_binaries: true
-    rvl_images_public_base_url: docker-dev-kaas-virtual.artifactory-eu.mcp.mirantis.net
-    rvl_binary_public_base_url: https://binary-dev-kaas-virtual.mcp.mirantis.com
-    rvl_images_build_tag: 1.1.6
+    rvl_registry_binary_mode: proxy
+    rvl_registry_docker_mode: proxy
+    rvl_images_public_base_url: mirantis.azurecr.io
+    rvl_binary_public_base_url: https://binary.mirantis.com
+    rvl_images_build_tag: 1.1.7
     rvl_images_base_url: "{{ rvl_registry_host }}"
     rvl_binary_base_url: "{{ rvl_registry_binary_url }}"
     rvl_chart_ref_rockoon: "{{ rvl_registry_binary_url }}/openstack/helm/rockoon/rockoon-{{ rvl_images_build_tag }}.tgz"
