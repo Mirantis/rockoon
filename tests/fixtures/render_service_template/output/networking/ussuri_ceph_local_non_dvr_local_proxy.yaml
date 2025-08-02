@@ -196,6 +196,7 @@ spec:
             service_plugins: router,metering,qos
             support_sync_ha_routers_info: true
             support_sync_ovs_info: true
+            support_ovn_maintenance_check: false
           audit_middleware_notifications:
             driver: noop
           cache:

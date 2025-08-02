@@ -104,6 +104,13 @@
 {%- if OSVer[spec.openstack_version] >= OSVer.master or ovn_enabled %}
 {%- set support_sync_ovs_info = False %}
 {%- endif %}
+
+{%- if ovn_enabled and OSVer[spec.openstack_version] >= OSVer.caracal %}
+{%- set support_ovn_maintenance_check = True %}
+{%- else %}
+{%- set support_ovn_maintenance_check = False %}
+{%- endif %}
+
 {%- set cadf_audit = spec.get('features', {}).get('logging', {}).get('cadf', {'enabled': false}) %}
 {%- set cadf_audit_driver = spec.get('features', {}).get('logging', {}).get('cadf', {}).get('driver', 'messagingv2') %}
 
@@ -875,6 +882,7 @@ spec:
           DEFAULT:
             support_sync_ovs_info: {{ support_sync_ovs_info }}
             support_sync_ha_routers_info: {{ support_sync_ovs_info }}
+            support_ovn_maintenance_check: {{ support_ovn_maintenance_check }}
             router_processes_greentlet_max: 10
             {%- if ovn_enabled and not ngs_ovs_vtep.enabled %}
             dhcp_agent_notification: false

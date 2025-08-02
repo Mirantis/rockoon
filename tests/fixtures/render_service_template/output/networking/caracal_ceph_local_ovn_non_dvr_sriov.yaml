@@ -293,6 +293,7 @@ spec:
             service_plugins: ovn-router,metering,qos,ovn-vpnaas,trunk
             support_sync_ha_routers_info: false
             support_sync_ovs_info: false
+            support_ovn_maintenance_check: true
           audit_middleware_notifications:
             driver: noop
           cache:

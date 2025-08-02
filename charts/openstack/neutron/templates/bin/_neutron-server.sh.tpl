@@ -38,6 +38,8 @@ if [[ -z $ovn_db_ip ]]; then
   exit 1
 fi
 
+rm -f {{ .Values.conf.neutron.DEFAULT.state_path }}/ovn_maintenance.json
+
 tee > /tmp/pod-shared/neutron-ovn.ini << EOF
 [DEFAULT]
 host = $NODE_NAME
