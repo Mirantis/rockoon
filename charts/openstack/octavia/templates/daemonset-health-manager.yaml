@@ -268,10 +268,5 @@ spec:
 {{- $configmap_yaml := "octavia.configmap.etc" }}
 
 {{/* Preffer using .Values.overrides rather than .Values.conf.overrides */}}
-{{- if index (index .Values "overrides" |default dict ) "octavia_health_manager" }}
 {{- list $daemonset "octavia.health_manager.daemonset" $serviceAccountName $configmap_yaml $configMapName "octavia.configmap.bin" "octavia-bin" . | include "helm-toolkit.utils.daemonset_overrides_root" }}
-{{- else }}
-{{- $daemonset_yaml := list $daemonset $configMapName $serviceAccountName . | include "octavia.health_manager.daemonset" | toString | fromYaml }}
-{{- list $daemonset $daemonset_yaml $configmap_yaml $configMapName . | include "helm-toolkit.utils.daemonset_overrides" }}
-{{- end }}
 {{- end }}

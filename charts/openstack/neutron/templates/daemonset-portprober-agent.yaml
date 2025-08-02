@@ -275,10 +275,5 @@ spec:
 {{- $configmap_yaml := "neutron.configmap.etc" }}
 
 {{/* Preffer using .Values.overrides rather than .Values.conf.overrides */}}
-{{- if index (index .Values "overrides" |default dict ) "neutron_portprober-agent" }}
 {{- list $daemonset "neutron.portprober_agent.daemonset" $serviceAccountName $configmap_yaml $configMapName "neutron.configmap.bin" "neutron-bin" . | include "helm-toolkit.utils.daemonset_overrides_root" }}
-{{- else }}
-{{- $daemonset_yaml := list $daemonset $configMapName $serviceAccountName . | include "neutron.portprober_agent.daemonset" | toString | fromYaml }}
-{{- list $daemonset $daemonset_yaml $configmap_yaml $configMapName . | include "helm-toolkit.utils.daemonset_overrides" }}
-{{- end }}
 {{- end }}

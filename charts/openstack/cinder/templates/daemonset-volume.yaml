@@ -319,12 +319,7 @@ spec:
 {{- $configmap_yaml := "cinder.configmap.etc" }}
 
 {{/* Prefer using .Values.overrides rather than .Values.conf.overrides */}}
-{{- if index (index $envAll.Values "overrides" |default dict ) "cinder_volume_ds" }}
 {{- list $daemonset "cinder.volume.daemonset" $serviceAccountName $configmap_yaml $configMapName "cinder.configmap.bin" "cinder-bin" $envAll | include "helm-toolkit.utils.daemonset_overrides_root" }}
-{{- else }}
-{{- $daemonset_yaml := list $daemonset $configMapName $serviceAccountName $envAll | include "cinder.volume.daemonset" | toString | fromYaml }}
-{{- list $daemonset $daemonset_yaml $configmap_yaml $configMapName $envAll | include "helm-toolkit.utils.daemonset_overrides" }}
-{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

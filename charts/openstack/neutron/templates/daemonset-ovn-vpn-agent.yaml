@@ -186,9 +186,5 @@ spec:
 {{- $configmap_yaml := "neutron.configmap.etc" }}
 
 {{/* Preffer using .Values.overrides rather than .Values.conf.overrides */}}
-{{- if index (index .Values "overrides" |default dict ) "ovn-vpn-agent" }}
 {{- list $daemonset "neutron.ovn_vpn_agent.daemonset" $serviceAccountName $configmap_yaml $configMapName "neutron.configmap.bin" "neutron-bin" . | include "helm-toolkit.utils.daemonset_overrides_root" }}
-{{- else }}
-{{- list $daemonset $daemonset_yaml $configmap_yaml $configMapName . | include "helm-toolkit.utils.daemonset_overrides" }}
-{{- end }}
 {{- end }}
