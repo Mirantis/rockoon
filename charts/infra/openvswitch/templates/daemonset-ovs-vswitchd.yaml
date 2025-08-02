@@ -272,10 +272,5 @@ It should be handled through lcore and pmd core masks. */}}
 {{ tuple $envAll "vswitchd" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
 {{- $configmap_yaml := "openvswitch.configmap.etc" }}
 {{/* Prefer using .Values.overrides rather than .Values.conf.overrides */}}
-{{- if index (index .Values "overrides" |default dict ) "openvswitch_openvswitch-vswitchd" }}
 {{- list $daemonset "openvswitch.openvswitch-vswitchd.daemonset" $serviceAccountName $configmap_yaml $configMapName "openvswitch.configmap.bin" "openvswitch-bin" . | include "helm-toolkit.utils.daemonset_overrides_root" }}
-{{- else }}
-{{- $daemonset_yaml := list $daemonset $configMapName $serviceAccountName . | include "openvswitch.openvswitch-vswitchd.daemonset" | toString | fromYaml }}
-{{- list $daemonset $daemonset_yaml $configmap_yaml $configMapName . | include "helm-toolkit.utils.daemonset_overrides" }}
-{{- end }}
 {{- end }}

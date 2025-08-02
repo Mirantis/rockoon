@@ -135,10 +135,5 @@ spec:
 {{ tuple $envAll "server" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
 {{- $configmap_yaml := "strongswan.configmap.etc" }}
 {{/* Prefer using .Values.overrides rather than .Values.conf.overrides */}}
-{{- if index (index .Values "overrides" |default dict ) "strongswan_strongswan" }}
 {{- list $daemonset "strongswan.daemonset" $serviceAccountName $configmap_yaml $configMapName "strongswan.configmap.bin" "strongswan-bin" . | include "helm-toolkit.utils.daemonset_overrides_root" }}
-{{- else }}
-{{- $daemonset_yaml := list $daemonset $configMapName $serviceAccountName . | include "strongswan.daemonset" | toString | fromYaml }}
-{{- list $daemonset $daemonset_yaml $configmap_yaml $configMapName . | include "helm-toolkit.utils.daemonset_overrides" }}
-{{- end }}
 {{- end }}
