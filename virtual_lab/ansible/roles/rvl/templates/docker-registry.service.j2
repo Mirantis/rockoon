@@ -1,0 +1,10 @@
+[Unit]
+Description=the Docker toolset to pack, ship, store, and deliver content
+After=network.target
+
+[Service]
+User={{ rvl_registry_docker_user }}
+ExecStart=/usr/bin/registry serve {{ rvl_registry_docker_config_dir }}/config.yml
+
+[Install]
+WantedBy=multi-user.target

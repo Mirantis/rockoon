@@ -1,40 +1,38 @@
 ---
-- name: Get image name
+- name: Get Docker image name
   set_fact:
-    image_name: "{{ image_for_mirror | regex_replace('^.*?/(.*):.*$', '\\1') }}"
+    mirror_image_name: "{{ image_for_mirror | regex_replace('^' + rvl_images_public_base_url + '/(.*):.*$', '\\1') }}"
 
-- name: Get image tag
+- name: Get Docker image tag
   set_fact:
-    image_tag: "{{ image_for_mirror | regex_replace('^.*:(.*)$', '\\1') }}"
+    mirror_image_tag: "{{ image_for_mirror | regex_replace('^.*:(.*)$', '\\1') }}"
 
 - name: Get image`s metadata from local registry
   ansible.builtin.uri:
-    url: "https://{{ rvl_registry_host }}/v2/{{ image_name }}/manifests/{{ image_tag }}"
+    url: "https://{{ rvl_registry_host }}/v2/{{ mirror_image_name }}/manifests/{{ mirror_image_tag }}"
     return_content: false
   ignore_errors: True
-  register: check_local_registry_result
+  register: local_registry_check_result
 
-- name: "Pool the image {{ image_name }}:{{ image_tag }}"
-  community.docker.docker_image_pull:
-    name: "{{ image_for_mirror }}"
-  when: check_local_registry_result.failed
+- block:
+  - name: "Pool the image {{ mirror_image_name }}:{{ mirror_image_tag }}"
+    community.docker.docker_image_pull:
+      name: "{{ image_for_mirror }}"
 
-- name: "Tag the image {{ image_name }}:{{ image_tag }}"
-  community.docker.docker_image_tag:
-    name: "{{ image_for_mirror }}"
-    repository:
-      - "{{ rvl_registry_host }}/{{ image_name }}:{{ image_tag }}"
-  when: check_local_registry_result.failed
+  - name: "Tag the image {{ mirror_image_name }}:{{ mirror_image_tag }}"
+    community.docker.docker_image_tag:
+      name: "{{ image_for_mirror }}"
+      repository:
+        - "{{ rvl_registry_host }}/{{ mirror_image_name }}:{{ mirror_image_tag }}"
 
-- name: "Push the image {{ image_name }}:{{ image_tag }}"
-  community.docker.docker_image_push:
-    name: "{{ rvl_registry_host }}/{{ image_name }}:{{ image_tag }}"
-  when: check_local_registry_result.failed
+  - name: "Push the image {{ mirror_image_name }}:{{ mirror_image_tag }}"
+    community.docker.docker_image_push:
+      name: "{{ rvl_registry_host }}/{{ mirror_image_name }}:{{ mirror_image_tag }}"
 
-- name: "Remove image {{ image_name }}:{{ image_tag }}"
-  community.docker.docker_image_remove:
-    name: "{{ item }}"
-  loop:
-    - "{{ rvl_registry_host }}/{{ image_name }}:{{ image_tag }}"
-    - "{{ image_for_mirror }}"
-  when: check_local_registry_result.failed
+  - name: "Remove image {{ mirror_image_name }}:{{ mirror_image_tag }}"
+    community.docker.docker_image_remove:
+      name: "{{ item }}"
+    loop:
+      - "{{ rvl_registry_host }}/{{ mirror_image_name }}:{{ mirror_image_tag }}"
+      - "{{ image_for_mirror }}"
+  when: local_registry_check_result.failed

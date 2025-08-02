@@ -35,12 +35,12 @@ rvl_dns_nameservers:
 rvl_dns_discover_ingress_ip: true
 
 rvl_registry_node_port: 32500
-rvl_registry_https_port: 32443
+rvl_registry_binary_port: 32443
 rvl_registry_image_tag: v2.8.1-14
 rvl_registry_ip_address: "{{ ansible_default_ipv4.address|default(ansible_all_ipv4_addresses[0]) }}"
 rvl_registry_namespace: registry
 rvl_registry_base_url: registry.it.just.works
-rvl_registry_https_url: "https://{{ rvl_registry_base_url }}:{{ rvl_registry_https_port }}"
+rvl_registry_binary_url: "https://{{ rvl_registry_base_url }}:{{ rvl_registry_binary_port }}"
 rvl_registry_host: "{{ rvl_registry_base_url }}:{{ rvl_registry_node_port }}"
 
 rvl_images_public_base_url: docker-dev-kaas-virtual.mcp.mirantis.com
@@ -150,20 +150,32 @@ rvl_metallb_metallb_crds_chart: "{{ rvl_binary_base_url }}/core/helm/metallb-crd
 rvl_metallb_metallb_chart: "{{ rvl_binary_base_url }}/core/helm/metallb-1.37.20.tgz"
 rvl_metallb_metallb_dockerBaseUrl: "{{ rvl_images_base_url }}"
 
-rvl_registry_dir: /var/lib/docker-registry
-rvl_registry_user: docker-registry
+rvl_registry_docker_release: 3.0.0
+rvl_registry_docker_archive_url: "https://github.com/distribution/distribution/releases/download/v{{ rvl_registry_docker_release }}/registry_{{ rvl_registry_docker_release }}_linux_amd64.tar.gz"
+rvl_registry_docker_dir: /var/lib/docker-registry
+rvl_registry_docker_config_dir: /etc/docker/registry
+rvl_registry_docker_user: docker-registry
 # rvl_registry_source can have value k8s or systemd
 rvl_registry_source: k8s
+# https://distribution.github.io/distribution/about/configuration/#proxy
+rvl_registry_docker_cache_expire_time: 0
+# rvl_registry_docker_mode and rvl_registry_binary_mode can have value registry or proxy
+rvl_registry_docker_mode: registry
+rvl_registry_binary_mode: registry
+
+rvl_registry_binary_cache_size: 4g
+rvl_registry_binary_cache_expire_time: 10y
+rvl_registry_binary_timeout: 900
 
 rvl_mirror_images: false
 rvl_mirror_images_extra:
- - mirantis.azurecr.io/bm/metallb/controller:v0.13.9-53df4a9c-amd64
- - mirantis.azurecr.io/bm/metallb/speaker:v0.13.9-53df4a9c-amd64
- - mirantis.azurecr.io/bm/external/local-volume-provisioner:v2.4.0
- - mirantis.azurecr.io/openstack/openstack-controller:0.1.1
+ - "{{ rvl_images_public_base_url }}/bm/metallb/controller:v0.13.9-53df4a9c-amd64"
+ - "{{ rvl_images_public_base_url }}/bm/metallb/speaker:v0.13.9-53df4a9c-amd64"
+ - "{{ rvl_images_public_base_url }}/bm/external/local-volume-provisioner:v2.4.0"
+ - "{{ rvl_images_public_base_url }}/openstack/openstack-controller:0.1.1"
 
 rvl_mirror_binaries: false
-rvl_registry_binaries_dir: /var/lib/https-registry
+rvl_registry_binaries_dir: /var/lib/binary-registry
 
 rvl_mirror_charts: false
 rvl_mirror_charts_extra:
