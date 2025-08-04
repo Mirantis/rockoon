@@ -465,10 +465,17 @@ spec:
                 network:
                   interface:
                     sriov:
-                      - device: enp0
-                        num_vfs: 7
-                        physnet: sriov01
-                        trusted: "true"
+                    - device: enp0
+                      num_vfs: 7
+                      physnet: sriov01
+                      trusted: 'true'
+                      hooks:
+                        init: |
+                          echo "First line init"
+                          echo "Second line init"
+                        pre_init: |
+                          echo "First line pre_init"
+                          echo "Second line pre_init"
       labels:
         sriov:
           node_selector_key: openstack-compute-node
