@@ -194,7 +194,7 @@ async def _trigger_octavia_lb_failover(
                 logs,
             )
     if not failover_job.ready:
-        raise kopf.TemporaryErrora(
+        raise kopf.TemporaryError(
             "Loadbalancer failover job did not complete susccessfully after certificate rotation."
         )
 

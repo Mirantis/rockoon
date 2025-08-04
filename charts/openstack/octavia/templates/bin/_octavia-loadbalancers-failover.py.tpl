@@ -34,7 +34,11 @@ from openstack.exceptions import (
 )
 from retry import retry
 import urllib3
-from urllib3.exceptions import SSLError, ConnectionError
+from urllib3.exceptions import (
+    SSLError,
+    ConnectionError,
+    ConnectTimeoutError,
+)
 
 
 def strtobool(v):
@@ -220,7 +224,7 @@ def get_amphora_liveness_status(
     except SSLError as e:
         LOG.debug("Amphora %s certificate is not valid %s.", amphora_ip, e)
         return AmphoraLivenessStatus.CERT_EXPIRED
-    except ConnectionError as e:
+    except (ConnectTimeoutError, ConnectionError) as e:
         LOG.debug("Amphora %s is unreachable.", amphora_ip)
         return AmphoraLivenessStatus.UNREACHABLE
     except Exception as e:
@@ -261,7 +265,7 @@ def is_amphora_failover_needed(amphora):
         in FAILOVER_LB_CASES
     ):
         LOG.warning(
-            "Amphora %s is unreachable, but we not sure if its amohora fault, skip failover.",
+            "Amphora %s is unreachable, but we not sure if its amphora fault, skip failover.",
             amphora.id,
         )
         return False
@@ -351,9 +355,9 @@ def handle_lb_failover(lb_id):
     :returns: One of LBFailoverStatus states.
     """
     oc = openstack.connect()
-    lb = get_loadbalancer(lb_id, oc)
-    LOG.info("Checking load balancer: %s", lb_id)
     try:
+        lb = get_loadbalancer(lb_id, oc)
+        LOG.info("Checking load balancer: %s", lb_id)
         if is_failover_needed(oc, lb):
             do_lb_failover(oc, lb_id)
             return LBFailoverStatus.SUCCESS
