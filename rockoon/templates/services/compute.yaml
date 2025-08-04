@@ -344,7 +344,8 @@ spec:
                   backend:
                     - sriovnicswitch
                   interface:
-                    sriov: {{ neutron_override.sriov.nics }}
+                    sriov:
+{{ neutron_override.sriov.nics | toyaml | indent(width=22, first=True) }}
       {%- endif %}
                 conf:
                   nova:

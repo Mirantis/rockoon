@@ -537,6 +537,13 @@ spec:
                       num_vfs: 7
                       physnet: sriov01
                       trusted: 'true'
+                      hooks:
+                        init: |
+                          echo "First line init"
+                          echo "Second line init"
+                        pre_init: |
+                          echo "First line pre_init"
+                          echo "Second line pre_init"
       pod:
         probes:
           compute:

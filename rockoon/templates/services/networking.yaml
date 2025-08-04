@@ -1195,7 +1195,8 @@ spec:
               values:
                 network:
                   interface:
-                    sriov: {{ override.sriov.nics }}
+                    sriov:
+{{ override.sriov.nics | toyaml | indent(width=22, first=True) }}
           {%- endif %}
         {%- endfor %}
       {%- endif %}
