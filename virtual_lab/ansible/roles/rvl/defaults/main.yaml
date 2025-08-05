@@ -27,6 +27,8 @@ rvl_osdpl_floating_network:
     pool_start: 10.11.12.100
     pool_end: 10.11.12.200
     gateway: 10.11.12.11
+rvl_network_floating_network_with_snat: false
+
 rvl_osdpl_openstack_version: caracal
 rvl_dns_resolver_ip_address: "{{ ansible_default_ipv4.address|default(ansible_all_ipv4_addresses[0]) }}"
 rvl_dns_nameservers:

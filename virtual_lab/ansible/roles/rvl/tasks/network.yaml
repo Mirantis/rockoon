@@ -26,3 +26,17 @@
 - name: Apply netplan changes
   ansible.builtin.command:  netplan  apply
   when: netplan_os_floating is changed
+
+- block:
+  - name: Make SNAT for public OS network
+    ansible.builtin.template:
+      src: iptables-public-network.sh.j2
+      dest: /etc/networkd-dispatcher/routable.d/iptables-public-network.sh
+      owner: root
+      group: root
+      mode: '0755'
+
+  - name: Apply SNAT rules
+    ansible.builtin.command: /etc/networkd-dispatcher/routable.d/iptables-public-network.sh
+
+  when: rvl_network_floating_network_with_snat
