@@ -170,12 +170,13 @@ def create_secgroups(names, remote_ports, host_port):
             port_range_max=dst_port,
             port_range_min=dst_port,
         )
-    create_security_group_rule(
-        security_group_id=ids[OCTAVIA_SECGROUP_MGMT],
-        direction="ingress",
-        remote_ip_prefix="0.0.0.0/0",
-        protocol="icmp",
-    )
+    for sec_group in (OCTAVIA_SECGROUP_MGMT, OCTAVIA_SECGROUP_HEALTH_MANAGER):
+        create_security_group_rule(
+            security_group_id=ids[sec_group],
+            direction="ingress",
+            remote_ip_prefix="0.0.0.0/0",
+            protocol="icmp",
+        )
     create_security_group_rule(
         security_group_id=ids[OCTAVIA_SECGROUP_HEALTH_MANAGER],
         direction="ingress",

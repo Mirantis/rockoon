@@ -22,6 +22,9 @@ import yaml
 import logging
 import time
 import ssl
+import configparser
+import socket
+import struct
 from enum import Enum, auto
 
 from concurrent.futures import ThreadPoolExecutor, ALL_COMPLETED, wait
@@ -42,7 +45,11 @@ from urllib3.exceptions import (
 
 
 def strtobool(v):
-    # Clone from the now-deprecated distutils
+    """Convert a string representation of truth to boolean.
+
+    :param v: string to convert
+    :returns: True if string represents true, False otherwise
+    """
     return str(v).lower() in ("yes", "true", "t", "1")
 
 
@@ -52,7 +59,7 @@ LB_FAILOVER_MAX_WORKERS = int(os.environ.get("LB_FAILOVER_MAX_WORKERS", 5))
 LB_FAILOVER_AMPHORA_AGENT_PORT = int(os.environ.get("LB_FAILOVER_AMPHORA_AGENT_PORT", 9443))
 
 LB_FAILOVER_RETRY_DELAY = int(os.environ.get("LB_FAILOVER_RETRY_DELAY", 5))
-LB_FAILOVER_RETRY_ATTAMPTS = int(os.environ.get("LB_FAILOVER_RETRY_ATTAMPTS", 7))
+LB_FAILOVER_RETRY_ATTEMPTS = int(os.environ.get("LB_FAILOVER_RETRY_ATTEMPTS", 7))
 LB_FAILOVER_RETRY_BACKOFF = int(os.environ.get("LB_FAILOVER_RETRY_BACKOFF", 10))
 
 
@@ -90,6 +97,24 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 LOG.setLevel(LB_FAILOVER_LOG_LEVEL)
+
+OCTAVIA_SETTINGS_CONF_PATH = "/etc/octavia/settings.conf"
+def get_health_manager_ips():
+    """Parse Octavia settings.conf to get health manager IP addresses.
+
+    :returns: list of IP addresses of Octavia health managers
+    """
+    ips = []
+    cfg = configparser.ConfigParser(strict=False)
+    cfg.read(OCTAVIA_SETTINGS_CONF_PATH)
+    ip_ports = cfg.get("health_manager", "controller_ip_port_list", fallback="")
+    for ip_port in ip_ports.split(","):
+        ip = ip_port.split(":")[0]
+        if ip:
+            ips.append(ip)
+    return ips
+
+OCTAVIA_HEALTH_MANAGER_IPS = get_health_manager_ips()
 
 
 class AmphoraLivenessStatus(Enum):
@@ -237,6 +262,100 @@ def get_amphora_liveness_status(
     return AmphoraLivenessStatus.UNKNOWN
 
 
+def checksum(data):
+    """Calculate checksum for ICMP packet.
+
+    :param data: bytes of data to checksum
+    :returns: 16-bit checksum value
+    """
+    s = 0
+    for i in range(0, len(data), 2):
+        w = (data[i] << 8) + (data[i + 1] if i + 1 < len(data) else 0)
+        s += w
+    s = (s >> 16) + (s & 0xffff)
+    s += s >> 16
+    return ~s & 0xffff
+
+
+def ping(host, timeout=2):
+    """Send ICMP echo request to host.
+
+    :param host: target IP
+    :param timeout: timeout in seconds for reply
+    :returns: True if host replied, False otherwise
+    """
+    sock = None
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_ICMP)
+        sock.settimeout(timeout)
+
+        icmp_type = 8
+        icmp_code = 0
+        icmp_checksum = 0
+        run_id = os.getpid() & 0xFFFF
+
+        icmp_seq = ((run_id & 0xFF00) | 1)
+
+        header = struct.pack("bbHHh", icmp_type, icmp_code, icmp_checksum, run_id, icmp_seq)
+        icmp_checksum = checksum(header)
+        header = struct.pack("bbHHh", icmp_type, icmp_code, socket.htons(icmp_checksum), run_id, icmp_seq)
+        packet = header
+
+        sock.sendto(packet, (host, 0))
+
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            try:
+                recv_packet, addr = sock.recvfrom(1024)
+                if len(recv_packet) >= 8:
+                    r_type, r_code, r_checksum, r_id, r_seq = struct.unpack("bbHHh", recv_packet[:8])
+                    if r_type == 0 and (run_id >> 8) == (r_seq >> 8):
+                        return True
+            except socket.timeout:
+                LOG.debug(f"Socket recv timeout while waiting for ICMP reply from {host}")
+    except (socket.gaierror, socket.timeout, OSError) as e:
+        LOG.debug(f"Ping failed for {host}: {e}")
+    finally:
+        if sock:
+            sock.close()
+    return False
+
+
+@retry(
+    (Exception),
+    delay=1,
+    tries=3,
+    backoff=1,
+    logger=LOG,
+)
+def ping_with_retry(host, timeout=2):
+    """Ping a host with retry logic.
+
+    :param host: target IP
+    :param timeout: timeout in seconds for a single ping attempt
+    :returns: True if ping succeeded
+    :raises RuntimeError: if ping fails after retries
+    """
+    if not ping(host, timeout=timeout):
+        raise RuntimeError(f"Ping failed for {host}")
+    return True
+
+
+def has_connectivity_to_health_managers():
+    """Check connectivity to all Octavia health managers.
+
+    :returns: True if all health managers are reachable, False otherwise
+    """
+    for ip in OCTAVIA_HEALTH_MANAGER_IPS:
+        try:
+            ping_with_retry(ip)
+        except Exception as e:
+            LOG.warning("Error pinging health manager after retries: %s - %s", ip, e)
+            return False
+    LOG.debug("Ping to health managers %s succeeded", OCTAVIA_HEALTH_MANAGER_IPS)
+    return True
+
+
 def is_amphora_failover_needed(amphora):
     """Check if amphora failover is needed
 
@@ -256,19 +375,13 @@ def is_amphora_failover_needed(amphora):
         )
         return True
 
-    # TODO(vsaienko): other cases like unreachable will require more careful checks. For example if we have connectivity
-    # issues from the node where this job is running all amphoras will be marked as unreachable, so we need to have
-    # additional checks before handling UNREACHABLE cases.
     if (
         status == AmphoraLivenessStatus.UNREACHABLE
         and SUPPORTED_FAILOVER_LB_CASES.AMPHORA_UNREACHABLE.name
         in FAILOVER_LB_CASES
     ):
-        LOG.warning(
-            "Amphora %s is unreachable, but we not sure if its amphora fault, skip failover.",
-            amphora.id,
-        )
-        return False
+        LOG.info("Amphora %s is unreachable, failover is needed", amphora.id)
+        return True
     return False
 
 
@@ -321,7 +434,7 @@ def is_failover_needed(oc, lb):
 @retry(
     (Exception),
     delay=LB_FAILOVER_RETRY_DELAY,
-    tries=LB_FAILOVER_RETRY_ATTAMPTS,
+    tries=LB_FAILOVER_RETRY_ATTEMPTS,
     backoff=LB_FAILOVER_RETRY_BACKOFF,
     logger=LOG,
     on_exception=handle_retry_exception,
@@ -354,6 +467,9 @@ def handle_lb_failover(lb_id):
 
     :returns: One of LBFailoverStatus states.
     """
+    # TODO(dbiletskyi): consider handling the case where the load balancer starts failing
+    # after failover. Might need to recheck LB state and stop the job to prevent disrupting
+    # all load balancers in the environment.
     oc = openstack.connect()
     try:
         lb = get_loadbalancer(lb_id, oc)
@@ -388,6 +504,13 @@ def main():
 
     # validate if input parameters are okay.
     validate_failover_lb_cases(FAILOVER_LB_CASES)
+
+    # check connectivity to Octavia health managers before starting
+    if not has_connectivity_to_health_managers():
+        LOG.error("Cannot connect to octavia health managers. Likely network issue on this node.")
+        if LB_FAILOVER_FAIL_ON_ERROR:
+            sys.exit(1)
+        sys.exit(0)
 
     oc = openstack.connect()
     statistics = {k: [] for k in list(LBFailoverStatus.__members__)}
