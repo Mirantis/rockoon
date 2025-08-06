@@ -61,24 +61,14 @@
     include_role:
       name: rvl
       tasks_from: registry
-  - name: Prepare coredns configs
+  - name: Configure DNS service
     include_role:
       name: rvl
-      tasks_from: dns/coredns
+      tasks_from: dns
     tags:
       - dns
     vars:
       rvl_dns_discover_ingress_ip: false
-  - name: Setup coredns
-    include_role:
-      name: cloudalchemy.coredns
-    vars:
-      coredns_dns_port: 53
-      coredns_zone_files_paths:
-        - /src/coredns/it.just.works.db
-      coredns_config_file: /src/coredns/Corefile
-    tags:
-      - dns
   - name: Setup VPN server
     include_role:
       name: rvl

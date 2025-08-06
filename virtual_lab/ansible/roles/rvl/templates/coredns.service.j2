@@ -1,0 +1,33 @@
+[Unit]
+Description=CoreDNS
+Documentation=https://coredns.io
+After=systemd-sysusers.service systemd-networkd.service
+Before=network.target nss-lookup.target shutdown.target
+Wants=nss-lookup.target
+StartLimitInterval=0
+
+[Service]
+Type=simple
+PermissionsStartOnly=true
+LimitNOFILE=1048576
+LimitNPROC=512
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+WorkingDirectory=/etc/coredns
+
+User={{ rvl_dns_coredns_user }}
+Group={{ rvl_dns_coredns_group }}
+ExecStart=/usr/local/bin/coredns \
+    -conf /etc/coredns/Corefile \
+    -dns.port "{{ rvl_dns_coredns_port }}"
+#Pause while CoreDNS starts processing requests
+ExecStartPost=/bin/sleep 2
+
+SyslogIdentifier=coredns
+ExecReload=/bin/kill -SIGUSR1 $MAINPID
+Restart=always
+RestartSec=0
+
+[Install]
+WantedBy=multi-user.target

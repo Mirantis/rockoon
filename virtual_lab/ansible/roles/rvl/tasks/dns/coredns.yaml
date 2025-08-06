@@ -4,7 +4,7 @@
     state: directory
     mode: '0750'
   loop:
-    - "{{ rvl_dns_coredns }}"
+    - "{{ rvl_dns_coredns_dir }}"
 
 - name: Get an existing ingress object
   kubernetes.core.k8s_info:
@@ -24,7 +24,7 @@
 - name: Template file Corefile
   ansible.builtin.template:
     src: coredns_corefile.j2
-    dest: "{{ rvl_dns_coredns }}/Corefile"
+    dest: "{{ rvl_dns_coredns_dir }}/Corefile"
     owner: bin
     group: root
     mode: '0644'
@@ -37,7 +37,7 @@
 - name: Template coredns zone
   ansible.builtin.template:
     src: coredns_zone.j2
-    dest: "{{ rvl_dns_coredns }}/it.just.works.db"
+    dest: "{{ rvl_dns_coredns_dir }}/it.just.works.db"
     owner: bin
     group: root
     mode: '0644'
@@ -50,10 +50,42 @@
 - name: Template coredns zone no ingress
   ansible.builtin.template:
     src: coredns_zone.j2
-    dest: "{{ rvl_dns_coredns }}/it.just.works.db"
+    dest: "{{ rvl_dns_coredns_dir }}/it.just.works.db"
     owner: bin
     group: root
     mode: '0644'
   tags:
     - dns
   when: not rvl_dns_discover_ingress_ip
+
+- name: Setup coredns
+  include_role:
+    name: cloudalchemy.coredns
+  vars:
+    coredns_dns_port: "{{ rvl_dns_coredns_port }}"
+    coredns_zone_files_paths:
+      - "{{ rvl_dns_coredns_dir }}/it.just.works.db"
+    coredns_config_file: "{{ rvl_dns_coredns_dir }}/Corefile"
+    coredns_system_user: "{{ rvl_dns_coredns_user }}"
+    coredns_system_group: "{{ rvl_dns_coredns_group }}"
+  tags:
+    - dns
+
+- name: Template a file to /etc/systemd/system/coredns.service
+  ansible.builtin.template:
+    src: coredns.service.j2
+    dest: /etc/systemd/system/coredns.service
+    owner: root
+    group: root
+    mode: '0644'
+  tags:
+    - dns
+
+- name: Restart Coredns.service
+  ansible.builtin.service:
+    name: coredns.service
+    state: restarted
+    daemon-reload: yes
+    enabled: yes
+  tags:
+    - dns

@@ -1,0 +1,4 @@
+---
+- name: Install CoreDNS
+  ansible.builtin.include_tasks:
+    file: "dns/coredns.yaml"

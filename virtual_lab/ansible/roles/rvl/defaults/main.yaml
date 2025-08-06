@@ -9,7 +9,10 @@ rvl_k8s_node_labels:
 kubeconfig: "{{ inventory_dir }}/artifacts/k0s-kubeconfig.yml"
 rvl_k8s_objects_path: /src/k8s
 rvl_ca_certs_path: /src/ca
-rvl_dns_coredns: /src/coredns
+rvl_dns_coredns_dir: /src/coredns
+rvl_dns_coredns_port: 53
+rvl_dns_coredns_user: coredns
+rvl_dns_coredns_group: coredns
 rvl_tmp_path: /src/tmp
 rvl_sources_charts: /src/sources/charts/
 rvl_directory: "{{ playbook_dir }}/../../"

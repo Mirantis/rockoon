@@ -9,5 +9,5 @@ network:
       interfaces:
         - {{ veth.dst }}
       addresses:
-        - 10.11.12.11/24
+        - {{ rvl_osdpl_floating_network.subnet.gateway }}/24
 {% endif %}
