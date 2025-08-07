@@ -1,0 +1,12 @@
+---
+- name: Template a file to /etc/sysctl.d/99-limits.conf
+  ansible.builtin.template:
+    src: 99-rvl.conf.j2
+    dest: /etc/sysctl.d/99-rvl.conf
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Apply sysctl changes
+  ansible.builtin.shell:
+    cmd: sysctl -p /etc/sysctl.d/99-rvl.conf
