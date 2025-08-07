@@ -1349,7 +1349,6 @@ def test_nodes_features_neutron_sriov_keys(client):
                                 {
                                     "device": "enp1",
                                     "num_vfs": 32,
-                                    "physnet": "tenant",
                                 }
                             ],
                         }
