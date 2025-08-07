@@ -307,15 +307,15 @@ limitations under the License.
 {{- if empty $envAll.Values.conf.nova.pci.passthrough_whitelist -}}
 {{- $_ := set $envAll.Values "__passthrough_whitelist" ( list ) }}
 {{- range $k, $sriov := $envAll.Values.network.interface.sriov }}
-{{- if hasKey $sriov "physnet" }}
 {{- $sriov_whitelist := dict "devname" $sriov.device }}
 {{- if hasKey $sriov "trusted" }}
 {{- $_ := set $sriov_whitelist "trusted" $sriov.trusted }}
 {{- end }}
+{{- if hasKey $sriov "physnet" }}
 {{- $_ := set $sriov_whitelist "physical_network" $sriov.physnet }}
+{{- end }}
 {{- $__passthrough_whitelist := append $envAll.Values.__passthrough_whitelist $sriov_whitelist }}
 {{- $_ := set $envAll.Values "__passthrough_whitelist" $__passthrough_whitelist }}
-{{- end }}
 {{- end }}
 {{- if $envAll.Values.__passthrough_whitelist }}
 {{- $_ := set $envAll.Values.conf.nova.pci "passthrough_whitelist" ($envAll.Values.__passthrough_whitelist |toJson |squote) -}}
