@@ -1,0 +1,3 @@
+{%- for param_name in rvl_sysctl -%}
+{{ param_name }} = {{ rvl_sysctl[param_name] }}
+{% endfor -%}

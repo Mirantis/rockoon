@@ -201,3 +201,5 @@ rvl_openvpn_client_routes:
   - "10.172.1.0 255.255.255.0"
 rvl_openvpn_push_dns: true
 rvl_openvpn_clients_config_path: /src/vpn/
+rvl_sysctl:
+  fs.inotify.max_user_instances: 8192
