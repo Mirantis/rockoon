@@ -223,12 +223,7 @@ spec:
 {{- $configmap_yaml := "manila.configmap.etc" }}
 
 {{/* Prefer using .Values.overrides rather than .Values.conf.overrides */}}
-{{- if index (index $envAll.Values "overrides" |default dict ) "manila_share_ds" }}
 {{- list $daemonset "manila.share.daemonset" $serviceAccountName $configmap_yaml $configMapName "manila.configmap.bin" "manila-bin" $envAll | include "helm-toolkit.utils.daemonset_overrides_root" }}
-{{- else }}
-{{- $daemonset_yaml := list $daemonset $configMapName $serviceAccountName $envAll | include "manila.share.daemonset" | toString | fromYaml }}
-{{- list $daemonset $daemonset_yaml $configmap_yaml $configMapName $envAll | include "helm-toolkit.utils.daemonset_overrides" }}
-{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

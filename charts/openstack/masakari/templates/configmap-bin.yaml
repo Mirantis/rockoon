@@ -14,14 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */}}
 
-{{- if .Values.manifests.configmap_bin }}
-{{- $envAll := . }}
-{{- $rallyTests := .Values.conf.rally_tests }}
+{{- define "masakari.configmap.bin" }}
+{{- $configMapName := index . 0 }}
+{{- $envAll := index . 1 }}
+{{- with $envAll }}
+{{- $rallyTests := $envAll.Values.conf.rally_tests }}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: masakari-bin
+  name: {{ $configMapName }}
 data:
 {{- if .Values.images.local_registry.active }}
   image-repo-sync.sh: |
@@ -59,4 +61,9 @@ data:
 {{- include "helm-toolkit.scripts.keystone_user" . | indent 4 }}
   health-probe.py: |
 {{- include "helm-toolkit.scripts.generic_health_probe" . | indent 4 }}
+{{- end }}
+{{- end }}
+
+{{- if .Values.manifests.configmap_bin }}
+{{- list "masakari-bin" . | include "masakari.configmap.bin" }}
 {{- end }}
