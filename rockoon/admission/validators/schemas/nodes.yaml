@@ -140,6 +140,9 @@ patternProperties:
                             init:
                               type: string
                               description: The init hook for specific NIC.
+                            pre_init:
+                              type: string
+                              description: First phase init hook during container start
                         physnet:
                           type: string
                           description: The name of neutron physnet for SRIOV NIC.

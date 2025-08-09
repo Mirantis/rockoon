@@ -28,6 +28,11 @@ BESTEFFORT=true
 {{- end }}
 
 {{- range $k, $sriov := .Values.network.interface.sriov }}
+{{- if hasKey $sriov "hooks" }}
+{{- if hasKey $sriov.hooks "pre_init" }}
+{{ tpl $sriov.hooks.pre_init . }}
+{{- end }}
+{{- end }}
 if [ "x{{ $sriov.num_vfs }}" != "x" ]; then
   echo "{{ $sriov.num_vfs }}" > /sys/class/net/{{ $sriov.device }}/device/sriov_numvfs
 else
@@ -87,7 +92,7 @@ ip link show {{ $sriov.device }}
 
 {{- if hasKey $sriov "hooks" }}
 {{- if hasKey $sriov.hooks "init" }}
-{{ $sriov.hooks.init }}
+{{ tpl $sriov.hooks.init . }}
 {{- end }}
 {{- end }}
 {{- end }}
