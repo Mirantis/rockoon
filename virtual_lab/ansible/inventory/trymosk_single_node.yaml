@@ -18,6 +18,7 @@ all:
     rvl_binary_base_url: "{{ rvl_registry_binary_url }}"
     rvl_chart_ref_rockoon: "{{ rvl_registry_binary_url }}/openstack/helm/rockoon/rockoon-{{ rvl_images_build_tag }}.tgz"
     rvl_openvpn_enable: true
+    rvl_network_floating_network_with_snat: true
 
   hosts:
     oc-virtual-lab-server-ctl-01:
