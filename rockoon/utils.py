@@ -57,6 +57,34 @@ def get_in(d: Dict, keys: List, default=None):
         return default
 
 
+def find_key_paths(data, target_key, parent_path=None):
+    """
+    Recursively finds all parent key paths leading to a target key in a nested dictionary.
+    Nested lists of dictionaries are not supported.
+
+    :param data: Dictionary to search.
+    :param target_key: Key to search for.
+    :param parent_path: Internal use for recursion.
+    :return: Set of tuples, each containing the parent keys leading to the target key.
+    """
+    if parent_path is None:
+        parent_path = tuple()
+
+    found_paths = []
+
+    if isinstance(data, dict):
+        for key, value in data.items():
+            # If we find the target key
+            if key == target_key:
+                found_paths.append(parent_path)
+            # Recurse into nested dictionaries
+            if isinstance(value, dict):
+                found_paths.extend(
+                    find_key_paths(value, target_key, parent_path + (key,))
+                )
+    return set(found_paths)
+
+
 OSCTL_LOGGING_CONF_FILE = os.environ.get(
     "OSCTL_LOGGING_CONF_FILE", "/etc/rockoon/logging.conf"
 )
