@@ -611,6 +611,41 @@ class NetworksProviderTypeRoutingCheck(CheckBase):
         return routed_nets
 
 
+class TenantNetworkTypesCheck(CheckBase):
+
+    name = "Neutron tenant network types check"
+    impact = CheckImpact.MAJOR
+    error_message = (
+        "Found tenant_network_types option containing VXLAN network type. "
+        "Recommended network type for OVN is Geneve. "
+        "When migrating to OVN all existing VXLAN networks will be converted "
+        "to Geneve regardless of this setting. In case VXLAN was the default "
+        "tenant network type it will be replaced by Geneve."
+    )
+
+    def check(self):
+        LOG.info("Checking Neutron tenant_network_types")
+        osdpl = kube.get_osdpl()
+        mspec = osdpl.mspec
+        result = []
+        features_path = ["features", "neutron", "tenant_network_types"]
+        features_tnt = utils.get_in(mspec, features_path, [])
+        if "vxlan" in features_tnt:
+            result.append(":".join(features_path))
+
+        base_path = ["services", "networking", "neutron", "values", "conf"]
+        neutron_conf = utils.get_in(mspec, base_path, {})
+        tnt_paths = utils.find_key_paths(neutron_conf, "tenant_network_types")
+        for path in tnt_paths:
+            if "ml2" == path[-1]:
+                tnt_path = list(path) + ["tenant_network_types"]
+                services_tnt = utils.get_in(neutron_conf, tnt_path, "")
+                if "vxlan" in services_tnt:
+                    result.append(":".join(base_path + tnt_path))
+        LOG.info("Finished checking Neutron tenant_network_types")
+        return result
+
+
 class SubnetsNoDHCPCheck(CheckBase):
     name = "Subnets without enabled DHCP check"
     impact = CheckImpact.CRITICAL

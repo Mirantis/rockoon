@@ -114,7 +114,14 @@
 {%- set cadf_audit = spec.get('features', {}).get('logging', {}).get('cadf', {'enabled': false}) %}
 {%- set cadf_audit_driver = spec.get('features', {}).get('logging', {}).get('cadf', {}).get('driver', 'messagingv2') %}
 
-{%- set neutron_tenant_network_types = spec.get('features', {}).get('neutron', {}).get('tenant_network_types', default_tenant_network_types) %}
+{%- set tenant_network_types = spec.features.neutron.get('tenant_network_types', [])  %}
+# first network type is default one, vxlan have a lot of limitations in OVN
+{%- if ovn_enabled and tenant_network_types and tenant_network_types[0] == 'vxlan' %}
+  {%- set neutron_tenant_network_types = default_tenant_network_types + tenant_network_types %}
+{%- else %}
+  {%- set neutron_tenant_network_types = tenant_network_types or default_tenant_network_types %}
+{%- endif %}
+
 {%- if 'vxlan' in neutron_tenant_network_types %}
     {%- set l3_ha_network_type = 'vxlan' %}
 {%- elif 'geneve' in neutron_tenant_network_types %}
@@ -1007,7 +1014,7 @@ spec:
               {%- if 'dns' in spec.features.services %}
                 - dns_domain_ports
               {%- endif %}
-              tenant_network_types: {{ spec.features.neutron.get('tenant_network_types', default_tenant_network_types)|join(',') }}
+              tenant_network_types: {{ neutron_tenant_network_types|join(',') }}
           {%- if baremetal_enabled %}
             ngs_coordination:
               backend_url: {{ get_etcd3_endpoint(spec.openstack_version, 'etcd3gw') }}

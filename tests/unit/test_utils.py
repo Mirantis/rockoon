@@ -19,6 +19,32 @@ from rockoon import utils
 from rockoon import exception
 
 
+def test_find_key_paths():
+    assert {("a", "b")} == utils.find_key_paths(
+        {"a": {"b": {"c": {}, "d": {"e": {}}}}}, "c"
+    )
+    assert {("a", "b"), ("a", "b", "d", "e")} == utils.find_key_paths(
+        {"a": {"b": {"c": {}, "d": {"e": {"c": {}}}}}}, "c"
+    )
+    assert set() == utils.find_key_paths({"a": {}}, "c")
+    assert {tuple()} == utils.find_key_paths({"c": {}}, "c")
+    assert {("a", "f"), ("a", "b")} == utils.find_key_paths(
+        {"a": {"f": {"c": {}}, "b": {"c": {}}}}, "c"
+    )
+    assert {("b",)} == utils.find_key_paths(
+        {"a": {"f": {"d": "c"}}, "b": {"c": {"e": {}}}}, "c"
+    )
+    assert {("f",), ("a", "b")} == utils.find_key_paths(
+        {"f": {"c": {"g": "e"}}, "a": {"d": {}, "b": {"c": {}}}}, "c"
+    )
+    assert {("f",), ("a", "b"), ("a", "d")} == utils.find_key_paths(
+        {"f": {"c": {"g": "e"}}, "a": {"d": {"c": {}}, "b": {"c": {}}}}, "c"
+    )
+    assert {("f",)} == utils.find_key_paths(
+        {"f": {"c": []}, "a": [{"c": "d"}, {"g": "e"}]}, "c"
+    )
+
+
 def test_divide_into_groups_of():
     assert [["a", "b", "c"]] == utils.divide_into_groups_of(3, ["a", "b", "c"])
     assert [["a", "b"], ["c", "d"], ["e"]] == utils.divide_into_groups_of(
