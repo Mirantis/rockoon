@@ -10,7 +10,6 @@ ADD https://bootstrap.pypa.io/get-pip.py /tmp/get-pip.py
 
 RUN apt-get update; \
     apt-get -y upgrade
-
 RUN apt-get install -y \
         python3-distutils \
         build-essential \
