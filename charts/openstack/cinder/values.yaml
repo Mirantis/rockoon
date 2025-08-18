@@ -1223,6 +1223,10 @@ conf:
       - migration_status
       - availability_zone
       - group_id
+      - size
+      - created_at
+      - updated_at
+      - consumes_quota
     backup:
       - name
       - status
@@ -1233,8 +1237,11 @@ conf:
       - volume_id
       - metadata
       - availability_zone
-    group: []
+      - consumes_quota
+    group:
+      - name
     group_snapshot:
+      - name
       - status
       - group_id
     attachment:
@@ -1251,7 +1258,9 @@ conf:
     pool:
       - name
       - volume_type
-    volume_type: []
+    volume_type:
+      - is_public
+      - extra_specs
   enable_iscsi: false
   software:
     apache2:
