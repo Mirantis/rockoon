@@ -45,8 +45,6 @@ function start () {
             ovs-vsctl --if-exists del-br $br
         done
         echo "Finished handling trunk interfaces"
-        # Remove manager settings from db, to avoid address already in-use errors
-        ovs-vsctl del-manager
         # Removing if backup of mapping should be always the last step
         # in the procedure as it is checked by readiness probe
         ovs-vsctl remove Open_Vswitch . external-ids ovn-bridge-mappings-back
