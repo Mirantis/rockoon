@@ -109,6 +109,7 @@ spec:
                     ip netns delete $ns
                 fi
             done
+            ovs-vsctl ${OVS_DB_SOCK} del-manager
             exit "${EXIT_CODE}"
         volumeMounts:
         - mountPath: /tmp
