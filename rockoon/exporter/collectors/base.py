@@ -176,6 +176,27 @@ class OsdplMetricsCollector(object):
         yield scrape_end_timestamp
 
 
+class BaseMetricValidator:
+    _type = None
+    registry = {}
+
+    def __init_subclass__(cls, *args, **kwargs):
+        super().__init_subclass__(*args, **kwargs)
+        cls.registry[cls._type] = cls
+
+    def validate(sample):
+        return True
+
+
+class GaugeValidator(BaseMetricValidator):
+    _type = "gauge"
+
+    def validate(sample):
+        _, value = sample
+        float(value)
+        return True
+
+
 class BaseMetricsCollector(object):
     _name = "osdpl_metric_name"
     _description = "osdpl metric description"
@@ -198,12 +219,29 @@ class BaseMetricsCollector(object):
         """Return all known collector metric families"""
         return {}
 
+    def validate_family_samples(self, family, samples):
+        validator = BaseMetricValidator.registry.get(family.type)
+        if not validator:
+            LOG.warning(f"Skip validation for family {family}")
+            return True
+        for sample in samples:
+            try:
+                validator.validate(sample)
+            except Exception as e:
+                LOG.error(
+                    f"Failed to validate sample {sample} for family {family}, exception {e}"
+                )
+                return False
+        return True
+
     def set_samples(self, name, samples):
         """Sets metric samples on falimy"""
         with self.lock_samples:
             self.families[name].samples = []
             for sample in samples:
-                self.families[name].add_metric(*sample)
+                family = self.families[name]
+                if self.validate_family_samples(family, samples):
+                    family.add_metric(*sample)
 
     def collect(self):
         with self.lock_samples:
