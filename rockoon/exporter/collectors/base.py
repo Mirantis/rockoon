@@ -200,6 +200,7 @@ class BaseMetricsCollector(object):
 
     def set_samples(self, name, samples):
         """Sets metric samples on falimy"""
+        LOG.debug(f"Updating samples {name} {samples}")
         with self.lock_samples:
             self.families[name].samples = []
             for sample in samples:
