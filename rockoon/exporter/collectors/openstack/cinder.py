@@ -24,6 +24,16 @@ from rockoon.exporter import constants
 LOG = utils.get_logger(__name__)
 
 
+def to_size(s, units=constants.Gi):
+    try:
+        return float(s) * units
+    except ValueError:
+        if s == "infinite":
+            return float("inf")
+        LOG.warning(f"Invalid float value {s}")
+        return -1
+
+
 class OsdplCinderMetricCollector(base.OpenStackBaseMetricCollector):
     _name = "osdpl_cinder"
     _description = "OpenStack Volume service metrics"
@@ -108,7 +118,7 @@ class OsdplCinderMetricCollector(base.OpenStackBaseMetricCollector):
             volume_zone_total.setdefault(volume_zone, 0)
             volume_zone_total[volume_zone] += 1
         self.set_samples("volumes", [([], volumes_total)])
-        self.set_samples("volumes_size", [([], volumes_size * constants.Gi)])
+        self.set_samples("volumes_size", [([], to_size(volumes_size))])
         zone_volumes_samples = []
         for zone, volumes in volume_zone_total.items():
             zone_volumes_samples.append(([zone], volume_zone_total[zone]))
@@ -119,7 +129,7 @@ class OsdplCinderMetricCollector(base.OpenStackBaseMetricCollector):
         self.set_samples("snapshots", [([], snapshots_total)])
         self.set_samples(
             "snapshots_size",
-            [([], snapshots_size * constants.Gi)],
+            [([], to_size(snapshots_size))],
         )
 
         service_state_samples = []
@@ -155,37 +165,40 @@ class OsdplCinderMetricCollector(base.OpenStackBaseMetricCollector):
             pool_free_capacity_samples.append(
                 (
                     [backend_pool["name"]],
-                    (
-                        backend_pool.get("capabilities", {}).get(
-                            "free_capacity_gb"
+                    to_size(
+                        (
+                            backend_pool.get("capabilities", {}).get(
+                                "free_capacity_gb"
+                            )
+                            or 0
                         )
-                        or 0
-                    )
-                    * constants.Gi,
+                    ),
                 )
             )
             pool_total_capacity_samples.append(
                 (
                     [backend_pool["name"]],
-                    (
-                        backend_pool.get("capabilities", {}).get(
-                            "total_capacity_gb"
+                    to_size(
+                        (
+                            backend_pool.get("capabilities", {}).get(
+                                "total_capacity_gb"
+                            )
+                            or 0
                         )
-                        or 0
-                    )
-                    * constants.Gi,
+                    ),
                 )
             )
             pool_allocated_capacity_samples.append(
                 (
                     [backend_pool["name"]],
-                    (
-                        backend_pool.get("capabilities", {}).get(
-                            "allocated_capacity_gb"
+                    to_size(
+                        (
+                            backend_pool.get("capabilities", {}).get(
+                                "allocated_capacity_gb"
+                            )
+                            or 0
                         )
-                        or 0
-                    )
-                    * constants.Gi,
+                    ),
                 )
             )
 
