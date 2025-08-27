@@ -49,7 +49,7 @@ extra_css:
 plugins:
   - search
   - mermaid2
-  - callouts 
+  - callouts
 
 #extra:
 #  generator: false
@@ -81,6 +81,7 @@ nav:
       - OpenStackDeploymentStatus: architecture/custom-resources/openstackdeploymentstatus.md
     - Cloud Services:
       - Horizon: architecture/cloud_services/horizon.md
+      - Masakari: architecture/cloud_services/masakari.md
   - Quick Start:
     - AIO Installation:
       - Introduction: quick-start/introduction.md
@@ -95,4 +96,8 @@ nav:
     - Getting access to OpenStack: ops/openstack/getting-access.md
     - Upgrade OpenStack: ops/openstack/upgrade.md
     - Run tempest: ops/openstack/tempest.md
+  - User Guide:
+    - Instance HA:
+      - Configure OpenStack with Masakari: user-guide/openstack/masakari/masakari-configuration.md
+      - Introspective monitor test: user-guide/openstack/masakari/introspective-monitor.md
   - Troubleshoot: ops/openstack/troubleshoot.md
