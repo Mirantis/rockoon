@@ -24,5 +24,5 @@ OpenStack Controller.
    
 3. Verify the Upgrade
    * Verify that OpenStack is healthy and operational. All OpenStack components in the `health` group in the
-     [OpenStackDeploymentStatus](../../../architecture/custom-resources/openstackdeploymentstatus/) CR should be in the `Ready` state.
+     [OpenStackDeploymentStatus](../../architecture/custom-resources/openstackdeploymentstatus.md) CR should be in the `Ready` state.
    * Verify the workability of your OpenStack deployment by running Tempest against the OpenStack cluster as described in [Run Tempest tests](./tempest.md).

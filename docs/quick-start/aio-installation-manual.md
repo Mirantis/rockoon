@@ -4,28 +4,6 @@ This paragraph provides a guide how to deploy single node deployment with
 [k0s](https://docs.k0sproject.io/stable/) based Kubernetes cluster and
 openstack deployed by Rockoon controller.
 
-## Host
-
-At the moment hosts with non-x86_64 CPU (like Apple Silicon) are not supported.
-The required full CPU emulation for virtual machine introduces
-too much overhead, making the system too slow and unusable.
-
-## Prepare VM
-
-For the deployment we will need Virtual Machine with following minimal requirements.
-
-Minimal VM requirements
-
-| Resource | Amount |
-| -------- | ------ |
-| RAM  | 16Gb       |
-| CPU  | 8          |
-| DISK | 100Gb      |
-
-Supported operation systems
-
-* Ubuntu 22.04 (x86_64)
-
 ### Example command to create an appropriate kvm VM on Linux with `virt-manager`
 
 Needs `virt-manager`, `libvirt`, and `qemu-kvm` installed.

@@ -82,7 +82,11 @@ nav:
     - Cloud Services:
       - Horizon: architecture/cloud_services/horizon.md
   - Quick Start:
-    - AIO Installation: quick-start/aio-installation.md
+    - AIO Installation:
+      - Introduction: quick-start/introduction.md
+      - TryMOSK (using pre-built image):
+        - Installation on AWS: quick-start/trymosk-installation-aws.md
+      - Manual install (Advanced): quick-start/aio-installation-manual.md
     - Access OpenStack: quick-start/access-openstack.md
   - Developer Guide: developer.md
   - Operations Guide:
