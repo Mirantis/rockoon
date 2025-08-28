@@ -84,8 +84,8 @@ def create_security_group_rule(**attrs):
 
 @retry(openstack.exceptions.SDKException, delay=1, tries=7, backoff=2, logger=LOG)
 def set_quotas(attrs):
-    ost_system.set_network_quotas(ost.current_project_id, **attrs["network"])
-    ost_system.set_compute_quotas(ost.current_project_id, **attrs["compute"])
+    ost.set_network_quotas(ost.current_project_id, **attrs["network"])
+    ost.set_compute_quotas(ost.current_project_id, **attrs["compute"])
 
 
 @retry(exceptions=Exception, delay=5, tries=-1, backoff=1, logger=LOG)
@@ -240,9 +240,6 @@ def ensure_kube_resource(klass, data, name, namespace):
 kube = pykube.HTTPClient(config=pykube.KubeConfig.from_env(), timeout=30)
 OS_CLOUD = os.getenv("OS_CLOUD", "envvars")
 ost = openstack.connect(cloud=OS_CLOUD)
-ost_system = ost
-
-ost_system = openstack.connect(cloud=os.getenv("OS_CLOUD_SYSTEM", "envvars"))
 
 if OCTAVIA_WAIT_NEUTRON_RESOURCES:
     # NOTE(vsaienko): wait for Neutron resources that involved in port
