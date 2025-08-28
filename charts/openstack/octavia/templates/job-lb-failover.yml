@@ -71,6 +71,9 @@ spec:
             - name: octavia-certs
               mountPath: /etc/octavia/certs/client.pem
               subPath: client.pem
+            - name: octavia-settings
+              mountPath: /etc/octavia/settings.conf
+              subPath: settings.conf
           env:
 {{- include "helm-toolkit.snippets.keystone_os_cloud_vars" ( dict "osCloudName" "octavia" "osCloudNameSystem" "admin-system") | indent 12 }}
 {{ include "helm-toolkit.utils.to_k8s_env_vars" $envAll.Values.jobs.lb_failover.env | indent 12 }}
@@ -84,6 +87,10 @@ spec:
         - name: os-clouds
           secret:
             secretName: "octavia-os-clouds"
+            defaultMode: 416
+        - name: octavia-settings
+          configMap:
+            name: octavia-settings
             defaultMode: 416
         - name: octavia-certs
           secret:
