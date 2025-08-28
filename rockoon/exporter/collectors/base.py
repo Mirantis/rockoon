@@ -219,30 +219,33 @@ class BaseMetricsCollector(object):
         """Return all known collector metric families"""
         return {}
 
-    def validate_family_samples(self, family, samples):
+    def validate_family_sample(self, family, sample):
         validator = BaseMetricValidator.registry.get(family.type)
         if not validator:
             LOG.warning(f"Skip validation for family {family}")
             return True
-        for sample in samples:
-            try:
-                validator.validate(sample)
-            except Exception as e:
-                LOG.error(
-                    f"Failed to validate sample {sample} for family {family}, exception {e}"
-                )
-                return False
+        try:
+            validator.validate(sample)
+        except Exception as e:
+            LOG.error(
+                f"Failed to validate sample {sample} for family {family}, exception {e}"
+            )
+            return False
         return True
 
     def set_samples(self, name, samples):
-        """Sets metric samples on falimy"""
+        """Sets metric samples on family"""
         LOG.debug(f"Updating samples {name} {samples}")
+        family = self.families[name]
+        valid_samples = [
+            sample
+            for sample in samples
+            if self.validate_family_sample(family, sample)
+        ]
         with self.lock_samples:
-            self.families[name].samples = []
-            for sample in samples:
-                family = self.families[name]
-                if self.validate_family_samples(family, samples):
-                    family.add_metric(*sample)
+            family.samples = []
+            for sample in valid_samples:
+                family.add_metric(*sample)
 
     def collect(self):
         with self.lock_samples:
