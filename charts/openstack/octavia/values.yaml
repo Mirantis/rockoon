@@ -139,7 +139,17 @@ network:
 dependencies:
   dynamic:
     targeted:
-      openvswitch: {}
+      openvswitch:
+        health_manager:
+          pod:
+            - requireSameNode: true
+              labels:
+                application: openvswitch
+                component: openvswitch-vswitchd
+            - requireSameNode: true
+              labels:
+                application: neutron
+                component: neutron-ovs-agent
       ovn:
         health_manager:
           pod:
