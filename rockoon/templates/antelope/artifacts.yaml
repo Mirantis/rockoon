@@ -220,7 +220,7 @@ manila_share: '{{ images_base_url }}/openstack/manila:antelope-jammy-20250819111
 manila-uuids-init: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250827101141'
 manila_share_daemonset: '{{ images_base_url }}/openstack/manila:antelope-jammy-20250819111858'
 manila_db_purge: '{{ images_base_url }}/openstack/manila:antelope-jammy-20250819111858'
-requirements: '{{ images_base_url }}/openstack/requirements:antelope-jammy-20250827073317'
+requirements: '{{ images_base_url }}/openstack/requirements:antelope-jammy-20250901071055'
 designate_pool_manage: '{{ images_base_url }}/openstack/designate:antelope-jammy-20250819111858'
 designate_pool_manage_hash: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250827101141'
 ingress_init_config: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20250827101141'
