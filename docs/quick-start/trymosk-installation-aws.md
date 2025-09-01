@@ -1,7 +1,7 @@
 You can get a TryMOSK image from the [Mirantis CDN server](https://binary.mirantis.com/?prefix=trymos/bin/)
 The latest image releases are located in folders with pefix `mosk-` in the name. You can also use a prepared
 AMI image on Amazon servers. This article describes the steps required to deploy TryMOSK from a prepared AMI
-image. At present time they are available on the us-east-2 region.
+image. At present time they are available on the `us-east-2` region.
 
 ## Creating a TryMOSK Instance Using the Amazon EC2 Console
 
