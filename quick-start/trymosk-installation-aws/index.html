@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../aio-installation-manual/">
+        <link rel="prev" href="../introduction/">
       
       
-        <link rel="next" href="../../developer/">
+        <link rel="next" href="../aio-installation-manual/">
       
       
       <link rel="icon" href="../../assets/favicon.ico">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Access OpenStack - Rockoon Kubernetes OpenStack Operator</title>
+        <title>Installation on AWS - Rockoon Kubernetes OpenStack Operator</title>
       
     
     
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#access-openstack" class="md-skip">
+        <a href="#creating-a-trymosk-instance-using-the-amazon-ec2-console" class="md-skip">
           Skip to content
         </a>
       
@@ -111,7 +111,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Access OpenStack
+              Installation on AWS
             
           </span>
         </div>
@@ -661,18 +661,20 @@
                 
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" checked>
         
           
           <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
@@ -688,7 +690,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_1">
             <span class="md-nav__icon md-icon"></span>
             AIO Installation
@@ -722,18 +724,20 @@
                 
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_2" checked>
         
           
           <label class="md-nav__link" for="__nav_3_1_2" id="__nav_3_1_2_label" tabindex="0">
@@ -749,7 +753,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_1_2">
             <span class="md-nav__icon md-icon"></span>
             TryMOSK (using pre-built image)
@@ -760,10 +764,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../trymosk-installation-aws/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Installation on AWS
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -774,6 +798,51 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#creating-a-trymosk-instance-using-the-amazon-ec2-console" class="md-nav__link">
+    <span class="md-ellipsis">
+      Creating a TryMOSK Instance Using the Amazon EC2 Console
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#creating-a-trymosk-instance-using-the-aws-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      Creating a TryMOSK Instance Using the AWS CLI
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setting-up-trymosk-on-an-aws-instance" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setting up TryMOSK on an AWS instance
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -822,32 +891,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    Access OpenStack
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../access-openstack/" class="md-nav__link">
         
   
   
@@ -858,44 +905,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#cli" class="md-nav__link">
-    <span class="md-ellipsis">
-      CLI
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#horizon" class="md-nav__link">
-    <span class="md-ellipsis">
-      Horizon
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1060,8 +1069,6 @@
   
   
   
-    
-  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -1070,18 +1077,27 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#cli" class="md-nav__link">
+  <a href="#creating-a-trymosk-instance-using-the-amazon-ec2-console" class="md-nav__link">
     <span class="md-ellipsis">
-      CLI
+      Creating a TryMOSK Instance Using the Amazon EC2 Console
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#horizon" class="md-nav__link">
+  <a href="#creating-a-trymosk-instance-using-the-aws-cli" class="md-nav__link">
     <span class="md-ellipsis">
-      Horizon
+      Creating a TryMOSK Instance Using the AWS CLI
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setting-up-trymosk-on-an-aws-instance" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setting up TryMOSK on an AWS instance
     </span>
   </a>
   
@@ -1106,28 +1122,263 @@
   
 
 
-<h1 id="access-openstack">Access OpenStack<a class="headerlink" href="#access-openstack" title="Permanent link">#</a></h1>
-<h2 id="cli">CLI<a class="headerlink" href="#cli" title="Permanent link">#</a></h2>
-<p>You can use the built-in admin CLI client and execute the openstack commands from a dedicated pod deployed in the <code>openstack</code> namespace:</p>
-<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>-n<span class="w"> </span>openstack<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>deployment/keystone-client<span class="w"> </span>--<span class="w"> </span>bash
-</code></pre></div>
-<p>To obtain admin credentials run:</p>
-<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>-n<span class="w"> </span>openstack<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>deployment/keystone-client<span class="w"> </span>--<span class="w"> </span>bash
-cat<span class="w"> </span>/etc/openstack/clouds.yaml
-</code></pre></div>
-<h2 id="horizon">Horizon<a class="headerlink" href="#horizon" title="Permanent link">#</a></h2>
+  <h1>Installation on AWS</h1>
+
+<p>You can get a TryMOSK image from the <a href="https://binary.mirantis.com/?prefix=trymos/bin/">Mirantis CDN server</a>
+The latest image releases are located in folders with pefix <code>mosk-</code> in the name. You can also use a prepared
+AMI image on Amazon servers. This article describes the steps required to deploy TryMOSK from a prepared AMI
+image. At present time they are available on the us-east-2 region.</p>
+<h2 id="creating-a-trymosk-instance-using-the-amazon-ec2-console">Creating a TryMOSK Instance Using the Amazon EC2 Console<a class="headerlink" href="#creating-a-trymosk-instance-using-the-amazon-ec2-console" title="Permanent link">#</a></h2>
+<p><strong>Step 1: Open the Amazon EC2 Console</strong></p>
 <ol>
-<li>Get IP address of ingress service
-<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>-n<span class="w"> </span>openstack<span class="w"> </span>get<span class="w"> </span>svc<span class="w"> </span>ingress<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.status.loadBalancer.ingress[].ip}&#39;</span>
-</code></pre></div></li>
-<li>Update local <code>/etc/hosts</code> file to point public domain to ingress external IP
-<div class="highlight"><pre><span></span><code><span class="m">10</span>.172.1.100<span class="w"> </span>aodh.it.just.works<span class="w"> </span>barbican.it.just.works<span class="w"> </span>cinder.it.just.works<span class="w"> </span>cloudformation.it.just.works<span class="w"> </span>designate.it.just.works<span class="w"> </span>glance.it.just.works<span class="w"> </span>gnocchi.it.just.works<span class="w"> </span>heat.it.just.works<span class="w"> </span>horizon.it.just.works<span class="w"> </span>keystone.it.just.works<span class="w"> </span>metadata.it.just.works<span class="w"> </span>neutron.it.just.works<span class="w"> </span>nova.it.just.works<span class="w"> </span>novncproxy.it.just.works<span class="w"> </span>octavia.it.just.works<span class="w"> </span>placement.it.just.works<span class="w"> </span>spiceproxy.it.just.works
-</code></pre></div></li>
-<li>Stup <code>sshuttle</code> to services external IPs
-<div class="highlight"><pre><span></span><code>sshuttle<span class="w"> </span>-r<span class="w"> </span>ubuntu@172.16.250.153<span class="w"> </span><span class="m">10</span>.172.1.0/24
-</code></pre></div></li>
-<li>Access to Horizon through web browser <a href="https://horizon.it.just.works">https://horizon.it.just.works</a></li>
+<li>Sign in to the AWS Management Console.</li>
+<li>Open the Amazon EC2 console at: <a href="https://console.aws.amazon.com/ec2/">https://console.aws.amazon.com/ec2/</a>.</li>
 </ol>
+<p><strong>Step 2: Select the AWS Region</strong></p>
+<ol>
+<li>In the navigation bar at the top-right, locate the <strong>Region selector</strong>.</li>
+<li>Select <strong>US East (Ohio)</strong>.
+   <img alt="Region" src="../../img/region.png" /></li>
+</ol>
+<p><strong>Step 3: Create a Security Group</strong></p>
+<ol>
+<li>In the left navigation pane, under <strong>Network &amp; Security</strong>, choose <strong>Security Groups</strong>.</li>
+<li>Click <strong>Create security group</strong>.</li>
+<li>In the <strong>Basic details</strong> section, provide:</li>
+<li><strong>Security group name</strong>: A descriptive name (for example: <code>trymosk-sg</code>).</li>
+<li><strong>Description</strong>: Purpose of the security group.</li>
+<li>In the <strong>Inbound rules</strong> section:</li>
+<li>Click <strong>Add rule</strong>.</li>
+<li>For <strong>Type</strong>, choose <strong>SSH</strong>.</li>
+<li>If you plan to use OpenVPN, click <strong>Add rule</strong> again, choose <strong>Custom UDP Rule</strong>, set <strong>Port range</strong> to <code>1194</code>, and <strong>Protocol</strong> to UDP.</li>
+<li>Click <strong>Create security group</strong>.
+   <img alt="Security Grops" src="../../img/sg.png" /></li>
+</ol>
+<p><strong>Step 4: Launch the TryMOSK instance</strong></p>
+<ol>
+<li>In the left navigation pane, choose <strong>Instances</strong>, then click <strong>Launch instances</strong>.</li>
+<li>Under <strong>Name and tags</strong>, set the <strong>Name</strong> (for example: <code>My TryMOSK</code>).</li>
+<li>Under <strong>Application and OS Images (Amazon Machine Image)</strong>:</li>
+<li>Type <code>trymosk</code> in the search box.</li>
+<li>Select the required image from the results.</li>
+<li>Under <strong>Instance type</strong>, choose <strong>t2.xlarge</strong> (or <strong>t2.2xlarge</strong> for better performance).</li>
+<li>Under <strong>Key pair (login)</strong>:</li>
+<li>Select an existing key pair, or</li>
+<li>Click <strong>Create new key pair</strong> to create one.</li>
+<li>Under <strong>Network settings</strong>, choose <strong>Select existing security group</strong> and select the one created in Step 3.</li>
+<li>Under <strong>Configure storage</strong>, set <strong>Root volume size</strong> to <strong>40 GB or more</strong>.</li>
+<li>Click <strong>Launch instance</strong>.
+   <img alt="EC2" src="../../img/ec2.png" /></li>
+</ol>
+<p><strong>Step 5: Get the instance’s Public IP address</strong></p>
+<ol>
+<li>Wait until the <strong>Instance state</strong> changes to <strong>Running</strong>.</li>
+<li>Select your instance and note the <strong>Public IPv4 address</strong> in the details panel.
+   <img alt="Public IP" src="../../img/public_ip.png" /></li>
+</ol>
+<p><strong>Step 6: Connect to the instance via SSH</strong></p>
+<ul>
+<li><strong>Linux/macOS</strong>:</li>
+</ul>
+<div class="highlight"><pre><span></span><code>ssh<span class="w"> </span>-i<span class="w"> </span>/path/to/private-key.pem<span class="w"> </span>ubuntu@&lt;PublicIPv4Address&gt;
+</code></pre></div>
+<ul>
+<li><strong>Windows (PuTTY)</strong>:</li>
+<li>Convert your <code>.pem</code> key to <code>.ppk</code> using PuTTYgen.</li>
+<li>Open PuTTY, enter the public IPv4 address, and load your <code>.ppk</code> key in <strong>Connection → SSH → Auth</strong>.</li>
+</ul>
+<h2 id="creating-a-trymosk-instance-using-the-aws-cli">Creating a TryMOSK Instance Using the AWS CLI<a class="headerlink" href="#creating-a-trymosk-instance-using-the-aws-cli" title="Permanent link">#</a></h2>
+<p>This procedure describes how to launch a TryMOSK EC2 instance using the AWS Command Line Interface (AWS CLI).</p>
+<p><strong>Step 1: Install the AWS CLI</strong></p>
+<p>Follow the installation instructions in the AWS CLI User Guide:
+ <a href="https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html">https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html</a></p>
+<p><strong>Step 2: Configure the AWS CLI</strong></p>
+<ol>
+<li>Follow the quick start configuration guide:
+    <a href="https://docs.aws.amazon.com/cli/latest/userguide/getting-started-quickstart.html">https://docs.aws.amazon.com/cli/latest/userguide/getting-started-quickstart.html</a></li>
+<li><strong>Important</strong>: Set the default AWS region to us-east-2 to ensure all operations are performed in the correct region:</li>
+</ol>
+<div class="highlight"><pre><span></span><code>aws<span class="w"> </span>configure<span class="w"> </span><span class="nb">set</span><span class="w"> </span>region<span class="w"> </span>us-east-2
+</code></pre></div>
+<p><strong>Step 3: Create or import a Key Pair</strong></p>
+<p>You will use this key pair to connect to your EC2 instance via SSH.</p>
+<p><strong>Option A – Create a new key pair</strong></p>
+<div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>create-key-pair<span class="w"> </span>--key-type<span class="w"> </span>rsa<span class="w"> </span>--key-name<span class="w"> </span>&lt;your-key-name&gt;<span class="w"> </span><span class="se">\</span>
+--query<span class="w"> </span><span class="s1">&#39;KeyMaterial&#39;</span><span class="w"> </span>--output<span class="w"> </span>text<span class="w"> </span>&gt;<span class="w"> </span>&lt;private-key-file&gt;.pem
+</code></pre></div>
+<p>Where:</p>
+<ul>
+<li><code>&lt;your-key-name&gt;</code> – unique key pair name (up to 255 ASCII characters).</li>
+<li><code>&lt;private-key-file&gt;</code> – file name for the private RSA key (keep it in a safe place).</li>
+</ul>
+<p><strong>Example:</strong></p>
+<div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>create-key-pair<span class="w"> </span>--key-type<span class="w"> </span>rsa<span class="w"> </span>--key-name<span class="w"> </span>my-key-for-trymosk<span class="w"> </span><span class="se">\</span>
+--query<span class="w"> </span><span class="s1">&#39;KeyMaterial&#39;</span><span class="w"> </span>--output<span class="w"> </span>text<span class="w"> </span>&gt;<span class="w"> </span>my_private_key.pem
+</code></pre></div>
+<p><strong>Option B – Import an existing public key</strong></p>
+<div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>import-key-pair<span class="w"> </span>--key-name<span class="w"> </span>&lt;your-key-name&gt;<span class="w"> </span><span class="se">\</span>
+--public-key-material<span class="w"> </span>fileb://&lt;public-key-file&gt;
+</code></pre></div>
+<p>Where:</p>
+<ul>
+<li><code>&lt;public-key-file&gt;</code> – path to the <code>.pub</code> public key file.</li>
+</ul>
+<p><strong>Example:</strong></p>
+<div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>import-key-pair<span class="w"> </span>--key-name<span class="w"> </span>another-key-for-trymosk<span class="w"> </span><span class="se">\</span>
+--public-key-material<span class="w"> </span>fileb://home/ubuntu/test_rsa.pub<span class="w"> </span>--output<span class="w"> </span>text
+</code></pre></div>
+<p>Example response:</p>
+<div class="highlight"><pre><span></span><code>b8:d6:be:72:9c:60:d8:b8:59:d9:00:ab:bd:9d:8c:f8 another-key-for-trymosk key-00d4cf79ad02dd1c5
+</code></pre></div>
+<p><strong>Step 4: Create a Security Group</strong></p>
+<p><strong>4.1. Find your default VPC ID</strong>
+<div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>describe-vpcs<span class="w"> </span>--query<span class="o">=</span><span class="s1">&#39;Vpcs[?IsDefault].VpcId&#39;</span><span class="w"> </span>--output<span class="w"> </span>text
+</code></pre></div>
+Example of response:
+<div class="highlight"><pre><span></span><code>  vpc-4744c62c
+</code></pre></div></p>
+<p><strong>4.2. Create the security group</strong>
+<div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>create-security-group<span class="w"> </span>--group-name<span class="w"> </span>&lt;your<span class="w"> </span>sg<span class="w"> </span>name&gt;<span class="w"> </span><span class="se">\</span>
+--description<span class="w"> </span><span class="s2">&quot;&lt;your sg description&gt;&quot;</span><span class="w"> </span>--vpc-id<span class="w"> </span>&lt;VPC<span class="w"> </span>Id&gt;<span class="w"> </span><span class="se">\</span>
+--query<span class="o">=</span><span class="s1">&#39;GroupId&#39;</span><span class="w"> </span>--output<span class="w"> </span>text
+</code></pre></div>
+Where:</p>
+<ul>
+<li><code>&lt;sg-name&gt;</code> – security group name (unique within VPC, up to 255 characters, cannot start with <code>sg-</code>).</li>
+<li><code>&lt;sg-description&gt;</code> – description of the security group.</li>
+<li><code>&lt;VPC-ID&gt;</code> – ID from step 4.1</li>
+</ul>
+<p><strong>Example:</strong>
+<div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>create-security-group<span class="w"> </span>--group-name<span class="w"> </span>trymosk-security-group<span class="w"> </span><span class="se">\</span>
+--description<span class="w"> </span><span class="s2">&quot;Test security group for TryMOSK&quot;</span><span class="w"> </span>--vpc-id<span class="w"> </span>vpc-4744c62c<span class="w"> </span><span class="se">\</span>
+--query<span class="o">=</span><span class="s1">&#39;GroupId&#39;</span><span class="w"> </span>--output<span class="w"> </span>text
+</code></pre></div>
+Example of response:
+<div class="highlight"><pre><span></span><code>sg-0d72aa991587b5648
+</code></pre></div></p>
+<p><strong>4.3. Add inbound rules</strong>
+Allow SSH (port 22) and OpenVPN (port 1194 UDP):
+<div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>authorize-security-group-ingress<span class="w"> </span>--group-id<span class="w"> </span>&lt;sg-id&gt;<span class="w"> </span>--protocol<span class="w"> </span>tcp<span class="w"> </span>--port<span class="w"> </span><span class="m">22</span><span class="w"> </span>--cidr<span class="w"> </span><span class="m">0</span>.0.0.0/0
+aws<span class="w"> </span>ec2<span class="w"> </span>authorize-security-group-ingress<span class="w"> </span>--group-id<span class="w"> </span>&lt;sg-id&gt;<span class="w"> </span>--protocol<span class="w"> </span>udp<span class="w"> </span>--port<span class="w"> </span><span class="m">1194</span><span class="w"> </span>--cidr<span class="w"> </span><span class="m">0</span>.0.0.0/0
+</code></pre></div>
+Where <code>&lt;sg-id&gt;</code> is from step 4.2.</p>
+<p><strong>Step 5: Find the TryMOSK AMI ID</strong></p>
+<div class="highlight"><pre><span></span><code>aws ec2 describe-images --filters Name=name,Values=&quot;trymosk*&quot; \
+--query=&#39;Images[*].[ImageId,Name,CreationDate]&#39; --output table
+</code></pre></div>
+<p>Example response:</p>
+<div class="highlight"><pre><span></span><code>--------------------------------------------------------------------------------------------------
+|                                         DescribeImages                                         |
++-----------------------+-------------------------------------------+----------------------------+
+|  ami-0504712c3ecb27331|  trymosk-jammy-amd64-25.1-20250723112122  |  2025-07-29T09:52:53.000Z  |
++-----------------------+-------------------------------------------+----------------------------+
+</code></pre></div>
+<p><strong>Step 6: Launch the TryMOSK instance</strong></p>
+<div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>run-instances<span class="w"> </span>--image-id<span class="w"> </span>&lt;AMI<span class="w"> </span>Id&gt;<span class="w"> </span>--count<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+--instance-type<span class="w"> </span>t2.xlarge<span class="w"> </span><span class="se">\</span>
+--key-name<span class="w"> </span>&lt;rsa<span class="w"> </span>key<span class="w"> </span>pair<span class="w"> </span>name&gt;<span class="w"> </span><span class="se">\</span>
+--security-group-ids<span class="w"> </span>&lt;sg<span class="w"> </span>id&gt;<span class="w"> </span><span class="se">\</span>
+--associate-public-ip-address<span class="w"> </span><span class="se">\</span>
+--block-device-mapping<span class="w"> </span><span class="nv">DeviceName</span><span class="o">=</span>/dev/sda1,Ebs<span class="o">={</span><span class="nv">VolumeSize</span><span class="o">=</span>&lt;root<span class="w"> </span>volume<span class="w"> </span>size&gt;<span class="o">}</span><span class="w"> </span><span class="se">\</span>
+--query<span class="o">=</span><span class="s1">&#39;Instances[0].InstanceId&#39;</span><span class="w"> </span>--output<span class="w"> </span>text
+</code></pre></div>
+<p>Where:</p>
+<ul>
+<li><code>&lt;AMI-ID&gt;</code> – AMI ID from step 5.</li>
+<li><code>&lt;rsa-key-name&gt;</code> – key pair from step 3.</li>
+<li><code>&lt;sg-id&gt;</code> – security group from step 4.</li>
+<li><code>&lt;root-size&gt;</code> – root volume size (minimum 40 GB).</li>
+</ul>
+<p><strong>Example:</strong></p>
+<div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>run-instances<span class="w"> </span>--image-id<span class="w"> </span>ami-0504712c3ecb27331<span class="w"> </span>--count<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+--instance-type<span class="w"> </span>t2.xlarge<span class="w"> </span><span class="se">\</span>
+--key-name<span class="w"> </span>another-key-for-trymosk<span class="w"> </span><span class="se">\</span>
+--security-group-ids<span class="w"> </span>sg-0d72aa991587b5648<span class="w"> </span><span class="se">\</span>
+--associate-public-ip-address<span class="w"> </span><span class="se">\</span>
+--block-device-mapping<span class="w"> </span><span class="nv">DeviceName</span><span class="o">=</span>/dev/sda1,Ebs<span class="o">={</span><span class="nv">VolumeSize</span><span class="o">=</span><span class="m">40</span><span class="o">}</span><span class="w"> </span><span class="se">\</span>
+--query<span class="o">=</span><span class="s1">&#39;Instances[0].InstanceId&#39;</span><span class="w"> </span>--output<span class="w"> </span>text
+</code></pre></div>
+<p>Example of response:</p>
+<div class="highlight"><pre><span></span><code>i-0c8a0969dfd64c909
+</code></pre></div>
+<p><strong>Step 7: Wait for the instance to start</strong></p>
+<div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>describe-instances<span class="w"> </span>--instance-ids<span class="w"> </span>&lt;your<span class="w"> </span>instance<span class="w"> </span>Id&gt;<span class="w"> </span><span class="se">\</span>
+--query<span class="o">=</span><span class="s1">&#39;Reservations[0].Instances[0].State.Name&#39;</span><span class="w"> </span>--output<span class="w"> </span>text
+</code></pre></div>
+<p>Where  <code>&lt;your instance Id&gt;</code> is from step 6.
+<strong>Example:</strong></p>
+<div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>describe-instances<span class="w"> </span>--instance-ids<span class="w"> </span>i-0c8a0969dfd64c909<span class="w"> </span><span class="se">\</span>
+--query<span class="o">=</span><span class="s1">&#39;Reservations[0].Instances[0].State.Name&#39;</span><span class="w"> </span>--output<span class="w"> </span>text
+</code></pre></div>
+<p>Example of response:</p>
+<div class="highlight"><pre><span></span><code>pending
+</code></pre></div>
+<p><strong>Step 8: Get the public IPv4 address</strong></p>
+<div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>describe-instances<span class="w"> </span>--instance-ids<span class="w"> </span>&lt;your<span class="w"> </span>instance<span class="w"> </span>Id&gt;<span class="w"> </span><span class="se">\</span>
+--query<span class="o">=</span><span class="s1">&#39;Reservations[0].Instances[0].PublicIpAddress&#39;</span><span class="w"> </span>--output<span class="w"> </span>text
+</code></pre></div>
+<p>Where <code>&lt;your instance Id&gt;</code> is from step 6.
+<strong>Example:</strong></p>
+<div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>describe-instances<span class="w"> </span>--instance-ids<span class="w"> </span>i-0c8a0969dfd64c909<span class="w"> </span><span class="se">\</span>
+--query<span class="o">=</span><span class="s1">&#39;Reservations[0].Instances[0].PublicIpAddress&#39;</span><span class="w"> </span>--output<span class="w"> </span>text
+</code></pre></div>
+<p>Example of response:</p>
+<div class="highlight"><pre><span></span><code>18.218.29.107
+</code></pre></div>
+<p><strong>Step 9: Connect via SSH</strong></p>
+<p>From your local computer:</p>
+<ul>
+<li><strong>Linux/macOS</strong>:</li>
+</ul>
+<div class="highlight"><pre><span></span><code>ssh<span class="w"> </span>-i<span class="w"> </span>/path/to/private-key.pem<span class="w"> </span>ubuntu@&lt;PublicIPv4Address&gt;
+</code></pre></div>
+<ul>
+<li><strong>Windows (PuTTY)</strong>:<ul>
+<li>Convert your <code>.pem</code> key to <code>.ppk</code> using PuTTYgen.</li>
+<li>Open PuTTY, enter the public IPv4 address, and load your <code>.ppk</code> key in <strong>Connection → SSH → Auth</strong>.</li>
+</ul>
+</li>
+</ul>
+<h2 id="setting-up-trymosk-on-an-aws-instance">Setting up TryMOSK on an AWS instance<a class="headerlink" href="#setting-up-trymosk-on-an-aws-instance" title="Permanent link">#</a></h2>
+<p>This section explains how to set up TryMOSK on the EC2 instance created in the previous steps.</p>
+<p><strong>Step 1: Start the TryMOSK installation</strong></p>
+<p>The installation process takes approximately <strong>25 minutes</strong>. It will:</p>
+<ul>
+<li>Install and configure <strong>Kubernetes</strong> and <strong>Rockoon</strong> on the instance.</li>
+<li>Set up the <strong>OpenVPN server</strong>.</li>
+<li>Create the OpenVPN client configuration file.</li>
+</ul>
+<p>Run the following command to start the setup:</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>screen<span class="w"> </span>-d<span class="w"> </span>-m<span class="w"> </span>/srv/trymosk/launch.sh
+</code></pre></div>
+<p>This runs the installation script inside a <strong>screen</strong> session, allowing it to continue even if your SSH connection is interrupted.</p>
+<p><strong>Step 2: Monitor the installation</strong></p>
+<p>You can view the installation log in real time:</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>tail<span class="w"> </span>-f<span class="w"> </span>/var/log/trymosk-install.log
+</code></pre></div>
+<p><strong>Step 3: Access TryMOSK after installation</strong></p>
+<p>When installation is complete, you can:</p>
+<ol>
+<li>Work with MOS directly via the console, <strong>or</strong></li>
+<li>Retrieve the OpenVPN client configuration file and set up a VPN connection from your local computer.</li>
+</ol>
+<p>Once connected via VPN, you can use:</p>
+<ul>
+<li><strong>Horizon</strong> (OpenStack web interface)</li>
+<li><strong>Mirantis Lens</strong></li>
+<li>Local <code>kubectl</code> commands to manage TryMOSK services.</li>
+</ul>
+<p><strong>Step 4: View system information and credentials</strong></p>
+<p>After installation, system details, OpenStack version, and admin credentials will be displayed as a <em>Message of the Day (MOTD)</em> upon SSH login.</p>
+<p>Example output:</p>
+<div class="highlight"><pre><span></span><code>OS_FAMILY:<span class="w"> </span>Debian
+OS_DISTRO:<span class="w"> </span>Ubuntu
+OS_DISTRO_VERSION:<span class="w"> </span><span class="m">22</span>.04
+OPENSTACK_VERSION:<span class="w"> </span>caracal
+ROCKOON_VERSION:<span class="w"> </span><span class="m">1</span>.0.11
+ADMIN_USERNAME:<span class="w"> </span>adminlpsdb63Gvn1
+ADMIN_PASSWORD:<span class="w"> </span>tLuQfuJVAxxxxxxxxxxxxx
+</code></pre></div>
 
 
 
@@ -1157,7 +1408,7 @@ cat<span class="w"> </span>/etc/openstack/clouds.yaml
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../aio-installation-manual/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Manual install (Advanced)">
+          <a href="../introduction/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Introduction">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1167,20 +1418,20 @@ cat<span class="w"> </span>/etc/openstack/clouds.yaml
                 Previous
               </span>
               <div class="md-ellipsis">
-                Manual install (Advanced)
+                Introduction
               </div>
             </div>
           </a>
         
         
           
-          <a href="../../developer/" class="md-footer__link md-footer__link--next" aria-label="Next: Developer Guide">
+          <a href="../aio-installation-manual/" class="md-footer__link md-footer__link--next" aria-label="Next: Manual install (Advanced)">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Developer Guide
+                Manual install (Advanced)
               </div>
             </div>
             <div class="md-footer__button md-icon">

@@ -11,25 +11,25 @@
       
       
       
-        <link rel="prev" href="../../custom-resources/openstackdeploymentstatus/">
+        <link rel="prev" href="../trymosk-installation-aws/">
       
       
-        <link rel="next" href="../../../quick-start/introduction/">
+        <link rel="next" href="../access-openstack/">
       
       
-      <link rel="icon" href="../../../assets/favicon.ico">
+      <link rel="icon" href="../../assets/favicon.ico">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.18">
     
     
       
-        <title>Horizon - Rockoon Kubernetes OpenStack Operator</title>
+        <title>Manual install (Advanced) - Rockoon Kubernetes OpenStack Operator</title>
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.7e37652d.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.7e37652d.min.css">
       
         
-        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
       
       
 
@@ -48,9 +48,9 @@
       
     
     
-      <link rel="stylesheet" href="../../../stylesheets/extra.css">
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#horizon-configuration" class="md-skip">
+        <a href="#all-in-one-installation" class="md-skip">
           Skip to content
         </a>
       
@@ -92,9 +92,9 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../.." title="Rockoon Kubernetes OpenStack Operator" class="md-header__button md-logo" aria-label="Rockoon Kubernetes OpenStack Operator" data-md-component="logo">
+    <a href="../.." title="Rockoon Kubernetes OpenStack Operator" class="md-header__button md-logo" aria-label="Rockoon Kubernetes OpenStack Operator" data-md-component="logo">
       
-  <img src="../../../assets/mirantis-logo-inverted-horizontal-one-color.svg" alt="logo">
+  <img src="../../assets/mirantis-logo-inverted-horizontal-one-color.svg" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -111,7 +111,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Horizon
+              Manual install (Advanced)
             
           </span>
         </div>
@@ -229,9 +229,9 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../.." title="Rockoon Kubernetes OpenStack Operator" class="md-nav__button md-logo" aria-label="Rockoon Kubernetes OpenStack Operator" data-md-component="logo">
+    <a href="../.." title="Rockoon Kubernetes OpenStack Operator" class="md-nav__button md-logo" aria-label="Rockoon Kubernetes OpenStack Operator" data-md-component="logo">
       
-  <img src="../../../assets/mirantis-logo-inverted-horizontal-one-color.svg" alt="logo">
+  <img src="../../assets/mirantis-logo-inverted-horizontal-one-color.svg" alt="logo">
 
     </a>
     Rockoon Kubernetes OpenStack Operator
@@ -258,7 +258,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../.." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -277,20 +277,18 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
@@ -306,7 +304,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             Architecture
@@ -358,7 +356,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../rockoon/overview/" class="md-nav__link">
+      <a href="../../architecture/rockoon/overview/" class="md-nav__link">
         
   
   
@@ -381,7 +379,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../rockoon/configuration/" class="md-nav__link">
+      <a href="../../architecture/rockoon/configuration/" class="md-nav__link">
         
   
   
@@ -404,7 +402,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../rockoon/custom-images/" class="md-nav__link">
+      <a href="../../architecture/rockoon/custom-images/" class="md-nav__link">
         
   
   
@@ -435,7 +433,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../rockoon-admission/" class="md-nav__link">
+      <a href="../../architecture/rockoon-admission/" class="md-nav__link">
         
   
   
@@ -496,7 +494,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../custom-resources/openstackdeployment/" class="md-nav__link">
+      <a href="../../architecture/custom-resources/openstackdeployment/" class="md-nav__link">
         
   
   
@@ -519,7 +517,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../custom-resources/openstackdeploymentstatus/" class="md-nav__link">
+      <a href="../../architecture/custom-resources/openstackdeploymentstatus/" class="md-nav__link">
         
   
   
@@ -547,20 +545,18 @@
                 
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
         
           
           <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
@@ -576,7 +572,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2_4">
             <span class="md-nav__icon md-icon"></span>
             Cloud Services
@@ -587,32 +583,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    Horizon
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../architecture/cloud_services/horizon/" class="md-nav__link">
         
   
   
@@ -623,35 +597,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#custom-themes" class="md-nav__link">
-    <span class="md-ellipsis">
-      Custom Themes
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -676,18 +621,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
@@ -703,7 +650,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             Quick Start
@@ -714,18 +661,20 @@
                 
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" checked>
         
           
           <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
@@ -741,7 +690,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_1">
             <span class="md-nav__icon md-icon"></span>
             AIO Installation
@@ -755,7 +704,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../quick-start/introduction/" class="md-nav__link">
+      <a href="../introduction/" class="md-nav__link">
         
   
   
@@ -816,7 +765,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../quick-start/trymosk-installation-aws/" class="md-nav__link">
+      <a href="../trymosk-installation-aws/" class="md-nav__link">
         
   
   
@@ -844,10 +793,32 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../../quick-start/aio-installation-manual/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Manual install (Advanced)
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -858,6 +829,53 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#example-command-to-create-an-appropriate-kvm-vm-on-linux-with-virt-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example command to create an appropriate kvm VM on Linux with virt-manager
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-command-to-create-an-appropriate-qemu-vm-on-macos-with-lima" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example command to create an appropriate qemu VM on MacOS with lima
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trigger-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Trigger Deployment
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -878,7 +896,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../quick-start/access-openstack/" class="md-nav__link">
+      <a href="../access-openstack/" class="md-nav__link">
         
   
   
@@ -908,7 +926,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../developer/" class="md-nav__link">
+      <a href="../../developer/" class="md-nav__link">
         
   
   
@@ -968,7 +986,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../ops/openstack/upgrade/" class="md-nav__link">
+      <a href="../../ops/openstack/upgrade/" class="md-nav__link">
         
   
   
@@ -991,7 +1009,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../ops/openstack/tempest/" class="md-nav__link">
+      <a href="../../ops/openstack/tempest/" class="md-nav__link">
         
   
   
@@ -1021,7 +1039,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../ops/openstack/troubleshoot/" class="md-nav__link">
+      <a href="../../ops/openstack/troubleshoot/" class="md-nav__link">
         
   
   
@@ -1063,9 +1081,27 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#custom-themes" class="md-nav__link">
+  <a href="#example-command-to-create-an-appropriate-kvm-vm-on-linux-with-virt-manager" class="md-nav__link">
     <span class="md-ellipsis">
-      Custom Themes
+      Example command to create an appropriate kvm VM on Linux with virt-manager
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-command-to-create-an-appropriate-qemu-vm-on-macos-with-lima" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example command to create an appropriate qemu VM on MacOS with lima
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trigger-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Trigger Deployment
     </span>
   </a>
   
@@ -1090,29 +1126,64 @@
   
 
 
-<h1 id="horizon-configuration">Horizon Configuration<a class="headerlink" href="#horizon-configuration" title="Permanent link">#</a></h1>
-<p>This article describes horizon configuration.</p>
-<h2 id="custom-themes">Custom Themes<a class="headerlink" href="#custom-themes" title="Permanent link">#</a></h2>
-<p>To apply custom horizon theme on your environment use the following
-snippet for <code>OpenStackDeployment</code> custom resource:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">spec</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">features</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">horizon</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">themes</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my custom theme</span>
-<span class="w">        </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">AwesomTheme</span>
-<span class="w">        </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://url/to/theme.tar.gz</span>
-<span class="w">        </span><span class="nt">sha256summ</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;sha256</span><span class="nv"> </span><span class="s">of</span><span class="nv"> </span><span class="s">theme</span><span class="nv"> </span><span class="s">archive&quot;</span>
-<span class="w">        </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<h1 id="all-in-one-installation">All in One Installation<a class="headerlink" href="#all-in-one-installation" title="Permanent link">#</a></h1>
+<p>This paragraph provides a guide how to deploy single node deployment with
+<a href="https://docs.k0sproject.io/stable/">k0s</a> based Kubernetes cluster and
+openstack deployed by Rockoon controller.</p>
+<h3 id="example-command-to-create-an-appropriate-kvm-vm-on-linux-with-virt-manager">Example command to create an appropriate kvm VM on Linux with <code>virt-manager</code><a class="headerlink" href="#example-command-to-create-an-appropriate-kvm-vm-on-linux-with-virt-manager" title="Permanent link">#</a></h3>
+<p>Needs <code>virt-manager</code>, <code>libvirt</code>, and <code>qemu-kvm</code> installed.</p>
+<p>Change the path to the public SSH key as you need, the user in the image is
+<code>ubuntu</code>.</p>
+<p><div class="highlight"><pre><span></span><code>wget<span class="w"> </span>https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img
+qemu-img<span class="w"> </span>create<span class="w"> </span>-F<span class="w"> </span>qcow2<span class="w"> </span>-f<span class="w"> </span>qcow2<span class="w"> </span>-b<span class="w"> </span>jammy-server-cloudimg-amd64.img<span class="w"> </span>rockoon.qcow2<span class="w"> </span>100G
+virt-install<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--name<span class="w"> </span>rockoon<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--import<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--disk<span class="w"> </span><span class="nv">path</span><span class="o">=</span><span class="nv">$PWD</span>/rockoon.qcow2,format<span class="o">=</span>qcow2<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--vcpus<span class="o">=</span><span class="m">8</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--memory<span class="o">=</span><span class="m">16384</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--network<span class="w"> </span><span class="s2">&quot;network=default,model=virtio&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--osinfo<span class="w"> </span><span class="s2">&quot;ubuntu-22&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--arch<span class="w"> </span>x86_64<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--graphics<span class="w"> </span>vnc,listen<span class="o">=</span><span class="m">0</span>.0.0.0<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--cloud-init<span class="w"> </span>clouduser-ssh-key<span class="o">=</span><span class="nv">$HOME</span>/.ssh/id_rsa.pub<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--virt-type<span class="w"> </span>kvm<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--watchdog<span class="o">=</span>default<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--noautoconsole
 </code></pre></div>
-<p>By default <code>Mirantis</code> theme is enabled, to disabled it use</p>
-<div class="highlight"><pre><span></span><code><span class="nt">spec</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">features</span><span class="p">:</span>
-<span class="w">    </span><span class="nt">horizon</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">themes</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mirantis</span>
-<span class="w">        </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+Once the VM is running, run <code>virsh domifaddr rockoon</code> to find the IP address
+of the VM to SSH to.</p>
+<h3 id="example-command-to-create-an-appropriate-qemu-vm-on-macos-with-lima">Example command to create an appropriate qemu VM on MacOS with <code>lima</code><a class="headerlink" href="#example-command-to-create-an-appropriate-qemu-vm-on-macos-with-lima" title="Permanent link">#</a></h3>
+<p>As mentioned, only Intel-based Macs are currently supported.</p>
+<div class="highlight"><pre><span></span><code>brew<span class="w"> </span>install<span class="w"> </span>lima
+limactl<span class="w"> </span>create<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--name<span class="o">=</span>rockoon<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--tty<span class="o">=</span><span class="nb">false</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--cpus<span class="w"> </span><span class="m">8</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--disk<span class="w"> </span><span class="m">100</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--memory<span class="w"> </span><span class="m">16</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--plain<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--arch<span class="w"> </span>x86_64<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--vm-type<span class="w"> </span>qemu<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--set<span class="w"> </span><span class="s1">&#39;.cpuType.x86_64 = &quot;host&quot;&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>template://ubuntu-22.04
+limactl<span class="w"> </span>start<span class="w"> </span>rockoon
+ssh<span class="w"> </span>-F<span class="w"> </span>~/.lima/rockoon/ssh.config<span class="w"> </span>lima-rockoon
 </code></pre></div>
+<h2 id="trigger-deployment">Trigger Deployment<a class="headerlink" href="#trigger-deployment" title="Permanent link">#</a></h2>
+<ol>
+<li>
+<p>Download repository with rockoon
+  <div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/Mirantis/rockoon
+</code></pre></div></p>
+</li>
+<li>
+<p>Trigger deployment
+  <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>rockoon/virtual_lab/
+sudo<span class="w"> </span>bash<span class="w"> </span>install.sh
+</code></pre></div></p>
+</li>
+</ol>
 
 
 
@@ -1142,7 +1213,7 @@ snippet for <code>OpenStackDeployment</code> custom resource:</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../../custom-resources/openstackdeploymentstatus/" class="md-footer__link md-footer__link--prev" aria-label="Previous: OpenStackDeploymentStatus">
+          <a href="../trymosk-installation-aws/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Installation on AWS">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1152,20 +1223,20 @@ snippet for <code>OpenStackDeployment</code> custom resource:</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                OpenStackDeploymentStatus
+                Installation on AWS
               </div>
             </div>
           </a>
         
         
           
-          <a href="../../../quick-start/introduction/" class="md-footer__link md-footer__link--next" aria-label="Next: Introduction">
+          <a href="../access-openstack/" class="md-footer__link md-footer__link--next" aria-label="Next: Access OpenStack">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Introduction
+                Access OpenStack
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -1205,10 +1276,10 @@ snippet for <code>OpenStackDeployment</code> custom resource:</p>
     
     
       
-      <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.autohide", "search.suggest", "search.highlight", "navigation.tabs.sticky", "navigation.footer", "navigation.path", "content.code.copy"], "search": "../../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"base": "../..", "features": ["toc.autohide", "search.suggest", "search.highlight", "navigation.tabs.sticky", "navigation.footer", "navigation.path", "content.code.copy"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.92b07e13.min.js"></script>
+      <script src="../../assets/javascripts/bundle.92b07e13.min.js"></script>
       
     
   </body>
