@@ -87,9 +87,12 @@ nav:
       - TryMOSK (using pre-built image):
         - Installation on AWS: quick-start/trymosk-installation-aws.md
       - Manual install (Advanced): quick-start/aio-installation-manual.md
-    - Access OpenStack: quick-start/access-openstack.md
+    - Access to AIO environment:
+      - Configuring VPN: quick-start/vpn-config.md
+      - Local clients configuration: quick-start/local-clients.md
   - Developer Guide: developer.md
   - Operations Guide:
+    - Getting access to OpenStack: ops/openstack/getting-access.md
     - Upgrade OpenStack: ops/openstack/upgrade.md
     - Run tempest: ops/openstack/tempest.md
   - Troubleshoot: ops/openstack/troubleshoot.md
