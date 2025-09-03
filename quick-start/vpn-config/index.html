@@ -11,25 +11,25 @@
       
       
       
-        <link rel="prev" href="../configuration/">
+        <link rel="prev" href="../aio-installation-manual/">
       
       
-        <link rel="next" href="../../rockoon-admission/">
+        <link rel="next" href="../local-clients/">
       
       
-      <link rel="icon" href="../../../assets/favicon.ico">
+      <link rel="icon" href="../../assets/favicon.ico">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.18">
     
     
       
-        <title>Custom Images - Rockoon Kubernetes OpenStack Operator</title>
+        <title>Configuring VPN - Rockoon Kubernetes OpenStack Operator</title>
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.7e37652d.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.7e37652d.min.css">
       
         
-        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
       
       
 
@@ -48,9 +48,9 @@
       
     
     
-      <link rel="stylesheet" href="../../../stylesheets/extra.css">
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#customize-images" class="md-skip">
+        <a href="#configuring-vpn" class="md-skip">
           Skip to content
         </a>
       
@@ -92,9 +92,9 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../.." title="Rockoon Kubernetes OpenStack Operator" class="md-header__button md-logo" aria-label="Rockoon Kubernetes OpenStack Operator" data-md-component="logo">
+    <a href="../.." title="Rockoon Kubernetes OpenStack Operator" class="md-header__button md-logo" aria-label="Rockoon Kubernetes OpenStack Operator" data-md-component="logo">
       
-  <img src="../../../assets/mirantis-logo-inverted-horizontal-one-color.svg" alt="logo">
+  <img src="../../assets/mirantis-logo-inverted-horizontal-one-color.svg" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -111,7 +111,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Custom Images
+              Configuring VPN
             
           </span>
         </div>
@@ -229,9 +229,9 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../.." title="Rockoon Kubernetes OpenStack Operator" class="md-nav__button md-logo" aria-label="Rockoon Kubernetes OpenStack Operator" data-md-component="logo">
+    <a href="../.." title="Rockoon Kubernetes OpenStack Operator" class="md-nav__button md-logo" aria-label="Rockoon Kubernetes OpenStack Operator" data-md-component="logo">
       
-  <img src="../../../assets/mirantis-logo-inverted-horizontal-one-color.svg" alt="logo">
+  <img src="../../assets/mirantis-logo-inverted-horizontal-one-color.svg" alt="logo">
 
     </a>
     Rockoon Kubernetes OpenStack Operator
@@ -258,7 +258,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../.." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -277,20 +277,18 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
@@ -306,7 +304,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             Architecture
@@ -317,20 +315,18 @@
                 
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_1" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_1" >
         
           
           <label class="md-nav__link" for="__nav_2_1" id="__nav_2_1_label" tabindex="0">
@@ -346,7 +342,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_1_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_1_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2_1">
             <span class="md-nav__icon md-icon"></span>
             Rockoon Operator
@@ -360,7 +356,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../overview/" class="md-nav__link">
+      <a href="../../architecture/rockoon/overview/" class="md-nav__link">
         
   
   
@@ -383,7 +379,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/" class="md-nav__link">
+      <a href="../../architecture/rockoon/configuration/" class="md-nav__link">
         
   
   
@@ -403,19 +399,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../architecture/rockoon/custom-images/" class="md-nav__link">
         
   
   
@@ -426,7 +413,6 @@
   
 
       </a>
-      
     </li>
   
 
@@ -447,7 +433,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../rockoon-admission/" class="md-nav__link">
+      <a href="../../architecture/rockoon-admission/" class="md-nav__link">
         
   
   
@@ -508,7 +494,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../custom-resources/openstackdeployment/" class="md-nav__link">
+      <a href="../../architecture/custom-resources/openstackdeployment/" class="md-nav__link">
         
   
   
@@ -531,7 +517,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../custom-resources/openstackdeploymentstatus/" class="md-nav__link">
+      <a href="../../architecture/custom-resources/openstackdeploymentstatus/" class="md-nav__link">
         
   
   
@@ -600,7 +586,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cloud_services/horizon/" class="md-nav__link">
+      <a href="../../architecture/cloud_services/horizon/" class="md-nav__link">
         
   
   
@@ -623,7 +609,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cloud_services/masakari/" class="md-nav__link">
+      <a href="../../architecture/cloud_services/masakari/" class="md-nav__link">
         
   
   
@@ -658,18 +644,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
@@ -685,7 +673,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             Quick Start
@@ -737,7 +725,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../quick-start/introduction/" class="md-nav__link">
+      <a href="../introduction/" class="md-nav__link">
         
   
   
@@ -798,7 +786,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../quick-start/trymosk-installation-aws/" class="md-nav__link">
+      <a href="../trymosk-installation-aws/" class="md-nav__link">
         
   
   
@@ -829,7 +817,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../quick-start/aio-installation-manual/" class="md-nav__link">
+      <a href="../aio-installation-manual/" class="md-nav__link">
         
   
   
@@ -857,18 +845,20 @@
                 
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" checked>
         
           
           <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
@@ -884,7 +874,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_2">
             <span class="md-nav__icon md-icon"></span>
             Access to AIO environment
@@ -895,10 +885,32 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../../quick-start/vpn-config/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Configuring VPN
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -909,6 +921,44 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#ssh-tunnel-with-sshuttle" class="md-nav__link">
+    <span class="md-ellipsis">
+      SSH tunnel with sshuttle
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#openvpn-for-trymosk-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      OpenVPN (for TryMOSK installation)
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -921,7 +971,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../quick-start/local-clients/" class="md-nav__link">
+      <a href="../local-clients/" class="md-nav__link">
         
   
   
@@ -959,7 +1009,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../developer/" class="md-nav__link">
+      <a href="../../developer/" class="md-nav__link">
         
   
   
@@ -1019,7 +1069,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../ops/openstack/getting-access/" class="md-nav__link">
+      <a href="../../ops/openstack/getting-access/" class="md-nav__link">
         
   
   
@@ -1042,7 +1092,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../ops/openstack/upgrade/" class="md-nav__link">
+      <a href="../../ops/openstack/upgrade/" class="md-nav__link">
         
   
   
@@ -1065,7 +1115,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../ops/openstack/tempest/" class="md-nav__link">
+      <a href="../../ops/openstack/tempest/" class="md-nav__link">
         
   
   
@@ -1171,7 +1221,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../user-guide/openstack/masakari/masakari-configuration/" class="md-nav__link">
+      <a href="../../user-guide/openstack/masakari/masakari-configuration/" class="md-nav__link">
         
   
   
@@ -1194,7 +1244,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../user-guide/openstack/masakari/introspective-monitor/" class="md-nav__link">
+      <a href="../../user-guide/openstack/masakari/introspective-monitor/" class="md-nav__link">
         
   
   
@@ -1232,7 +1282,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../ops/openstack/troubleshoot/" class="md-nav__link">
+      <a href="../../ops/openstack/troubleshoot/" class="md-nav__link">
         
   
   
@@ -1267,6 +1317,32 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#ssh-tunnel-with-sshuttle" class="md-nav__link">
+    <span class="md-ellipsis">
+      SSH tunnel with sshuttle
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#openvpn-for-trymosk-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      OpenVPN (for TryMOSK installation)
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -1284,25 +1360,70 @@
   
 
 
-<h1 id="customize-images">Customize images<a class="headerlink" href="#customize-images" title="Permanent link">#</a></h1>
-<p>OpenStack Controller has default built in images that were verified against different
-production configurations. However it may be needed to inclide additional patches
-into openstack code or 3rd party software.</p>
-<p>OpenStack images are built with help of <a href="https://github.com/openstack/loci">Loci</a>.
-Please refer to its documentation to get more detail about build process.</p>
-<p>To inject a custom image create configmap with <code>&lt;openstackdeployment-name&gt;-artifacts</code> name
-in <code>openstack</code> namespace and folling data structure:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
-<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ConfigMap</span>
-<span class="nt">metadata</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">osh-dev-artifacts</span>
-<span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openstack</span>
-<span class="nt">data</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">caracal</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">    </span><span class="no">libvirt: docker-dev-kaas-virtual.mcp.mirantis.com/general/libvirt:6.0.0-focal-20221028120749</span>
-<span class="w">  </span><span class="nt">antelope</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">    </span><span class="no">libvirt: docker-dev-kaas-virtual.mcp.mirantis.com/general/libvirt:6.0.0-focal-20221028120749</span>
+<h1 id="configuring-vpn">Configuring VPN<a class="headerlink" href="#configuring-vpn" title="Permanent link">#</a></h1>
+<h2 id="ssh-tunnel-with-sshuttle">SSH tunnel with sshuttle<a class="headerlink" href="#ssh-tunnel-with-sshuttle" title="Permanent link">#</a></h2>
+<ol>
+<li>Get IP address of ingress service. On your AIO instance run following command:
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>-n<span class="w"> </span>openstack<span class="w"> </span>get<span class="w"> </span>svc<span class="w"> </span>ingress<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.status.loadBalancer.ingress[].ip}&#39;</span>
+</code></pre></div></li>
+<li>Update local <code>/etc/hosts</code> file to point public domain to ingress external IP
+<div class="highlight"><pre><span></span><code><span class="m">10</span>.172.1.100<span class="w"> </span>aodh.it.just.works<span class="w"> </span>barbican.it.just.works<span class="w"> </span>cinder.it.just.works<span class="w"> </span>cloudformation.it.just.works<span class="w"> </span>designate.it.just.works<span class="w"> </span>glance.it.just.works<span class="w"> </span>gnocchi.it.just.works<span class="w"> </span>heat.it.just.works<span class="w"> </span>horizon.it.just.works<span class="w"> </span>keystone.it.just.works<span class="w"> </span>metadata.it.just.works<span class="w"> </span>neutron.it.just.works<span class="w"> </span>nova.it.just.works<span class="w"> </span>novncproxy.it.just.works<span class="w"> </span>octavia.it.just.works<span class="w"> </span>placement.it.just.works<span class="w"> </span>spiceproxy.it.just.works
 </code></pre></div>
+where <code>10.172.1.100</code> is the result of previous command execution.</li>
+<li>Setup <code>sshuttle</code> to services external IPs
+<div class="highlight"><pre><span></span><code>sshuttle<span class="w"> </span>-r<span class="w"> </span>ubuntu@172.16.250.153<span class="w"> </span><span class="m">10</span>.172.1.0/24
+</code></pre></div>
+where <code>172.16.250.153</code> is the public IP of your AIO instance</li>
+</ol>
+<h2 id="openvpn-for-trymosk-installation">OpenVPN (for TryMOSK installation)<a class="headerlink" href="#openvpn-for-trymosk-installation" title="Permanent link">#</a></h2>
+<p>By default, the TryMOSK installation process sets up an OpenVPN server on the
+instance and creates a client configuration file.</p>
+<ol>
+<li>
+<p>Copy OpenVPN client configuration file <em>/src/vpn/client.ovpn</em> to your
+local computer. Use <code>scp</code> or another secure file transfer method to download
+the file from the instance to your local machine.</p>
+</li>
+<li>
+<p>Update the server IP address in the configuration. In the <code>client.ovpn</code> file,
+replace the placeholder <code>&lt;Put your server public IP here&gt;</code> (found on <strong>line 4</strong>)
+with the actual <strong>public IPv4 address</strong> of your AWS instance.
+<strong>Example – before:</strong>
+<div class="highlight"><pre><span></span><code>...
+proto udp
+remote &lt;Put your server public IP here&gt; 1194
+resolv-retry infinite
+...
+</code></pre></div>
+<strong>Example – after:</strong>
+<div class="highlight"><pre><span></span><code>...
+proto udp
+remote 18.218.29.107 1194
+resolv-retry infinite
+...
+</code></pre></div>
+Where <code>18.218.29.107</code> is the public IPv4 address of your AWS EC2 instance.</p>
+</li>
+<li>
+<p>Use the configuration with an OpenVPN client such as:</p>
+<ul>
+<li>The official OpenVPN client: <a href="https://openvpn.net/client/">https://openvpn.net/client/</a></li>
+<li>Any compatible VPN client that supports OpenVPN connections</li>
+</ul>
+<p>Refer to your chosen VPN client’s documentation for import and connection instructions.</p>
+</li>
+<li>
+<p>Configur DNS resolver. The OpenVPN server is configured to update the client’s
+DNS resolver so that TryMOSK service URLs can be resolved correctly.</p>
+<ul>
+<li><strong>macOS and Windows</strong> – OpenVPN clients apply this configuration automatically.</li>
+<li><strong>Linux</strong> – Additional DNS configuration may be required, depending on your distribution,
+to ensure proper domain resolution for TryMOSK services. Consult your distribution’s
+networking documentation for details. You also can update <code>/etc/hosts</code> file on your
+local computer as is described in step 2 for <code>sshuttle</code> setup.</li>
+</ul>
+</li>
+</ol>
 
 
 
@@ -1332,7 +1453,7 @@ in <code>openstack</code> namespace and folling data structure:</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../configuration/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Configuration">
+          <a href="../aio-installation-manual/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Manual install (Advanced)">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1342,20 +1463,20 @@ in <code>openstack</code> namespace and folling data structure:</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Configuration
+                Manual install (Advanced)
               </div>
             </div>
           </a>
         
         
           
-          <a href="../../rockoon-admission/" class="md-footer__link md-footer__link--next" aria-label="Next: Rockoon Admission">
+          <a href="../local-clients/" class="md-footer__link md-footer__link--next" aria-label="Next: Local clients configuration">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Rockoon Admission
+                Local clients configuration
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -1395,10 +1516,10 @@ in <code>openstack</code> namespace and folling data structure:</p>
     
     
       
-      <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.autohide", "search.suggest", "search.highlight", "navigation.tabs.sticky", "navigation.footer", "navigation.path", "content.code.copy"], "search": "../../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"base": "../..", "features": ["toc.autohide", "search.suggest", "search.highlight", "navigation.tabs.sticky", "navigation.footer", "navigation.path", "content.code.copy"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.92b07e13.min.js"></script>
+      <script src="../../assets/javascripts/bundle.92b07e13.min.js"></script>
       
     
   </body>

@@ -11,25 +11,25 @@
       
       
       
-        <link rel="prev" href="../aio-installation-manual/">
+        <link rel="prev" href="../masakari-configuration/">
       
       
-        <link rel="next" href="../../developer/">
+        <link rel="next" href="../../../../ops/openstack/troubleshoot/">
       
       
-      <link rel="icon" href="../../assets/favicon.ico">
+      <link rel="icon" href="../../../../assets/favicon.ico">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.18">
     
     
       
-        <title>Access OpenStack - Rockoon Kubernetes OpenStack Operator</title>
+        <title>Introspective monitor test - Rockoon Kubernetes OpenStack Operator</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.7e37652d.min.css">
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.7e37652d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.06af60db.min.css">
       
       
 
@@ -48,9 +48,9 @@
       
     
     
-      <link rel="stylesheet" href="../../stylesheets/extra.css">
+      <link rel="stylesheet" href="../../../../stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#access-openstack" class="md-skip">
+        <a href="#introspective-instance-monitor-configuration-and-test" class="md-skip">
           Skip to content
         </a>
       
@@ -92,9 +92,9 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="Rockoon Kubernetes OpenStack Operator" class="md-header__button md-logo" aria-label="Rockoon Kubernetes OpenStack Operator" data-md-component="logo">
+    <a href="../../../.." title="Rockoon Kubernetes OpenStack Operator" class="md-header__button md-logo" aria-label="Rockoon Kubernetes OpenStack Operator" data-md-component="logo">
       
-  <img src="../../assets/mirantis-logo-inverted-horizontal-one-color.svg" alt="logo">
+  <img src="../../../../assets/mirantis-logo-inverted-horizontal-one-color.svg" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -111,7 +111,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Access OpenStack
+              Introspective monitor test
             
           </span>
         </div>
@@ -229,9 +229,9 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="Rockoon Kubernetes OpenStack Operator" class="md-nav__button md-logo" aria-label="Rockoon Kubernetes OpenStack Operator" data-md-component="logo">
+    <a href="../../../.." title="Rockoon Kubernetes OpenStack Operator" class="md-nav__button md-logo" aria-label="Rockoon Kubernetes OpenStack Operator" data-md-component="logo">
       
-  <img src="../../assets/mirantis-logo-inverted-horizontal-one-color.svg" alt="logo">
+  <img src="../../../../assets/mirantis-logo-inverted-horizontal-one-color.svg" alt="logo">
 
     </a>
     Rockoon Kubernetes OpenStack Operator
@@ -258,7 +258,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../../.." class="md-nav__link">
         
   
   
@@ -356,7 +356,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../architecture/rockoon/overview/" class="md-nav__link">
+      <a href="../../../../architecture/rockoon/overview/" class="md-nav__link">
         
   
   
@@ -379,7 +379,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../architecture/rockoon/configuration/" class="md-nav__link">
+      <a href="../../../../architecture/rockoon/configuration/" class="md-nav__link">
         
   
   
@@ -402,7 +402,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../architecture/rockoon/custom-images/" class="md-nav__link">
+      <a href="../../../../architecture/rockoon/custom-images/" class="md-nav__link">
         
   
   
@@ -433,7 +433,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../architecture/rockoon-admission/" class="md-nav__link">
+      <a href="../../../../architecture/rockoon-admission/" class="md-nav__link">
         
   
   
@@ -494,7 +494,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../architecture/custom-resources/openstackdeployment/" class="md-nav__link">
+      <a href="../../../../architecture/custom-resources/openstackdeployment/" class="md-nav__link">
         
   
   
@@ -517,7 +517,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../architecture/custom-resources/openstackdeploymentstatus/" class="md-nav__link">
+      <a href="../../../../architecture/custom-resources/openstackdeploymentstatus/" class="md-nav__link">
         
   
   
@@ -586,12 +586,35 @@
   
   
     <li class="md-nav__item">
-      <a href="../../architecture/cloud_services/horizon/" class="md-nav__link">
+      <a href="../../../../architecture/cloud_services/horizon/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     Horizon
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../architecture/cloud_services/masakari/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Masakari
     
   </span>
   
@@ -621,20 +644,18 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
@@ -650,7 +671,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             Quick Start
@@ -702,7 +723,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../introduction/" class="md-nav__link">
+      <a href="../../../../quick-start/introduction/" class="md-nav__link">
         
   
   
@@ -763,7 +784,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../trymosk-installation-aws/" class="md-nav__link">
+      <a href="../../../../quick-start/trymosk-installation-aws/" class="md-nav__link">
         
   
   
@@ -794,7 +815,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../aio-installation-manual/" class="md-nav__link">
+      <a href="../../../../quick-start/aio-installation-manual/" class="md-nav__link">
         
   
   
@@ -822,79 +843,88 @@
                 
   
   
+  
+  
     
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
       
         
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
           
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
+            
   
   
   <span class="md-ellipsis">
-    Access OpenStack
+    Access to AIO environment
     
   </span>
   
 
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            Access to AIO environment
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../quick-start/vpn-config/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Access OpenStack
+    Configuring VPN
     
   </span>
   
 
       </a>
-      
-        
+    </li>
+  
 
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+              
+            
+              
+                
   
   
   
+  
+    <li class="md-nav__item">
+      <a href="../../../../quick-start/local-clients/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Local clients configuration
     
+  </span>
   
+
+      </a>
+    </li>
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#cli" class="md-nav__link">
-    <span class="md-ellipsis">
-      CLI
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#horizon" class="md-nav__link">
-    <span class="md-ellipsis">
-      Horizon
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
+
+              
+            
+          </ul>
+        </nav>
       
     </li>
   
@@ -915,7 +945,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../developer/" class="md-nav__link">
+      <a href="../../../../developer/" class="md-nav__link">
         
   
   
@@ -975,7 +1005,30 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ops/openstack/upgrade/" class="md-nav__link">
+      <a href="../../../../ops/openstack/getting-access/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Getting access to OpenStack
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../ops/openstack/upgrade/" class="md-nav__link">
         
   
   
@@ -998,7 +1051,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ops/openstack/tempest/" class="md-nav__link">
+      <a href="../../../../ops/openstack/tempest/" class="md-nav__link">
         
   
   
@@ -1025,10 +1078,161 @@
       
   
   
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    User Guide
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            User Guide
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_1" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6_1" id="__nav_6_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Instance HA
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6_1">
+            <span class="md-nav__icon md-icon"></span>
+            Instance HA
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
   
   
     <li class="md-nav__item">
-      <a href="../../ops/openstack/troubleshoot/" class="md-nav__link">
+      <a href="../masakari-configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configure OpenStack with Masakari
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Introspective monitor test
+    
+  </span>
+  
+
+      </a>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../ops/openstack/troubleshoot/" class="md-nav__link">
         
   
   
@@ -1063,32 +1267,6 @@
     
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#cli" class="md-nav__link">
-    <span class="md-ellipsis">
-      CLI
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#horizon" class="md-nav__link">
-    <span class="md-ellipsis">
-      Horizon
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -1106,28 +1284,66 @@
   
 
 
-<h1 id="access-openstack">Access OpenStack<a class="headerlink" href="#access-openstack" title="Permanent link">#</a></h1>
-<h2 id="cli">CLI<a class="headerlink" href="#cli" title="Permanent link">#</a></h2>
-<p>You can use the built-in admin CLI client and execute the openstack commands from a dedicated pod deployed in the <code>openstack</code> namespace:</p>
-<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>-n<span class="w"> </span>openstack<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>deployment/keystone-client<span class="w"> </span>--<span class="w"> </span>bash
+<h1 id="introspective-instance-monitor-configuration-and-test">Introspective instance monitor configuration and test<a class="headerlink" href="#introspective-instance-monitor-configuration-and-test" title="Permanent link">#</a></h1>
+<p>This section describes how to test the <code>introspective instance monitor</code>.</p>
+<p><strong>1. Enable the introspective instance monitor</strong></p>
+<p>To deploy Masakari and enable the introspective instance monitor refer to
+<a href="../../../../architecture/cloud_services/masakari/">Instance HA documentation</a></p>
+<p><strong>2. Wait for the deployment to complete</strong></p>
+<p>Wait for the <code>OpenStackDeploymentStatus</code> object reaches the <strong>APPLIED</strong> state and all
+applications are <strong>healthy</strong>. Please refer to
+<a href="../../../../architecture/custom-resources/openstackdeploymentstatus/">OpenStackDeploymentStatus Custom Resource</a>
+for more information.</p>
+<p><strong>3. Create RSA keys for the test instance</strong></p>
+<p>Generate an RSA key pair for the test instance you will create in the next step,
+and copy the public key to the <code>keystone-client</code> pod.</p>
+<div class="highlight"><pre><span></span><code>ssh-keygen<span class="w"> </span>-C<span class="w"> </span><span class="s1">&#39;&#39;</span><span class="w"> </span>-N<span class="w"> </span><span class="s1">&#39;&#39;</span><span class="w"> </span>-f<span class="w"> </span>test_key
+<span class="nv">keystone_pod</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>--namespace<span class="w"> </span>openstack<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span>-l<span class="w"> </span><span class="nv">application</span><span class="o">=</span>keystone,component<span class="o">=</span>client<span class="w"> </span>--output<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.items[0].metadata.name}&#39;</span><span class="k">)</span>
+kubectl<span class="w"> </span>cp<span class="w"> </span>test_key.pub<span class="w"> </span>openstack/<span class="si">${</span><span class="nv">keystone_pod</span><span class="si">}</span>:/tmp/
 </code></pre></div>
-<p>To obtain admin credentials run:</p>
-<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>-n<span class="w"> </span>openstack<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-it<span class="w"> </span>deployment/keystone-client<span class="w"> </span>--<span class="w"> </span>bash
-cat<span class="w"> </span>/etc/openstack/clouds.yaml
+<p><strong>4. Access the keystone-client pod</strong></p>
+<p>Enter the <code>keystone-client</code> pod to perform OpenStack operations:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>--namespace<span class="w"> </span>openstack<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>-ti<span class="w"> </span>deployment/keystone-client<span class="w"> </span>--<span class="w"> </span>bash
 </code></pre></div>
-<h2 id="horizon">Horizon<a class="headerlink" href="#horizon" title="Permanent link">#</a></h2>
-<ol>
-<li>Get IP address of ingress service
-<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>-n<span class="w"> </span>openstack<span class="w"> </span>get<span class="w"> </span>svc<span class="w"> </span>ingress<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.status.loadBalancer.ingress[].ip}&#39;</span>
-</code></pre></div></li>
-<li>Update local <code>/etc/hosts</code> file to point public domain to ingress external IP
-<div class="highlight"><pre><span></span><code><span class="m">10</span>.172.1.100<span class="w"> </span>aodh.it.just.works<span class="w"> </span>barbican.it.just.works<span class="w"> </span>cinder.it.just.works<span class="w"> </span>cloudformation.it.just.works<span class="w"> </span>designate.it.just.works<span class="w"> </span>glance.it.just.works<span class="w"> </span>gnocchi.it.just.works<span class="w"> </span>heat.it.just.works<span class="w"> </span>horizon.it.just.works<span class="w"> </span>keystone.it.just.works<span class="w"> </span>metadata.it.just.works<span class="w"> </span>neutron.it.just.works<span class="w"> </span>nova.it.just.works<span class="w"> </span>novncproxy.it.just.works<span class="w"> </span>octavia.it.just.works<span class="w"> </span>placement.it.just.works<span class="w"> </span>spiceproxy.it.just.works
-</code></pre></div></li>
-<li>Stup <code>sshuttle</code> to services external IPs
-<div class="highlight"><pre><span></span><code>sshuttle<span class="w"> </span>-r<span class="w"> </span>ubuntu@172.16.250.153<span class="w"> </span><span class="m">10</span>.172.1.0/24
-</code></pre></div></li>
-<li>Access to Horizon through web browser <a href="https://horizon.it.just.works">https://horizon.it.just.works</a></li>
-</ol>
+<p><strong>5. Configure OpenStack for Masakari service</strong></p>
+<p>Inside the pod, run:</p>
+<p><div class="highlight"><pre><span></span><code><span class="nv">SEGMENT_UUID</span><span class="o">=</span><span class="k">$(</span>openstack<span class="w"> </span>segment<span class="w"> </span>create<span class="w"> </span>allcomputes<span class="w"> </span>auto<span class="w"> </span>compute<span class="w"> </span>-f<span class="w"> </span>value<span class="w"> </span>-c<span class="w"> </span>uuid<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="k">)</span>
+<span class="k">for</span><span class="w"> </span>host<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">$(</span>openstack<span class="w"> </span>hypervisor<span class="w"> </span>list<span class="w"> </span>-f<span class="w"> </span>value<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;Hypervisor Hostname&quot;</span><span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>openstack<span class="w"> </span>segment<span class="w"> </span>host<span class="w"> </span>create<span class="w"> </span><span class="si">${</span><span class="nv">host</span><span class="si">}</span><span class="w"> </span>compute<span class="w"> </span>SSH<span class="w"> </span><span class="si">${</span><span class="nv">SEGMENT_UUID</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="se">\</span>
+<span class="k">done</span>
+openstack<span class="w"> </span>image<span class="w"> </span><span class="nb">set</span><span class="w"> </span>--property<span class="w"> </span><span class="nv">hw_qemu_guest_agent</span><span class="o">=</span>yes<span class="w"> </span>Ubuntu-18.04
+</code></pre></div>
+For more information about the commands executed, please refer to the
+<a href="../masakari-configuration/">user guide</a></p>
+<p><strong>6. Create a test instance</strong></p>
+<p>Still inside the pod, execute:</p>
+<div class="highlight"><pre><span></span><code>openstack<span class="w"> </span>keypair<span class="w"> </span>create<span class="w"> </span>--public-key<span class="w"> </span>/tmp/test_key.pub<span class="w"> </span>test_key
+openstack<span class="w"> </span>network<span class="w"> </span>create<span class="w"> </span>test_net
+openstack<span class="w"> </span>subnet<span class="w"> </span>create<span class="w"> </span>test_subnet<span class="w"> </span>--network<span class="w"> </span>test_net<span class="w"> </span>--subnet-range<span class="w"> </span><span class="m">192</span>.0.2.0/24<span class="w"> </span>--allocation-pool<span class="w"> </span><span class="nv">start</span><span class="o">=</span><span class="m">192</span>.0.2.2,end<span class="o">=</span><span class="m">192</span>.0.2.20
+openstack<span class="w"> </span>router<span class="w"> </span>create<span class="w"> </span>test_router
+openstack<span class="w"> </span>router<span class="w"> </span><span class="nb">set</span><span class="w"> </span>test_router<span class="w"> </span>--external-gateway<span class="w"> </span>public
+openstack<span class="w"> </span>router<span class="w"> </span>add<span class="w"> </span>subnet<span class="w"> </span>test_router<span class="w"> </span>test_subnet
+openstack<span class="w"> </span>security<span class="w"> </span>group<span class="w"> </span>create<span class="w"> </span>test_sg
+openstack<span class="w"> </span>security<span class="w"> </span>group<span class="w"> </span>rule<span class="w"> </span>create<span class="w"> </span>test_sg<span class="w"> </span>--remote-ip<span class="w"> </span><span class="m">0</span>.0.0.0/0
+openstack<span class="w"> </span>floating<span class="w"> </span>ip<span class="w"> </span>create<span class="w"> </span>--floating-ip-address<span class="w"> </span><span class="m">10</span>.11.12.119<span class="w"> </span>public
+openstack<span class="w"> </span>server<span class="w"> </span>create<span class="w"> </span>--image<span class="w"> </span>Ubuntu-18.04<span class="w"> </span>--flavor<span class="w"> </span>m1.small<span class="w"> </span>--key-name<span class="w"> </span>test_key<span class="w"> </span>--network<span class="w"> </span>test_net<span class="w"> </span>--security-group<span class="w"> </span>test_sg<span class="w"> </span>--property<span class="w"> </span><span class="nv">HA_Enabled</span><span class="o">=</span>True<span class="w"> </span>test_server
+openstack<span class="w"> </span>server<span class="w"> </span>add<span class="w"> </span>floating<span class="w"> </span>ip<span class="w"> </span>test_server<span class="w"> </span><span class="m">10</span>.11.12.119
+</code></pre></div>
+<p><strong>7. Connect to the test instance</strong></p>
+<p>Exit the <code>keystone-client</code> pod and connect to the new instance using its floating IP and the RSA private key created in step 3:</p>
+<div class="highlight"><pre><span></span><code>ssh<span class="w"> </span>-l<span class="w"> </span>ubuntu<span class="w"> </span>-i<span class="w"> </span>test_key<span class="w"> </span><span class="m">10</span>.11.12.119
+</code></pre></div>
+<p><strong>8. Install and verify QEMU guest agent</strong></p>
+<p>On the instance, run:</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>apt<span class="w"> </span>update
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>qemu-guest-agent
+systemctl<span class="w"> </span>status<span class="w"> </span>qemu-guest-agent
+</code></pre></div>
+<p><strong>9. Test Masakari functionality</strong></p>
+<p>To simulate a system crash, stop the <code>qemu-guest-agent</code> service on the instance:</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>systemctl<span class="w"> </span>stop<span class="w"> </span>qemu-guest-agent
+</code></pre></div>
+<p>Within approximately <strong>40 seconds</strong>, Masakari should detect the issue and restart the instance.</p>
 
 
 
@@ -1157,7 +1373,7 @@ cat<span class="w"> </span>/etc/openstack/clouds.yaml
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../aio-installation-manual/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Manual install (Advanced)">
+          <a href="../masakari-configuration/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Configure OpenStack with Masakari">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1167,20 +1383,20 @@ cat<span class="w"> </span>/etc/openstack/clouds.yaml
                 Previous
               </span>
               <div class="md-ellipsis">
-                Manual install (Advanced)
+                Configure OpenStack with Masakari
               </div>
             </div>
           </a>
         
         
           
-          <a href="../../developer/" class="md-footer__link md-footer__link--next" aria-label="Next: Developer Guide">
+          <a href="../../../../ops/openstack/troubleshoot/" class="md-footer__link md-footer__link--next" aria-label="Next: Troubleshoot">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Developer Guide
+                Troubleshoot
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -1220,10 +1436,10 @@ cat<span class="w"> </span>/etc/openstack/clouds.yaml
     
     
       
-      <script id="__config" type="application/json">{"base": "../..", "features": ["toc.autohide", "search.suggest", "search.highlight", "navigation.tabs.sticky", "navigation.footer", "navigation.path", "content.code.copy"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"base": "../../../..", "features": ["toc.autohide", "search.suggest", "search.highlight", "navigation.tabs.sticky", "navigation.footer", "navigation.path", "content.code.copy"], "search": "../../../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.92b07e13.min.js"></script>
+      <script src="../../../../assets/javascripts/bundle.92b07e13.min.js"></script>
       
     
   </body>

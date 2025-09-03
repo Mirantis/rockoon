@@ -11,25 +11,25 @@
       
       
       
-        <link rel="prev" href="../configuration/">
+        <link rel="prev" href="../vpn-config/">
       
       
-        <link rel="next" href="../../rockoon-admission/">
+        <link rel="next" href="../../developer/">
       
       
-      <link rel="icon" href="../../../assets/favicon.ico">
+      <link rel="icon" href="../../assets/favicon.ico">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.18">
     
     
       
-        <title>Custom Images - Rockoon Kubernetes OpenStack Operator</title>
+        <title>Local clients configuration - Rockoon Kubernetes OpenStack Operator</title>
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.7e37652d.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.7e37652d.min.css">
       
         
-        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
       
       
 
@@ -48,9 +48,9 @@
       
     
     
-      <link rel="stylesheet" href="../../../stylesheets/extra.css">
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
     
-    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#customize-images" class="md-skip">
+        <a href="#using-kubectl-and-helm-with-rockoon-aio" class="md-skip">
           Skip to content
         </a>
       
@@ -92,9 +92,9 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../.." title="Rockoon Kubernetes OpenStack Operator" class="md-header__button md-logo" aria-label="Rockoon Kubernetes OpenStack Operator" data-md-component="logo">
+    <a href="../.." title="Rockoon Kubernetes OpenStack Operator" class="md-header__button md-logo" aria-label="Rockoon Kubernetes OpenStack Operator" data-md-component="logo">
       
-  <img src="../../../assets/mirantis-logo-inverted-horizontal-one-color.svg" alt="logo">
+  <img src="../../assets/mirantis-logo-inverted-horizontal-one-color.svg" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -111,7 +111,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Custom Images
+              Local clients configuration
             
           </span>
         </div>
@@ -229,9 +229,9 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../.." title="Rockoon Kubernetes OpenStack Operator" class="md-nav__button md-logo" aria-label="Rockoon Kubernetes OpenStack Operator" data-md-component="logo">
+    <a href="../.." title="Rockoon Kubernetes OpenStack Operator" class="md-nav__button md-logo" aria-label="Rockoon Kubernetes OpenStack Operator" data-md-component="logo">
       
-  <img src="../../../assets/mirantis-logo-inverted-horizontal-one-color.svg" alt="logo">
+  <img src="../../assets/mirantis-logo-inverted-horizontal-one-color.svg" alt="logo">
 
     </a>
     Rockoon Kubernetes OpenStack Operator
@@ -258,7 +258,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../.." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -277,20 +277,18 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
@@ -306,7 +304,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             Architecture
@@ -317,20 +315,18 @@
                 
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_1" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_1" >
         
           
           <label class="md-nav__link" for="__nav_2_1" id="__nav_2_1_label" tabindex="0">
@@ -346,7 +342,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_1_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_1_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2_1">
             <span class="md-nav__icon md-icon"></span>
             Rockoon Operator
@@ -360,7 +356,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../overview/" class="md-nav__link">
+      <a href="../../architecture/rockoon/overview/" class="md-nav__link">
         
   
   
@@ -383,7 +379,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/" class="md-nav__link">
+      <a href="../../architecture/rockoon/configuration/" class="md-nav__link">
         
   
   
@@ -403,19 +399,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../architecture/rockoon/custom-images/" class="md-nav__link">
         
   
   
@@ -426,7 +413,6 @@
   
 
       </a>
-      
     </li>
   
 
@@ -447,7 +433,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../rockoon-admission/" class="md-nav__link">
+      <a href="../../architecture/rockoon-admission/" class="md-nav__link">
         
   
   
@@ -508,7 +494,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../custom-resources/openstackdeployment/" class="md-nav__link">
+      <a href="../../architecture/custom-resources/openstackdeployment/" class="md-nav__link">
         
   
   
@@ -531,7 +517,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../custom-resources/openstackdeploymentstatus/" class="md-nav__link">
+      <a href="../../architecture/custom-resources/openstackdeploymentstatus/" class="md-nav__link">
         
   
   
@@ -600,7 +586,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cloud_services/horizon/" class="md-nav__link">
+      <a href="../../architecture/cloud_services/horizon/" class="md-nav__link">
         
   
   
@@ -623,7 +609,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../cloud_services/masakari/" class="md-nav__link">
+      <a href="../../architecture/cloud_services/masakari/" class="md-nav__link">
         
   
   
@@ -658,18 +644,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
@@ -685,7 +673,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             Quick Start
@@ -737,7 +725,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../quick-start/introduction/" class="md-nav__link">
+      <a href="../introduction/" class="md-nav__link">
         
   
   
@@ -798,7 +786,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../quick-start/trymosk-installation-aws/" class="md-nav__link">
+      <a href="../trymosk-installation-aws/" class="md-nav__link">
         
   
   
@@ -829,7 +817,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../quick-start/aio-installation-manual/" class="md-nav__link">
+      <a href="../aio-installation-manual/" class="md-nav__link">
         
   
   
@@ -857,18 +845,20 @@
                 
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" checked>
         
           
           <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="0">
@@ -884,7 +874,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_2">
             <span class="md-nav__icon md-icon"></span>
             Access to AIO environment
@@ -898,7 +888,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../quick-start/vpn-config/" class="md-nav__link">
+      <a href="../vpn-config/" class="md-nav__link">
         
   
   
@@ -918,10 +908,19 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../../quick-start/local-clients/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -932,6 +931,7 @@
   
 
       </a>
+      
     </li>
   
 
@@ -959,7 +959,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../developer/" class="md-nav__link">
+      <a href="../../developer/" class="md-nav__link">
         
   
   
@@ -1019,7 +1019,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../ops/openstack/getting-access/" class="md-nav__link">
+      <a href="../../ops/openstack/getting-access/" class="md-nav__link">
         
   
   
@@ -1042,7 +1042,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../ops/openstack/upgrade/" class="md-nav__link">
+      <a href="../../ops/openstack/upgrade/" class="md-nav__link">
         
   
   
@@ -1065,7 +1065,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../ops/openstack/tempest/" class="md-nav__link">
+      <a href="../../ops/openstack/tempest/" class="md-nav__link">
         
   
   
@@ -1171,7 +1171,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../user-guide/openstack/masakari/masakari-configuration/" class="md-nav__link">
+      <a href="../../user-guide/openstack/masakari/masakari-configuration/" class="md-nav__link">
         
   
   
@@ -1194,7 +1194,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../user-guide/openstack/masakari/introspective-monitor/" class="md-nav__link">
+      <a href="../../user-guide/openstack/masakari/introspective-monitor/" class="md-nav__link">
         
   
   
@@ -1232,7 +1232,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../ops/openstack/troubleshoot/" class="md-nav__link">
+      <a href="../../ops/openstack/troubleshoot/" class="md-nav__link">
         
   
   
@@ -1284,25 +1284,47 @@
   
 
 
-<h1 id="customize-images">Customize images<a class="headerlink" href="#customize-images" title="Permanent link">#</a></h1>
-<p>OpenStack Controller has default built in images that were verified against different
-production configurations. However it may be needed to inclide additional patches
-into openstack code or 3rd party software.</p>
-<p>OpenStack images are built with help of <a href="https://github.com/openstack/loci">Loci</a>.
-Please refer to its documentation to get more detail about build process.</p>
-<p>To inject a custom image create configmap with <code>&lt;openstackdeployment-name&gt;-artifacts</code> name
-in <code>openstack</code> namespace and folling data structure:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
-<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ConfigMap</span>
-<span class="nt">metadata</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">osh-dev-artifacts</span>
-<span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openstack</span>
-<span class="nt">data</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">caracal</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">    </span><span class="no">libvirt: docker-dev-kaas-virtual.mcp.mirantis.com/general/libvirt:6.0.0-focal-20221028120749</span>
-<span class="w">  </span><span class="nt">antelope</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">    </span><span class="no">libvirt: docker-dev-kaas-virtual.mcp.mirantis.com/general/libvirt:6.0.0-focal-20221028120749</span>
+<h1 id="using-kubectl-and-helm-with-rockoon-aio">Using kubectl and helm with Rockoon AIO<a class="headerlink" href="#using-kubectl-and-helm-with-rockoon-aio" title="Permanent link">#</a></h1>
+<p>To configure and manage Rockoon AIO, you need the <strong>kubectl</strong> and <strong>helm</strong> command-line tools.
+These tools are already installed on your Rockoon AIO instance, but you can also install them
+locally on your computer.</p>
+<ol>
+<li>
+<p>Install kubectl and helm locally. Follow the official installation instructions:</p>
+<ul>
+<li><strong>kubectl:</strong> <a href="https://kubernetes.io/docs/tasks/tools/#kubectl">https://kubernetes.io/docs/tasks/tools/#kubectl</a></li>
+<li><strong>helm:</strong> <a href="https://helm.sh/docs/intro/install/">https://helm.sh/docs/intro/install/</a></li>
+</ul>
+</li>
+<li>
+<p>Retrieve the configuration file from the Rockoon AIO instance.<br />
+The kubeconfig file for Rockoon AIO is located on the instance at <em>/root/.kube/config</em>.
+You can retrieve it over SSH. For <strong>Linux/macOS</strong>, run:
+<div class="highlight"><pre><span></span><code>ssh<span class="w"> </span>-l<span class="w"> </span>ubuntu<span class="w"> </span><span class="m">18</span>.218.29.107<span class="w"> </span>sudo<span class="w"> </span>cat<span class="w"> </span>/root/.kube/config<span class="w"> </span>&gt;<span class="w"> </span>~/aio_kube_config.yaml
 </code></pre></div>
+In this example:</p>
+<ul>
+<li><code>18.218.29.107</code> is the public IPv4 address of your Rockoon AIO instance.</li>
+<li>The file is saved locally as <code>aio_kube_config.yaml</code> in your home directory.</li>
+</ul>
+</li>
+<li>
+<p>Use kubectl and helm with the configuration file<br />
+When connected to the Rockoon AIO instance via sshuttle or OpenVPN, you can run commands like:
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>--kubeconfig<span class="w"> </span>~/aio_kube_config.yaml<span class="w"> </span>...
+helm<span class="w"> </span>--kubeconfig<span class="w"> </span>~/aio_kube_config.yaml<span class="w"> </span>...
+</code></pre></div></p>
+<blockquote>
+<p><strong>Note:</strong> If you want to avoid specifying <code>--kubeconfig</code> each time, move the configuration file to <em>~/.kube/config</em>.<br />
+<strong>Warning</strong>: This will overwrite existing Kubernetes configuration file at that location.</p>
+</blockquote>
+</li>
+<li>
+<p>Handling self-signed SSL certificates for TryMOSK installation<br />
+TryMOSK uses a self-signed SSL certificate for its proxy-server. If running <code>helm</code> commands
+from your local computer, you must add <code>--insecure-skip-tls-verify</code> flag to skip TLS verification.</p>
+</li>
+</ol>
 
 
 
@@ -1332,7 +1354,7 @@ in <code>openstack</code> namespace and folling data structure:</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../configuration/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Configuration">
+          <a href="../vpn-config/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Configuring VPN">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1342,20 +1364,20 @@ in <code>openstack</code> namespace and folling data structure:</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Configuration
+                Configuring VPN
               </div>
             </div>
           </a>
         
         
           
-          <a href="../../rockoon-admission/" class="md-footer__link md-footer__link--next" aria-label="Next: Rockoon Admission">
+          <a href="../../developer/" class="md-footer__link md-footer__link--next" aria-label="Next: Developer Guide">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Rockoon Admission
+                Developer Guide
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -1395,10 +1417,10 @@ in <code>openstack</code> namespace and folling data structure:</p>
     
     
       
-      <script id="__config" type="application/json">{"base": "../../..", "features": ["toc.autohide", "search.suggest", "search.highlight", "navigation.tabs.sticky", "navigation.footer", "navigation.path", "content.code.copy"], "search": "../../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"base": "../..", "features": ["toc.autohide", "search.suggest", "search.highlight", "navigation.tabs.sticky", "navigation.footer", "navigation.path", "content.code.copy"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.92b07e13.min.js"></script>
+      <script src="../../assets/javascripts/bundle.92b07e13.min.js"></script>
       
     
   </body>
