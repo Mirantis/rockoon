@@ -119,7 +119,7 @@ spec:
           cache_ttl: 20
           negquery_cache_ttl: 60
           query_cache_ttl: 20
-          receiver-threads: 2
+          receiver-threads: 4
 {%- if spec.features.network_policies.enabled %}
       network_policy:
 {% include 'base/network_policies/dns.yaml' %}

@@ -20,7 +20,7 @@ spec:
           cache_ttl: 20
           negquery_cache_ttl: 60
           query_cache_ttl: 20
-          receiver-threads: 2
+          receiver-threads: 4
         designate:
           keystone_authtoken:
             memcache_secret_key: zdLlg6VAsGH6E7tX
