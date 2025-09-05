@@ -27,12 +27,12 @@ OVN_RUNDIR=/run/openvswitch/
 HOST=$(hostname -s)
 
 OVNSB_DB_PROTO={{ tuple "ovn_db" "internal" "sb" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" }}
-OVNSB_DB_HOST={{ tuple "ovn_db" "discovery" . | include "helm-toolkit.endpoints.endpoint_host_lookup" }}
+OVNSB_DB_HOST=$(hostname -s)
 OVNSB_DB_PORT={{ tuple "ovn_db" "internal" "sb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | quote }}
 OVNSB_DB=${OVNSB_DB_PROTO}:${OVNSB_DB_HOST}:${OVNSB_DB_PORT}
 
 OVNNB_DB_PROTO={{ tuple "ovn_db" "internal" "nb" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" }}
-OVNNB_DB_HOST={{ tuple "ovn_db" "discovery" . | include "helm-toolkit.endpoints.endpoint_host_lookup" }}
+OVNNB_DB_HOST=$(hostname -s)
 OVNNB_DB_PORT={{ tuple "ovn_db" "internal" "nb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | quote }}
 OVNNB_DB=${OVNNB_DB_PROTO}:${OVNNB_DB_HOST}:${OVNNB_DB_PORT}
 
