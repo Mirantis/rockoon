@@ -42,8 +42,36 @@ exec:
 
 {{- $serviceAccountName := "openvswitch-ovn-db" }}
 {{- $envAll := . }}
-
 {{ tuple $envAll "ovn_db" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: openvswitch-ovn-db-role
+  namespace: {{ $envAll.Release.Namespace | quote }}
+rules:
+  - apiGroups: [""]
+    verbs:
+      - create
+      - get
+      - patch
+      - update
+    resources:
+      - configmaps
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openvswitch-ovn-db-role
+  namespace: {{ $envAll.Release.Namespace | quote }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: openvswitch-ovn-db-role
+subjects:
+  - kind: ServiceAccount
+    name: {{ $serviceAccountName }}
+    namespace: {{ $envAll.Release.Namespace | quote }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -104,7 +132,7 @@ spec:
 {{ dict "envAll" $envAll "component" "ovn" "container" "nb" "type" "liveness" "probeTemplate" (include "ovn_db.nb.livenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
 {{ dict "envAll" $envAll "component" "ovn" "container" "nb" "type" "readiness" "probeTemplate" (include "ovn_db.readinessProbeTemplate" "nb" | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
           command:
-            - /tmp/ovn-db-generic.sh
+            - /tmp/ovn-db-generic.py
             - start
           env:
             - name: DB_TYPE
@@ -115,18 +143,22 @@ spec:
               value: {{ tuple "ovn_db" "raft" "nb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | quote }}
             - name: RAFT_ELECTION_TIMER
               value: {{ $envAll.Values.conf.ovn_nb.election_timer | quote }}
+            - name: CLUSTER_SIZE
+              value: {{ .Values.pod.replicas.ovn_db | quote }}
+            - name: NAMESPACE
+              value: {{ .Release.Namespace | quote }}
           lifecycle:
             preStop:
               exec:
                 command:
-                  - /tmp/ovn-db-generic.sh
+                  - /tmp/ovn-db-generic.py
                   - stop
           volumeMounts:
             - name: pod-tmp
               mountPath: /tmp
             - name: openvswitch-bin
-              mountPath: /tmp/ovn-db-generic.sh
-              subPath: ovn-db-generic.sh
+              mountPath: /tmp/ovn-db-generic.py
+              subPath: ovn-db-generic.py
               readOnly: true
             - name: openvswitch-bin
               mountPath: /tmp/ovn-db-probe.sh
@@ -153,7 +185,7 @@ spec:
 {{ dict "envAll" $envAll "component" "ovn" "container" "sb" "type" "liveness" "probeTemplate" (include "ovn_db.sb.livenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
 {{ dict "envAll" $envAll "component" "ovn" "container" "sb" "type" "readiness" "probeTemplate" (include "ovn_db.readinessProbeTemplate" "sb" | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
           command:
-            - /tmp/ovn-db-generic.sh
+            - /tmp/ovn-db-generic.py
             - start
           env:
             - name: DB_TYPE
@@ -164,18 +196,22 @@ spec:
               value: {{ tuple "ovn_db" "raft" "sb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | quote }}
             - name: RAFT_ELECTION_TIMER
               value: {{ $envAll.Values.conf.ovn_sb.election_timer | quote }}
+            - name: CLUSTER_SIZE
+              value: {{ .Values.pod.replicas.ovn_db | quote }}
+            - name: NAMESPACE
+              value: {{ .Release.Namespace | quote }}
           lifecycle:
             preStop:
               exec:
                 command:
-                  - /tmp/ovn-db-generic.sh
+                  - /tmp/ovn-db-generic.py
                   - stop
           volumeMounts:
             - name: pod-tmp
               mountPath: /tmp
             - name: openvswitch-bin
-              mountPath: /tmp/ovn-db-generic.sh
-              subPath: ovn-db-generic.sh
+              mountPath: /tmp/ovn-db-generic.py
+              subPath: ovn-db-generic.py
               readOnly: true
             - name: run
               mountPath: /run/ovn
