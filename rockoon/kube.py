@@ -1214,14 +1214,20 @@ def find(klass, name, namespace=None, silent=False, cluster=False):
             raise
 
 
-def artifacts_configmap(osdpl_name):
-    cm_name = f"{osdpl_name}-artifacts"
+def get_configmap(
+    name, namespace=settings.OSCTL_OS_DEPLOYMENT_NAMESPACE, silent=True
+):
     return find(
         pykube.ConfigMap,
-        cm_name,
-        namespace=settings.OSCTL_OS_DEPLOYMENT_NAMESPACE,
-        silent=True,
+        name,
+        namespace=namespace,
+        silent=silent,
     )
+
+
+def artifacts_configmap(osdpl_name):
+    cm_name = f"{osdpl_name}-artifacts"
+    return get_configmap(cm_name)
 
 
 def resource_list(klass, selector, namespace=None):

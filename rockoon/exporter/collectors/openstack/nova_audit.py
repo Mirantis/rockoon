@@ -12,11 +12,12 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import re
 import json
+import time
 from prometheus_client.core import GaugeMetricFamily
 
 from rockoon import kube, utils
+from rockoon.exporter import settings
 from rockoon.exporter.collectors.openstack import base
 
 LOG = utils.get_logger(__name__)
@@ -28,48 +29,14 @@ class OsdplNovaAuditMetricCollector(base.OpenStackBaseMetricCollector):
     _os_service_types = ["compute", "placement"]
 
     def __init__(self):
-        self.cache = {}
         super().__init__()
-
-    @utils.timeit
-    def update_cache(self):
-        cronjob = self.get_audit_cronjob()
-        if cronjob.obj["spec"]["suspend"]:
-            raise ValueError("Audit cronjob is suspended, cannot get report")
-        last_job_id = self.cache.get("nova-placement-audit", {}).get(
-            "job_id", ""
-        )
-        job = cronjob.get_latest_job(status="completed")
-        job_id = f"{job.name}-{job.start_time}"
-        # This method is running after can_collect_data, so there should
-        # be existing cronjobs with some completed jobs
-        if last_job_id == job_id:
-            return
-        LOG.info("Updating Nova Placement Audit cache")
-        report = self.get_audit_report(job)
-        self.cache["nova-placement-audit"] = {
-            "report": report,
-            "job_id": job_id,
-        }
-
-    def get_audit_cronjob(self, silent=False):
-        return kube.find(
-            kube.CronJob,
-            "nova-placement-audit",
-            namespace=self.osdpl.namespace,
-            silent=silent,
-        )
 
     @property
     def can_collect_data(self):
         if not super().can_collect_data:
             return False
-        cronjob = self.get_audit_cronjob(silent=True)
-        if not cronjob:
-            LOG.warning("No audit cronjob found, cannot collect")
-            return False
-        if not cronjob.get_latest_job(status="completed"):
-            LOG.warning("No completed audit cronjob found, cannot collect")
+        if not kube.get_configmap("nova-placement-audit-report"):
+            LOG.warning("No audit configmap found, cannot collect")
             return False
         return True
 
@@ -94,25 +61,19 @@ class OsdplNovaAuditMetricCollector(base.OpenStackBaseMetricCollector):
         return res
 
     @utils.timeit
-    def get_audit_report(self, job):
-        if not job.ready:
-            raise ValueError(f"Job {job} is not ready, cannot get report")
-        job_pods = job.pods
-        pod_names = []
-        for pod in job_pods:
-            pod_names.append(pod.name)
-            if pod.obj["status"].get("phase") == "Succeeded":
-                logs = pod.logs(container="placement-audit-report")
-                break
-        else:
+    def get_audit_report(self):
+        cm = kube.get_configmap("nova-placement-audit-report", silent=False)
+        ts = utils.k8s_timestamp_to_unix(cm.obj["data"]["report_ts"])
+        report_age = (time.time() - ts) / 3600
+        LOG.debug(
+            f"Report timestamp is {ts}, report age is {report_age} hours"
+        )
+        if report_age > settings.OSCTL_EXPORTER_NOVA_AUDIT_TTL:
             raise ValueError(
-                f"No 'Succeeded' pods for {job} found among {pod_names}"
+                f"Report age {report_age} higher than expected {settings.OSCTL_EXPORTER_NOVA_AUDIT_TTL} hours"
             )
-        report_match = re.search(r"(\{.*\})", logs)
-        if not report_match:
-            LOG.debug(f"Report not found in logs {logs}")
-            raise ValueError("Cannot get audit report")
-        return json.loads(report_match[1])
+        report = json.loads(cm.obj["data"]["report"])
+        return report
 
     @utils.timeit
     def update_orphaned_allocations_samples(self):
@@ -121,7 +82,7 @@ class OsdplNovaAuditMetricCollector(base.OpenStackBaseMetricCollector):
         rp_orph_resources_samples = []
         orphaned_allocations_total = 0
 
-        report = self.cache["nova-placement-audit"]["report"]
+        report = self.get_audit_report()
         detected = report["orphaned_allocations"]["detected"]
         for rp_uuid, allocations in detected.items():
             rp_data.setdefault(rp_uuid, {"total": 0, "total_resources": {}})
@@ -156,5 +117,4 @@ class OsdplNovaAuditMetricCollector(base.OpenStackBaseMetricCollector):
 
     @utils.timeit
     def update_samples(self):
-        self.update_cache()
         self.update_orphaned_allocations_samples()
