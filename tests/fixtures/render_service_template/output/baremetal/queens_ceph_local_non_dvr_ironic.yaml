@@ -12,14 +12,14 @@ spec:
         ironic:
           DEFAULT:
             enabled_bios_interfaces: fake,no-bios
-            enabled_boot_interfaces: pxe,fake
+            enabled_boot_interfaces: pxe,fake,redfish-virtual-media,redfish-https
             enabled_console_interfaces: fake,no-console,ipmitool-socat
             enabled_deploy_interfaces: fake,direct
-            enabled_hardware_types: ipmi,fake-hardware
-            enabled_inspect_interfaces: fake,no-inspect
-            enabled_management_interfaces: fake,ipmitool
+            enabled_hardware_types: ipmi,fake-hardware,redfish
+            enabled_inspect_interfaces: fake,no-inspect,redfish
+            enabled_management_interfaces: fake,ipmitool,redfish
             enabled_network_interfaces: flat,neutron,noop
-            enabled_power_interfaces: fake,ipmitool
+            enabled_power_interfaces: fake,ipmitool,redfish
             enabled_raid_interfaces: fake,agent,no-raid
             enabled_rescue_interfaces: fake,no-rescue
             enabled_storage_interfaces: fake,cinder,noop
@@ -54,6 +54,8 @@ spec:
           pxe:
             ipxe_timeout: 120
             pxe_append_params: nofb nomodeset vga=normal ipa-insecure=1 ipa-debug=1
+          redfish:
+            kernel_append_params: nofb ipa-insecure=1 ipa-debug=1
           service_catalog:
             valid_interfaces: public,internal
         logging:

@@ -12,7 +12,7 @@
     {%- do notification_topics.append(topic) %}
   {%- endfor %}
 {%- endif  %}
-{%- set enabled_boot_interfaces = ['pxe', 'fake'] %}
+{%- set enabled_boot_interfaces = ['pxe', 'fake', 'redfish-virtual-media', 'redfish-https'] %}
 {%- set default_binary_base_url = spec.artifacts.binary_base_url | substitute_local_proxy_hostname("${NODE_IP}") %}
 
 {%- if OSVer[spec.openstack_version] >= OSVer.stein %}
@@ -26,7 +26,7 @@
 {%- do enabled_boot_interfaces.insert(0, 'ipxe') %}
 {%- endif %}
 {%- set network = spec.features.ironic.networks.baremetal %}
-{%- set enabled_management_interfaces = ['fake', 'ipmitool'] %}
+{%- set enabled_management_interfaces = ['fake', 'ipmitool', 'redfish'] %}
 {%- if OSVer[spec.openstack_version] >= OSVer.rocky %}
 {%- do enabled_management_interfaces.append('noop') %}
 {%- endif %}
@@ -160,10 +160,10 @@ spec:
           02-custom.yaml: {{ spec.get("features", {}).get("policies", {}).get("ironic", {}) }}
         ironic:
           DEFAULT:
-            enabled_hardware_types: ipmi,fake-hardware
+            enabled_hardware_types: ipmi,fake-hardware,redfish
             enabled_boot_interfaces: {{ enabled_boot_interfaces|join(',') }}
             enabled_management_interfaces: {{ enabled_management_interfaces|join(',') }}
-            enabled_power_interfaces: fake,ipmitool
+            enabled_power_interfaces: fake,ipmitool,redfish
             enabled_network_interfaces: flat,neutron,noop
             enabled_deploy_interfaces: fake,direct
             # NOTE(vsaienko): the cinder + ceph can't advertise ISCSI targets,
@@ -171,7 +171,7 @@ spec:
             enabled_storage_interfaces: fake,cinder,noop
             enabled_bios_interfaces: fake,no-bios
             enabled_console_interfaces: fake,no-console,ipmitool-socat
-            enabled_inspect_interfaces: fake,no-inspect
+            enabled_inspect_interfaces: fake,no-inspect,redfish
             enabled_raid_interfaces: fake,agent,no-raid
             enabled_rescue_interfaces: fake,no-rescue
             enabled_vendor_interfaces: fake,ipmitool,no-vendor
@@ -194,6 +194,8 @@ spec:
           pxe:
             pxe_append_params: nofb nomodeset vga=normal ipa-insecure=1 ipa-debug=1
             ipxe_timeout: 120
+          redfish:
+            kernel_append_params: nofb ipa-insecure=1 ipa-debug=1
           agent:
             image_download_source: http
           deploy:
