@@ -312,6 +312,7 @@ spec:
           ovn:
             dns_servers: 10.172.1.100
             enable_distributed_floating_ip: false
+            ovn_l3_scheduler: "noop"
           service_providers:
             service_provider:
               type: multistring

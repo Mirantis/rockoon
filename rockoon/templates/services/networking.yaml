@@ -872,9 +872,7 @@ spec:
             {%- if spec.get('features', {}).get('neutron', {}).get('dns_servers', []) %}
             dns_servers: {{ spec.features.neutron.dns_servers |join(',') }}
             {%- endif %}
-            {%- if OSVer[spec.openstack_version] >= OSVer.caracal and baremetal_enabled %}
-            # NOTE(vsaienko): can't enable everywhere due unless 25.2 is out PRODX-47697
-            # But without this OVN and Ironic does not work.
+            {%- if OSVer[spec.openstack_version] >= OSVer.caracal %}
             ovn_l3_scheduler: "noop"
             {%- endif %}
           {%- endif %}
