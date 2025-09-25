@@ -131,6 +131,19 @@ spec:
                 - rockoon:managed-image
                 - rockoon:baremetal-image-kernel
               checksum: md5summ
+            ironic-esp:
+              checksum: md5sum
+              container_format: bare
+              image_type: 'raw'
+              name: 'ironic-esp'
+              private: true
+              signature:
+                enabled: true
+                hash_method: 'SHA-256'
+              source_url: 'ironic-esp'
+              tags:
+                - rockoon:managed-image
+                - rockoon:baremetal-image-esp
       ceph_client:
         configmap: rook-ceph-config
         user_secret_name: glance-rbd-keyring
