@@ -25,6 +25,8 @@ import ssl
 import configparser
 import socket
 import struct
+import threading
+import pykube
 from enum import Enum, auto
 
 from concurrent.futures import ThreadPoolExecutor, ALL_COMPLETED, wait
@@ -59,8 +61,13 @@ LB_FAILOVER_AMPHORA_AGENT_PORT = int(os.environ.get("LB_FAILOVER_AMPHORA_AGENT_P
 
 LB_FAILOVER_RETRY_DELAY = int(os.environ.get("LB_FAILOVER_RETRY_DELAY", 5))
 LB_FAILOVER_RETRY_ATTEMPTS = int(os.environ.get("LB_FAILOVER_RETRY_ATTEMPTS", 7))
-LB_FAILOVER_RETRY_BACKOFF = int(os.environ.get("LB_FAILOVER_RETRY_BACKOFF", 10))
+LB_FAILOVER_RETRY_BACKOFF = int(os.environ.get("LB_FAILOVER_RETRY_BACKOFF", 3))
+LB_FAILOVER_MAX_FAILED_ALLOWED = int(os.environ.get("LB_FAILOVER_MAX_FAILED_ALLOWED", 3))
 
+FAILED_LB_CONFIGMAP = "octavia-loadbalancers-failover-state"
+FAILED_LB_CM_NAMESPACE = "openstack"
+FAILED_LB_CM_KEY = "failed_loadbalancers"
+FAILED_LB_MONITOR_INTERVAL = int(os.environ.get("FAILED_LB_MONITOR_INTERVAL", 30))
 
 class SUPPORTED_FAILOVER_LB_CASES(Enum):
 
@@ -120,13 +127,114 @@ class AmphoraLivenessStatus(Enum):
     ALIVE = auto()
     UNREACHABLE = auto()
     CERT_EXPIRED = auto()
+    UNKNOWN = auto()
 
 
 class LBFailoverStatus(Enum):
     SUCCESS = auto()  # When failover succeded
     FAILED = auto()  # When failover failed
+    RECOVERY_FAILED = auto()  # When lb was in ERROR status and failed to reach ACTIVE after failover
     SKIPPED = auto()  # When we skip failover
     CANCELLED = auto()  # When lb dissapear during failover
+
+
+def k8s_login():
+    config = pykube.KubeConfig.from_env()
+    client = pykube.HTTPClient(config, timeout=30)
+    LOG.debug(f"Created k8s api client from context {config.current_context}")
+    return client
+
+
+class StateCM:
+
+    def __init__(self, k8s_api):
+        self.lock = threading.Lock()
+        self.cm_name = FAILED_LB_CONFIGMAP
+        self.namespace = FAILED_LB_CM_NAMESPACE
+        self.api = k8s_api
+        self.k8s_cm = self.ensure()
+
+    @retry(Exception, delay=1, tries=7, backoff=2, logger=LOG)
+    def ensure(self):
+        try:
+            return (
+                pykube.ConfigMap.objects(self.api)
+                .filter(namespace=self.namespace)
+                .get(name=self.cm_name)
+            )
+        except pykube.exceptions.ObjectDoesNotExist:
+            LOG.info("ConfigMap %s not found, creating new one.", self.cm_name)
+            self._create_configmap({})
+            return self._get_configmap()
+
+    @retry(Exception, delay=1, tries=7, backoff=2, logger=LOG)
+    def _get_configmap(self):
+        return (
+            pykube.ConfigMap.objects(self.api)
+            .filter(namespace=self.namespace)
+            .get(name=self.cm_name)
+        )
+
+    @retry(Exception, delay=1, tries=7, backoff=2, logger=LOG)
+    def _create_configmap(self, data):
+        obj = {
+            "kind": "ConfigMap",
+            "apiVersion": "v1",
+            "data": data,
+            "metadata": {
+                "name": self.cm_name,
+                "namespace": self.namespace,
+            },
+        }
+        pykube.ConfigMap(self.api, obj).create()
+
+    @retry(Exception, delay=5, tries=7, backoff=2, logger=LOG)
+    def _update_configmap(self, data):
+        LOG.debug(f"Patching configmap {self.k8s_cm.name}")
+        self.k8s_cm.reload()
+        self.k8s_cm.patch({"data": data})
+
+    def get_failed_lbs(self):
+        with self.lock:
+            self.k8s_cm.reload()
+            data = self.k8s_cm.obj.get("data", {})
+            failed_lbs_str = data.get(FAILED_LB_CM_KEY, "[]")
+            return yaml.safe_load(failed_lbs_str) or []
+
+    def add_failed_lb(self, lb_id):
+        with self.lock:
+            self.k8s_cm.reload()
+            data = self.k8s_cm.obj.get("data", {})
+            lbs = yaml.safe_load(data.get(FAILED_LB_CM_KEY, "[]")) or []
+            if lb_id not in lbs:
+                lbs.append(lb_id)
+                data[FAILED_LB_CM_KEY] = yaml.dump(lbs)
+                self._update_configmap(data)
+                LOG.info("Added failed load balancer %s to ConfigMap", lb_id)
+            else:
+                LOG.info("ConfigMap already contains load balancer %s", lb_id)
+
+    def remove_failed_lb(self, lb_id):
+        with self.lock:
+            self.k8s_cm.reload()
+            data = self.k8s_cm.obj.get("data", {})
+            lbs = yaml.safe_load(data.get(FAILED_LB_CM_KEY, "[]")) or []
+            if lb_id in lbs:
+                lbs.remove(lb_id)
+                data[FAILED_LB_CM_KEY] = yaml.dump(lbs)
+                self._update_configmap(data)
+                LOG.info("Removed load balancer %s from failed list in ConfigMap", lb_id)
+
+    def can_failover(self):
+        cm_failed_lbs = self.get_failed_lbs()
+        if len(cm_failed_lbs) > LB_FAILOVER_MAX_FAILED_ALLOWED:
+            LOG.warning(
+                "Critical failed load balancers threshold: %s exceeded, "
+                "waiting for manual recover failed load balancers",
+                LB_FAILOVER_MAX_FAILED_ALLOWED
+            )
+            return False
+        return True
 
 
 def handle_retry_exception(e):
@@ -197,7 +305,7 @@ def wait_for_lb_provisioning_status(
     :param timeout: timeout in seconds to wait for LB active
 
     :returns: when reached target provision state
-    :raises RsourceTimeout: when timed out
+    :raises ResourceTimeout: when timed out
     :raises RuntimeError: when loadbalancer switched to ERROR state.
     """
 
@@ -216,7 +324,8 @@ def wait_for_lb_provisioning_status(
             )
         time.sleep(interval)
     raise ResourceTimeout(
-        f"Timeout waiting for load balancer {lb_id} status reach {expected_status} in {timeout}. Last status was {lb_status}"
+        f"Timeout waiting for load balancer {lb_id} status reach "
+        f"{expected_status} in {timeout}. Last status was {lb_status}"
     )
 
 
@@ -466,12 +575,17 @@ def handle_lb_failover(lb_id):
 
     :returns: One of LBFailoverStatus states.
     """
-    # TODO(dbiletskyi): consider handling the case where the load balancer starts failing
-    # after failover. Might need to recheck LB state and stop the job to prevent disrupting
-    # all load balancers in the environment.
+
     oc = openstack.connect()
+    k8s_api = k8s_login()
+    state_cm = StateCM(k8s_api)
+
+    while not state_cm.can_failover():
+        time.sleep(FAILED_LB_MONITOR_INTERVAL)
+
     try:
         lb = get_loadbalancer(lb_id, oc)
+        original_status = lb.provisioning_status
         LOG.info("Checking load balancer: %s", lb_id)
         if is_failover_needed(oc, lb):
             do_lb_failover(oc, lb_id)
@@ -480,8 +594,22 @@ def handle_lb_failover(lb_id):
         LOG.error("Loadbalancer %s was removed while handled it.", lb_id)
         return LBFailoverStatus.CANCELLED
     except Exception as e:
-        LOG.error("Failed to failover load balancer: %s. Error: %s", lb_id, e)
-        return LBFailoverStatus.FAILED
+        if original_status == "ACTIVE":
+            LOG.error(
+                "Load balancer was in ACTIVE state but went to ERROR after failover. "
+                "Please check the following load balancer %s. "
+                "Error: %s",
+                lb_id,
+                e,
+            )
+            state_cm.add_failed_lb(lb_id)
+            return LBFailoverStatus.FAILED
+        else:
+            LOG.warning(
+                "Failover failed for load balancer %s that was in %s status. "
+                "Error: %s", lb_id, original_status, e
+            )
+            return LBFailoverStatus.RECOVERY_FAILED
     return LBFailoverStatus.SKIPPED
 
 
@@ -499,6 +627,43 @@ def validate_failover_lb_cases(cases):
     )
 
 
+def monitor_cm_failed_lb():
+    """Background thread function to monitor failed load balancers in ConfigMap.
+
+    """
+    oc = openstack.connect()
+    k8s_api = k8s_login()
+    state_cm = StateCM(k8s_api)
+
+    while True:
+        failed_lbs = state_cm.get_failed_lbs()
+        if failed_lbs:
+            LOG.info("Found failed load balancers in ConfigMap: %s", failed_lbs)
+            for lb_id in failed_lbs:
+                try:
+                    lb = get_loadbalancer(lb_id, oc)
+                    lb_status = lb.provisioning_status.lower()
+                    if lb_status == "active":
+                        LOG.info(
+                            "Load balancer %s is ACTIVE, removing from configmap failed list.",
+                            lb_id
+                        )
+                        state_cm.remove_failed_lb(lb_id)
+                    else:
+                        LOG.warning(
+                            "Load balancer %s is still in %s provisioning status. Manual intervention required.",
+                            lb_id,
+                            lb.provisioning_status.upper()
+                        )
+                except ResourceNotFound:
+                    LOG.info("Load balancer %s deleted, removing from configmap failed list.", lb_id)
+                    state_cm.remove_failed_lb(lb_id)
+                except Exception as e:
+                    LOG.error("Error checking load balancer %s: %s", lb_id, e)
+
+        time.sleep(FAILED_LB_MONITOR_INTERVAL)
+
+
 def main():
 
     # validate if input parameters are okay.
@@ -510,6 +675,15 @@ def main():
         sys.exit(1)
 
     oc = openstack.connect()
+
+    # Initialize ConfigMap for failed load balancers
+    k8s_api = k8s_login()
+    StateCM(k8s_api)
+
+    # Start background monitoring thread
+    monitor_thread = threading.Thread(target=monitor_cm_failed_lb, daemon=True)
+    monitor_thread.start()
+
     statistics = {k: [] for k in list(LBFailoverStatus.__members__)}
     lbs = get_loadbalancers(oc)
 
@@ -539,12 +713,6 @@ def main():
 
     LOG.debug("Detailed statistics:\n%s", yaml.dump(statistics))
     LOG.info(stats_msg)
-
-    failed_lbs = statistics[LBFailoverStatus.FAILED.name]
-    if failed_lbs:
-        LOG.error("Failover failed for load balancers: %s", failed_lbs)
-        sys.exit(1)
-
 
 if __name__ == "__main__":
     main()
