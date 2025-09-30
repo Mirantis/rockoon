@@ -197,11 +197,14 @@ def state_reporting():
     st = State(HOSTNAME, CLUSTER_SIZE)
     while True:
         LOG.info("Running state tick.")
-        if is_db_present(DB_TYPE):
-            st.host_state = st.INITIALIZED
-        else:
-            st.host_state = st.EMPTY
-        st.tick()
+        try:
+            if is_db_present(DB_TYPE):
+                st.host_state = st.INITIALIZED
+            else:
+                st.host_state = st.EMPTY
+            st.tick()
+        except Exception as e:
+            LOG.error(f"Error in state tick: {e}")
         time.sleep(STATE_REFRESH_INTERVAL)
 
 
