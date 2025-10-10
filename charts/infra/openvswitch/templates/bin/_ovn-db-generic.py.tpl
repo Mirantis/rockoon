@@ -188,6 +188,15 @@ class State:
         LOG.info("All members reporting its states withing timeout.")
         raise TimeoutError(f"Failed waiting all replicas reporting.")
 
+    def wait_initialized(self, host):
+        LOG.info(f"Waiting {host} to initialize")
+        while True:
+            host_state = self.get_host_state(host)
+            LOG.info(f"{host} state is {host_state}")
+            if host_state == self.INITIALIZED:
+                break
+            time.sleep(STATE_REFRESH_INTERVAL)
+        LOG.info(f"{host} is initialized")
 
 heal_needed = threading.Event()
 
@@ -378,6 +387,8 @@ def start():
         if st.all_empty:
             LOG.info("All members are empty, this is initial bootstrap.")
             bootstrap = True
+            if HOSTNAME != "openvswitch-ovn-db-0":
+                st.wait_initialized("openvswitch-ovn-db-0")
 
     UPGRADE_ARGS = []
 
