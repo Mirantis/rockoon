@@ -135,19 +135,19 @@ class State:
     def get_host_state(self, host):
         self.cm.refresh()
         obj = self.cm.to_dict()
-        return obj.get("data", {}).get(f"{host}_state", self.UNKNOWN)
+        return obj.get("data", {}).get(f"{DB_TYPE}_{host}_state", self.UNKNOWN)
 
     def set_host_state(self, host, state):
-        self.cm.patch({"data": {f"{host}_state": state}})
+        self.cm.patch({"data": {f"{DB_TYPE}_{host}_state": state}})
 
     def tick(self):
         ts = datetime.utcnow().isoformat()
-        self.cm.patch({"data": {f"{self.host}_updated_at": ts}})
+        self.cm.patch({"data": {f"{DB_TYPE}_{self.host}_updated_at": ts}})
 
     def get_host_tick(self, host):
         self.cm.refresh()
         obj = self.cm.to_dict()
-        res = obj.get("data", {}).get(f"{host}_updated_at")
+        res = obj.get("data", {}).get(f"{DB_TYPE}_{host}_updated_at")
         if not res:
             return None
         return datetime.fromisoformat(res)
