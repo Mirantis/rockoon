@@ -105,6 +105,8 @@ images:
   ironic_pxe_init: ironic-pxe-init:latest
   ironic_retrieve_networks: ironic-retrieve-networks:latest
   ironic_retrieve_swift_config: ironic-retrieve-swift-config:latest
+  ironic_esp: ironic-esp
+  ironic_esp_checksum: md5sum
   keystone_api: keystone-api:latest
   keystone_client: keystone-client:latest
   keystone_credential_cleanup: keystone-credential-cleanup:latest

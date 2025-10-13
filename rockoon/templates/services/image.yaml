@@ -250,6 +250,21 @@ spec:
                 enabled: true
                 hash_method: SHA-256
   {%- endif %}
+  {%- if "ironic_esp" in images %}
+            ironic-esp:
+              container_format: bare
+              image_type: raw
+              name: {{ images["ironic_esp"].split('/')[-1] }}
+              private: true
+              tags: ['rockoon:managed-image','rockoon:baremetal-image-esp']
+              source_url: {{ images["ironic_esp"] }}
+              checksum: {{ images["ironic_esp_checksum"] }}
+    {%- if signature.enabled %}
+              signature:
+                enabled: true
+                hash_method: SHA-256
+    {%- endif %}
+  {%- endif %}
 {%- endif %}
       conf:
         policy.d:
