@@ -122,7 +122,8 @@ class OsdplHorizonMetricCollector(base.OpenStackBaseMetricCollector):
         public_domain_name = self.osdpl.mspec["public_domain_name"]
         return f"https://horizon.{public_domain_name}/"
 
-    def check_login_page(self, opener, dashboard_url, timeout=10):
+    # TODO(dbiletskyi): Decrease timeout after PRODX-55176 is fixed
+    def check_login_page(self, opener, dashboard_url, timeout=30):
         start_time = perf_counter()
         response = opener.open(dashboard_url, timeout=timeout).read()
         if "id_username" not in response.decode("utf-8"):
@@ -130,9 +131,9 @@ class OsdplHorizonMetricCollector(base.OpenStackBaseMetricCollector):
         end_time = perf_counter()
         return end_time - start_time
 
-    def check_user_login(self, opener, dashboard_url, credentials, timeout=10):
+    def check_user_login(self, opener, dashboard_url, credentials, timeout=30):
         start_time = perf_counter()
-        response = opener.open(dashboard_url).read()
+        response = opener.open(dashboard_url, timeout=timeout).read()
 
         # Grab the CSRF token and default region
         parser = HorizonHTMLParser()
