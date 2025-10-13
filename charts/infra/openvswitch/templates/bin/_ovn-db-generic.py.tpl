@@ -198,6 +198,7 @@ class State:
             time.sleep(STATE_REFRESH_INTERVAL)
         LOG.info(f"{host} is initialized")
 
+
 heal_needed = threading.Event()
 
 
@@ -385,10 +386,12 @@ def start():
     if not is_db_present(DB_TYPE):
         st.wait_all_alive()
         if st.all_empty:
-            LOG.info("All members are empty, this is initial bootstrap.")
-            bootstrap = True
-            if HOSTNAME != "openvswitch-ovn-db-0":
+            if HOSTNAME == "openvswitch-ovn-db-0":
+                LOG.info("All members are empty, and this is 0 node, intiating initial bootstrap.")
+                bootstrap = True
+            else:
                 st.wait_initialized("openvswitch-ovn-db-0")
+
 
     UPGRADE_ARGS = []
 
@@ -418,7 +421,7 @@ def start():
         ]
 
     opts = []
-    if not bootstrap or HOSTNAME != "openvswitch-ovn-db-0":
+    if not bootstrap:
         LOG.info(f"Joining node {HOSTNAME} to the cluster.")
         opts = [
             f"--db-{DB_TYPE}-cluster-remote-proto=tcp",
