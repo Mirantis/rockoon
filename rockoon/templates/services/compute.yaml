@@ -292,6 +292,7 @@ spec:
     "nova_cell_setup_init",
     "nova_placement",
     "nova_placement_audit",
+    "nova_placement_audit_report",
     "nova_compute_ironic",
     "nova_db_sync",
     "nova_db_sync_online",

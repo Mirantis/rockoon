@@ -533,6 +533,7 @@ spec:
           nova_novncproxy: nova-novncproxy:latest
           nova_placement: nova-placement:latest
           nova_placement_audit: nova-placement-audit:latest
+          nova_placement_audit_report: nova-placement-audit-report:latest
           nova_scheduler: nova-scheduler:latest
           nova_service_cleaner: nova-service-cleaner:latest
           nova_spiceproxy: nova-spiceproxy:latest
