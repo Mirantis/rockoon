@@ -16,7 +16,44 @@ limitations under the License.
 {{- $envAll := . }}
 
 {{- $serviceAccountName := "nova-placement-audit-cron" }}
+{{- $reportConfigMap := "nova-placement-audit-report" }}
 {{ tuple $envAll "placement_audit" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $envAll.Release.Name }}-{{ $serviceAccountName }}-cm-manager
+  namespace: {{ $envAll.Release.Namespace }}
+rules:
+  - apiGroups:
+      - ""
+    resourceNames:
+      - {{ $reportConfigMap }}
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $envAll.Release.Name }}-{{ $serviceAccountName }}-cm-manager
+  namespace: {{ $envAll.Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $envAll.Release.Name }}-{{ $serviceAccountName }}-cm-manager
+subjects:
+  - kind: ServiceAccount
+    name: {{ $serviceAccountName }}
+    namespace: {{ $envAll.Release.Namespace }}
 ---
 apiVersion: batch/v1
 kind: CronJob
@@ -78,7 +115,7 @@ spec:
                   readOnly: true
                 {{- end }}
             - name: placement-audit-report
-{{ tuple $envAll "nova_placement_audit" | include "helm-toolkit.snippets.image" | indent 14 }}
+{{ tuple $envAll "nova_placement_audit_report" | include "helm-toolkit.snippets.image" | indent 14 }}
 {{ tuple $envAll $envAll.Values.pod.resources.jobs.placement_audit | include "helm-toolkit.snippets.kubernetes_resources" | indent 14 }}
 {{ dict "envAll" $envAll "application" "placement_audit" "container" "placement_audit_report" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 14 }}
               command:

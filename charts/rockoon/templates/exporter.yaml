@@ -18,6 +18,14 @@ rules:
     verbs: [list, get, watch]
   # Application: nova audit collector
   - apiGroups: [""]
+    resourceNames: [nova-placement-audit-report]
+    resources: [configmaps]
+    verbs: [get]
+  # Needed for switch from logs based report to configmap
+  - apiGroups: [""]
+    resources: [configmaps]
+    verbs: [create]
+  - apiGroups: [""]
     resources: [pods]
     verbs: [list, get, watch]
   - apiGroups: [""]
@@ -79,6 +87,16 @@ spec:
       serviceAccountName: rockoon-exporter-account
       securityContext:
         {{- toYaml .Values.exporter.pod.exporter.security_context | nindent 8 }}
+      initContainers:
+        - name: create-nova-audit-report
+          command:
+          - osctl-create-nova-audit-report
+          env:
+{{ tuple . | include "rockoon.common_env" | indent 12 }}
+          image: {{ tuple . .Values.image | include "getImageUrl" }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.exporter.pod.exporter.exporter.security_context | nindent 12 }}
       containers:
         - name: exporter
           image: {{ tuple . .Values.image | include "getImageUrl" }}

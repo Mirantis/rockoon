@@ -87,6 +87,7 @@ images:
     nova_novncproxy: docker.io/openstackhelm/nova:stein-ubuntu_bionic
     nova_placement: docker.io/openstackhelm/nova:stein-ubuntu_bionic
     nova_placement_audit: docker.io/openstackhelm/nova:stein-ubuntu_bionic
+    nova_placement_audit_report: mirantis.azurecr.io/openstack/openstack-tools:antelope-jammy-20250827101141
     nova_scheduler: docker.io/openstackhelm/nova:stein-ubuntu_bionic
     # NOTE(portdirect): we simply use the ceph config helper here,
     # as it has both oscli and jq.
@@ -118,7 +119,7 @@ jobs:
     # Restart policy Never allows to leave pods on environment
     # if backoff limit is reached.
     restart_policy: Never
-    backoff_limit: 2
+    backoff_limit: 3
     history:
       # keeping 2 successful runs to avoid exporter failures when
       # jobs history is rotated

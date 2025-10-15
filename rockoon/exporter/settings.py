@@ -31,10 +31,17 @@ OSCTL_EXPORTER_MAX_POLL_TIMEOUT = int(
 )
 
 # Number of seconds we can wait for polling tasks before return cached result
-# Should be lover than prometheus scrape_timeout which is 1m by default.
+# Should be lower than prometheus scrape_timeout which is 1m by default.
 OSCTL_SCRAPE_TIMEOUT = int(os.getenv("OSCTL_SCRAPE_TIMEOUT", "45"))
 
 OSCTL_EXPORTER_CA_CERT_PATH = os.getenv(
     "OSCTL_EXPORTER_CA_CERT_PATH",
     "/usr/local/share/ca-certificates/osdpl/ca.crt",
+)
+
+# Number of hours to consider Nova Audit report as up to date,
+# if upon that time report is not updated, metric collection
+# is considered failed.
+OSCTL_EXPORTER_NOVA_AUDIT_TTL = int(
+    os.getenv("OSCTL_EXPORTER_NOVA_AUDIT_TTL", "10")
 )
