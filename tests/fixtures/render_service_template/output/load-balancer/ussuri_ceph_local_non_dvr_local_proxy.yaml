@@ -39,6 +39,8 @@ spec:
             endpoint_type: internalURL
           haproxy_amphora:
             connection_max_retries: 500
+          controller_worker:
+            loadbalancer_topology: "ACTIVE_STANDBY"
           keystone_authtoken:
             memcache_secret_key: cAZLeChP79lxHJ1Z
             memcache_security_strategy: ENCRYPT
