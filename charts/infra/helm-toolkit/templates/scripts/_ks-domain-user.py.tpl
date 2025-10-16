@@ -89,9 +89,7 @@ def ensure_openstack_resource(find, create, attrs):
 
 @retry_cloud_call(CLOUD_CALL_RETRIES)
 def find_user(name, domain_id):
-    res = [
-        x for x in osc.list_users(domain_id=domain_id) if x.name == SERVICE_OS_USERNAME
-    ]
+    res = osc.list_users(domain_id=domain_id, name=SERVICE_OS_USERNAME)
     if res:
         return res[0]
 
