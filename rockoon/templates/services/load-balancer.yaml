@@ -239,6 +239,10 @@ spec:
   {%- endif %}
             jobboard_expiration_time: 90
 {%- endif %}
+{%- if not tungstenfabric_enabled and (ovn_enabled or not spec.get('features', {}).get('neutron', {}).get('dvr', {}).get('enabled', False)) %}
+          controller_worker:
+            loadbalancer_topology: "ACTIVE_STANDBY"
+{%- endif %}
           keystone_authtoken:
             memcache_security_strategy: ENCRYPT
             memcache_secret_key: {{ credentials[0].memcached }}
