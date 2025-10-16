@@ -224,6 +224,7 @@ conf:
     collect_statistics_interval: 60000
     tcp_listen_options.backlog: 4096
     tcp_listen_options.exit_on_close: true
+    max_message_size: "67108864"
 # (ohryhorov): define users in the section below which have to be
 #              created by rabbitmq at start up stage through definitions.json
 #              file and enable job_users_create manifest.
