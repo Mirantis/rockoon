@@ -122,6 +122,7 @@ conf:
   ironic:
     DEFAULT:
       log_config_append: /etc/ironic/logging.conf
+      isolinux_bin: /usr/lib/ISOLINUX/isolinux.bin
     api:
       port: null
     audit:
@@ -163,6 +164,9 @@ conf:
       pxe_bootfile_name: undionly.kpxe
       uefi_pxe_bootfile_name: ipxe.efi
       ipxe_enabled: true
+    redfish:
+      kernel_append_params: "nofb ipa-insecure=1 ipa-debug=1"
+      use_swift: false
     service_catalog:
       auth_type: password
     swift:
