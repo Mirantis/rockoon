@@ -2,7 +2,7 @@ import unittest
 import pytest
 
 from rockoon.tests.functional import base
-from rockoon import constants, kube, settings
+from rockoon import constants
 
 
 @pytest.mark.xdist_group("exporter-compute-network")
@@ -18,16 +18,6 @@ class TestVncTLSTestCase(base.BaseFunctionalTestCase):
             .get("enabled", False)
         ):
             raise unittest.SkipTest("VNC TLS is not enabled.")
-
-    def libvirt_pod(self, host):
-        kube_api = kube.kube_client()
-        pods = kube.Pod.objects(kube_api).filter(
-            namespace=settings.OSCTL_OS_DEPLOYMENT_NAMESPACE,
-            selector={"application": "libvirt", "component": "libvirt"},
-        )
-        for pod in pods:
-            if pod.obj["spec"].get("nodeName") == host:
-                return pod
 
     def test_novnc_tls(self):
         server = self.server_create()
