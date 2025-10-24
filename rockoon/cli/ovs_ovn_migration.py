@@ -972,7 +972,7 @@ def update_service_release(hm, service, release_name, patch):
             utils.merger.merge(release["values"], patch)
             bundle["spec"]["releases"] = [release]
             break
-    asyncio.run(hm.install_bundle(bundle))
+    hm.install_bundle(bundle)
 
 
 def wait_for_objects_ready(service, object_ids, timeout=1200):
