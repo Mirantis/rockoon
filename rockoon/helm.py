@@ -125,7 +125,7 @@ class HelmManager:
             obj = kube.find(kube_class, name, self.namespace, silent=True)
             if obj and obj.exists():
                 obj.delete(propagation_policy="Background")
-                await kube.wait_for_deleted(obj)
+                kube.wait_for_deleted(obj)
             LOG.info(f"Successfully removed kind: {kind} with name {name}")
 
     async def _rollback(self, name, args=None):

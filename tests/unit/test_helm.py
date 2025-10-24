@@ -51,7 +51,7 @@ def subprocess_shell(mocker):
 def kube_wait_for_deleted(mocker):
     mock_get_obj = mocker.patch(
         "rockoon.kube.wait_for_deleted",
-        mock.AsyncMock(),
+        mock.Mock(),
     )
     yield mock_get_obj
     mocker.stopall()

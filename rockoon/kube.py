@@ -594,7 +594,7 @@ class Job(pykube.Job, HelmBundleMixin, ObjectStatusMixin):
         tries = 10
         for i in range(tries):
             try:
-                if not await wait_for_deleted(self):
+                if not wait_for_deleted(self):
                     LOG.warning("Failed to delete job %s", self.name)
                     return
                 self._prepare_for_rerun()
@@ -1270,7 +1270,7 @@ def save_secret_data(
         pykube.Secret(kube_api, secret).update()
 
 
-async def wait_for_deleted(
+def wait_for_deleted(
     obj,
     times=settings.OSCTL_RESOURCE_DELETED_WAIT_RETRIES,
     seconds=settings.OSCTL_RESOURCE_DELETED_WAIT_TIMEOUT,
@@ -1278,7 +1278,7 @@ async def wait_for_deleted(
     for i in range(times):
         if not obj.exists():
             return True
-        await asyncio.sleep(seconds)
+        time.sleep(seconds)
     return False
 
 
