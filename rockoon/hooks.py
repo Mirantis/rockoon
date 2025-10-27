@@ -17,16 +17,16 @@ def new_node_added(**kwargs):
     return True
 
 
-async def run_nova_cell_setup(osdpl, name, namespace, meta, **kwargs):
+def run_nova_cell_setup(osdpl, name, namespace, meta, **kwargs):
     LOG.info("Start nova daemonset created hook")
     if not new_node_added(**kwargs):
         return
     cronjob = kube.find(kube.CronJob, "nova-cell-setup", namespace)
-    job = await cronjob.run(wait_completion=True)
+    job = cronjob.run(wait_completion=True)
     job.delete(propagation_policy="Foreground")
 
 
-async def run_octavia_create_resources(osdpl, name, namespace, meta, **kwargs):
+def run_octavia_create_resources(osdpl, name, namespace, meta, **kwargs):
     LOG.info("Start rerun_octavia_create_resources_job hook")
     if not new_node_added(**kwargs):
         return
@@ -39,4 +39,4 @@ async def run_octavia_create_resources(osdpl, name, namespace, meta, **kwargs):
     if not job.ready:
         LOG.warning("Original octavia_create_resources job is not ready")
         return
-    await job.rerun()
+    job.rerun()

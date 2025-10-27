@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import asyncio
 import base64
 import copy
 import concurrent.futures
@@ -122,15 +121,6 @@ def divide_into_groups_of(group_len, collection):
     if len(collection) % group_len:
         groups.append(collection[-(len(collection) % group_len) :])
     return groups
-
-
-async def async_retry(function, *args, **kwargs):
-    result = None
-    while not result:
-        result = function(*args, **kwargs)
-        if result:
-            return result
-        await asyncio.sleep(10)
 
 
 def get_topic_normalized_name(name):

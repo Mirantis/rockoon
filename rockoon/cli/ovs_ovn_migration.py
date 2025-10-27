@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import asyncio
 import argparse
 import traceback
 import ipaddress
@@ -986,7 +985,7 @@ def wait_for_objects_ready(service, object_ids, timeout=1200):
     LOG.info(f"Waiting for {object_ids} to be ready")
     for id in object_ids:
         for obj in get_objects_by_id(service, id):
-            asyncio.run(obj.wait_ready(timeout=timeout))
+            obj.wait_ready(timeout=timeout)
     LOG.info(f"{object_ids} are ready")
 
 
@@ -1260,7 +1259,7 @@ def cleanup_linux_netns(script_args):
     try:
         LOG.info("Creating cleaning daemonset")
         cleanup_ds.create()
-        asyncio.run(cleanup_ds.wait_ready(timeout=3600))
+        cleanup_ds.wait_ready(timeout=3600)
     finally:
         LOG.info("Gathering cleanup network namespaces logs")
         get_daemonset_logs(
@@ -1385,7 +1384,7 @@ def deploy_ovn_db(script_args):
     )
     # https://mirantis.jira.com/browse/PRODX-42146
     time.sleep(30)
-    asyncio.run(osdpl.wait_applied())
+    osdpl.wait_applied()
     network_svc = get_service(osdpl, "networking")
     wait_for_objects_ready(
         network_svc,
@@ -1557,7 +1556,7 @@ def finalize_migration(script_args):
     )
     # https://mirantis.jira.com/browse/PRODX-42146
     time.sleep(30)
-    asyncio.run(osdpl.wait_applied())
+    osdpl.wait_applied()
     wait_for_objects_ready(
         network_svc,
         [
@@ -1580,7 +1579,7 @@ def finalize_migration(script_args):
                     LOG.info(f"Removing ovs pod {ovs_pod} on node {node}")
                     ovs_pod.delete(propagation_policy="Background")
                     LOG.info(f"Updating ovn pod on node {node}")
-                    asyncio.run(ovn_ds.ensure_pod_generation_on_node(node))
+                    ovn_ds.ensure_pod_generation_on_node(node)
                     LOG.info(f"Updated ovn pod on node {node}")
                     break
         LOG.info(f"Removing DaemonSet {ovs_ds}")
@@ -1637,7 +1636,7 @@ def finalize_migration(script_args):
     )
     # https://mirantis.jira.com/browse/PRODX-42146
     time.sleep(30)
-    asyncio.run(osdpl.wait_applied())
+    osdpl.wait_applied()
     mspec = osdpl.mspec
     child_view = resource_view.ChildObjectView(mspec)
     osdplst = osdplstatus.OpenStackDeploymentStatus(
@@ -1875,9 +1874,7 @@ def do_full_db_backup():
     if cronjob.obj["spec"].get("suspend", False):
         LOG.warning(f"Cronjob {backup_cj_name} in suspended state")
         return
-    asyncio.run(
-        cronjob.run(wait_completion=True, timeout=MARIADB_FULL_BACKUP_TIMEOUT)
-    )
+    cronjob.run(wait_completion=True, timeout=MARIADB_FULL_BACKUP_TIMEOUT)
     LOG.info(f"Database backup is completed")
 
 
@@ -1913,7 +1910,7 @@ def do_neutron_db_backup():
             raise RuntimeError(
                 f"Mariadb {pod} is not in expected state {synced_state}"
             )
-    asyncio.run(database_obj.wait_ready(timeout=600))
+    database_obj.wait_ready(timeout=600)
     try:
         LOG.info(f"Desyncing mariadb on {target_pod} from Galera cluster")
         cmd = (
@@ -1948,7 +1945,7 @@ def do_neutron_db_backup():
             '-e "SET GLOBAL wsrep_desync = OFF"'
         )
         run_mariadb_cmd(target_pod, cmd)
-        asyncio.run(database_obj.wait_ready(timeout=600))
+        database_obj.wait_ready(timeout=600)
         LOG.info(f"Synced mariadb on {target_pod} back to Galera cluster")
 
 

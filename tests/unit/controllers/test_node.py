@@ -28,17 +28,13 @@ def osdpl(mocker):
     mocker.stopall()
 
 
-@pytest.mark.asyncio
-async def test_node_status_update_handler_no_osdpl(osdpl, node):
+def test_node_status_update_handler_no_osdpl(osdpl, node):
     osdpl.exists.return_value = False
     node.return_value.exists.assert_not_called()
 
 
 @mock.patch.object(openstack_utils, "handle_masakari_host_down")
-@pytest.mark.asyncio
-async def test_node_status_update_handler_node_ready(
-    notify_masakari, osdpl, node
-):
+def test_node_status_update_handler_node_ready(notify_masakari, osdpl, node):
     osdpl.exists.return_value = True
     node.exists.return_value = True
     node.ready = True
