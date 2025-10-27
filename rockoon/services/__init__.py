@@ -1443,7 +1443,7 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
             LOG.info(
                 "OVN upgrade: updating deploy scripts for OVN components."
             )
-            await self.set_release_values(
+            self.set_release_values(
                 "openvswitch",
                 {
                     f"{self.group}/{self.version}": {
@@ -1458,7 +1458,7 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
                 "StatefulSet", "openvswitch-ovn-db"
             )
             await ovndb_sts.wait_ready()
-            await self.wait_service_healthy()
+            self.wait_service_healthy()
 
             for ovnc_ds in self.get_child_objects_dynamic(
                 "DaemonSet", "ovn-controller"
@@ -1510,7 +1510,7 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
                 )
 
                 await ovnnb_sts.wait_ready()
-                await self.wait_service_healthy()
+                self.wait_service_healthy()
             LOG.info("OVN upgrade: finished")
             # With later super().apply() neutron-server will be retarted.
 
@@ -2182,7 +2182,7 @@ class Placement(OpenStackService):
                 await asyncio.sleep(
                     CONF.getint("helmbundle", "manifest_apply_delay")
                 )
-                await self.wait_service_healthy()
+                self.wait_service_healthy()
                 # NOTE(mkarpin): db sync job should be cleaned up after upgrade and before apply
                 # because placement_db_nova_migrate_placement job is in dynamic dependencies
                 # for db sync job, during apply it will be removed

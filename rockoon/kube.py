@@ -122,17 +122,16 @@ class OpenStackDeployment(pykube.objects.NamespacedAPIObject):
             return False
         return True
 
-    async def _wait_applied(self, interval):
+    def _wait_applied(self, interval):
         while not self.is_applied:
-            await asyncio.sleep(interval)
+            time.sleep(interval)
 
     async def wait_applied(self, timeout=600, interval=30):
         LOG.info(
             f"Waiting {timeout} seconds {self.kind}/{self.name} status is applied"
         )
-        await asyncio.wait_for(
-            self._wait_applied(interval),
-            timeout=timeout,
+        utils.run_with_timeout(
+            self._wait_applied, args=(interval,), timeout=timeout
         )
         LOG.info(f"{self.kind}/{self.name} is applied")
 
@@ -174,7 +173,7 @@ class HelmBundleMixin:
     def helmbundle_ext(self, helmbundle_ext: HelmBundleExt):
         self.__helmbundle_ext = helmbundle_ext
 
-    async def _enable(
+    def _enable(
         self, version, wait_completion=False, extra_values=None, delay=None
     ):
         delay = (
@@ -193,11 +192,9 @@ class HelmBundleMixin:
 
         i = 1
         while True:
-            await self.service.set_release_values(
-                self.helmbundle_ext.chart, diff
-            )
+            self.service.set_release_values(self.helmbundle_ext.chart, diff)
 
-            await asyncio.sleep(delay)
+            time.sleep(delay)
 
             if not wait_completion:
                 return
@@ -231,17 +228,18 @@ class HelmBundleMixin:
             if delay is not None
             else CONF.getint("helmbundle", "manifest_enable_delay")
         )
-        await asyncio.wait_for(
-            self._enable(
-                version,
-                wait_completion=wait_completion,
-                extra_values=extra_values,
-                delay=delay,
-            ),
+        utils.run_with_timeout(
+            self._enable,
+            args=(version,),
+            kwargs={
+                "wait_completion": wait_completion,
+                "extra_values": extra_values,
+                "delay": delay,
+            },
             timeout=timeout,
         )
 
-    async def _disable(
+    def _disable(
         self,
         wait_completion=False,
         delay=None,
@@ -256,9 +254,7 @@ class HelmBundleMixin:
         diff["manifests"][self.helmbundle_ext.manifest] = False
         i = 1
         while True:
-            await self.service.set_release_values(
-                self.helmbundle_ext.chart, diff
-            )
+            self.service.set_release_values(self.helmbundle_ext.chart, diff)
             if not wait_completion:
                 return
             if not self.exists():
@@ -266,7 +262,7 @@ class HelmBundleMixin:
             LOG.info(
                 f"The object {self.kind} {self.name} still exists, retrying {i}"
             )
-            await asyncio.sleep(delay)
+            time.sleep(delay)
             i += 1
 
     async def disable(
@@ -285,13 +281,13 @@ class HelmBundleMixin:
             if delay is not None
             else CONF.getint("helmbundle", "manifest_disable_delay")
         )
-
-        await asyncio.wait_for(
-            self._disable(wait_completion=wait_completion, delay=delay),
+        utils.run_with_timeout(
+            self._disable,
+            kwargs={"wait_completion": wait_completion, "delay": delay},
             timeout=timeout,
         )
 
-    async def _purge(
+    def _purge(
         self,
         timeout=None,
         delay=None,
@@ -316,7 +312,7 @@ class HelmBundleMixin:
                 f"Retrying {i} removing {self.kind}: {self.name} in {delay}s"
             )
             i += 1
-            await asyncio.sleep(delay)
+            time.sleep(delay)
 
     async def purge(
         self,
@@ -333,7 +329,9 @@ class HelmBundleMixin:
             if delay is not None
             else CONF.getint("helmbundle", "manifest_purge_delay")
         )
-        await asyncio.wait_for(self._purge(delay=delay), timeout=timeout)
+        utils.run_with_timeout(
+            self._purge, kwargs={"delay": delay}, timeout=timeout
+        )
 
     def image_applied(self, value):
         """Ensure image is applied to at least one of containers"""
@@ -368,13 +366,15 @@ class ObjectStatusMixin(abc.ABC):
     def ready(self):
         pass
 
-    async def _wait_ready(self, interval):
+    def _wait_ready(self, interval):
         while not self.ready:
-            await asyncio.sleep(interval)
+            time.sleep(interval)
 
     async def wait_ready(self, timeout=None, interval=10):
         LOG.info(f"Waiting for {timeout} {self.kind}/{self.name} is ready")
-        await asyncio.wait_for(self._wait_ready(interval), timeout=timeout)
+        utils.run_with_timeout(
+            self._wait_ready, args=(interval,), timeout=timeout
+        )
         LOG.info(f"The {self.kind}/{self.name} is ready")
 
 
@@ -668,7 +668,7 @@ class CronJob(pykube.CronJob, HelmBundleMixin):
     def uid(self):
         return self.obj["metadata"]["uid"]
 
-    async def _suspend(
+    def _suspend(
         self,
         wait_completion=False,
         delay=None,
@@ -682,9 +682,7 @@ class CronJob(pykube.CronJob, HelmBundleMixin):
         i = 1
         while True:
             self.reload()
-            await self.service.set_release_values(
-                self.helmbundle_ext.chart, diff
-            )
+            self.service.set_release_values(self.helmbundle_ext.chart, diff)
             if not wait_completion:
                 return
             check_apply = self.obj["spec"].get("suspend", None)
@@ -693,7 +691,7 @@ class CronJob(pykube.CronJob, HelmBundleMixin):
             LOG.info(
                 f"The object {self.kind} {self.name} still not suspended, retrying {i}"
             )
-            await asyncio.sleep(delay)
+            time.sleep(delay)
             i += 1
 
     async def suspend(
@@ -712,8 +710,9 @@ class CronJob(pykube.CronJob, HelmBundleMixin):
             if delay is not None
             else CONF.getint("helmbundle", "manifest_disable_delay")
         )
-        await asyncio.wait_for(
-            self._suspend(wait_completion=wait_completion, delay=delay),
+        utils.run_with_timeout(
+            self._suspend,
+            kwargs={"wait_completion": wait_completion, "delay": delay},
             timeout=timeout,
         )
 
@@ -731,13 +730,15 @@ class CronJob(pykube.CronJob, HelmBundleMixin):
         kube_job = Job(kube_api, job)
         kube_job.create()
 
-        async def _wait_completion(job, delay):
+        def _wait_completion(job, delay):
             while not job.ready:
-                await asyncio.sleep(delay)
+                time.sleep(delay)
 
         if wait_completion:
-            await asyncio.wait_for(
-                _wait_completion(kube_job, delay=delay),
+            utils.run_with_timeout(
+                self._wait_completion,
+                args=(kube_job,),
+                kwargs={"delay": delay},
                 timeout=timeout,
             )
         return kube_job

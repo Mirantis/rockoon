@@ -15,6 +15,7 @@
 import asyncio
 import base64
 import copy
+import concurrent.futures
 import datetime
 import difflib
 import functools
@@ -449,3 +450,27 @@ def log_changes(old, new):
         )
     )
     LOG.info("Changes are: %s", diff)
+
+
+def run_with_timeout(func, args=None, kwargs=None, timeout=5):
+    """Wrap blocking call with timeout
+
+    :param func: function to run
+    :param args: tuple of arguments
+    :param kwargs: dictionary with kwargs
+    :param timeout: timeout in seconds
+    :returns: func result when completed without timeout
+    :raises: TimeoutError when timeout is reached
+    """
+    args = args or ()
+    kwargs = kwargs or dict()
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future = executor.submit(func, *args, **kwargs)
+        try:
+            future.result(timeout=timeout)
+            res = future.result()
+            return res
+        except concurrent.futures.TimeoutError:
+            LOG.error(f"Function `{func.__name__}` timed out after {timeout}.")
+            raise TimeoutError()

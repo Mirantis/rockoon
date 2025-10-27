@@ -1,5 +1,5 @@
-import asyncio
 import logging
+import time
 
 import kopf
 
@@ -7,6 +7,7 @@ from rockoon.services import base
 from rockoon import constants
 from rockoon import settings
 from rockoon import layers
+from rockoon import utils
 
 LOG = logging.getLogger(__name__)
 CONF = settings.CONF
@@ -73,16 +74,16 @@ def is_application_ready(application, osdplst):
     return False
 
 
-async def _wait_application_ready(application, osdplst, delay=None):
+def _wait_application_ready(application, osdplst, delay=None):
     delay = delay or CONF.getint("osctl", "wait_application_ready_delay")
     i = 1
     while not is_application_ready(application, osdplst):
         LOG.info(f"Checking application {application} health, attempt: {i}")
         i += 1
-        await asyncio.sleep(delay)
+        time.sleep(delay)
 
 
-async def wait_application_ready(
+def wait_application_ready(
     application,
     osdplst,
     timeout=None,
@@ -91,13 +92,18 @@ async def wait_application_ready(
     timeout = timeout or CONF.getint("osctl", "wait_application_ready_timeout")
     delay = delay or CONF.getint("osctl", "wait_application_ready_delay")
     LOG.info(f"Waiting for application becomes ready for {timeout}s")
-    await asyncio.wait_for(
-        _wait_application_ready(application, osdplst, delay=delay),
+    utils.run_with_timeout(
+        _wait_application_ready,
+        args=(
+            application,
+            osdplst,
+        ),
+        kwags={"delay": delay},
         timeout=timeout,
     )
 
 
-async def wait_services_healthy(mspec, osdplst, child_view):
+def wait_services_healthy(mspec, osdplst, child_view):
     """Wait all openstack related services are healthy."""
 
     services = [
@@ -106,7 +112,7 @@ async def wait_services_healthy(mspec, osdplst, child_view):
     ]
     for service in services:
         try:
-            await service.wait_service_healthy()
+            service.wait_service_healthy()
         except Exception as e:
             LOG.info(
                 f"Time out waiting health for service {service.service}. Error: {e}",

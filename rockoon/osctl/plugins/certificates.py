@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import asyncio
 import sys
 import time
 
@@ -98,7 +97,6 @@ class CertificatesShell(base.OsctlShell):
                 args.osdpl, args.namespace
             )
             child_view = resource_view.ChildObjectView(osdpl.mspec)
-            loop = asyncio.get_event_loop()
             while True:
                 if osdplst.get_osdpl_status() == osdplstatus.APPLYING:
                     break
@@ -106,10 +104,8 @@ class CertificatesShell(base.OsctlShell):
             while True:
                 if osdplst.get_osdpl_status() == osdplstatus.APPLIED:
                     LOG.info(f"Waiting openstack services are healthy.")
-                    if loop.run_until_complete(
-                        health.wait_services_healthy(
-                            osdpl.mspec, osdplst, child_view
-                        )
-                    ):
-                        break
+                    health.wait_services_healthy(
+                        osdpl.mspec, osdplst, child_view
+                    )
+                    break
                 time.sleep(10)
