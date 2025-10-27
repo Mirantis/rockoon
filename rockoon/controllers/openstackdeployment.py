@@ -174,7 +174,7 @@ async def _trigger_octavia_lb_failover(
     ] = (octavia_service.apply, reason, body, meta, spec, logger, kwargs)
     await run_task(task_def)
     await asyncio.sleep(60)
-    await octavia_service.wait_service_healthy()
+    octavia_service.wait_service_healthy()
     failover_job = octavia_service.get_child_object(
         "Job", "octavia-loadbalancers-failover"
     )
@@ -233,7 +233,7 @@ async def _regenerate_creds(
         ] = (mariadb_instance.apply, reason, body, meta, spec, logger, kwargs)
         await run_task(task_def)
         await asyncio.sleep(60)
-        await mariadb_instance.wait_service_healthy()
+        mariadb_instance.wait_service_healthy()
     elif group_name == "service":
         for service in enabled_services:
             service_instance = services.registry[service](
