@@ -52,7 +52,7 @@ class ElasticLogsCollector(base.BaseLogsCollector):
                     {
                         "simple_query_string": {
                             "fields": ["event.provider"],
-                            "query": f"{logger}*",
+                            "query": f"{logger}|{logger}*",
                         }
                     }
                 ],

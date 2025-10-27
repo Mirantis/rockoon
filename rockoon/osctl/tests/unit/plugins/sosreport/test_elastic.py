@@ -269,7 +269,7 @@ class TestK8sElasticLogsCollector(utils.BaseTestCase):
                     {
                         "simple_query_string": {
                             "fields": ["event.provider"],
-                            "query": f"logger*",
+                            "query": f"logger|logger*",
                         }
                     }
                 ],
