@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import asyncio
 import sys
 
 from rockoon import kube
@@ -20,8 +19,7 @@ def main():
     job = kube.find(kube.Job, args.name, args.namespace, silent=True)
     if not job:
         sys.exit(f"Job {args.namespace}/{args.name} was not found!")
-    loop = asyncio.get_event_loop()
     try:
-        loop.run_until_complete(job.rerun())
+        job.rerun()
     except Exception as e:
         sys.exit(f"Failed to create job {job.namespace}/{job.name}: {e}")

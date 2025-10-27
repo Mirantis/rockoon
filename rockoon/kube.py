@@ -1,5 +1,4 @@
 import abc
-import asyncio
 import base64
 import copy
 from dataclasses import dataclass, field
@@ -126,7 +125,7 @@ class OpenStackDeployment(pykube.objects.NamespacedAPIObject):
         while not self.is_applied:
             time.sleep(interval)
 
-    async def wait_applied(self, timeout=600, interval=30):
+    def wait_applied(self, timeout=600, interval=30):
         LOG.info(
             f"Waiting {timeout} seconds {self.kind}/{self.name} status is applied"
         )
@@ -210,7 +209,7 @@ class HelmBundleMixin:
             )
             i += 1
 
-    async def enable(
+    def enable(
         self,
         version,
         wait_completion=False,
@@ -265,7 +264,7 @@ class HelmBundleMixin:
             time.sleep(delay)
             i += 1
 
-    async def disable(
+    def disable(
         self,
         wait_completion=False,
         timeout=None,
@@ -314,7 +313,7 @@ class HelmBundleMixin:
             i += 1
             time.sleep(delay)
 
-    async def purge(
+    def purge(
         self,
         timeout=None,
         delay=None,
@@ -370,7 +369,7 @@ class ObjectStatusMixin(abc.ABC):
         while not self.ready:
             time.sleep(interval)
 
-    async def wait_ready(self, timeout=None, interval=10):
+    def wait_ready(self, timeout=None, interval=10):
         LOG.info(f"Waiting for {timeout} {self.kind}/{self.name} is ready")
         utils.run_with_timeout(
             self._wait_ready, args=(interval,), timeout=timeout
@@ -414,13 +413,13 @@ class StatefulSet(pykube.StatefulSet, HelmBundleMixin, ObjectStatusMixin):
             and self.obj["status"].get("readyReplicas") == self.replicas
         )
 
-    async def wait_for_replicas(self, count, times=60, seconds=10):
+    def wait_for_replicas(self, count, times=60, seconds=10):
         for i in range(times):
             self.reload()
             # NOTE(vsaienko): the key doesn't exist when have 0 replicas
             if self.obj["status"].get("readyReplicas", 0) == count:
                 return True
-            await asyncio.sleep(seconds)
+            time.sleep(seconds)
         raise ValueError("Not ready yet.")
 
     @property
@@ -589,7 +588,7 @@ class Job(pykube.Job, HelmBundleMixin, ObjectStatusMixin):
                 return True
         return False
 
-    async def rerun(self):
+    def rerun(self):
         self.delete(propagation_policy="Background")
         tries = 10
         for i in range(tries):
@@ -611,7 +610,7 @@ class Job(pykube.Job, HelmBundleMixin, ObjectStatusMixin):
                 )
                 if i == tries - 1:
                     raise e
-            await asyncio.sleep(10)
+            time.sleep(10)
 
     def wait_completed(self, timeout=600, delay=30):
         LOG.info(f"Waiting job {self.name} is completed.")
@@ -694,7 +693,7 @@ class CronJob(pykube.CronJob, HelmBundleMixin):
             time.sleep(delay)
             i += 1
 
-    async def suspend(
+    def suspend(
         self,
         wait_completion=False,
         timeout=None,
@@ -716,7 +715,7 @@ class CronJob(pykube.CronJob, HelmBundleMixin):
             timeout=timeout,
         )
 
-    async def run(self, wait_completion=False, timeout=600, delay=10):
+    def run(self, wait_completion=False, timeout=600, delay=10):
         """Force run job from cronjob.
 
         :returns : the job object
@@ -755,13 +754,13 @@ class Deployment(pykube.Deployment, HelmBundleMixin, ObjectStatusMixin):
             and self.obj["status"].get("readyReplicas") == self.replicas
         )
 
-    async def wait_for_replicas(self, count, times=60, seconds=10):
+    def wait_for_replicas(self, count, times=60, seconds=10):
         for i in range(times):
             self.reload()
             # NOTE(vsaienko): the key doesn't exist when have 0 replicas
             if self.obj["status"].get("readyReplicas", 0) == count:
                 return True
-            await asyncio.sleep(seconds)
+            time.sleep(seconds)
         raise ValueError("Not ready yet.")
 
 
@@ -808,7 +807,7 @@ class DaemonSet(pykube.DaemonSet, HelmBundleMixin, ObjectStatusMixin):
             if pod.obj["spec"].get("nodeName") == node_name:
                 return pod
 
-    async def ensure_pod_generation_on_node(self, node_name, wait_ready=True):
+    def ensure_pod_generation_on_node(self, node_name, wait_ready=True):
         """Ensure pod template generation on the given node is same as ds.
 
         If generation does not match restart pod.
@@ -828,9 +827,9 @@ class DaemonSet(pykube.DaemonSet, HelmBundleMixin, ObjectStatusMixin):
         ):
             pod.delete()
             if wait_ready:
-                await self.wait_pod_on_node(node_name)
+                self.wait_pod_on_node(node_name)
 
-    async def wait_pod_on_node(self, node_name):
+    def wait_pod_on_node(self, node_name):
         LOG.info(f"Waiting pods for {self.name} on {node_name} are ready.")
         while True:
             pod = self.get_pod_on_node(node_name)
@@ -840,10 +839,10 @@ class DaemonSet(pykube.DaemonSet, HelmBundleMixin, ObjectStatusMixin):
                 and pod.ready
             ):
                 break
-            await asyncio.sleep(5)
+            time.sleep(5)
         LOG.info(f"Pods for {self.name} on {node_name} are ready.")
 
-    async def ensure_pod_generation(self):
+    def ensure_pod_generation(self):
         """Ensure pod template generation matches ds generation"""
         for pod in self.pods:
             pod_generation = pod.generation
@@ -860,7 +859,7 @@ class DaemonSet(pykube.DaemonSet, HelmBundleMixin, ObjectStatusMixin):
                 pod_node = pod.obj["spec"].get("nodeName")
                 pod.delete()
                 if pod_node:
-                    await self.wait_pod_on_node(pod_node)
+                    self.wait_pod_on_node(pod_node)
 
     @property
     def finalizers(self):

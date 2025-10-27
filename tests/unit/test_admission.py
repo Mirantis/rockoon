@@ -126,7 +126,7 @@ def client():
 @pytest.fixture
 def osdpl(mocker):
     osdpl = mocker.patch("rockoon.kube.get_osdpl")
-    osdpl.return_value = mock.AsyncMock()
+    osdpl.return_value = mock.Mock()
     yield osdpl
     mocker.stopall()
 
@@ -134,7 +134,7 @@ def osdpl(mocker):
 @pytest.fixture
 def osdplst(mocker):
     osdplst = mocker.patch("rockoon.osdplstatus.OpenStackDeploymentStatus")
-    osdplst.return_value = mock.AsyncMock()
+    osdplst.return_value = mock.Mock()
     yield osdplst
     mocker.stopall()
 

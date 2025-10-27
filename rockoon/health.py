@@ -98,7 +98,7 @@ def wait_application_ready(
             application,
             osdplst,
         ),
-        kwags={"delay": delay},
+        kwargs={"delay": delay},
         timeout=timeout,
     )
 

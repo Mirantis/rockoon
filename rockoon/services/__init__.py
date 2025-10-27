@@ -12,12 +12,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import asyncio
 import base64
 from datetime import datetime, timezone
 import copy
 import json
 import random
+import time
 
 import kopf
 import openstack
@@ -305,40 +305,40 @@ class Coordination(Service, MaintenanceApiMixin):
     def health_groups(self):
         return ["etcd"]
 
-    async def remove_node_from_scheduling(self, node):
+    def remove_node_from_scheduling(self, node):
         pass
 
-    async def prepare_node_for_reboot(self, node):
+    def prepare_node_for_reboot(self, node):
         pass
 
-    async def prepare_node_after_reboot(self, node, scope=None):
+    def prepare_node_after_reboot(self, node, scope=None):
         pass
 
-    async def add_node_to_scheduling(self, node):
+    def add_node_to_scheduling(self, node):
         pass
 
-    async def can_handle_nmr(self, node, locks):
-        if await self.is_node_locked(node.name):
+    def can_handle_nmr(self, node, locks):
+        if self.is_node_locked(node.name):
             LOG.error(f"The node {node.name} is hard locked by etcd.")
             return False
         return True
 
-    async def process_ndr(self, node, nwl):
+    def process_ndr(self, node, nwl):
         node_name = nwl.obj["spec"]["nodeName"]
-        if await self.is_node_locked(node_name):
+        if self.is_node_locked(node_name):
             msg = f"The node {node.name} is hard locked by etcd."
             raise kopf.TemporaryError(msg)
 
-    async def cleanup_persistent_data(self, nwl):
+    def cleanup_persistent_data(self, nwl):
         node_name = nwl.obj["spec"]["nodeName"]
-        if await self.is_node_locked(node_name):
+        if self.is_node_locked(node_name):
             msg = f"The node {node_name} is hard locked by etcd."
             nwl.set_error_message(msg)
             raise kopf.TemporaryError(msg)
         server_sts = self.get_child_object("StatefulSet", "etcd-etcd")
         server_sts.release_persistent_volume_claims(node_name)
 
-    async def is_node_locked(self, node_name):
+    def is_node_locked(self, node_name):
         server_sts = self.get_child_object("StatefulSet", "etcd-etcd")
         return server_sts.is_node_locked(node_name)
 
@@ -361,7 +361,7 @@ class Redis(Service, MaintenanceApiMixin):
         redis_secret.ensure()
         return {"redis_creds": redis_secret.get()}
 
-    async def apply(self, event, **kwargs):
+    def apply(self, event, **kwargs):
         # ensure child ref exists in the current status of osdpl object
         self.set_children_status("Applying")
         LOG.info(f"Applying config for {self.service}")
@@ -427,36 +427,36 @@ class Redis(Service, MaintenanceApiMixin):
                     if obj and obj.exists():
                         obj.reload()
                         obj.scale(0)
-                        await obj.wait_for_replicas(0)
-        await super().apply(event, **kwargs)
+                        obj.wait_for_replicas(0)
+        super().apply(event, **kwargs)
 
-    async def remove_node_from_scheduling(self, node):
+    def remove_node_from_scheduling(self, node):
         pass
 
-    async def prepare_node_for_reboot(self, node):
+    def prepare_node_for_reboot(self, node):
         pass
 
-    async def prepare_node_after_reboot(self, node, scope=None):
+    def prepare_node_after_reboot(self, node, scope=None):
         pass
 
-    async def add_node_to_scheduling(self, node):
+    def add_node_to_scheduling(self, node):
         pass
 
-    async def can_handle_nmr(self, node, locks):
-        if await self.is_node_locked(node.name):
+    def can_handle_nmr(self, node, locks):
+        if self.is_node_locked(node.name):
             LOG.error(f"The node {node.name} is hard locked by redis.")
             return False
         return True
 
-    async def process_ndr(self, node, nwl):
+    def process_ndr(self, node, nwl):
         node_name = nwl.obj["spec"]["nodeName"]
-        if await self.is_node_locked(node_name):
+        if self.is_node_locked(node_name):
             msg = f"The node {node.name} is hard locked by redis."
             raise kopf.TemporaryError(msg)
 
-    async def cleanup_persistent_data(self, nwl):
+    def cleanup_persistent_data(self, nwl):
         node_name = nwl.obj["spec"]["nodeName"]
-        if await self.is_node_locked(node_name):
+        if self.is_node_locked(node_name):
             msg = f"The node {node_name} is hard locked by redis."
             nwl.set_error_message(msg)
             raise kopf.TemporaryError(msg)
@@ -470,7 +470,7 @@ class Redis(Service, MaintenanceApiMixin):
         if rfr_sts and rfr_sts.exists():
             rfr_sts.release_persistent_volume_claims(node_name)
 
-    async def is_node_locked(self, node_name):
+    def is_node_locked(self, node_name):
         rfr_sts = kube.find(
             kube.StatefulSet,
             "rfr-openstack-redis",
@@ -500,40 +500,40 @@ class MariaDB(Service, MaintenanceApiMixin):
             "service_childs": self.child_view.childs,
         }
 
-    async def remove_node_from_scheduling(self, node):
+    def remove_node_from_scheduling(self, node):
         pass
 
-    async def prepare_node_for_reboot(self, node):
+    def prepare_node_for_reboot(self, node):
         pass
 
-    async def prepare_node_after_reboot(self, node, scope=None):
+    def prepare_node_after_reboot(self, node, scope=None):
         pass
 
-    async def add_node_to_scheduling(self, node):
+    def add_node_to_scheduling(self, node):
         pass
 
-    async def can_handle_nmr(self, node, locks):
-        if await self.is_node_locked(node.name):
+    def can_handle_nmr(self, node, locks):
+        if self.is_node_locked(node.name):
             LOG.error(f"The node {node.name} is hard locked by mariadb.")
             return False
         return True
 
-    async def process_ndr(self, node, nwl):
+    def process_ndr(self, node, nwl):
         node_name = nwl.obj["spec"]["nodeName"]
-        if await self.is_node_locked(node_name):
+        if self.is_node_locked(node_name):
             msg = f"The node {node.name} is hard locked by mariadb."
             raise kopf.TemporaryError(msg)
 
-    async def cleanup_persistent_data(self, nwl):
+    def cleanup_persistent_data(self, nwl):
         node_name = nwl.obj["spec"]["nodeName"]
-        if await self.is_node_locked(node_name):
+        if self.is_node_locked(node_name):
             msg = f"The node {node_name} is hard locked by mariadb."
             nwl.set_error_message(msg)
             raise kopf.TemporaryError(msg)
         server_sts = self.get_child_object("StatefulSet", "mariadb-server")
         server_sts.release_persistent_volume_claims(node_name)
 
-    async def is_node_locked(self, node_name):
+    def is_node_locked(self, node_name):
         server_sts = self.get_child_object("StatefulSet", "mariadb-server")
         return server_sts.is_node_locked(node_name)
 
@@ -787,7 +787,7 @@ class Cinder(OpenStackServiceWithCeph, MaintenanceApiMixin):
         )
 
     @layers.kopf_exception
-    async def _upgrade(self, event, **kwargs):
+    def _upgrade(self, event, **kwargs):
         upgrade_map = [
             ("Job", "cinder-db-sync"),
             ("StatefulSet", "cinder-scheduler"),
@@ -807,10 +807,10 @@ class Cinder(OpenStackServiceWithCeph, MaintenanceApiMixin):
         for kind, obj_name in upgrade_map:
             child_obj = self.get_child_object(kind, obj_name)
             if kind == "Job":
-                await child_obj.purge()
-            await child_obj.enable(self.openstack_version, True)
+                child_obj.purge()
+            child_obj.enable(self.openstack_version, True)
 
-    async def remove_node_from_scheduling(self, node):
+    def remove_node_from_scheduling(self, node):
         try:
             os_client = openstack_utils.OpenStackClientManager()
             volume_services = os_client.volume_get_services(
@@ -833,13 +833,13 @@ class Cinder(OpenStackServiceWithCeph, MaintenanceApiMixin):
             nwl.set_error_message(msg)
             raise kopf.TemporaryError(msg)
 
-    async def prepare_node_for_reboot(self, node):
+    def prepare_node_for_reboot(self, node):
         pass
 
-    async def prepare_node_after_reboot(self, node, scope=None):
+    def prepare_node_after_reboot(self, node, scope=None):
         pass
 
-    async def add_node_to_scheduling(self, node):
+    def add_node_to_scheduling(self, node):
         try:
             os_client = openstack_utils.OpenStackClientManager()
             volume_services = os_client.volume_get_services(
@@ -864,8 +864,8 @@ class Cinder(OpenStackServiceWithCeph, MaintenanceApiMixin):
             nwl.set_error_message(msg)
             raise kopf.TemporaryError(msg)
 
-    async def process_ndr(self, node, nwl):
-        await self.remove_node_from_scheduling(node)
+    def process_ndr(self, node, nwl):
+        self.remove_node_from_scheduling(node)
         if not CONF.getboolean("maintenance", "ndr_skip_volume_check"):
             os_client = openstack_utils.OpenStackClientManager()
             volumes = os_client.volume_get_volumes(host=node.name)
@@ -875,7 +875,7 @@ class Cinder(OpenStackServiceWithCeph, MaintenanceApiMixin):
                 nwl.set_error_message(msg)
                 raise kopf.TemporaryError(msg)
 
-    async def cleanup_metadata(self, nwl):
+    def cleanup_metadata(self, nwl):
         node_name = nwl.obj["spec"]["nodeName"]
         os_client = openstack_utils.OpenStackClientManager()
 
@@ -893,10 +893,7 @@ class Cinder(OpenStackServiceWithCeph, MaintenanceApiMixin):
                     return False
             return True
 
-        await asyncio.wait_for(
-            utils.async_retry(wait_for_services_down),
-            timeout=300,
-        )
+        utils.run_with_timeout(wait_for_services_down, timeout=300)
 
         cinder_api_pod = list(
             kube.resource_list(
@@ -1001,7 +998,7 @@ class Glance(OpenStackServiceWithCeph):
         )
 
     @layers.kopf_exception
-    async def _upgrade(self, event, **kwargs):
+    def _upgrade(self, event, **kwargs):
         upgrade_map = [
             ("Job", "glance-db-expand"),
             ("Job", "glance-db-migrate"),
@@ -1010,7 +1007,7 @@ class Glance(OpenStackServiceWithCeph):
         ]
         for kind, obj_name in upgrade_map:
             child_obj = self.get_child_object(kind, obj_name)
-            await child_obj.enable(self.openstack_version, True)
+            child_obj.enable(self.openstack_version, True)
 
 
 class Heat(OpenStackService):
@@ -1021,7 +1018,7 @@ class Heat(OpenStackService):
     _protected_accounts = ["heat_trustee"]
 
     @layers.kopf_exception
-    async def _upgrade(self, event, **kwargs):
+    def _upgrade(self, event, **kwargs):
         upgrade_map = [
             ("Job", "heat-db-sync"),
             ("Deployment", "heat-api"),
@@ -1046,13 +1043,13 @@ class Heat(OpenStackService):
         # first apply.
         for resource in self.child_objects:
             if resource.immutable:
-                await resource.purge()
+                resource.purge()
 
         for kind, obj_name in upgrade_map:
             child_obj = self.get_child_object(kind, obj_name)
             if kind == "Job":
-                await child_obj.purge()
-            await child_obj.enable(self.openstack_version, True, extra_values)
+                child_obj.purge()
+            child_obj.enable(self.openstack_version, True, extra_values)
 
     def template_args(self):
         t_args = super().template_args()
@@ -1233,7 +1230,7 @@ class Keystone(OpenStackService, FederationMixin):
         return t_args
 
     @layers.kopf_exception
-    async def _upgrade(self, event, **kwargs):
+    def _upgrade(self, event, **kwargs):
         upgrade_map = [
             ("Job", "keystone-db-sync-expand"),
             ("Job", "keystone-db-sync-migrate"),
@@ -1242,7 +1239,7 @@ class Keystone(OpenStackService, FederationMixin):
         ]
         for kind, obj_name in upgrade_map:
             child_obj = self.get_child_object(kind, obj_name)
-            await child_obj.enable(self.openstack_version, True)
+            child_obj.enable(self.openstack_version, True)
 
 
 class Neutron(OpenStackService, MaintenanceApiMixin):
@@ -1365,7 +1362,7 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
         return health_groups
 
     @layers.kopf_exception
-    async def _upgrade(self, event, **kwargs):
+    def _upgrade(self, event, **kwargs):
         neutron_server_deployment_type = "Deployment"
         if (
             utils.get_in(self.mspec, ["features", "neutron", "backend"])
@@ -1390,15 +1387,15 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
         for kind, obj_name in static_map:
             child_obj = self.get_child_object(kind, obj_name)
             if kind == "Job":
-                await child_obj.purge()
-            await child_obj.enable(self.openstack_version, True)
+                child_obj.purge()
+            child_obj.enable(self.openstack_version, True)
 
         for kind, abstract_name in dynamic_map:
             child_objs = self.get_child_objects_dynamic(kind, abstract_name)
             for child_obj in child_objs:
-                await child_obj.enable(self.openstack_version, True)
+                child_obj.enable(self.openstack_version, True)
 
-    async def _upgrade_ovn(self, event, **kwargs):
+    def _upgrade_ovn(self, event, **kwargs):
         """Perform OVN upgrade to major version
 
         For OVN we use the following upgrade order:
@@ -1451,13 +1448,11 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
                     }
                 },
             )
-            await asyncio.sleep(
-                CONF.getint("helmbundle", "manifest_apply_delay")
-            )
+            time.sleep(CONF.getint("helmbundle", "manifest_apply_delay"))
             ovndb_sts = self.get_child_object(
                 "StatefulSet", "openvswitch-ovn-db"
             )
-            await ovndb_sts.wait_ready()
+            ovndb_sts.wait_ready()
             self.wait_service_healthy()
 
             for ovnc_ds in self.get_child_objects_dynamic(
@@ -1468,24 +1463,24 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
                     LOG.info(
                         "OVN upgrade: updating image for ovn-controllers."
                     )
-                    await ovnc_ds.enable(
+                    ovnc_ds.enable(
                         self.openstack_version,
                         wait_completion=True,
                         timeout=None,
                     )
-                await ovnc_ds.ensure_pod_generation()
-                await ovnc_ds.wait_ready()
+                ovnc_ds.ensure_pod_generation()
+                ovnc_ds.wait_ready()
             ovndb_sts = self.get_child_object(
                 "StatefulSet", "openvswitch-ovn-db"
             )
             if ovndb_sts.need_apply_images(self.openstack_version):
                 LOG.info("OVN upgrade: updating image for ovn-dbs.")
-                await ovndb_sts.enable(
+                ovndb_sts.enable(
                     self.openstack_version,
                     wait_completion=True,
                     timeout=None,
                 )
-                await ovndb_sts.wait_ready()
+                ovndb_sts.wait_ready()
 
             ovnnb_sts = self.get_child_object(
                 "StatefulSet", "openvswitch-ovn-northd"
@@ -1494,27 +1489,27 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
             if ovnnb_sts.need_apply_images(self.openstack_version):
                 LOG.info("OVN upgrade: scaling ovn-northd to 0.")
                 ovnnb_sts.scale(0)
-                await ovnnb_sts.wait_for_replicas(0)
+                ovnnb_sts.wait_for_replicas(0)
 
                 # Restart db pods to remove flags set before running update
                 # like --disable-file-no-data-conversion
                 LOG.info("OVN upgrade: restarting ovn-dbs.")
                 ovndb_sts.restart()
 
-                await ovndb_sts.wait_ready()
+                ovndb_sts.wait_ready()
 
-                await ovnnb_sts.enable(
+                ovnnb_sts.enable(
                     self.openstack_version,
                     wait_completion=True,
                     timeout=None,
                 )
 
-                await ovnnb_sts.wait_ready()
+                ovnnb_sts.wait_ready()
                 self.wait_service_healthy()
             LOG.info("OVN upgrade: finished")
             # With later super().apply() neutron-server will be retarted.
 
-    async def apply(self, event, **kwargs):
+    def apply(self, event, **kwargs):
         if (
             self.mspec.get("migration", {})
             .get("neutron", {})
@@ -1609,7 +1604,7 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
                     if child_obj.exists() and child_obj.need_apply_images(
                         self.openstack_version
                     ):
-                        await child_obj.enable(
+                        child_obj.enable(
                             self.openstack_version,
                             wait_completion=True,
                             timeout=None,
@@ -1619,9 +1614,9 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
             utils.get_in(self.mspec["features"], ["neutron", "backend"])
             == "ml2/ovn"
         ):
-            await self._upgrade_ovn(event, **kwargs)
+            self._upgrade_ovn(event, **kwargs)
 
-        await super().apply(event, **kwargs)
+        super().apply(event, **kwargs)
         if utils.get_in(
             self.mspec["features"], ["neutron", "backend"]
         ) == "ml2" and self.service in utils.get_in(
@@ -1632,7 +1627,7 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
             rabbitmq_sts = self.get_child_object(
                 "StatefulSet", "openstack-neutron-rabbitmq-rabbitmq"
             )
-            await rabbitmq_sts.wait_ready(interval=30)
+            rabbitmq_sts.wait_ready(interval=30)
         cmr = kube.ClusterMaintenanceRequest.objects(
             kube.kube_client()
         ).get_or_none()
@@ -1659,15 +1654,15 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
                 for ds_inst in self.get_child_objects_dynamic(
                     "DaemonSet", daemonset
                 ):
-                    await ds_inst.ensure_pod_generation()
+                    ds_inst.ensure_pod_generation()
 
-    async def remove_node_from_scheduling(self, node):
+    def remove_node_from_scheduling(self, node):
         pass
 
-    async def prepare_node_for_reboot(self, node):
+    def prepare_node_for_reboot(self, node):
         pass
 
-    async def prepare_node_after_reboot(self, node, scope=None):
+    def prepare_node_after_reboot(self, node, scope=None):
         if (
             utils.get_in(self.mspec["features"], ["neutron", "backend"])
             == "tungstenfabric"
@@ -1699,7 +1694,7 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
             for ovs_ds in self.get_child_objects_dynamic(
                 "DaemonSet", daemonset
             ):
-                await ovs_ds.ensure_pod_generation_on_node(node.name)
+                ovs_ds.ensure_pod_generation_on_node(node.name)
         try:
             os_client = openstack_utils.OpenStackClientManager()
 
@@ -1713,11 +1708,8 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
                 return True
 
             try:
-                await asyncio.wait_for(
-                    utils.async_retry(wait_for_agents_up),
-                    timeout=300,
-                )
-            except asyncio.TimeoutError:
+                utils.run_with_timeout(wait_for_agents_up, timeout=300)
+            except TimeoutError:
                 msg = f"Timeout waiting for network agents on the host {node.name}."
                 nwl.set_error_message(msg)
                 raise kopf.TemporaryError(msg)
@@ -1726,18 +1718,16 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
             nwl.set_error_message(msg)
             raise kopf.TemporaryError(msg)
 
-    async def add_node_to_scheduling(self, node):
+    def add_node_to_scheduling(self, node):
         pass
 
-    async def process_ndr(self, node, nwl):
-        return await self.remove_node_from_scheduling(node)
+    def process_ndr(self, node, nwl):
+        return self.remove_node_from_scheduling(node)
 
-    async def cleanup_metadata(self, nwl):
+    def cleanup_metadata(self, nwl):
         node_name = nwl.obj["spec"]["nodeName"]
         os_client = openstack_utils.OpenStackClientManager()
-        await os_client.network_wait_agent_state(
-            host=node_name, is_alive=False
-        )
+        os_client.network_wait_agent_state(host=node_name, is_alive=False)
         os_client.network_ensure_agents_absent(host=node_name)
 
 
@@ -1860,7 +1850,7 @@ class Nova(OpenStackServiceWithCeph, MaintenanceApiMixin):
         return False
 
     @layers.kopf_exception
-    async def _upgrade(self, event, **kwargs):
+    def _upgrade(self, event, **kwargs):
         upgrade_map = [
             ("Job", "nova-db-sync-api"),
             ("Job", "nova-db-sync-db"),
@@ -1868,10 +1858,10 @@ class Nova(OpenStackServiceWithCeph, MaintenanceApiMixin):
         ]
         for kind, obj_name in upgrade_map:
             child_obj = self.get_child_object(kind, obj_name)
-            await child_obj.purge()
-            await child_obj.enable(self.openstack_version, True)
+            child_obj.purge()
+            child_obj.enable(self.openstack_version, True)
 
-    async def can_handle_nmr(self, node, locks):
+    def can_handle_nmr(self, node, locks):
         if not node.has_role(constants.NodeRole.compute):
             return True
         if not CONF.getboolean("maintenance", "respect_nova_az"):
@@ -1905,7 +1895,7 @@ class Nova(OpenStackServiceWithCeph, MaintenanceApiMixin):
             return False
         return True
 
-    async def remove_node_from_scheduling(self, node):
+    def remove_node_from_scheduling(self, node):
         nwl = maintenance.NodeWorkloadLock.get_by_node(node.name)
         if not node.has_role(constants.NodeRole.compute):
             return
@@ -1922,8 +1912,8 @@ class Nova(OpenStackServiceWithCeph, MaintenanceApiMixin):
             nwl.set_error_message(msg)
             raise kopf.TemporaryError(msg)
 
-    async def _migrate_servers(self, os_client, host, cfg, nwl, concurrency=1):
-        async def _check_migration_completed(node_migration_mode):
+    def _migrate_servers(self, os_client, host, cfg, nwl, concurrency=1):
+        def _check_migration_completed(node_migration_mode):
             all_servers = os_client.compute_get_all_servers(host=host)
             all_servers = [
                 s
@@ -1972,7 +1962,7 @@ class Nova(OpenStackServiceWithCeph, MaintenanceApiMixin):
                 nwl.set_error_message(msg)
                 raise kopf.TemporaryError(msg)
 
-        async def _do_servers_migration(node_migration_mode):
+        def _do_servers_migration(node_migration_mode):
             servers_to_migrate = (
                 os_client.compute_get_servers_valid_for_live_migration(
                     host=host, node_migration_mode=node_migration_mode
@@ -1999,7 +1989,7 @@ class Nova(OpenStackServiceWithCeph, MaintenanceApiMixin):
                         os_client.oc.compute.live_migrate_server(srv)
                         # NOTE(vsaienko): do not call API extensively, give some time for API
                         # to set correct status for instance.
-                        await asyncio.sleep(5)
+                        time.sleep(5)
                     except Exception as e:
                         msg = f"Got error while trying to migrate server {srv.id}: {e}"
                         LOG.warning(msg)
@@ -2008,8 +1998,8 @@ class Nova(OpenStackServiceWithCeph, MaintenanceApiMixin):
                     msg = f"Waiting servers migration is completed: {[s.id for s in servers_in_migrating_state]}"
                     LOG.info(msg)
                     nwl.set_error_message(msg)
-                    await asyncio.sleep(30)
-                await asyncio.sleep(5)
+                    time.sleep(30)
+                time.sleep(5)
                 servers_migrating_skip = [
                     srv_id
                     for srv_id, error_count in servers_migrating_count.items()
@@ -2026,10 +2016,10 @@ class Nova(OpenStackServiceWithCeph, MaintenanceApiMixin):
                     if srv.id not in servers_migrating_skip
                 ]
 
-        await _do_servers_migration(cfg.instance_migration_mode)
-        await _check_migration_completed(cfg.instance_migration_mode)
+        _do_servers_migration(cfg.instance_migration_mode)
+        _check_migration_completed(cfg.instance_migration_mode)
 
-    async def prepare_node_for_reboot(self, node):
+    def prepare_node_for_reboot(self, node):
         nwl = maintenance.NodeWorkloadLock.get_by_node(node.name)
         if not node.has_role(constants.NodeRole.compute):
             return
@@ -2037,7 +2027,7 @@ class Nova(OpenStackServiceWithCeph, MaintenanceApiMixin):
 
         try:
             os_client = openstack_utils.OpenStackClientManager()
-            await self._migrate_servers(
+            self._migrate_servers(
                 os_client=os_client,
                 host=node.name,
                 cfg=maintenance_cfg,
@@ -2051,7 +2041,7 @@ class Nova(OpenStackServiceWithCeph, MaintenanceApiMixin):
             nwl.set_error_message(msg)
             raise kopf.TemporaryError(msg)
 
-    async def prepare_node_after_reboot(self, node, scope=None):
+    def prepare_node_after_reboot(self, node, scope=None):
         nwl = maintenance.NodeWorkloadLock.get_by_node(node.name)
         if not node.has_role(constants.NodeRole.compute):
             return
@@ -2068,11 +2058,10 @@ class Nova(OpenStackServiceWithCeph, MaintenanceApiMixin):
                 return False
 
             try:
-                await asyncio.wait_for(
-                    utils.async_retry(wait_for_service_found_and_up),
-                    timeout=300,
+                utils.run_with_timeout(
+                    wait_for_service_found_and_up, timeout=300
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 msg = "Timeout waiting for compute services up on the host."
                 nwl.set_error_message(msg)
                 raise kopf.TemporaryError(msg)
@@ -2081,7 +2070,7 @@ class Nova(OpenStackServiceWithCeph, MaintenanceApiMixin):
             nwl.set_error_message(msg)
             raise kopf.TemporaryError(msg)
 
-    async def add_node_to_scheduling(self, node):
+    def add_node_to_scheduling(self, node):
         nwl = maintenance.NodeWorkloadLock.get_by_node(node.name)
         if not node.has_role(constants.NodeRole.compute):
             return
@@ -2100,8 +2089,8 @@ class Nova(OpenStackServiceWithCeph, MaintenanceApiMixin):
             nwl.set_error_message(msg)
             raise kopf.TemporaryError(msg)
 
-    async def process_ndr(self, node, nwl):
-        await self.remove_node_from_scheduling(node)
+    def process_ndr(self, node, nwl):
+        self.remove_node_from_scheduling(node)
         if not CONF.getboolean("maintenance", "ndr_skip_instance_check"):
             os_client = openstack_utils.OpenStackClientManager()
             all_servers = os_client.compute_get_all_servers(host=node.name)
@@ -2111,12 +2100,10 @@ class Nova(OpenStackServiceWithCeph, MaintenanceApiMixin):
                 nwl.set_error_message(msg)
                 raise kopf.TemporaryError(msg)
 
-    async def cleanup_metadata(self, nwl):
+    def cleanup_metadata(self, nwl):
         node_name = nwl.obj["spec"]["nodeName"]
         os_client = openstack_utils.OpenStackClientManager()
-        await os_client.compute_wait_service_state(
-            host=node_name, state="down"
-        )
+        os_client.compute_wait_service_state(host=node_name, state="down")
         os_client.compute_ensure_services_absent(host=node_name)
         os_client.placement_resource_provider_absent(host=node_name)
 
@@ -2140,7 +2127,7 @@ class Placement(OpenStackService):
         }
 
     @layers.kopf_exception
-    async def upgrade(self, event, **kwargs):
+    def upgrade(self, event, **kwargs):
         LOG.info(f"Upgrading {self.service} started.")
         # NOTE(mkarpin): skip health check for stein release,
         # as this is first release where placement is added
@@ -2171,26 +2158,24 @@ class Placement(OpenStackService):
                     child_obj = compute_service_instance.get_child_object(
                         kind, obj_name
                     )
-                    await child_obj.disable(wait_completion=True)
+                    child_obj.disable(wait_completion=True)
                 LOG.info(
                     f"{self.service} database migration will be performed."
                 )
-                await self.apply(event, **kwargs)
+                self.apply(event, **kwargs)
                 # TODO(vsaienko): implement logic that will check that changes made in helmbundle
                 # object were handled by tiller/helmcontroller
                 # can be done only once https://mirantis.jira.com/browse/PRODX-2283 is implemented.
-                await asyncio.sleep(
-                    CONF.getint("helmbundle", "manifest_apply_delay")
-                )
+                time.sleep(CONF.getint("helmbundle", "manifest_apply_delay"))
                 self.wait_service_healthy()
                 # NOTE(mkarpin): db sync job should be cleaned up after upgrade and before apply
                 # because placement_db_nova_migrate_placement job is in dynamic dependencies
                 # for db sync job, during apply it will be removed
                 LOG.info(f"Cleaning up database migration jobs")
-                await self.get_child_object("Job", "placement-db-sync").purge()
+                self.get_child_object("Job", "placement-db-sync").purge()
                 # Recreate placement-db-sync without nova_migrate_placement dependency
                 kwargs.pop("helmobj_overrides")
-                await self.apply(event, **kwargs)
+                self.apply(event, **kwargs)
             except Exception as e:
                 # NOTE(mkarpin): in case something went wrong during placement migration
                 # we need to cleanup all child objects related to placement
@@ -2200,11 +2185,11 @@ class Placement(OpenStackService):
                     child_obj = compute_service_instance.get_child_object(
                         kind, obj_name
                     )
-                    await child_obj.purge()
+                    child_obj.purge()
                 raise kopf.TemporaryError(f"{e}") from e
             LOG.info(f"Upgrading {self.service} done")
         else:
-            await super().upgrade(event, **kwargs)
+            super().upgrade(event, **kwargs)
 
 
 class Octavia(OpenStackService):

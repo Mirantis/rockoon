@@ -25,17 +25,10 @@ from rockoon import maintenance
 from rockoon import kube
 
 
-# TODO(vdrok): Remove with switch to python3.8 as mock itself will be able
-#              to handle async
-class AsyncMock(mock.Mock):
-    async def __call__(self, *args, **kwargs):
-        return super().__call__(*args, **kwargs)
-
-
 @pytest.fixture
 def nova_registry_service(mocker):
     mock_service_class = mock.Mock()
-    mock_service_class.return_value = mock.AsyncMock()
+    mock_service_class.return_value = mock.Mock()
     mocker.patch(
         "rockoon.services.ORDERED_SERVICES",
         [("compute", mock_service_class)],
@@ -51,9 +44,10 @@ def nova_registry_service(mocker):
         "cleanup_metadata",
         "cleanup_persistent_data",
         "is_node_locked",
+        "can_handle_nmr",
     ]
     for attr in methods:
-        setattr(mock_service_class.return_value, attr, AsyncMock())
+        setattr(mock_service_class.return_value, attr, mock.Mock())
     yield mock_service_class
     mocker.stopall()
 
@@ -117,7 +111,7 @@ def test_nmr_change_required_for_node_not_maintenance_0_active_lock(
     mocker.patch.object(
         maintenance.NodeWorkloadLock, "get_by_node", return_value=nwl
     )
-    nova_registry_service.return_value.maintenance_api.return_value = True
+    nova_registry_service.return_value.maintenance_api = True
     nova_registry_service.return_value.can_handle_nmr.return_value = True
 
     mocker.patch.object(
@@ -155,12 +149,12 @@ def test_nmr_change_required_for_node_not_maintenance_0_active_lock_service_reje
     mocker.patch.object(
         maintenance.NodeWorkloadLock, "get_by_node", return_value=nwl
     )
-    nova_registry_service.return_value.maintenance_api.return_value = True
+    nova_registry_service.return_value.maintenance_api = True
     nova_registry_service.return_value.can_handle_nmr.return_value = True
 
     neutron_registry_service = mock.Mock()
-    neutron_registry_service.return_value = mock.AsyncMock()
-    neutron_registry_service.return_value.maintenance_api.return_value = True
+    neutron_registry_service.return_value = mock.Mock()
+    neutron_registry_service.return_value.maintenance_api = True
     neutron_registry_service.return_value.can_handle_nmr.return_value = False
 
     mocker.patch.object(
@@ -316,7 +310,7 @@ def test_nmr_delete_nwl_in_maintenance(
     node.ready = True
 
     osdpl.exists.return_value = True
-    nova_registry_service.return_value.maintenance_api.return_value = True
+    nova_registry_service.return_value.maintenance_api = True
     mocker.patch.object(kube, "find", side_effect=(node,))
     maintenance_controller.node_maintenance_request_delete_handler(nmr)
     nwl.required_for_node.assert_called_once()
@@ -390,7 +384,7 @@ def test_ndr_nova_service(mocker, nova_registry_service, safe_node, osdpl):
         maintenance.NodeWorkloadLock, "get_by_node", return_value=nwl
     )
 
-    nova_registry_service.return_value.maintenance_api.return_value = True
+    nova_registry_service.return_value.maintenance_api = True
 
     mocker.patch.object(
         services,
@@ -411,7 +405,7 @@ def test_nwl_deletion_no_osdpl(mocker, nova_registry_service, node, osdpl):
         "spec": {"nodeName": "fake-node", "controllerName": "openstack"},
     }
     osdpl.return_value.exists.return_value = False
-    nova_registry_service.return_value.maintenance_api.return_value = True
+    nova_registry_service.return_value.maintenance_api = True
 
     mocker.patch.object(
         services,
@@ -436,7 +430,7 @@ def test_nwl_deletion_not_our_nwl(mocker, nova_registry_service, node, osdpl):
         "spec": {"nodeName": "fake-node", "controllerName": "ceph"},
     }
     osdpl.return_value.exists.return_value = True
-    nova_registry_service.return_value.maintenance_api.return_value = True
+    nova_registry_service.return_value.maintenance_api = True
 
     mocker.patch.object(
         services,
@@ -463,7 +457,7 @@ def test_nwl_deletion_node_still_exit(
         "spec": {"nodeName": "fake-node", "controllerName": "openstack"},
     }
     osdpl.return_value.exists.return_value = True
-    nova_registry_service.return_value.maintenance_api.return_value = True
+    nova_registry_service.return_value.maintenance_api = True
     node.exists.return_value = True
     mocker.patch.object(kube, "find", side_effect=(node,))
 
@@ -494,7 +488,7 @@ def test_nwl_deletion_cleanup(mocker, nova_registry_service, safe_node, osdpl):
         "spec": {"nodeName": "fake-node", "controllerName": "openstack"},
     }
     osdpl.return_value.exists.return_value = True
-    nova_registry_service.return_value.maintenance_api.return_value = True
+    nova_registry_service.return_value.maintenance_api = True
     node.exists.return_value = False
     mocker.patch.object(kube, "find", side_effect=(node,))
 

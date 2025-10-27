@@ -1,7 +1,10 @@
-import asyncio
 import os
 import socket
 import time
+
+import concurrent
+from concurrent.futures import ThreadPoolExecutor
+import contextvars
 
 import kopf
 
@@ -80,10 +83,10 @@ def check_handling_allowed(old, new, event):
     LOG.info("Handling is allowed")
 
 
-async def run_task(task_def):
+def run_tasks(tasks_def):
     """Run OpenStack controller tasks
 
-    Runs tasks passed as `task_def` with implementing the following logic:
+    Runs tasks passed as `tasks_def` with implementing the following logic:
 
     * In case of permanent error retry all the tasks that finished with
       TemporaryError and fail permanently.
@@ -96,46 +99,44 @@ async def run_task(task_def):
     :raises: kopf.PermanentError when permanent error occur.
     """
 
-    permanent_exception = None
+    permanent_exceptions = []
+    with ThreadPoolExecutor(max_workers=50) as executor:
+        while tasks_def:
+            futures = {}
+            for task in tasks_def:
+                ctx = contextvars.copy_context()
+                futures[
+                    executor.submit(
+                        ctx.run, task["func"], *task["args"], **task["kwargs"]
+                    )
+                ] = task
 
-    while task_def:
-        # NOTE(e0ne): we can switch to asyncio.as_completed to run tasks
-        # faster if needed.
-        done, _ = await asyncio.wait(task_def.keys())
-        for task in done:
-            coro, event, body, meta, spec, logger, kwargs = task_def.pop(task)
-            if task.exception():
-                if isinstance(task.exception(), kopf.PermanentError):
-                    LOG.error(f"Failed to apply {coro} permanently.")
-                    LOG.error(task.print_stack())
-                    permanent_exception = kopf.PermanentError(
-                        "Permanent error occured."
+            for future in concurrent.futures.as_completed(futures):
+                task = futures[future]
+                task_repr = f"{task['func'].__name__} with args: {task['args']} and kwargs {task['kwargs']}"
+                LOG.debug(f"Handling task {task_repr}")
+                try:
+                    future.result()
+                    tasks_def.remove(task)
+                except kopf.PermanentError as e:
+                    LOG.error(
+                        f"Failed to apply {task_repr} failed permanently."
                     )
-                else:
+                    LOG.exception(e)
+                    permanent_exceptions.append(e)
+                    tasks_def.remove(task)
+                except Exception as e:
                     LOG.warning(
-                        f"Got retriable exception when applying {coro}, retrying..."
+                        f"Got retriable exception when applying {task_repr}, retrying..."
                     )
-                    LOG.warning(task.print_stack())
-                    task_def[
-                        asyncio.create_task(
-                            coro(
-                                event=event,
-                                body=body,
-                                meta=meta,
-                                spec=spec,
-                                logger=logger,
-                                **kwargs,
-                            )
-                        )
-                    ] = (coro, event, body, meta, spec, logger, kwargs)
+                    LOG.exception(e)
 
         # Let's wait for 10 second before retry to not introduce a lot of
         # task scheduling in case of some depended task is slow.
         LOG.info("Sleeping ...")
-        await asyncio.sleep(10)
-
-    if permanent_exception:
-        raise permanent_exception
+        time.sleep(10)
+        if permanent_exceptions:
+            raise kopf.PermanentError("Failed running some tasks.")
 
 
 def cleanup_helm_cache():
@@ -145,7 +146,7 @@ def cleanup_helm_cache():
             os.remove(os.path.join(root, file))
 
 
-async def _trigger_octavia_lb_failover(
+def _trigger_octavia_lb_failover(
     mspec,
     logger,
     osdplst,
@@ -159,28 +160,30 @@ async def _trigger_octavia_lb_failover(
     octavia_service = services.registry["load-balancer"](
         mspec, logger, osdplst, child_view
     )
-    task_def = {}
-    task_def[
-        asyncio.create_task(
-            octavia_service.apply(
-                event=reason,
-                body=body,
-                meta=meta,
-                spec=spec,
-                logger=logger,
+    tasks_def = [
+        {
+            "func": octavia_service.apply,
+            "args": (),
+            "kwargs": {
                 **kwargs,
-            )
-        )
-    ] = (octavia_service.apply, reason, body, meta, spec, logger, kwargs)
-    await run_task(task_def)
-    await asyncio.sleep(60)
+                "event": reason,
+                "body": body,
+                "meta": meta,
+                "spec": spec,
+                "logger": logger,
+            },
+        }
+    ]
+    run_tasks(tasks_def)
+
+    time.sleep(60)
     octavia_service.wait_service_healthy()
     failover_job = octavia_service.get_child_object(
         "Job", "octavia-loadbalancers-failover"
     )
-    await failover_job.purge()
+    failover_job.purge()
     timeout = CONF.getint("osctl", "octavia_lb_failover_job_timeout")
-    await failover_job.enable(spec["openstack_version"], wait_completion=False)
+    failover_job.enable(spec["openstack_version"], wait_completion=False)
     try:
         failover_job.wait_completed(timeout=timeout, delay=30)
     except Exception as e:
@@ -199,7 +202,7 @@ async def _trigger_octavia_lb_failover(
         )
 
 
-async def _regenerate_creds(
+def _regenerate_creds(
     group_name,
     rotation_id,
     enabled_services,
@@ -218,21 +221,22 @@ async def _regenerate_creds(
         mariadb_instance = services.registry["database"](
             mspec, logger, osdplst, child_view
         )
-        task_def = {}
-        task_def[
-            asyncio.create_task(
-                mariadb_instance.apply(
-                    event=reason,
-                    body=body,
-                    meta=meta,
-                    spec=spec,
-                    logger=logger,
+        tasks_def = [
+            {
+                "func": mariadb_instance.apply,
+                "args": (),
+                "kwargs": {
                     **kwargs,
-                )
-            )
-        ] = (mariadb_instance.apply, reason, body, meta, spec, logger, kwargs)
-        await run_task(task_def)
-        await asyncio.sleep(60)
+                    "event": reason,
+                    "body": body,
+                    "meta": meta,
+                    "spec": spec,
+                    "logger": logger,
+                },
+            }
+        ]
+        run_tasks(tasks_def)
+        time.sleep(60)
         mariadb_instance.wait_service_healthy()
     elif group_name == "service":
         for service in enabled_services:
@@ -245,7 +249,7 @@ async def _regenerate_creds(
                 service_secret.rotate(rotation_id)
 
 
-async def _regenerate_certs(
+def _regenerate_certs(
     service_name,
     component_name,
     rotation_id,
@@ -281,7 +285,7 @@ def _get_rotation_id_if_changed(new_auth_data, old_data, component, path):
         return new_rotation_id
 
 
-async def regenerate_auth_data(
+def regenerate_auth_data(
     enabled_services,
     mspec,
     logger,
@@ -310,7 +314,7 @@ async def regenerate_auth_data(
                 path,
             )
             if new_rotation_id:
-                await _regenerate_creds(
+                _regenerate_creds(
                     group_name,
                     new_rotation_id,
                     enabled_services,
@@ -337,7 +341,7 @@ async def regenerate_auth_data(
                     path,
                 )
                 if new_rotation_id:
-                    await _regenerate_certs(
+                    _regenerate_certs(
                         service_name,
                         component_name,
                         new_rotation_id,
@@ -359,7 +363,7 @@ async def regenerate_auth_data(
                         service_name == "octavia"
                         and component_name == "amphora"
                     ):
-                        await _trigger_octavia_lb_failover(
+                        _trigger_octavia_lb_failover(
                             mspec,
                             logger,
                             osdplst,
@@ -384,10 +388,6 @@ async def regenerate_auth_data(
 @kopf.on.update(*kube.OpenStackDeployment.kopf_on_args)
 @kopf.on.create(*kube.OpenStackDeployment.kopf_on_args)
 def handle(body, meta, spec, logger, reason, **kwargs):
-    asyncio.run(_handle(body, meta, spec, logger, reason, **kwargs))
-
-
-async def _handle(body, meta, spec, logger, reason, **kwargs):
     # TODO(pas-ha) remove all this kwargs[*] nonsense, accept explicit args,
     # pass further only those that are really needed
     # actual **kwargs form is for forward-compat with kopf itself
@@ -430,7 +430,7 @@ async def _handle(body, meta, spec, logger, reason, **kwargs):
 
         update, delete = layers.services(mspec, logger, **kwargs)
 
-        await regenerate_auth_data(
+        regenerate_auth_data(
             update,
             mspec,
             logger,
@@ -453,7 +453,7 @@ async def _handle(body, meta, spec, logger, reason, **kwargs):
                     "CronJob", "descheduler"
                 )
             )
-            await child_obj_descheduler.suspend(wait_completion=True)
+            child_obj_descheduler.suspend(wait_completion=True)
 
             services_to_upgrade = get_os_services_for_upgrade(update)
             LOG.info(
@@ -461,88 +461,72 @@ async def _handle(body, meta, spec, logger, reason, **kwargs):
             )
             for service in set(list(services_to_upgrade) + list(update)):
                 osdplst.set_service_state(service, osdplstatus.WAITING)
+
+            # Upgrade openstack services one by one
             for service in services_to_upgrade:
-                task_def = {}
                 service_instance = services.registry[service](
                     mspec, logger, osdplst, child_view
                 )
-                task_def[
-                    asyncio.create_task(
-                        service_instance.upgrade(
-                            event=reason,
-                            body=body,
-                            meta=meta,
-                            spec=spec,
-                            logger=logger,
+                tasks_def = [
+                    {
+                        "func": service_instance.upgrade,
+                        "args": (),
+                        "kwargs": {
                             **kwargs,
-                        )
-                    )
-                ] = (
-                    service_instance.upgrade,
-                    reason,
-                    body,
-                    meta,
-                    spec,
-                    logger,
-                    kwargs,
-                )
-                await run_task(task_def)
+                            "event": reason,
+                            "body": body,
+                            "meta": meta,
+                            "spec": spec,
+                            "logger": logger,
+                        },
+                    }
+                ]
+                run_tasks(tasks_def)
 
         # NOTE(vsaienko): explicitly call apply() here to make sure that newly deployed environment
         # and environment after upgrade/update are identical.
-        task_def = {}
+        tasks_def = []
         for service in update:
             service_instance = services.registry[service](
                 mspec, logger, osdplst, child_view
             )
-            task_def[
-                asyncio.create_task(
-                    service_instance.apply(
-                        event=reason,
-                        body=body,
-                        meta=meta,
-                        spec=spec,
-                        logger=logger,
+            tasks_def.append(
+                {
+                    "func": service_instance.apply,
+                    "args": (),
+                    "kwargs": {
                         **kwargs,
-                    )
-                )
-            ] = (
-                service_instance.apply,
-                reason,
-                body,
-                meta,
-                spec,
-                logger,
-                kwargs,
+                        "event": reason,
+                        "body": body,
+                        "meta": meta,
+                        "spec": spec,
+                        "logger": logger,
+                    },
+                }
             )
 
         if delete:
             LOG.info(f"deleting children {' '.join(delete)}")
+
         for service in delete:
             service_instance = services.registry[service](
                 mspec, logger, osdplst, child_view
             )
-            task_def[
-                asyncio.create_task(
-                    service_instance.delete(
-                        body=body,
-                        meta=meta,
-                        spec=spec,
-                        logger=logger,
+            tasks_def.append(
+                {
+                    "func": service_instance.delete,
+                    "args": (),
+                    "kwargs": {
                         **kwargs,
-                    )
-                )
-            ] = (
-                service_instance.delete,
-                reason,
-                body,
-                meta,
-                spec,
-                logger,
-                kwargs,
+                        "event": reason,
+                        "body": body,
+                        "meta": meta,
+                        "spec": spec,
+                        "logger": logger,
+                    },
+                }
             )
-
-        await run_task(task_def)
+        run_tasks(tasks_def)
 
         # TODO(vsaienko): remove when release boundary passed. Cleanup status from osdpl
         # object.
@@ -565,10 +549,6 @@ async def _handle(body, meta, spec, logger, reason, **kwargs):
 
 @kopf.on.delete(*kube.OpenStackDeployment.kopf_on_args)
 def delete(name, meta, body, spec, logger, reason, **kwargs):
-    asyncio.run(_delete(name, meta, body, spec, logger, reason, **kwargs))
-
-
-async def _delete(name, meta, body, spec, logger, reason, **kwargs):
     # TODO(pas-ha) wait for children to be deleted
     # TODO(pas-ha) remove secrets and so on?
     LOG.info(f"Deleting {name}")
@@ -580,18 +560,24 @@ async def _delete(name, meta, body, spec, logger, reason, **kwargs):
     delete_services = layers.services(mspec, logger, **kwargs)[0]
     for service in delete_services:
         LOG.info(f"Deleting {service} service")
-        task_def = {}
         service_instance = services.registry[service](
             mspec, logger, osdplst, child_view
         )
-        task_def[
-            asyncio.create_task(
-                service_instance.delete(
-                    body=body, meta=meta, spec=spec, logger=logger, **kwargs
-                )
-            )
-        ] = (service_instance.delete, reason, body, meta, spec, logger, kwargs)
-        await run_task(task_def)
+        tasks_def = [
+            {
+                "func": service_instance.delete,
+                "args": (),
+                "kwargs": {
+                    **kwargs,
+                    "event": reason,
+                    "body": body,
+                    "meta": meta,
+                    "spec": spec,
+                    "logger": logger,
+                },
+            }
+        ]
+        run_tasks(tasks_def)
     # TODO(dbiletskiy) delete osdpl status
     maintenance.ClusterWorkloadLock.get_by_osdpl(name).absent()
 

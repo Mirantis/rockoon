@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import asyncio
 import logging
 from unittest import mock
 
@@ -27,13 +26,6 @@ import yaml
 
 logging.basicConfig(level=logging.DEBUG)
 LOG = logging.getLogger(__name__)
-
-
-# TODO(vdrok): Remove with switch to python3.8 as mock itself will be able
-#              to handle async
-class AsyncMock(mock.Mock):
-    async def __call__(self, *args, **kwargs):
-        return super().__call__(*args, **kwargs)
 
 
 @pytest.fixture
@@ -150,18 +142,6 @@ def kube_resource_list(mocker):
 def kube_resource(mocker):
     mock_res = mocker.patch("rockoon.kube.resource")
     yield mock_res
-    mocker.stopall()
-
-
-@pytest.fixture
-def asyncio_wait_for_timeout(mocker):
-    async def mock_wait(f, timeout):
-        await f
-        raise asyncio.TimeoutError()
-
-    mocker.patch("rockoon.utils.async_retry", AsyncMock())
-    mock_wait = mocker.patch.object(asyncio, "wait_for", mock_wait)
-    yield mock_wait
     mocker.stopall()
 
 
