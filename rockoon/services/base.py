@@ -151,7 +151,7 @@ class Service:
                     res.append(child_obj)
         return res
 
-    async def set_release_values(self, chart, values):
+    def set_release_values(self, chart, values):
         self.helm_manager.set_release_values(
             f"openstack-{chart}", values, chart
         )
@@ -455,7 +455,7 @@ class Service:
                 )
                 layers.merger.merge(release["values"], overrides[name])
 
-    async def wait_service_healthy(self):
+    def wait_service_healthy(self):
         for health_group in self.health_groups:
             LOG.info(f"Checking {health_group} health.")
             readiness_timeouts = (
@@ -470,7 +470,7 @@ class Service:
                 "timeout",
                 CONF.getint("osctl", "wait_application_ready_timeout"),
             )
-            await health.wait_application_ready(
+            health.wait_application_ready(
                 health_group, self.osdplst, delay=delay, timeout=timeout
             )
 
@@ -480,7 +480,7 @@ class Service:
     async def upgrade(self, event, **kwargs):
         self.set_children_status("Upgrading")
         try:
-            await self.wait_service_healthy()
+            self.wait_service_healthy()
             LOG.info(f"Upgrading {self.service} started.")
             await self._upgrade(event, **kwargs)
 
@@ -492,7 +492,7 @@ class Service:
                 CONF.getint("helmbundle", "manifest_apply_delay")
             )
 
-            await self.wait_service_healthy()
+            self.wait_service_healthy()
         except Exception as e:
             # NOTE(vsaienko): always raise temporary error here, to ensure we retry upgrade from
             # failed service only. The whole upgrade restart might be done by restarting openstack

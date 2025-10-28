@@ -1643,7 +1643,7 @@ def finalize_migration(script_args):
     osdplst = osdplstatus.OpenStackDeploymentStatus(
         osdpl.name, osdpl.namespace
     )
-    asyncio.run(health.wait_services_healthy(osdpl.mspec, osdplst, child_view))
+    health.wait_services_healthy(osdpl.mspec, osdplst, child_view)
 
 
 def cleanup(script_args):
