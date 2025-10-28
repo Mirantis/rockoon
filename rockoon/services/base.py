@@ -152,7 +152,7 @@ class Service:
         return res
 
     async def set_release_values(self, chart, values):
-        await self.helm_manager.set_release_values(
+        self.helm_manager.set_release_values(
             f"openstack-{chart}", values, chart
         )
         LOG.info(f"Update {self.service} with {values}")
@@ -316,15 +316,13 @@ class Service:
 
         release_mapping = {}
         installed_releases = [
-            release["name"] for release in await self.helm_manager.list()
+            release["name"] for release in self.helm_manager.list()
         ]
         for release in new_obj["spec"]["releases"]:
             if not release["name"] in installed_releases:
                 break
             chart_name = release["chart"]
-            old_values = await self.helm_manager.get_release_values(
-                release["name"]
-            )
+            old_values = self.helm_manager.get_release_values(release["name"])
             release_mapping[chart_name] = {
                 "new_values": release["values"],
                 "old_values": old_values,
@@ -395,7 +393,7 @@ class Service:
         LOG.info(f"Deleting config for {self.service}")
         self.set_children_status("Deleting")
         # TODO(e0ne): remove credentials of the deleted services
-        await self.helm_manager.delete_bundle(self.available_releases)
+        self.helm_manager.delete_bundle(self.available_releases)
         msg = f"Deleted helm release {self.resource_name} for service {self.service}"
         LOG.info(msg)
 
@@ -432,11 +430,11 @@ class Service:
         for release in data["spec"]["releases"]:
             await self.cleanup_immutable_resources(data)
         try:
-            await self.helm_manager.install_bundle(data)
+            self.helm_manager.install_bundle(data)
         except:
             raise
 
-        await self.helm_manager.delete_not_active_releases(
+        self.helm_manager.delete_not_active_releases(
             data, self.available_releases
         )
 

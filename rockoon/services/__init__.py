@@ -369,9 +369,9 @@ class Redis(Service, MaintenanceApiMixin):
 
         # TODO(vsaienko): remove in 25.2 release
         helm_manager = helm.HelmManager(namespace=self.namespace)
-        if await helm_manager.exist("os-redis-operator"):
+        if helm_manager.exist("os-redis-operator"):
             LOG.info(f"Purging os-redis-operator helm release")
-            await helm_manager.delete("os-redis-operator")
+            helm_manager.delete("os-redis-operator")
         redis_failover = kube.find(
             kube.RedisFailover,
             "openstack-redis",
@@ -1409,7 +1409,7 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
         4. neutron-server upgrade/restart
         """
 
-        if not await self.helm_manager.exist("openstack-openvswitch"):
+        if not self.helm_manager.exist("openstack-openvswitch"):
             return
 
         def _extract_ovs_version(image):
@@ -1422,11 +1422,7 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
             "openvswitch_ovn_db_nb", "openvswitch", self.openstack_version
         )
         old_ovn_image = (
-            (
-                await self.helm_manager.get_release_values(
-                    "openstack-openvswitch"
-                )
-            )
+            (self.helm_manager.get_release_values("openstack-openvswitch"))
             .get("images", {})
             .get("tags", {})
             .get("openvswitch_ovn_db_nb")

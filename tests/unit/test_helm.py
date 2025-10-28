@@ -38,16 +38,6 @@ def release_values():
 
 
 @pytest.fixture
-def subprocess_shell(mocker):
-    mock_get_creds = mocker.patch(
-        "asyncio.create_subprocess_exec",
-        mock.AsyncMock(),
-    )
-    yield mock_get_creds
-    mocker.stopall()
-
-
-@pytest.fixture
 def kube_wait_for_deleted(mocker):
     mock_get_obj = mocker.patch(
         "rockoon.kube.wait_for_deleted",
@@ -77,14 +67,12 @@ def kube_find(mocker):
     mocker.stopall()
 
 
-@pytest.mark.asyncio
-async def test_exists(subprocess_shell, single_helm_release):
+@mock.patch("subprocess.run")
+def test_exists(subprocess_run, single_helm_release):
     hc = helm.HelmManager()
-    subprocess_shell.return_value.communicate.return_value = (
-        single_helm_release,
-        b"",
-    )
-    subprocess_shell.return_value.returncode = 0
+    subprocess_run.return_value.stdout = single_helm_release
+    subprocess_run.return_value.stderr = b""
+    subprocess_run.return_value.returncode = 0
     expected_cmd = [
         "helm3",
         "list",
@@ -96,38 +84,33 @@ async def test_exists(subprocess_shell, single_helm_release):
         "arg",
     ]
 
-    assert await hc.exist("test-release", args=["custom", "arg"])
-    subprocess_shell.assert_called_once_with(
-        *expected_cmd,
+    assert hc.exist("test-release", args=["custom", "arg"])
+    subprocess_run.assert_called_with(
+        expected_cmd,
         env=mock.ANY,
         stdin=mock.ANY,
         stdout=mock.ANY,
         stderr=mock.ANY,
+        timeout=120,
     )
 
 
-@pytest.mark.asyncio
-async def test_exists_not_exist(subprocess_shell, single_helm_release):
+@mock.patch("subprocess.run")
+def test_exists_not_exist(subprocess_run, single_helm_release):
     hc = helm.HelmManager()
-    subprocess_shell.return_value.communicate.return_value = (
-        single_helm_release,
-        b"",
-    )
-    subprocess_shell.return_value.returncode = 0
-    assert (
-        await hc.exist("test-release-not-exist", args=["custom", "arg"])
-        == None
-    )
+    subprocess_run.return_value.stdout = single_helm_release
+    subprocess_run.return_value.stderr = b""
+    subprocess_run.return_value.returncode = 0
+
+    assert hc.exist("test-release-not-exist", args=["custom", "arg"]) == None
 
 
-@pytest.mark.asyncio
-async def test_list(subprocess_shell, single_helm_release):
+@mock.patch("subprocess.run")
+def test_list(subprocess_run, single_helm_release):
     hc = helm.HelmManager()
-    subprocess_shell.return_value.communicate.return_value = (
-        single_helm_release,
-        b"",
-    )
-    subprocess_shell.return_value.returncode = 0
+    subprocess_run.return_value.stdout = single_helm_release
+    subprocess_run.return_value.stderr = b""
+    subprocess_run.return_value.returncode = 0
     expected_cmd = [
         "helm3",
         "list",
@@ -139,25 +122,24 @@ async def test_list(subprocess_shell, single_helm_release):
         "arg",
     ]
 
-    res = await hc.list(args=["custom", "arg"])
+    res = hc.list(args=["custom", "arg"])
     assert json.loads(single_helm_release) == res
-    subprocess_shell.assert_called_once_with(
-        *expected_cmd,
+    subprocess_run.assert_called_once_with(
+        expected_cmd,
         env=mock.ANY,
         stdin=mock.ANY,
         stdout=mock.ANY,
         stderr=mock.ANY,
+        timeout=120,
     )
 
 
-@pytest.mark.asyncio
-async def test_get_release_values(subprocess_shell, release_values):
+@mock.patch("subprocess.run")
+def test_get_release_values(subprocess_run, release_values):
     hc = helm.HelmManager()
-    subprocess_shell.return_value.communicate.return_value = (
-        release_values,
-        b"",
-    )
-    subprocess_shell.return_value.returncode = 0
+    subprocess_run.return_value.stdout = release_values
+    subprocess_run.return_value.stderr = b""
+    subprocess_run.return_value.returncode = 0
     expected_cmd = [
         "helm3",
         "get",
@@ -171,66 +153,66 @@ async def test_get_release_values(subprocess_shell, release_values):
         "arg",
     ]
 
-    res = await hc.get_release_values("test-release", args=["custom", "arg"])
+    res = hc.get_release_values("test-release", args=["custom", "arg"])
     assert json.loads(release_values) == res
-    subprocess_shell.assert_called_once_with(
-        *expected_cmd,
+    subprocess_run.assert_called_once_with(
+        expected_cmd,
         env=mock.ANY,
         stdin=mock.ANY,
         stdout=mock.ANY,
         stderr=mock.ANY,
+        timeout=120,
     )
 
 
-@pytest.mark.asyncio
-async def test_install_remove_immutable_1_item(
-    subprocess_shell,
+@mock.patch("subprocess.run")
+def test_install_remove_immutable_1_item(
+    subprocess_run,
     kube_get_object_by_kind,
     kube_find,
     kube_wait_for_deleted,
     helm_error_1_item,
+    release_values,
 ):
     hc = helm.HelmManager()
-    subprocess_shell.return_value.returncode = 1
-    subprocess_shell.return_value.communicate.side_effect = [
-        (b"", helm_error_1_item),
-        (b"", b""),
+    subprocess_run.side_effect = [
+        mock.MagicMock(stdout=b"", stderr=helm_error_1_item, return_code=1),
+        mock.MagicMock(stdout=b"", stderr=b"", return_code=0),
     ]
 
     kube_find.return_value = mock.AsyncMock()
     kube_get_object_by_kind.return_value = mock.AsyncMock()
 
     with pytest.raises(kopf.TemporaryError):
-        await hc.run_cmd(["helm", "upgrade", "--install", "test-release"])
+        hc.run_cmd(["helm", "upgrade", "--install", "test-release"])
     kube_find.assert_called_with(
         mock.ANY, "cinder-create-internal-tenant", "openstack", silent=True
     )
     kube_get_object_by_kind.assert_called_with("Job")
     kube_find.return_value.exists.assert_called_once()
     kube_find.return_value.delete.assert_called_once()
-    assert 2 == subprocess_shell.call_count
+    assert 2 == subprocess_run.call_count
 
 
-@pytest.mark.asyncio
-async def test_install_remove_immutable_5_item(
-    subprocess_shell,
+@mock.patch("subprocess.run")
+def test_install_remove_immutable_5_item(
+    subprocess_run,
     kube_get_object_by_kind,
     kube_find,
     kube_wait_for_deleted,
     helm_error_5_item,
 ):
     hc = helm.HelmManager()
-    subprocess_shell.return_value.returncode = 1
-    subprocess_shell.return_value.communicate.side_effect = [
-        (b"", helm_error_5_item),
-        (b"", b""),
+    subprocess_run.side_effect = [
+        mock.MagicMock(stdout=b"", stderr=helm_error_5_item, return_code=1),
+        mock.MagicMock(stdout=b"", stderr=b"", return_code=0),
     ]
 
     kube_find.return_value = mock.AsyncMock()
     kube_get_object_by_kind.return_value = mock.AsyncMock()
 
     with pytest.raises(kopf.TemporaryError):
-        await hc.run_cmd(["helm", "upgrade", "--install", "test-release"])
+        hc.run_cmd(["helm", "upgrade", "--install", "test-release"])
     assert 5 == kube_find.call_count
     expected_get_object_by_kind = [
         mock.call("Job"),
@@ -256,59 +238,64 @@ async def test_install_remove_immutable_5_item(
     assert 5 == kube_find.return_value.delete.call_count
 
 
-@pytest.mark.asyncio
-async def test_install_rollback(subprocess_shell, helm_error_rollout_restart):
+@mock.patch("subprocess.run")
+def test_install_rollback(subprocess_run, helm_error_rollout_restart):
     hc = helm.HelmManager()
-    subprocess_shell.return_value.returncode = 1
-    subprocess_shell.return_value.communicate.side_effect = [
-        (b"", helm_error_rollout_restart),
-        (b"", b""),
-        (b"", b""),
-        (b"", b""),
+    subprocess_run.side_effect = [
+        mock.MagicMock(
+            stdout=b"", stderr=helm_error_rollout_restart, return_code=1
+        ),
+        mock.MagicMock(stdout=b"", stderr=b"", return_code=0),
+        mock.MagicMock(stdout=b"", stderr=b"", return_code=0),
+        mock.MagicMock(stdout=b"", stderr=b"", return_code=0),
     ]
 
     with pytest.raises(kopf.TemporaryError):
-        await hc.run_cmd(
+        hc.run_cmd(
             ["upgrade", "--install", "test-release"],
             release_name="test-release",
         )
-    subprocess_shell.assert_has_calls(
+    subprocess_run.assert_has_calls(
         [
             mock.call(
-                "helm3",
-                "rollback",
-                "test-release",
-                "--namespace",
-                "openstack",
+                [
+                    "helm3",
+                    "rollback",
+                    "test-release",
+                    "--namespace",
+                    "openstack",
+                ],
                 env=mock.ANY,
                 stdin=mock.ANY,
                 stdout=mock.ANY,
                 stderr=mock.ANY,
+                timeout=mock.ANY,
             )
         ],
         any_order=True,
     )
 
 
-@pytest.mark.asyncio
-async def test_install_remove_forbidden_item(
-    subprocess_shell,
+@mock.patch("subprocess.run")
+def test_install_remove_forbidden_item(
+    subprocess_run,
     kube_get_object_by_kind,
     kube_find,
     kube_wait_for_deleted,
     helm_error_forbidden_item,
 ):
     hc = helm.HelmManager()
-    subprocess_shell.return_value.returncode = 1
-    subprocess_shell.return_value.communicate.side_effect = [
-        (b"", helm_error_forbidden_item),
-        (b"", b""),
+    subprocess_run.side_effect = [
+        mock.MagicMock(
+            stdout=b"", stderr=helm_error_forbidden_item, return_code=1
+        ),
+        mock.MagicMock(stdout=b"", stderr=b"", return_code=0),
     ]
     kube_find.return_value = mock.AsyncMock()
     kube_get_object_by_kind.return_value = mock.AsyncMock()
 
     with pytest.raises(kopf.TemporaryError):
-        await hc.run_cmd(["helm", "upgrade", "--install", "test-release"])
+        hc.run_cmd(["helm", "upgrade", "--install", "test-release"])
     kube_find.assert_called_with(
         mock.ANY, "etcd-etcd", "openstack", silent=True
     )
@@ -317,25 +304,23 @@ async def test_install_remove_forbidden_item(
     kube_find.return_value.delete.assert_called_once()
 
 
-@pytest.mark.asyncio
-async def test_install_pvc_test(
-    subprocess_shell,
+@mock.patch("subprocess.run")
+def test_install_pvc_test(
+    subprocess_run,
     kube_get_object_by_kind,
     kube_find,
     kube_wait_for_deleted,
     helm_error_pvc_test,
 ):
     hc = helm.HelmManager()
-    subprocess_shell.return_value.returncode = 1
-    subprocess_shell.return_value.communicate.return_value = (
-        b"",
-        helm_error_pvc_test,
-    )
+    subprocess_run.side_effect = [
+        mock.MagicMock(stdout=b"", stderr=helm_error_pvc_test, return_code=1)
+    ]
     kube_find.return_value = mock.AsyncMock()
     kube_get_object_by_kind.return_value = mock.AsyncMock()
 
     with pytest.raises(kopf.TemporaryError):
-        await hc.run_cmd("helm upgrade --install test-release")
+        hc.run_cmd("helm upgrade --install test-release")
     kube_find.return_value.delete.assert_not_called()
 
 
