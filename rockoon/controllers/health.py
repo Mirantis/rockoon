@@ -1,4 +1,3 @@
-import asyncio
 import kopf
 
 from rockoon import batch_health
@@ -97,7 +96,7 @@ def daemonsets(name, namespace, meta, status, reason, **kwargs):
     )
     if hook:
         LOG.debug(f"Daemonset {application}-{component} awaiting hook")
-        asyncio.run(hook(osdpl, name, namespace, meta, **kwargs))
+        hook(osdpl, name, namespace, meta, **kwargs)
 
 
 @kopf.daemon(*kube.OpenStackDeployment.kopf_on_args)

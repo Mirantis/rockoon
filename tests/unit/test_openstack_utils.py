@@ -47,8 +47,7 @@ def _get_node(host="host1", role="compute"):
     return node_obj
 
 
-@pytest.mark.asyncio
-async def test_openstack_client_no_creds(mocker, openstack_connect):
+def test_openstack_client_no_creds(mocker, openstack_connect):
     openstack_utils.OpenStackClientManager()
 
 

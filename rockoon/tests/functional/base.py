@@ -8,7 +8,6 @@ from retry import retry
 from io import StringIO
 from paramiko.ssh_exception import NoValidConnectionsError, SSHException
 
-import asyncio
 import openstack
 from rockoon import kube
 from rockoon import layers
@@ -112,7 +111,7 @@ class BaseFunctionalTestCase(TestCase):
     @classmethod
     def cronjob_run(cls, cronjob, wait=False):
         cron = kube.find(kube.CronJob, cronjob, namespace=cls.osdpl.namespace)
-        job = asyncio.run(cron.run())
+        job = cron.run()
         LOG.debug(f"Started job {job}")
         cls.addClassCleanup(cls.job_delete, job)
         if wait:

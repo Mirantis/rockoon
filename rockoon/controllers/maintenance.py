@@ -1,4 +1,4 @@
-import asyncio
+import time
 
 import kopf
 
@@ -31,10 +31,6 @@ def check_release_matching(mr_release, wl):
 @kopf.on.update(*maintenance.NodeMaintenanceRequest.kopf_on_args)
 @kopf.on.resume(*maintenance.NodeMaintenanceRequest.kopf_on_args)
 def node_maintenance_request_change_handler(body, **kwargs):
-    asyncio.run(_node_maintenance_request_change_handler(body, **kwargs))
-
-
-async def _node_maintenance_request_change_handler(body, **kwargs):
     name = body["metadata"]["name"]
     node_name = maintenance_node_name(body)
     LOG.info(f"Got node maintenance request change event {name}")
@@ -76,8 +72,8 @@ async def _node_maintenance_request_change_handler(body, **kwargs):
         for service_name, service_class in services.ORDERED_SERVICES:
             service = service_class(mspec, LOG, osdplst, child_view)
             if service.maintenance_api and service.enabled:
-                services_can_handle_nmr[service_name] = (
-                    await service.can_handle_nmr(node, active_locks)
+                services_can_handle_nmr[service_name] = service.can_handle_nmr(
+                    node, active_locks
                 )
         if not all(services_can_handle_nmr.values()):
             msg = f"Some services blocks nmr handling {services_can_handle_nmr}. Deferring processing for node {node.name}"
@@ -91,7 +87,7 @@ async def _node_maintenance_request_change_handler(body, **kwargs):
                 LOG.info(
                     f"Got moving node {node_name} into maintenance for {service_class.service}"
                 )
-                await service.process_nmr(node, nmr)
+                service.process_nmr(node, nmr)
                 LOG.info(
                     f"The node {node_name} is ready for maintenance for {service_class.service}"
                 )
@@ -102,10 +98,6 @@ async def _node_maintenance_request_change_handler(body, **kwargs):
 
 @kopf.on.delete(*maintenance.NodeMaintenanceRequest.kopf_on_args)
 def node_maintenance_request_delete_handler(body, **kwargs):
-    asyncio.run(_node_maintenance_request_delete_handler(body, **kwargs))
-
-
-async def _node_maintenance_request_delete_handler(body, **kwargs):
     name = body["metadata"]["name"]
     node_name = maintenance_node_name(body)
     LOG.info(f"Got node maintenance request delete event {name}")
@@ -134,7 +126,7 @@ async def _node_maintenance_request_delete_handler(body, **kwargs):
             while True:
                 if not node.ready:
                     LOG.info(f"The node {node.name} is not ready yet.")
-                    await asyncio.sleep(10)
+                    time.sleep(10)
                     continue
                 LOG.info(f"The node {node.name} is ready.")
                 break
@@ -149,7 +141,7 @@ async def _node_maintenance_request_delete_handler(body, **kwargs):
                 ]
                 if not_ready_pods:
                     LOG.info(f"The pods {not_ready_pods} are not ready.")
-                    await asyncio.sleep(10)
+                    time.sleep(10)
                     continue
                 LOG.info(f"All pods are ready on node {node.name}.")
                 break
@@ -166,7 +158,7 @@ async def _node_maintenance_request_delete_handler(body, **kwargs):
                     LOG.info(
                         f"Moving node {node_name} to operational state for {service_class.service}"
                     )
-                    await service.delete_nmr(node, nmr)
+                    service.delete_nmr(node, nmr)
                     LOG.info(
                         f"The node {node_name} is ready for operations for {service_class.service}"
                     )
@@ -255,10 +247,6 @@ def cluster_maintenance_request_delete_handler(body, **kwargs):
 @kopf.on.update(*maintenance.NodeDeletionRequest.kopf_on_args)
 @kopf.on.resume(*maintenance.NodeDeletionRequest.kopf_on_args)
 def node_deletion_request_change_handler(body, **kwargs):
-    asyncio.run(_node_deletion_request_change_handler(body, **kwargs))
-
-
-async def _node_deletion_request_change_handler(body, **kwargs):
     name = body["metadata"]["name"]
     node_name = maintenance_node_name(body)
     LOG.info(f"Got node deletion request change event {name}")
@@ -281,7 +269,7 @@ async def _node_deletion_request_change_handler(body, **kwargs):
                     LOG.info(
                         f"Handling node deletion for {node_name} by service {service_class.service}"
                     )
-                    await service.process_ndr(node, nwl)
+                    service.process_ndr(node, nwl)
                     LOG.info(
                         f"The node {node_name} is ready for deletion by {service_class.service}"
                     )
@@ -293,10 +281,6 @@ async def _node_deletion_request_change_handler(body, **kwargs):
 
 @kopf.on.delete(*maintenance.NodeWorkloadLock.kopf_on_args)
 def node_workloadlock_request_delete_handler(body, **kwargs):
-    asyncio.run(_node_workloadlock_request_delete_handler(body, **kwargs))
-
-
-async def _node_workloadlock_request_delete_handler(body, **kwargs):
     name = body["metadata"]["name"]
     node_name = body["spec"]["nodeName"]
     LOG.info(f"Got nodeworkloadlock deletion request change event {name}")
@@ -332,11 +316,11 @@ async def _node_workloadlock_request_delete_handler(body, **kwargs):
         service = service_class(mspec, LOG, osdplst, child_view)
         if service.maintenance_api and service.enabled:
             LOG.info(f"Cleaning metadata for {service.service} on node {name}")
-            await service.cleanup_metadata(nwl)
+            service.cleanup_metadata(nwl)
             LOG.info(
                 f"Cleaning persistant data for {service.service} on node {name}"
             )
-            await service.cleanup_persistent_data(nwl)
+            service.cleanup_persistent_data(nwl)
 
     LOG.info(
         f"The nodeworkloadlock for node {node_name} is ready for deletion."

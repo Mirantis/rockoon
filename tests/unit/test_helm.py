@@ -51,7 +51,7 @@ def kube_wait_for_deleted(mocker):
 def kube_get_object_by_kind(mocker):
     mock_get_obj = mocker.patch(
         "rockoon.kube.get_object_by_kind",
-        mock.AsyncMock(),
+        mock.Mock(),
     )
     yield mock_get_obj
     mocker.stopall()
@@ -180,8 +180,8 @@ def test_install_remove_immutable_1_item(
         mock.MagicMock(stdout=b"", stderr=b"", return_code=0),
     ]
 
-    kube_find.return_value = mock.AsyncMock()
-    kube_get_object_by_kind.return_value = mock.AsyncMock()
+    kube_find.return_value = mock.Mock()
+    kube_get_object_by_kind.return_value = mock.Mock()
 
     with pytest.raises(kopf.TemporaryError):
         hc.run_cmd(["helm", "upgrade", "--install", "test-release"])
@@ -208,8 +208,8 @@ def test_install_remove_immutable_5_item(
         mock.MagicMock(stdout=b"", stderr=b"", return_code=0),
     ]
 
-    kube_find.return_value = mock.AsyncMock()
-    kube_get_object_by_kind.return_value = mock.AsyncMock()
+    kube_find.return_value = mock.Mock()
+    kube_get_object_by_kind.return_value = mock.Mock()
 
     with pytest.raises(kopf.TemporaryError):
         hc.run_cmd(["helm", "upgrade", "--install", "test-release"])
@@ -291,8 +291,8 @@ def test_install_remove_forbidden_item(
         ),
         mock.MagicMock(stdout=b"", stderr=b"", return_code=0),
     ]
-    kube_find.return_value = mock.AsyncMock()
-    kube_get_object_by_kind.return_value = mock.AsyncMock()
+    kube_find.return_value = mock.Mock()
+    kube_get_object_by_kind.return_value = mock.Mock()
 
     with pytest.raises(kopf.TemporaryError):
         hc.run_cmd(["helm", "upgrade", "--install", "test-release"])
@@ -316,23 +316,22 @@ def test_install_pvc_test(
     subprocess_run.side_effect = [
         mock.MagicMock(stdout=b"", stderr=helm_error_pvc_test, return_code=1)
     ]
-    kube_find.return_value = mock.AsyncMock()
-    kube_get_object_by_kind.return_value = mock.AsyncMock()
+    kube_find.return_value = mock.Mock()
+    kube_get_object_by_kind.return_value = mock.Mock()
 
     with pytest.raises(kopf.TemporaryError):
         hc.run_cmd("helm upgrade --install test-release")
     kube_find.return_value.delete.assert_not_called()
 
 
-@pytest.mark.asyncio
 @mock.patch("tempfile.NamedTemporaryFile")
-async def test_install_release(mock_mpf):
+def test_install_release(mock_mpf):
     hc = helm.HelmManager()
-    hc.run_cmd = mock.AsyncMock()
+    hc.run_cmd = mock.Mock()
     hc.get_chart_url = mock.MagicMock()
     hc.get_chart_url.return_value = "/opt/operator/charts/infra/libvirt"
     mock_mpf.return_value.__enter__.return_value.name = "/tmp/123"
-    await hc.install(
+    hc.install(
         "test-release",
         {},
         "libvirt",
@@ -354,15 +353,14 @@ async def test_install_release(mock_mpf):
     )
 
 
-@pytest.mark.asyncio
 @mock.patch("tempfile.NamedTemporaryFile")
-async def test_install_release_cache(mock_mpf):
+def test_install_release_cache(mock_mpf):
     hc = helm.HelmManager()
-    hc.run_cmd = mock.AsyncMock()
+    hc.run_cmd = mock.Mock()
     hc.get_chart_url = mock.MagicMock()
     hc.get_chart_url.return_value = "/opt/operator/charts/infra/libvirt"
     mock_mpf.return_value.__enter__.return_value.name = "/tmp/123"
-    await hc.install(
+    hc.install(
         "test-release",
         {},
         "libvirt",
@@ -384,9 +382,8 @@ async def test_install_release_cache(mock_mpf):
     )
 
 
-@pytest.mark.asyncio
 @mock.patch("os.path.isfile")
-async def test_get_charet_url(mock_opif):
+def test_get_charet_url(mock_opif):
     hc = helm.HelmManager()
     mock_opif.return_value = True
     res = hc.get_chart_url("libvirt")

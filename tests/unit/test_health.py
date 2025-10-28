@@ -5,8 +5,7 @@ from rockoon import constants
 from rockoon.controllers import health
 
 
-@pytest.mark.asyncio
-async def test_hook_called():
+def test_hook_called():
     meta = {
         "name": "nova-compute-default",
         "labels": {"application": "nova", "component": "compute"},
@@ -70,7 +69,7 @@ async def test_hook_called():
         assert compute_ds_name in ds_hooks
         ds_hooks[compute_ds_name] = fake_hook
         with pytest.raises(ValueError, match="^fake-hook-test$"):
-            await health.daemonsets(
+            health.daemonsets(
                 compute_ds_name,
                 "openstack",
                 meta,

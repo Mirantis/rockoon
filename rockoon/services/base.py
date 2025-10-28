@@ -1,10 +1,10 @@
 from abc import abstractmethod
-import asyncio
 import base64
 import json
 from jsonpath_ng import parse
 from typing import List
 import hashlib
+import time
 
 import kopf
 import pykube
@@ -285,7 +285,7 @@ class Service:
             layers.merger.merge(res, child_hash)
         return res
 
-    async def is_child_object_hash_changed(
+    def is_child_object_hash_changed(
         self, child_object, old_values, new_values
     ):
         """Check if object hash was changed
@@ -300,7 +300,7 @@ class Service:
         new_hash = self.generate_child_object_hash(child_object, new_values)
         return new_hash != current_hash
 
-    async def cleanup_immutable_resources(self, new_obj, force=False):
+    def cleanup_immutable_resources(self, new_obj, force=False):
         """
         Remove immmutable resources for helmbundle object when:
             1. The hash for release values fields used in child object
@@ -328,7 +328,7 @@ class Service:
                 "old_values": old_values,
             }
 
-        async def _is_immutable_changed(image, chart_name):
+        def _is_immutable_changed(image, chart_name):
             old_values = release_mapping.get(chart_name, {}).get(
                 "old_values", {}
             )
@@ -371,25 +371,23 @@ class Service:
             # For case when inf ochild object doesn't exist in values.
             if not old_values and not new_values:
                 continue
-            if await self.is_child_object_hash_changed(
+            if self.is_child_object_hash_changed(
                 resource, old_values, new_values
             ):
                 to_cleanup.add(resource)
             if resource.immutable:
                 for image in resource.helmbundle_ext.images:
-                    if force or await _is_immutable_changed(
+                    if force or _is_immutable_changed(
                         image, resource.helmbundle_ext.chart
                     ):
                         to_cleanup.add(resource)
                         # Break on first image match.
                         break
         LOG.info(f"Removing the following jobs: {to_cleanup}")
-        tasks = set()
         for child_object in to_cleanup:
-            tasks.add(child_object.purge())
-        await asyncio.gather(*tasks)
+            child_object.purge()
 
-    async def delete(self, *, body, meta, spec, logger, **kwargs):
+    def delete(self, *, body, meta, spec, logger, **kwargs):
         LOG.info(f"Deleting config for {self.service}")
         self.set_children_status("Deleting")
         # TODO(e0ne): remove credentials of the deleted services
@@ -420,7 +418,7 @@ class Service:
         elif status in deleted_status:
             self.osdplst.remove_service_status(self.service)
 
-    async def apply(self, event, **kwargs):
+    def apply(self, event, **kwargs):
         self.set_children_status("Applying")
         LOG.info(f"Applying config for {self.service}")
         data = self.render()
@@ -428,7 +426,7 @@ class Service:
             self._merge_helm_override(data, kwargs["helmobj_overrides"])
 
         for release in data["spec"]["releases"]:
-            await self.cleanup_immutable_resources(data)
+            self.cleanup_immutable_resources(data)
         try:
             self.helm_manager.install_bundle(data)
         except:
@@ -474,23 +472,21 @@ class Service:
                 health_group, self.osdplst, delay=delay, timeout=timeout
             )
 
-    async def _upgrade(self, event, **kwargs):
+    def _upgrade(self, event, **kwargs):
         pass
 
-    async def upgrade(self, event, **kwargs):
+    def upgrade(self, event, **kwargs):
         self.set_children_status("Upgrading")
         try:
             self.wait_service_healthy()
             LOG.info(f"Upgrading {self.service} started.")
-            await self._upgrade(event, **kwargs)
+            self._upgrade(event, **kwargs)
 
-            await self.apply(event, **kwargs)
+            self.apply(event, **kwargs)
             # TODO(vsaienko): implement logic that will check that changes made in helmbundle
             # object were handled by tiller/helmcontroller
             # can be done only once https://mirantis.jira.com/browse/PRODX-2283 is implemented.
-            await asyncio.sleep(
-                CONF.getint("helmbundle", "manifest_apply_delay")
-            )
+            time.sleep(CONF.getint("helmbundle", "manifest_apply_delay"))
 
             self.wait_service_healthy()
         except Exception as e:
@@ -586,34 +582,34 @@ class Service:
 
 class MaintenanceApiMixin:
     @abstractmethod
-    async def remove_node_from_scheduling(self, node):
+    def remove_node_from_scheduling(self, node):
         pass
 
     @abstractmethod
-    async def prepare_node_for_reboot(self, node):
+    def prepare_node_for_reboot(self, node):
         pass
 
     @abstractmethod
-    async def prepare_node_after_reboot(self, node, scope=None):
+    def prepare_node_after_reboot(self, node, scope=None):
         pass
 
     @abstractmethod
-    async def add_node_to_scheduling(self, node):
+    def add_node_to_scheduling(self, node):
         pass
 
-    async def process_nmr(self, node, nmr):
-        await self.remove_node_from_scheduling(node)
+    def process_nmr(self, node, nmr):
+        self.remove_node_from_scheduling(node)
         if nmr.is_reboot_possible():
             LOG.info(f"The reboot is possible, migrating workloads")
-            await self.prepare_node_for_reboot(node)
+            self.prepare_node_for_reboot(node)
 
-    async def delete_nmr(self, node, nmr):
-        await self.prepare_node_after_reboot(
+    def delete_nmr(self, node, nmr):
+        self.prepare_node_after_reboot(
             node, scope=nmr.obj["spec"].get("scope")
         )
-        await self.add_node_to_scheduling(node)
+        self.add_node_to_scheduling(node)
 
-    async def can_handle_nmr(self, node, locks):
+    def can_handle_nmr(self, node, locks):
         """Check if it is possible to handle nmr for node
 
         :param node: the node we want to handle nmr for
@@ -624,7 +620,7 @@ class MaintenanceApiMixin:
         """
         return True
 
-    async def process_ndr(self, node, nwl):
+    def process_ndr(self, node, nwl):
         """Process NodeDeletionRequest.
 
         At this point kubernetes node is present, and all pods are
@@ -639,7 +635,7 @@ class MaintenanceApiMixin:
         """
         pass
 
-    async def cleanup_metadata(self, nwl):
+    def cleanup_metadata(self, nwl):
         """Cleanup metadata tied with specific node.
 
         At this point no pods are running on the node so here
@@ -651,7 +647,7 @@ class MaintenanceApiMixin:
         """
         pass
 
-    async def cleanup_persistent_data(self, nwl):
+    def cleanup_persistent_data(self, nwl):
         """Cleanup persistent data tied with specific node.
 
         At this point no pods should be running on the node, and
@@ -663,7 +659,7 @@ class MaintenanceApiMixin:
         """
         pass
 
-    async def is_node_locked(self, node_name):
+    def is_node_locked(self, node_name):
         """Check if node is hard locked by application.
 
         Ensure that clustered application will not loose quorum if
@@ -791,11 +787,11 @@ class OpenStackServiceWithCeph(OpenStackService):
         ]
         return {"ceph": ceph_config}
 
-    async def apply(self, event, **kwargs):
+    def apply(self, event, **kwargs):
         # ensure child ref exists in the status
         if self.is_ceph_enabled:
             self.ensure_ceph_secrets()
-        await super().apply(event, **kwargs)
+        super().apply(event, **kwargs)
 
     def template_args(self):
         template_args = super().template_args()
