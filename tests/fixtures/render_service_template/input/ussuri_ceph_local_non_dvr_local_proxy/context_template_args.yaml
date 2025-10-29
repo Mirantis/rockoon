@@ -204,6 +204,8 @@ images:
   os_image_fedora_2716_checksum: 8bc56d70a3e2
   os_image_ubuntu_1804: http://127.0.0.1:8282/bin/ubuntu1804-latest
   os_image_ubuntu_1804_checksum: 3fb7422b5843
+  os_image_ubuntu_2404: http://127.0.0.1:8282/bin/ubuntu2404-latest
+  os_image_ubuntu_2404_checksum: 6fb7322b32df
 block-storage:
   is_ceph_enabled: true
   ceph:

@@ -73,6 +73,19 @@ spec:
               signature:
                 enabled: true
                 hash_method: SHA-256
+            ubuntu_noble:
+              checksum: 6fb7322b32df
+              container_format: bare
+              image_type: qcow2
+              min_disk: 1
+              name: Ubuntu-24.04
+              private: false
+              properties:
+                os_distro: ubuntu
+              source_url: 'https://ubuntu-image-url/ubuntu2404-latest'
+              signature:
+                enabled: true
+                hash_method: SHA-256
             amphora-x64-haproxy:
               checksum: md5summ
               container_format: bare

@@ -163,6 +163,21 @@ spec:
                 enabled: true
                 hash_method: SHA-256
 {%- endif %}
+            ubuntu_noble:
+              container_format: bare
+              image_type: qcow2
+              min_disk: 1
+              name: Ubuntu-24.04
+              private: false
+              properties:
+                os_distro: ubuntu
+              source_url: {{ images["os_image_ubuntu_2404"] }}
+              checksum: {{ images["os_image_ubuntu_2404_checksum"] }}
+{%- if signature.enabled %}
+              signature:
+                enabled: true
+                hash_method: SHA-256
+{%- endif %}
 {%- if "load-balancer" in spec.features.services %}
             amphora-x64-haproxy:
               container_format: bare
