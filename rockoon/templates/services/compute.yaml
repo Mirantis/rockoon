@@ -230,7 +230,6 @@ spec:
         dynamic_options:
           libvirt:
             listen_interface: {{ spec.features.nova.live_migration_interface }}
-      {%- if dpdk.enabled %}
         apparmor:
           templates:
             TEMPLATE.qemu: |
@@ -249,8 +248,8 @@ spec:
                   {%- else %}
                   /run/openvswitch/vhostuser/* rw,
                   {%- endif %}
+                  /dev/vhost-vdpa-* rw,
               }
-      {%- endif %}
       {%- if neutron_backend == 'tungstenfabric' %}
       network:
         backend: []
