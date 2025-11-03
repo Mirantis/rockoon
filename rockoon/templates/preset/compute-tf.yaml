@@ -280,7 +280,6 @@ services:
             - (?:heat_tempest_plugin.tests.functional.test_create_update_neutron_trunk.UpdateTrunkTest.test_update_trunk_name_and_description)
             # TODO(ibumarskov): not supported by TF (PRODX-5188)
             - (?:tempest.scenario.test_network_basic_ops.TestNetworkBasicOps.test_network_basic_ops)
-            - (?:neutron_tempest_plugin.scenario.test_floatingip.DefaultSnatToExternal.test_snat_external_ip)
             # TODO(ibumarskov): not supported by TF (PRODX-5252)
             - (?:tempest.scenario.test_network_basic_ops.TestNetworkBasicOps.test_port_security_macspoofing_port)
             # not supported by TF (PRODX-4801)
