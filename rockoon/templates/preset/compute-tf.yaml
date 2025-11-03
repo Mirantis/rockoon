@@ -333,7 +333,7 @@ services:
               tld_suffix: test
               build_timeout: 600
             patrole:
-              custom_policy_files: /etc/tempest/policies/%s.json
+              custom_policy_files: /etc/tempest/policies/%s.yaml
             sdn:
               service_name: tungstenfabric
               catalog_type: sdn
