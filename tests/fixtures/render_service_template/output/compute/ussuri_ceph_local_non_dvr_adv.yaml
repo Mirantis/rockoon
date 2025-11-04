@@ -7,14 +7,6 @@ spec:
         configmap: rook-ceph-config
         user_secret_name: nova-rbd-keyring
       conf:
-        apparmor:
-          templates:
-            TEMPLATE.qemu: "# Managed by Kubernetes\n# This profile is for the domain\
-              \ whose UUID matches this file.\n#\n#include <tunables/global>\nprofile\
-              \ LIBVIRT_TEMPLATE flags=(attach_disconnected) {\n    #include <abstractions/libvirt-qemu>\n\
-              \n    # allow mknod and rw in vhostuser dir, remove this workaround\n\
-              \    # when libvirt is upgraded to 7.10\n    capability mknod,\n   \
-              \ /run/openvswitch/vhostuser/* rw,\n}\n"
         ceph:
           cinder:
             user: nova
@@ -35,6 +27,22 @@ spec:
         dynamic_options:
           libvirt:
             listen_interface: ens3
+        apparmor:
+          templates:
+            TEMPLATE.qemu: |
+              # Managed by Kubernetes
+              # This profile is for the domain whose UUID matches this file.
+              #
+              #include <tunables/global>
+              profile LIBVIRT_TEMPLATE flags=(attach_disconnected) {
+                  #include <abstractions/libvirt-qemu>
+
+                  # allow mknod and rw in vhostuser dir, remove this workaround
+                  # when libvirt is upgraded to 7.10
+                  capability mknod,
+                  /run/openvswitch/vhostuser/* rw,
+                  /dev/vhost-vdpa-* rw,
+              }
         libvirt:
           keepalive_count: 9
           keepalive_interval: 10
