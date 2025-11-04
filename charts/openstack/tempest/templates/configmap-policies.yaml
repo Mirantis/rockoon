@@ -21,5 +21,5 @@ metadata:
   name: tempest-policies
 type: Opaque
 data:
-  tungstenfabric.json: {{ toJson .Values.conf.policy.tungsten | b64enc }}
+  tungstenfabric.yaml: {{ toYaml .Values.conf.policy.tungsten | b64enc }}
 {{- end }}
