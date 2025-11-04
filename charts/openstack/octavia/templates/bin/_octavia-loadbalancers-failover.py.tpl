@@ -53,7 +53,6 @@ def strtobool(v):
     return str(v).lower() in ("yes", "true", "t", "1")
 
 
-LB_FAILOVER_FAIL_ON_ERROR = strtobool(os.environ.get("LB_FAILOVER_FAIL_ON_ERROR", "True"))
 LB_FAILOVER_LOG_LEVEL = os.environ.get("LB_FAILOVER_LOG_LEVEL", "DEBUG").upper()
 LB_FAILOVER_MAX_WORKERS = int(os.environ.get("LB_FAILOVER_MAX_WORKERS", 5))
 LB_FAILOVER_AMPHORA_AGENT_PORT = int(os.environ.get("LB_FAILOVER_AMPHORA_AGENT_PORT", 9443))
@@ -508,9 +507,7 @@ def main():
     # check connectivity to Octavia health managers before starting
     if not has_connectivity_to_health_managers():
         LOG.error("Cannot connect to octavia health managers. Likely network issue on this node.")
-        if LB_FAILOVER_FAIL_ON_ERROR:
-            sys.exit(1)
-        sys.exit(0)
+        sys.exit(1)
 
     oc = openstack.connect()
     statistics = {k: [] for k in list(LBFailoverStatus.__members__)}
@@ -545,10 +542,8 @@ def main():
 
     failed_lbs = statistics[LBFailoverStatus.FAILED.name]
     if failed_lbs:
-        LOG.warning("Failover failed for load balancers: %s", failed_lbs)
-        if LB_FAILOVER_FAIL_ON_ERROR:
-            LOG.error("One or more failovers failed. Exiting with error.")
-            sys.exit(1)
+        LOG.error("Failover failed for load balancers: %s", failed_lbs)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
