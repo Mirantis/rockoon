@@ -36,6 +36,9 @@ This implementation is intended to handle those limitations:
   .Values:
     overrides:
       mychart_mydaemonset:
+        primary_labels:
+          - label1::value1
+          - label2::value2
         labels:
           label::value:
             values:
@@ -70,6 +73,7 @@ This implementation is intended to handle those limitations:
     {{- range $key, $val := $context.Values.overrides }}
 
       {{- if eq $key $daemonset_root_name }}
+        {{ $primary_labels := dig "primary_labels" list $val }}
         {{- range $type, $type_data := . }}
           {{- if eq $type "overrides_default" }}
             {{- $default_enabled = $type_data }}
@@ -116,7 +120,12 @@ This implementation is intended to handle those limitations:
               precedence as the list position increases. Last defined label
               is highest priority. */}}
               {{- $other_labels :=  omit $overrides.__label_dict $lname }}
+              {{- $self_primary := has $lname $primary_labels }}
               {{- range $lname2, $ldata2 := $other_labels }}
+                {{- $other_primary := has $lname2 $primary_labels }}
+                {{/* Allow to schedule daemonsets with non primary labels to primary labels */}}
+                {{/* Does not allow: primary to primary, non primary to non primary, primary to non primary */}}
+                {{- if not (and (not $self_primary) $other_primary) }}
                 {{ $label_name2 := (split "::" $lname2)._0 }}
                 {{ $label_value2 := (split "::" $lname2)._1 }}
 
@@ -126,6 +135,7 @@ This implementation is intended to handle those limitations:
 
                 {{- $list_aggregate := append $overrides.__current_label.matchExpressions $label_dict }}
                 {{- $_ := set $overrides.__current_label "matchExpressions" $list_aggregate }}
+                {{- end }}
               {{- end }}
 
               {{/* store completed daemonset entry/info into global list */}}
