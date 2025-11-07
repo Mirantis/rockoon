@@ -129,7 +129,7 @@ class Config(metaclass=SingletonMeta):
         # Timeout for handling nodemaintenancerequest operations
         # do not set to high, we have negative tests that will wait
         # for this timeout.
-        self.NWL_STATE_TIMEOUT = 180
+        self.NWL_STATE_TIMEOUT = 300
 
         self.MASAKARI_NOTIFICATION_TIMEOUT = 600
 
