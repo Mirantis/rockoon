@@ -55,12 +55,17 @@ def get_nodes():
 @retry((openstack.exceptions.SDKException, ksa_exceptions.base.ClientException), delay=1, tries=7, backoff=2, logger=LOG)
 def get_image_tags(image_id):
     global IMAGE_TAGS
+    image_tags = None
+
     if image_id in IMAGE_TAGS:
-        return IMAGE_TAGS[image_id]["tags"]
-    image = ost.image.find_image(image_id)
-    if image:
-        IMAGE_TAGS[image["id"]] = image
-        return image["tags"]
+        image_tags = IMAGE_TAGS[image_id].get("tags", [])
+    else:
+        image = ost.image.find_image(image_id)
+        if image:
+            IMAGE_TAGS[image["id"]] = image
+            image_tags = image.get("tags", [])
+
+    return image_tags or []
 
 @retry((openstack.exceptions.SDKException, ksa_exceptions.base.ClientException), delay=1, tries=7, backoff=2, logger=LOG)
 def patch_node(node, patch):
