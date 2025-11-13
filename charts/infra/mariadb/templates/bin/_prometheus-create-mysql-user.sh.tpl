@@ -16,7 +16,7 @@ limitations under the License.
 
 set -e
 
-if ! mysql --defaults-file=/etc/mysql/admin_user.cnf -e \
+if ! mariadb --defaults-file=/etc/mysql/admin_user.cnf -e \
   "CREATE OR REPLACE USER '${EXPORTER_USER}'@'%' IDENTIFIED BY '${EXPORTER_PASSWORD}'; \
    GRANT SLAVE MONITOR, PROCESS, REPLICATION CLIENT, SELECT ON *.* TO '${EXPORTER_USER}'@'%'; \
    FLUSH PRIVILEGES;" ; then
