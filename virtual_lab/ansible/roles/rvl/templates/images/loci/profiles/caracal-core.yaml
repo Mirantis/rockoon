@@ -11,7 +11,7 @@ builder:
     REGISTRY_PROTOCOL: https
     REGISTRY_INSECURE: True
     FROM: "{{ rvl_images_ubuntu_base }}"
-    PROJECT_REF: stable/2024.1
+    PROJECT_REF: unmaintained/2024.1
   projects_configs:
     requirements:
       docker_build_args:
