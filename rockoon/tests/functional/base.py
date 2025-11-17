@@ -102,6 +102,16 @@ class BaseFunctionalTestCase(TestCase):
         )
         return [x for x in pods][0]
 
+    def libvirt_pod(self, host):
+        kube_api = kube.kube_client()
+        pods = kube.Pod.objects(kube_api).filter(
+            namespace=settings.OSCTL_OS_DEPLOYMENT_NAMESPACE,
+            selector={"application": "libvirt", "component": "libvirt"},
+        )
+        for pod in pods:
+            if pod.obj["spec"].get("nodeName") == host:
+                return pod
+
     @property
     def neutron_portprober_enabled(self):
         if self.ocm.oc.network.find_extension("portprober"):
@@ -223,8 +233,7 @@ class BaseFunctionalTestCase(TestCase):
     ):
 
         kwargs = {"networks": networks}
-        if name is None:
-            kwargs["name"] = data_utils.rand_name()
+        kwargs["name"] = name or data_utils.rand_name()
         if flavorRef is None:
             kwargs["flavorRef"] = cls.ocm.oc.compute.find_flavor(
                 CONF.TEST_FLAVOR_NAME
@@ -324,7 +333,9 @@ class BaseFunctionalTestCase(TestCase):
         )
 
     @classmethod
-    def network_create(cls, name=None, shared=None, external=None):
+    def network_create(
+        cls, name=None, shared=None, external=None, provider_network_type=None
+    ):
         if name is None:
             name = data_utils.rand_name()
         kwargs = {"name": name}
@@ -332,6 +343,8 @@ class BaseFunctionalTestCase(TestCase):
             kwargs["shared"] = shared
         if external:
             kwargs["router:external"] = external
+        if provider_network_type:
+            kwargs["provider_network_type"] = provider_network_type
         network = cls.ocm.oc.network.create_network(**kwargs)
         cls.addClassCleanup(cls.network_delete, network)
         return network
@@ -376,6 +389,7 @@ class BaseFunctionalTestCase(TestCase):
         status="DOWN",
         fixed_ips=None,
         is_port_security_enabled=True,
+        binding_vnic_type=None,
     ):
         if name is None:
             name = data_utils.rand_name()
@@ -386,6 +400,8 @@ class BaseFunctionalTestCase(TestCase):
         }
         if fixed_ips:
             kwargs.update({"fixed_ips": fixed_ips})
+        if binding_vnic_type:
+            kwargs.update({"binding:vnic_type": binding_vnic_type})
         port = cls.ocm.oc.network.create_port(**kwargs)
         if wait is True:
             waiters.wait_for_port_status(cls.ocm, port, status=status)
@@ -399,7 +415,7 @@ class BaseFunctionalTestCase(TestCase):
 
     @classmethod
     def floating_ip_create(cls, network):
-        fip = cls.ocm.oc.create_floating_ip()
+        fip = cls.ocm.oc.create_floating_ip(network=network)
         fip_id = fip["id"]
         cls.addClassCleanup(cls.floating_ip_delete, fip_id)
         return fip
@@ -458,13 +474,15 @@ class BaseFunctionalTestCase(TestCase):
         return routers
 
     @classmethod
-    def network_bundle_create(cls):
+    def network_bundle_create(cls, provider_network_type=None):
         """Create network bundle and return metadata
 
         Creates bundle of router, subnet, network connected to flaoting network.
         """
         res = {}
-        network = cls.network_create()
+        network = cls.network_create(
+            provider_network_type=provider_network_type
+        )
         subnet = cls.subnet_create(
             cidr=CONF.TEST_SUBNET_RANGE, network_id=network["id"]
         )
@@ -773,6 +791,7 @@ class BaseFunctionalTestCase(TestCase):
                     break
         return res
 
+    @classmethod
     def create_keypair(self, name=None, public_key=None, private_key=None):
         if name is None:
             name = data_utils.rand_name(postfix="keypair")
@@ -785,10 +804,12 @@ class BaseFunctionalTestCase(TestCase):
         self.addClassCleanup(self.delete_keypair, keypair["name"])
         return keypair
 
+    @classmethod
     @suppress404
     def delete_keypair(self, keypair_name):
         self.ocm.oc.compute.delete_keypair(keypair_name)
 
+    @classmethod
     def update_floating_ip(self, floating_ip_id, port_id):
         self.ocm.oc.network.update_ip(
             floating_ip=floating_ip_id, port_id=port_id
