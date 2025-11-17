@@ -9,7 +9,7 @@ cinder_scheduler: '{{ images_base_url }}/openstack/cinder:victoria-focal-2024011
 cinder_volume: '{{ images_base_url }}/openstack/cinder:victoria-focal-20240112082932'
 cinder_volume_daemonset: '{{ images_base_url }}/openstack/cinder:victoria-focal-20240112082932'
 cinder_volume_usage_audit: '{{ images_base_url }}/openstack/cinder:victoria-focal-20240112082932'
-cloudprober: '{{ images_base_url }}/openstack/osprober:0.0.1-15f3792'
+cloudprober: '{{ images_base_url }}/openstack/osprober:0.0.1-bb2a771'
 cloudprober_openstack_discovery: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20251020060030'
 stepler_run_tests: '{{ images_base_url }}/openstack/stepler:victoria-focal-20231018050930'
 db_drop: '{{ images_base_url }}/openstack/heat:victoria-focal-20240112082932'
