@@ -6,6 +6,9 @@ ARG TEST_IMAGE
 ARG HELM_BINARY="https://binary.mirantis.com/openstack/bin/utils/helm/helm-v3.19.1-linux-amd64"
 
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
+# Build wheels in a single thread, because uwsgi build system has race conditions
+# https://github.com/unbit/uwsgi/issues/1318
+ENV CPUCOUNT=1
 # NOTE(pas-ha) need Git for pbr to install from source checkout w/o sdist
 ADD https://bootstrap.pypa.io/get-pip.py /tmp/get-pip.py
 
@@ -21,9 +24,7 @@ RUN apt-get install -y \
         libpcre3-dev \
         wget \
         git; \
-    python3 /tmp/get-pip.py; \
-    pip install wheel; \
-    pip install uwsgi
+    python3 /tmp/get-pip.py
 
 ADD . /opt/operator
 
@@ -54,6 +55,7 @@ RUN set -ex; \
     if [[ "${TEST_IMAGE}" == "True" ]]; then \
         OPENSTACK_CONTROLLER_EXTRAS="[test]"; \
     fi; \
+    
     pip wheel --wheel-dir /opt/wheels --find-links /opt/wheels /opt/operator${OPENSTACK_CONTROLLER_EXTRAS}
 
 RUN wget -q -O /usr/local/bin/helm3 ${HELM_BINARY}; \
