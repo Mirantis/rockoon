@@ -58,6 +58,13 @@ class NetworkFeatureEnabled(base_section.BaseSection):
                     ]
                 )
 
+        if self.get_spec_item("features.neutron.backend") == "ml2":
+            api_extensions_default.extend(
+                [
+                    "dvr",
+                ]
+            )
+
         if self.get_spec_item("features.neutron.backend") in [
             "ml2",
             "ml2/ovn",
@@ -94,7 +101,6 @@ class NetworkFeatureEnabled(base_section.BaseSection):
                     "qos-rules-alias",
                     "subnetpool-prefix-ops",
                     "floatingip-pools",
-                    "dvr",
                 ]
             )
 
