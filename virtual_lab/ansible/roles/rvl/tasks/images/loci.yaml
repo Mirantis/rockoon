@@ -38,7 +38,7 @@
         labels:
           openstack.lcm.mirantis.com/watch: "true"
       data:
-        caracal: |
+        epoxy: |
           {% for component, images in rvl_images_loci_images_mapping.items() %}
           {% for image in images %}
           {{ image }}: {{ rvl_images_loci_registry }}/openstack/{{ component }}:{{ rvl_images_build_tag }}

@@ -4,7 +4,7 @@
 apt update -y
 DEBIAN_FRONTEND=noninteractive apt install -y python3-pip
 
-pip3 install ansible git-review
+PIP_BREAK_SYSTEM_PACKAGES=1 pip3 install ansible git-review
 
 ansible-galaxy collection install bodsch.core
 ansible-galaxy collection install bodsch.scm

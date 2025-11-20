@@ -49,3 +49,17 @@
     name:
       - docker.io
     state: latest
+
+- name: Create docker cli plugins directory
+  become: true
+  file:
+    path: /usr/libexec/docker/cli-plugins
+    state: directory
+    mode: '0755'
+
+- name: Install docker-buildx-plugin
+  become: true
+  get_url:
+    url: https://github.com/docker/buildx/releases/download/{{ rvl_clients_docker_buildx_plugin_release }}/buildx-{{ rvl_clients_docker_buildx_plugin_release }}.linux-amd64
+    dest: /usr/libexec/docker/cli-plugins/docker-buildx
+    mode: '0755'
