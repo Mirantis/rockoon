@@ -426,7 +426,7 @@ jobs:
     clusterStabilityCount: 30
     clusterStabilityWait: 4
   exporter_create_sql_user:
-    backoffLimit: 87600
+    backoffLimit: 20
     activeDeadlineSeconds: 3600
   phy_backup_mariadb:
     cron: "0 0 * * *"
