@@ -44,7 +44,7 @@ class TlsProxyFunctionalTestCase(base.BaseFunctionalTestCase):
         res = None
         for pattern in [
             r".*fips \[.*enabled=true.*",
-            r".*fips enabled=true.*",
+            r".*fips enabled(=|\: )true.*",
         ]:
             res = re.search(pattern, proxy_info)
             if res:
