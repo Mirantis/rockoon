@@ -13,7 +13,7 @@
     name: ingress
     namespace: openstack
   register: ingress_service
-  until: ingress_service.get('resources') and ingress_service.resources[0].status.loadBalancer.ingress[0].ip
+  until: ingress_service.resources | json_query('[0].status.loadBalancer.ingress[0].ip') is not none
   retries: 60
   delay: 10
   ignore_errors: yes

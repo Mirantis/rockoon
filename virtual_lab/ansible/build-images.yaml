@@ -3,6 +3,8 @@
   hosts: k8s_controllers[0]
   become: true
   become_user: root
+  environment:
+    DOCKER_BUILDKIT: "1"
   pre_tasks:
     - name: Set node role fact
       set_fact:

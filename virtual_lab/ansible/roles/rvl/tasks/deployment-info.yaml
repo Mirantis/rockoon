@@ -1,6 +1,7 @@
 - name: Install jmespath Python package
   ansible.builtin.pip:
     name: jmespath
+    extra_args: --break-system-packages
 
 - name: Get OpenStackDeploymentStatus
   kubernetes.core.k8s_info:

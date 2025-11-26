@@ -19,6 +19,7 @@ rvl_directory: "{{ playbook_dir }}/../../"
 rvl_clients_helm_release: v3.16.1
 rvl_clients_kubectl_release: v1.31.0
 rvl_clients_nerdctl_release: 2.1.2
+rvl_clients_docker_buildx_plugin_release: v0.30.1
 rvl_osdpl_create: true
 rvl_osdpl_live_migration_interface: "{{ ansible_default_ipv4.interface }}"
 rvl_osdpl_tunnel_interface: "{{ ansible_default_ipv4.interface }}"
@@ -32,7 +33,7 @@ rvl_osdpl_floating_network:
     gateway: 10.11.12.11
 rvl_network_floating_network_with_snat: false
 
-rvl_osdpl_openstack_version: caracal
+rvl_osdpl_openstack_version: epoxy
 rvl_dns_resolver_ip_address: "{{ ansible_default_ipv4.address|default(ansible_all_ipv4_addresses[0]) }}"
 rvl_dns_nameservers:
   - 8.8.8.8
@@ -54,18 +55,18 @@ rvl_images_build_rockoon: true
 rvl_images_build_loci: true
 rvl_images_build_tag: m2
 rvl_images_rockoon: "{{ rvl_registry_host }}/openstack/rockoon"
-rvl_images_ubuntu_base: "{{ rvl_images_public_base_url }}/openstack/base/ubuntu/base-ubuntu:jammy-20230712102344"
+rvl_images_ubuntu_base: "{{ rvl_images_public_base_url }}/openstack/base/ubuntu/base-ubuntu:noble-20250415074252"
 rvl_chart_ref_rockoon: "{{ rvl_directory }}/charts/rockoon"
 
 rvl_images_base_url: "{{ rvl_images_public_base_url }}"
 rvl_binary_base_url: "{{ rvl_binary_public_base_url }}"
 
 rvl_images_loci_repo: "https://review.opendev.org/openstack/loci"
-rvl_images_loci_refspec: "refs/changes/85/935885/1"
-rvl_images_loci_branch: "22bd4a538c0220b837163a7fbb08b00dcfb2629e"
+rvl_images_loci_refspec: ""
+rvl_images_loci_branch: "master"
 rvl_images_loci_path: /src/loci
 rvl_images_loci_registry: "{{ rvl_registry_host }}"
-rvl_images_loci_build_profile: caracal-core
+rvl_images_loci_build_profile: epoxy-core
 rvl_images_loci_images_mapping:
   cinder:
     - cinder_api

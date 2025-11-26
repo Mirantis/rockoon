@@ -67,6 +67,14 @@ class LociBuilder:
             res.extend(["--build-arg", f"WHEELS={image_full_name}"])
         return res
 
+    def get_target(self, name):
+        target = (
+            self.conf.get("builder", {}).get("projects_configs", {}).get(name, {}).get("target")
+        )
+        if target:
+            return ["--target", target]
+        return []
+
     def should_build(self, name):
         return name in self.projects
 
@@ -89,6 +97,7 @@ class LociBuilder:
         image_full_name = self.image_full_name(name)
         if not self.is_image_exists(name):
             build_cmd = ["docker", "build", "--tag", image_full_name]
+            build_cmd.extend(self.get_target(name))
             build_cmd.extend(self.get_build_args(name))
             build_cmd.extend([self.loci_path])
             LOG.info("Building project %s", name)
