@@ -1684,8 +1684,8 @@ openstack deployed by Rockoon controller.</p>
 <p>Needs <code>virt-manager</code>, <code>libvirt</code>, and <code>qemu-kvm</code> installed.</p>
 <p>Change the path to the public SSH key as you need, the user in the image is
 <code>ubuntu</code>.</p>
-<p><div class="highlight"><pre><span></span><code>wget<span class="w"> </span>https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img
-qemu-img<span class="w"> </span>create<span class="w"> </span>-F<span class="w"> </span>qcow2<span class="w"> </span>-f<span class="w"> </span>qcow2<span class="w"> </span>-b<span class="w"> </span>jammy-server-cloudimg-amd64.img<span class="w"> </span>rockoon.qcow2<span class="w"> </span>100G
+<p><div class="highlight"><pre><span></span><code>wget<span class="w"> </span>https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img
+qemu-img<span class="w"> </span>create<span class="w"> </span>-F<span class="w"> </span>qcow2<span class="w"> </span>-f<span class="w"> </span>qcow2<span class="w"> </span>-b<span class="w"> </span>noble-server-cloudimg-amd64.img<span class="w"> </span>rockoon.qcow2<span class="w"> </span>100G
 virt-install<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--name<span class="w"> </span>rockoon<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--import<span class="w"> </span><span class="se">\</span>
@@ -1693,7 +1693,7 @@ virt-install<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--vcpus<span class="o">=</span><span class="m">8</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--memory<span class="o">=</span><span class="m">16384</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--network<span class="w"> </span><span class="s2">&quot;network=default,model=virtio&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--osinfo<span class="w"> </span><span class="s2">&quot;ubuntu-22&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--osinfo<span class="w"> </span><span class="s2">&quot;ubuntu24.04&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--arch<span class="w"> </span>x86_64<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--graphics<span class="w"> </span>vnc,listen<span class="o">=</span><span class="m">0</span>.0.0.0<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--cloud-init<span class="w"> </span>clouduser-ssh-key<span class="o">=</span><span class="nv">$HOME</span>/.ssh/id_rsa.pub<span class="w"> </span><span class="se">\</span>
@@ -1716,7 +1716,7 @@ limactl<span class="w"> </span>create<span class="w"> </span><span class="se">\<
 <span class="w">    </span>--arch<span class="w"> </span>x86_64<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--vm-type<span class="w"> </span>qemu<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--set<span class="w"> </span><span class="s1">&#39;.cpuType.x86_64 = &quot;host&quot;&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>template://ubuntu-22.04
+<span class="w">    </span>template://ubuntu-24.04
 limactl<span class="w"> </span>start<span class="w"> </span>rockoon
 ssh<span class="w"> </span>-F<span class="w"> </span>~/.lima/rockoon/ssh.config<span class="w"> </span>lima-rockoon
 </code></pre></div>
