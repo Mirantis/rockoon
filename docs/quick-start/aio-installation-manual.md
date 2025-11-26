@@ -12,8 +12,8 @@ Change the path to the public SSH key as you need, the user in the image is
 `ubuntu`.
 
 ```bash
-wget https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img
-qemu-img create -F qcow2 -f qcow2 -b jammy-server-cloudimg-amd64.img rockoon.qcow2 100G
+wget https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img
+qemu-img create -F qcow2 -f qcow2 -b noble-server-cloudimg-amd64.img rockoon.qcow2 100G
 virt-install \
     --name rockoon \
     --import \
@@ -21,7 +21,7 @@ virt-install \
     --vcpus=8 \
     --memory=16384 \
     --network "network=default,model=virtio" \
-    --osinfo "ubuntu-22" \
+    --osinfo "ubuntu24.04" \
     --arch x86_64 \
     --graphics vnc,listen=0.0.0.0 \
     --cloud-init clouduser-ssh-key=$HOME/.ssh/id_rsa.pub \
@@ -48,7 +48,7 @@ limactl create \
     --arch x86_64 \
     --vm-type qemu \
     --set '.cpuType.x86_64 = "host"' \
-    template://ubuntu-22.04
+    template://ubuntu-24.04
 limactl start rockoon
 ssh -F ~/.lima/rockoon/ssh.config lima-rockoon
 ```

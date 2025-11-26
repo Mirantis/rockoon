@@ -27,4 +27,4 @@ Minimal VM requirements
 
 Supported operation systems for **Manual install (Advanced)**
 
-* Ubuntu 22.04 (x86_64)
+* Ubuntu 24.04 (x86_64)
