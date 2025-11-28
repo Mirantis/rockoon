@@ -79,7 +79,7 @@ nova_spiceproxy_assets: '{{ images_base_url }}/openstack/nova:caracal-jammy-2025
 nova_placement: '{{ images_base_url }}/openstack/nova:caracal-jammy-20251124060027'
 nova_scheduler: '{{ images_base_url }}/openstack/nova:caracal-jammy-20251124060027'
 nova_service_cleaner: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20251020060030'
-libvirt: '{{ images_base_url }}/general/libvirt:8.0.x-jammy-reef-20251124143105'
+libvirt: '{{ images_base_url }}/general/libvirt:8.0.x-jammy-reef-20251128105340'
 octavia_api: '{{ images_base_url }}/openstack/octavia:caracal-jammy-20251124060027'
 octavia_db_sync: '{{ images_base_url }}/openstack/octavia:caracal-jammy-20251124060027'
 octavia_health_manager: '{{ images_base_url }}/openstack/octavia:caracal-jammy-20251124060027'
