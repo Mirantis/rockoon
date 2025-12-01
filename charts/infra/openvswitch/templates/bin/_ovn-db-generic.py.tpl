@@ -25,6 +25,7 @@ RAFT_PORT = os.getenv("RAFT_PORT")
 RAFT_ELECTION_TIMER = os.getenv("RAFT_ELECTION_TIMER")
 HOSTNAME = os.getenv("HOSTNAME", "")
 WAIT_ALL_ALIVE_TIMEOUT = int(os.getenv("WAIT_ALL_ALIVE_TIMEOUT", "300"))
+WAIT_CLUSTER_TIMEOUT = int(os.getenv("WAIT_CLUSTER_TIMEOUT", "600"))
 
 DB_NAME = "OVN_Northbound"
 DB_DIRECTORY = "/var/lib/ovn/"
@@ -132,13 +133,26 @@ class State:
     def host_state(self, state):
         return self.set_host_state(self.host, state)
 
+    @host_state.setter
+    def host_cluster_status(self, status):
+        return self.set_host_cluster_status(self.host, status)
+
     def get_host_state(self, host):
         self.cm.refresh()
         obj = self.cm.to_dict()
         return obj.get("data", {}).get(f"{DB_TYPE}_{host}_state", self.UNKNOWN)
 
+    def get_host_cluster_status(self, host):
+        self.cm.refresh()
+        obj = self.cm.to_dict()
+        return json.loads(obj.get("data", "{}").get(f"{DB_TYPE}_{host}_cluster_status", "{}"))
+
     def set_host_state(self, host, state):
         self.cm.patch({"data": {f"{DB_TYPE}_{host}_state": state}})
+
+    def set_host_cluster_status(self, host, status):
+        json_status = json.dumps(status)
+        self.cm.patch({"data": {f"{DB_TYPE}_{host}_cluster_status": json_status}})
 
     def tick(self):
         ts = datetime.utcnow().isoformat()
@@ -152,18 +166,23 @@ class State:
             return None
         return datetime.fromisoformat(res)
 
+    def is_host_alive(self, host, date):
+        host_tick = self.get_host_tick(host)
+        if not host_tick:
+            LOG.info(f"Member {host} did not report its state yet.")
+            return False
+        if host_tick < date:
+            LOG.info(f"Member {host} last update was before {date}")
+            return False
+        if (datetime.utcnow() - host_tick).seconds > 3 * STATE_REFRESH_INTERVAL:
+            LOG.info(f"Member {host} last update is too old.")
+            return False
+        return True
+
     def all_alive_after(self, date):
         for num in range(self.size):
             host = f"{self.host_prefix}-{num}"
-            host_tick = self.get_host_tick(host)
-            if not host_tick:
-                LOG.info(f"Member {host} did not report its state yet.")
-                return False
-            if host_tick < date:
-                LOG.info(f"Member {host} last update was before {date}")
-                return False
-            if (datetime.utcnow() - host_tick).seconds > 3 * STATE_REFRESH_INTERVAL:
-                LOG.info(f"Member {host} last update is too old.")
+            if not self.is_host_alive(host, date):
                 return False
         return True
 
@@ -198,6 +217,29 @@ class State:
             time.sleep(STATE_REFRESH_INTERVAL)
         LOG.info(f"{host} is initialized")
 
+    def get_cluster_member(self, date):
+        for num in range(self.size):
+            host = f"{self.host_prefix}-{num}"
+            if self.host == host:
+                continue
+            if not self.is_host_alive(host, date):
+                continue
+            status = self.get_host_cluster_status(host)
+            if status.get("Server", {}).get("Status", "") == "cluster member":
+                return host
+            LOG.warning(f"Peer {host} is not in cluster, and has status {status}")
+
+    def wait_cluster_member(self, timeout=WAIT_CLUSTER_TIMEOUT):
+        LOG.info(f"Waiting {DB_TYPE} cluster member")
+        start = time.time()
+        now = datetime.utcnow()
+        while time.time() - start < timeout:
+            member = self.get_cluster_member(now)
+            if member:
+                LOG.info(f"Got {DB_TYPE} cluster member {member}")
+                return member
+            time.sleep(STATE_REFRESH_INTERVAL)
+        raise TimeoutError(f"No any {DB_TYPE} cluster members were found.")
 
 heal_needed = threading.Event()
 
@@ -210,8 +252,12 @@ def state_reporting():
         try:
             if is_db_present(DB_TYPE):
                 st.host_state = st.INITIALIZED
+                status = get_cluster_status(DB_TYPE, DB_NAME)["Server"]["Status"]
+                # More fields from OVN cluster status can be added in future
+                st.host_cluster_status = {"Server":{"Status": status}}
             else:
                 st.host_state = st.EMPTY
+                st.host_cluster_status = {}
             st.tick()
         except Exception as e:
             LOG.error(f"Error in state tick: {e}")
@@ -421,11 +467,14 @@ def start():
         ]
 
     opts = []
-    if not bootstrap:
-        LOG.info(f"Joining node {HOSTNAME} to the cluster.")
+    # When no remote opts are set create cluster logic in ovn-ctl is activated,
+    # this logic checks presence of db file. When it is present the logic does nothing.
+    if not bootstrap and not is_db_present(DB_TYPE):
+        cluster_member = st.wait_cluster_member()
+        LOG.info(f"Joining node {HOSTNAME} to the cluster via {cluster_member}.")
         opts = [
             f"--db-{DB_TYPE}-cluster-remote-proto=tcp",
-            f"--db-{DB_TYPE}-cluster-remote-addr=ovn-db.{NAMESPACE}.svc.{INTERNAL_DOMAIN}",
+            f"--db-{DB_TYPE}-cluster-remote-addr={cluster_member}.{SERVICE_NAME}.{NAMESPACE}.svc.{INTERNAL_DOMAIN}",
             f"--db-{DB_TYPE}-cluster-remote-port={RAFT_PORT}",
         ]
         heal_needed.set()
