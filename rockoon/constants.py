@@ -131,7 +131,7 @@ class K8sObjHealth(enum.Enum):
     BAD = "Unhealthy"
 
 
-NEUTRON_KEYSTONE_SECRET = "neutron-keystone-admin"
+NEUTRON_KEYSTONE_SECRET = "neutron-keystone-user"
 KEYSTONE_CONFIG_SECRET = "keystone-etc"
 KEYSTONE_OSCLOUDS_SECRET = "keystone-os-clouds"
 RABBITMQ_USERS_CREDENTIALS_SECRET = "openstack-rabbitmq-users-credentials"
