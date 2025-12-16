@@ -115,7 +115,7 @@ class OpenStackDeployment(pykube.objects.NamespacedAPIObject):
         status = self.obj.get("status", {})
         if osdplst.get_osdpl_status() != osdplstatus.APPLIED:
             return False
-        if osdplst.get_osdpl_fingerprint() != status.get("fingerprint"):
+        if osdplst.get_osdpl_fingerprint() != self.fingerprint:
             return False
         if osdplst.get_osdpl_controller_version() != status.get("version"):
             return False
@@ -125,7 +125,7 @@ class OpenStackDeployment(pykube.objects.NamespacedAPIObject):
         while not self.is_applied:
             time.sleep(interval)
 
-    def wait_applied(self, timeout=600, interval=30):
+    def wait_applied(self, timeout=900, interval=30):
         LOG.info(
             f"Waiting {timeout} seconds {self.kind}/{self.name} status is applied"
         )
