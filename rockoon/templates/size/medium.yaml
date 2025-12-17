@@ -277,6 +277,8 @@ services:
               connection_recycle_time: 300
             oslo_messaging_rabbit:
               rabbit_qos_prefetch_count: 64
+            ovn:
+              ovsdb_connection_timeout: 300
           plugins:
             ml2_conf:
               ml2_type_vxlan:
