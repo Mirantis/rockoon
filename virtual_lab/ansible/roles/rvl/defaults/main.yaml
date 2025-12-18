@@ -63,7 +63,7 @@ rvl_binary_base_url: "{{ rvl_binary_public_base_url }}"
 
 rvl_images_loci_repo: "https://review.opendev.org/openstack/loci"
 rvl_images_loci_refspec: ""
-rvl_images_loci_branch: "master"
+rvl_images_loci_branch: "c1b127eee319c26ad96d8ed50e9eba825cc36c59"
 rvl_images_loci_path: /src/loci
 rvl_images_loci_registry: "{{ rvl_registry_host }}"
 rvl_images_loci_build_profile: epoxy-core
