@@ -30,6 +30,7 @@ images:
     image_repo_sync: docker.io/docker:17.07.0
     tempest-uuids-init: docker.io/openstackhelm/heat:ocata-ubuntu_xenial
     bootstrap: docker.io/openstackhelm/heat:ocata-ubuntu_xenial
+    tempest_bootstrap: docker.io/openstackhelm/heat:ocata-ubuntu_xenial
   pull_policy: "IfNotPresent"
   local_registry:
     active: false

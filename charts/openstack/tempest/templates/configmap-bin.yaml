@@ -25,8 +25,13 @@ data:
 {{- include "helm-toolkit.scripts.image_repo_sync" . | indent 4 }}
 {{- end }}
 {{- if .Values.bootstrap.enabled }}
+{{-   if .Values.bootstrap.script }}
   bootstrap.sh: |
 {{ tuple "bin/_bootstrap.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{- else }}
+  bootstrap.py: |
+{{ tuple "bin/_bootstrap.py.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{-   end}}
 {{- end }}
   cacert-init.sh: |
 {{ tuple "bin/_cacert-init.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
