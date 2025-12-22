@@ -42,6 +42,25 @@ limitations under the License.
 {{- $_ := set .Values.conf.heat.keystone_authtoken "password" .Values.endpoints.identity.auth.heat.password -}}
 {{- end -}}
 
+{{- if empty .Values.conf.heat.ec2authtoken.region_name -}}
+{{- $_ := set .Values.conf.heat.ec2authtoken "region_name" .Values.endpoints.identity.auth.heat.region_name -}}
+{{- end -}}
+{{- if empty .Values.conf.heat.ec2authtoken.project_name -}}
+{{- $_ := set .Values.conf.heat.ec2authtoken "project_name" .Values.endpoints.identity.auth.heat.project_name -}}
+{{- end -}}
+{{- if empty .Values.conf.heat.ec2authtoken.project_domain_name -}}
+{{- $_ := set .Values.conf.heat.ec2authtoken "project_domain_name" .Values.endpoints.identity.auth.heat.project_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.heat.ec2authtoken.user_domain_name -}}
+{{- $_ := set .Values.conf.heat.ec2authtoken "user_domain_name" .Values.endpoints.identity.auth.heat.user_domain_name -}}
+{{- end -}}
+{{- if empty .Values.conf.heat.ec2authtoken.username -}}
+{{- $_ := set .Values.conf.heat.ec2authtoken "username" .Values.endpoints.identity.auth.heat.username -}}
+{{- end -}}
+{{- if empty .Values.conf.heat.ec2authtoken.password -}}
+{{- $_ := set .Values.conf.heat.ec2authtoken "password" .Values.endpoints.identity.auth.heat.password -}}
+{{- end -}}
+
 {{- if empty .Values.conf.heat.trustee.region_name -}}
 {{- $_ := set .Values.conf.heat.trustee "region_name" .Values.endpoints.identity.auth.heat_trustee.region_name -}}
 {{- end -}}

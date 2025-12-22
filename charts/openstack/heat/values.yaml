@@ -368,6 +368,9 @@ conf:
     trustee:
       auth_type: password
       auth_version: v3
+    ec2authtoken:
+      auth_type: password
+      auth_version: v3
     heat_api:
       # NOTE(portdirect): the bind port should not be defined, and is manipulated
       # via the endpoints section.
