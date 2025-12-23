@@ -79,7 +79,7 @@ nova_spiceproxy_assets: '{{ images_base_url }}/openstack/nova:epoxy-noble-202512
 nova_placement: '{{ images_base_url }}/openstack/nova:epoxy-noble-20251212123702'
 nova_scheduler: '{{ images_base_url }}/openstack/nova:epoxy-noble-20251212123702'
 nova_service_cleaner: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20251020060030'
-libvirt: '{{ images_base_url }}/general/libvirt:10.0.x-noble-20251124143440'
+libvirt: '{{ images_base_url }}/general/libvirt:10.0.x-noble-20251223075541'
 octavia_api: '{{ images_base_url }}/openstack/octavia:epoxy-noble-20251212123702'
 octavia_db_sync: '{{ images_base_url }}/openstack/octavia:epoxy-noble-20251212123702'
 octavia_health_manager: '{{ images_base_url }}/openstack/octavia:epoxy-noble-20251212123702'
