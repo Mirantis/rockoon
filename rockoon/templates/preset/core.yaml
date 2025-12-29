@@ -310,9 +310,12 @@ services:
             - (?:tempest.api.compute.admin.test_live_migration.LiveAutoBlockMigrationV225Test.test_volume_backed_live_migration)
             - (?:tempest.api.compute.admin.test_live_migration.LiveMigrationTest.test_volume_backed_live_migration)
           {%- endif %}
+          {%- if not ovn_enabled %}
           {%- if neutron_dvr_enabled %}
-            # PRODX-28571 - ipv6 metadata doesn't work in DVR case
+            # PRODX-28571, PRODX-56214 - ipv6 metadata doesn't work in OVS DVR case
             - (?:neutron_tempest_plugin.scenario.test_metadata.MetadataTest.test_metadata_routed)
+            - (?:neutron_tempest_plugin.scenario.test_metadata.MetadataTest.test_metadata_ipv6_only_network)
+          {%- endif %}
           {%- endif %}
           {%- if OSVer[openstack_version] >= OSVer.yoga %}
             - (?:tempest.api.image.v2.test_images.ImportImagesTest.test_image_glance_direct_import)

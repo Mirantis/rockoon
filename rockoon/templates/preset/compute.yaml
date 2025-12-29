@@ -309,9 +309,12 @@ services:
             # TODO: enable this test, needs a barbican secret with clouds.yaml for 'another cloud', can reuse ourselves, may be with different account.
             - (?:heat_tempest_plugin.tests.functional.test_remote_stack.RemoteStackTest.test_stack_create_with_cloud_credential)
           {%- endif %}
+          {%- if not ovn_enabled %}
           {%- if neutron_dvr_enabled %}
-            # PRODX-28571 - ipv6 metadata doesn't work in DVR case
+            # PRODX-28571, PRODX-56214 - ipv6 metadata doesn't work in OVS DVR case
             - (?:neutron_tempest_plugin.scenario.test_metadata.MetadataTest.test_metadata_routed)
+            - (?:neutron_tempest_plugin.scenario.test_metadata.MetadataTest.test_metadata_ipv6_only_network)
+          {%- endif %}
           {%- endif %}
             # Tests NOT supported by product
 {% include 'base/_tempest_blacklist_no_supported.yaml' %}
