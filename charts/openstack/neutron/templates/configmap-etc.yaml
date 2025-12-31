@@ -265,13 +265,13 @@ just set it along with nova_metadata_host.
 {{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup" | set $envAll.Values.conf.plugins.tungstenfabric.keystone "auth_url" -}}
 {{- end -}}
 {{- if empty $envAll.Values.conf.plugins.tungstenfabric.keystone.admin_user -}}
-{{- $_ := set $envAll.Values.conf.plugins.tungstenfabric.keystone "admin_user" $envAll.Values.endpoints.identity.auth.neutron.username -}}
+{{- $_ := set $envAll.Values.conf.plugins.tungstenfabric.keystone "admin_user" $envAll.Values.endpoints.identity.auth.admin.username -}}
 {{- end -}}
 {{- if empty $envAll.Values.conf.plugins.tungstenfabric.keystone.admin_password -}}
-{{- $_ := set $envAll.Values.conf.plugins.tungstenfabric.keystone "admin_password" $envAll.Values.endpoints.identity.auth.neutron.password -}}
+{{- $_ := set $envAll.Values.conf.plugins.tungstenfabric.keystone "admin_password" $envAll.Values.endpoints.identity.auth.admin.password -}}
 {{- end -}}
 {{- if empty $envAll.Values.conf.plugins.tungstenfabric.keystone.admin_tenant_name -}}
-{{- $_ := set $envAll.Values.conf.plugins.tungstenfabric.keystone "admin_tenant_name" $envAll.Values.endpoints.identity.auth.neutron.project_name -}}
+{{- $_ := set $envAll.Values.conf.plugins.tungstenfabric.keystone "admin_tenant_name" $envAll.Values.endpoints.identity.auth.admin.project_name -}}
 {{- end -}}
 {{- end -}}
 {{- if index (index $envAll.Values.network "interface" |default dict ) "sriov" -}}
