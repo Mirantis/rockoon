@@ -11,28 +11,31 @@ builder:
     REGISTRY_PROTOCOL: https
     REGISTRY_INSECURE: True
     FROM: "{{ rvl_images_ubuntu_base }}"
-    PROJECT_REF: stable/2025.1
   projects_configs:
     requirements:
       docker_build_args:
         <<: *build_args_common
+        PROJECT_REF: 'stable/2025.1'
         KEEP_ALL_WHEELS: True
         PIP_PACKAGES: 'purestorage'
       target: "requirements"
     keystone:
       docker_build_args:
         <<: *build_args_common
+        PROJECT_REF: 'stable/2025.1'
         PROFILES: 'apache openidc fluent ldap'
       target: "project"
     horizon:
       docker_build_args:
         <<: *build_args_common
+        PROJECT_REF: 'stable/2025.1'
         PROFILES: 'apache fluent'
         PIP_PACKAGES: 'pymemcache'
       target: "project"
     glance:
       docker_build_args:
         <<: *build_args_common
+        PROJECT_REF: 'stable/2025.1'
         PROFILES: 'apache ceph fluent'
         # NOTE(vsaienko): boto3 is requirement of s3 storage
         PIP_PACKAGES: 'python-cinderclient os-brick oslo.rootwrap boto3 python-swiftclient'
@@ -43,6 +46,7 @@ builder:
     cinder:
       docker_build_args:
         <<: *build_args_common
+        PROJECT_REF: 'stable/2025.1'
         PROFILES: 'lvm ceph qemu apache fluent purestorage netapp fujitsu'
         PIP_PACKAGES: 'py-pure-client'
         # NOTE(vsaienko) multipath-tools lsscsi sysfsutils FIELD-4624
@@ -52,12 +56,14 @@ builder:
     neutron:
       docker_build_args:
         <<: *build_args_common
+        PROJECT_REF: 'refs/changes/51/972451/1'
         PROFILES: 'linuxbridge openvswitch apache fluent'
         DIST_PACKAGES: 'ethtool lshw radvd jq strongswan daemonize'
       target: "project"
     nova:
       docker_build_args:
         <<: *build_args_common
+        PROJECT_REF: 'stable/2025.1'
         PROFILES: 'ceph linuxbridge openvswitch configdrive qemu apache fluent purestorage lvm'
         PIP_PACKAGES: 'python-ironicclient py-pure-client'
         # NOTE(vsaienko) multipath-tools lsscsi sysfsutils FIELD-4624
@@ -67,5 +73,6 @@ builder:
     placement:
       docker_build_args:
         <<: *build_args_common
+        PROJECT_REF: 'stable/2025.1'
         PROFILES: 'apache fluent audit'
       target: "project"
