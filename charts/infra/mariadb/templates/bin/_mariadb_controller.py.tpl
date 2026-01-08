@@ -131,13 +131,16 @@ def main():
     global last_master_check
     health_server_start()
     while True:
-        for pod in get_mariadb_pods():
-            pod.reload()
-            if is_ready(pod):
-                link_master_service(pod)
-                break
+        try:
+            for pod in get_mariadb_pods():
+                pod.reload()
+                if is_ready(pod):
+                    link_master_service(pod)
+                    break
+            last_master_check = time.time()
+        except Exception as e:
+            LOG.exception("Got exception", exc_info=e)
         LOG.debug(f"Sleeping for {MARIADB_CONTROLLER_CHECK_PODS_DELAY}")
-        last_master_check = time.time()
         time.sleep(MARIADB_CONTROLLER_CHECK_PODS_DELAY)
 
 
