@@ -53,6 +53,26 @@ def nova_registry_service(mocker):
 
 
 @pytest.fixture
+def neutron_registry_service(mocker):
+    mock_service_class = mock.Mock()
+    mock_service_class.return_value = mock.Mock()
+    mocker.patch(
+        "rockoon.services.ORDERED_SERVICES",
+        [("networking", mock_service_class)],
+    )
+    methods = [
+        "prepare_node_after_reboot",
+        "cleanup_metadata",
+        "cleanup_persistent_data",
+        "is_node_locked",
+    ]
+    for attr in methods:
+        setattr(mock_service_class.return_value, attr, mock.Mock())
+    yield mock_service_class
+    mocker.stopall()
+
+
+@pytest.fixture
 def osdpl(mocker):
     osdpl = mocker.patch("rockoon.kube.get_osdpl")
     osdpl.return_value.mspec = {"openstack_version": "antelope"}
@@ -399,7 +419,9 @@ def test_ndr_nova_service(mocker, nova_registry_service, safe_node, osdpl):
     nova_registry_service.return_value.process_ndr.assert_called_once()
 
 
-def test_nwl_deletion_no_osdpl(mocker, nova_registry_service, node, osdpl):
+def test_nwl_deletion_no_osdpl(
+    mocker, nova_registry_service, neutron_registry_service, node, osdpl
+):
     nwl_obj = {
         "metadata": {"name": "fake-nmr"},
         "spec": {"nodeName": "fake-node", "controllerName": "openstack"},
@@ -410,7 +432,10 @@ def test_nwl_deletion_no_osdpl(mocker, nova_registry_service, node, osdpl):
     mocker.patch.object(
         services,
         "ORDERED_SERVICES",
-        [("compute", nova_registry_service)],
+        [
+            ("compute", nova_registry_service),
+            ("networking", neutron_registry_service),
+        ],
     )
     nwl = mock.Mock()
     nwl.required_for_node.return_value = True
@@ -422,9 +447,12 @@ def test_nwl_deletion_no_osdpl(mocker, nova_registry_service, node, osdpl):
     maintenance_controller.node_workloadlock_request_delete_handler(nwl_obj)
     osdpl.return_value.exists.assert_called_once()
     nova_registry_service.return_value.cleanup_metadata.assert_not_called()
+    neutron_registry_service.return_value.cleanup_metadata.assert_not_called()
 
 
-def test_nwl_deletion_not_our_nwl(mocker, nova_registry_service, node, osdpl):
+def test_nwl_deletion_not_our_nwl(
+    mocker, nova_registry_service, neutron_registry_service, node, osdpl
+):
     nwl_obj = {
         "metadata": {"name": "fake-nmr"},
         "spec": {"nodeName": "fake-node", "controllerName": "ceph"},
@@ -435,7 +463,10 @@ def test_nwl_deletion_not_our_nwl(mocker, nova_registry_service, node, osdpl):
     mocker.patch.object(
         services,
         "ORDERED_SERVICES",
-        [("compute", nova_registry_service)],
+        [
+            ("compute", nova_registry_service),
+            ("networking", neutron_registry_service),
+        ],
     )
     nwl = mock.Mock()
     nwl.required_for_node.return_value = True
@@ -447,10 +478,11 @@ def test_nwl_deletion_not_our_nwl(mocker, nova_registry_service, node, osdpl):
     maintenance_controller.node_workloadlock_request_delete_handler(nwl_obj)
     osdpl.return_value.exists.assert_not_called()
     nova_registry_service.return_value.cleanup_metadata.assert_not_called()
+    neutron_registry_service.return_value.cleanup_metadata.assert_not_called()
 
 
 def test_nwl_deletion_node_still_exit(
-    mocker, nova_registry_service, node, osdpl
+    mocker, nova_registry_service, node, neutron_registry_service, osdpl
 ):
     nwl_obj = {
         "metadata": {"name": "fake-nmr"},
@@ -464,7 +496,10 @@ def test_nwl_deletion_node_still_exit(
     mocker.patch.object(
         services,
         "ORDERED_SERVICES",
-        [("compute", nova_registry_service)],
+        [
+            ("compute", nova_registry_service),
+            ("networking", neutron_registry_service),
+        ],
     )
     nwl = mock.Mock()
     nwl.required_for_node.return_value = True
@@ -478,10 +513,14 @@ def test_nwl_deletion_node_still_exit(
         )
     osdpl.return_value.exists.assert_called_once()
     nova_registry_service.return_value.cleanup_metadata.assert_not_called()
+    neutron_registry_service.return_value.cleanup_metadata.assert_not_called()
     nova_registry_service.return_value.cleanup_persistent_data.assert_not_called()
+    neutron_registry_service.return_value.cleanup_persistent_data.assert_not_called()
 
 
-def test_nwl_deletion_cleanup(mocker, nova_registry_service, safe_node, osdpl):
+def test_nwl_deletion_cleanup(
+    mocker, nova_registry_service, neutron_registry_service, safe_node, osdpl
+):
     node = safe_node
     nwl_obj = {
         "metadata": {"name": "fake-nmr"},
@@ -495,7 +534,10 @@ def test_nwl_deletion_cleanup(mocker, nova_registry_service, safe_node, osdpl):
     mocker.patch.object(
         services,
         "ORDERED_SERVICES",
-        [("compute", nova_registry_service)],
+        [
+            ("compute", nova_registry_service),
+            ("networking", neutron_registry_service),
+        ],
     )
     nwl = mock.Mock()
     nwl.required_for_node.return_value = True
@@ -506,4 +548,6 @@ def test_nwl_deletion_cleanup(mocker, nova_registry_service, safe_node, osdpl):
     maintenance_controller.node_workloadlock_request_delete_handler(nwl_obj)
     osdpl.return_value.exists.assert_called_once()
     nova_registry_service.return_value.cleanup_metadata.assert_called_once()
+    neutron_registry_service.return_value.cleanup_metadata.assert_called_once()
     nova_registry_service.return_value.cleanup_persistent_data.assert_called_once()
+    neutron_registry_service.return_value.cleanup_persistent_data.assert_called_once()
