@@ -214,3 +214,4 @@ ubuntu_checksum: 30d459e0dc0562e629d3683970e55efa
 ingress_init_config: '{{ images_base_url }}/openstack/openstack-tools:victoria-focal-20220926060015'
 neutron_portprober_agent: '{{ images_base_url }}/openstack/neutron:master-bionic-20210524060023'
 redis-operator: '{{ images_base_url }}/openstack/extra/redis-operator:v1.2.4-20231107105540'
+tempest_bootstrap: '{{ images_base_url }}/openstack/openstack-tools:victoria-focal-20220926060015'

@@ -15,6 +15,12 @@ limitations under the License.
 */}}
 
 {{- if and .Values.manifests.job_bootstrap .Values.bootstrap.enabled -}}
-{{- $bootstrapJob := dict "envAll" . "serviceName" "tempest" "keystoneUser" .Values.bootstrap.ks_user "keystoneUserSystem" .Values.bootstrap.ks_user_system "caCert" "true" -}}
+{{- $bootstrapScriptName := "bootstrap.sh" }}
+{{- $bootstrapImage := "bootstrap" }}
+{{- if not .Values.bootstrap.script }}
+{{-   $bootstrapScriptName = "bootstrap.py" }}
+{{-   $bootstrapImage = "tempest_bootstrap" }}
+{{- end}}
+{{- $bootstrapJob := dict "envAll" . "serviceName" "tempest" "keystoneUser" .Values.bootstrap.ks_user "keystoneUserSystem" .Values.bootstrap.ks_user_system "caCert" "true" "boostrapScript" $bootstrapScriptName "boostrapImage" $bootstrapImage -}}
 {{ $bootstrapJob | include "helm-toolkit.manifests.job_bootstrap" }}
 {{- end }}

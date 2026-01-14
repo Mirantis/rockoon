@@ -251,3 +251,4 @@ ironic_esp: '{{ binary_base_url }}/openstack/bin/ironic/esp/ironic-esp-1620965'
 ironic_esp_checksum: 87b10bbb52ed7ea57ff2a5cf6d93f32e
 os_image_ubuntu_2404: '{{ binary_base_url }}/openstack/bin/ubuntu/24.04/noble-server-cloudimg-amd64-20251026.img'
 os_image_ubuntu_2404_checksum: e2f0561da667e43e2019466fe916f937
+tempest_bootstrap: '{{ images_base_url }}/openstack/openstack-tools:epoxy-noble-20251222060023'

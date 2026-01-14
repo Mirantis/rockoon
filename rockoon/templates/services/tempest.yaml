@@ -19,6 +19,7 @@ spec:
     "dep_check",
     "image_repo_sync",
     "bootstrap",
+    "tempest_bootstrap",
     "tempest_static_accounts",
     "tempest-uuids-init",] %}
         {%- if image in images %}
@@ -126,61 +127,6 @@ spec:
             public: https
       bootstrap:
         enabled: true
-        script: |
-          {%- if spec.features.neutron.get('floating_network', {}).get('enabled', true) %}
-          public_network_name={{ spec.features.neutron.get('floating_network', {}).get('name', 'public') }}
-          {%- else %}
-          {%-   if spec.services.get('tempest', {}).get('tempest', {}).get('values', {}).get('conf', {}).get('convert_to_uuid', {}).get('network', {}).get('public_network_id') %}
-          public_network_name={{ spec.services.get('tempest', {}).get('tempest', {}).get('values', {}).get('conf', {}).get('convert_to_uuid', {}).get('network', {}).get('public_network_id') }}
-          {%-   else %}
-          public_network_name=$(openstack network list --external  --no-share -f value -c Name | head -1)
-          {%-   endif%}
-          {%- endif %}
-          if [[ -z "${public_network_name}" ]]; then
-              echo "Failed to detect public_network name."
-              exit 1
-          fi
-          openstack network show heat-net || openstack network create heat-net
-          openstack subnet show heat-subnet || openstack subnet create heat-subnet \
-            --dhcp --subnet-range 10.20.30.0/24 \
-            --allocation-pool start=10.20.30.10,end=10.20.30.254 \
-            --gateway 10.20.30.1 \
-            --network heat-net
-          openstack router show heat-router || openstack router create heat-router
-          subnet_id=$(openstack subnet show heat-subnet -f value -c id)
-          if openstack router show heat-router -f json -c interfaces_info |grep -qw ${subnet_id}; then
-            echo "$subnet_id is in the list"
-          else
-            openstack router add subnet heat-router heat-subnet
-            openstack router set --external-gateway ${public_network_name} heat-router
-          fi
-{%- if spec.features.neutron.get('backend') != 'tungstenfabric' %}
-          openstack subnet pool show default_pool || \
-            openstack subnet pool create --share --default \
-            --pool-prefix 10.20.40.0/24 --default-prefix-length 26 \
-            default_pool
-{%- else %}
-          openstack network show tempest-fixed-net || openstack network create tempest-fixed-net --share
-          openstack subnet show tempest-subnet || openstack subnet create tempest-subnet \
-            --dhcp --subnet-range 10.20.40.0/24 \
-            --allocation-pool start=10.20.40.10,end=10.20.40.254 \
-            --gateway 10.20.40.1 \
-            --network tempest-fixed-net
-{%- endif %}
-{%- if OSVer.yoga <= OSVer[spec.openstack_version] %}
-{%- raw %}
-          {{- if .Values.conf.tempest.service_available.designate }}
-          {{-   if not .Values.conf.tempest.DEFAULT.production }}
-          function ensure_tld_present {
-            openstack tld show $i || openstack tld create --name $i --description tempest-tests
-          }
-          for i in {{ .Values.conf.tempest.dns.tld_suffix }} "arpa" "in-addr.arpa"; do
-            ensure_tld_present $i
-          done
-          {{-   end }}
-          {{- end }}
-{%- endraw %}
-{%- endif %}
       conf:
         static_accounts:
           project_count: 25
