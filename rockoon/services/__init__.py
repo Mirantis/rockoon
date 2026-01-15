@@ -1724,6 +1724,27 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
     def process_ndr(self, node, nwl):
         return self.remove_node_from_scheduling(node)
 
+    def cleanup_persistent_data(self, nwl):
+        if (
+            utils.get_in(self.mspec["features"], ["neutron", "backend"])
+            == "ml2/ovn"
+        ):
+            node_name = nwl.obj["spec"]["nodeName"]
+            if self.is_node_locked(node_name):
+                msg = (
+                    f"The node {node_name} is hard locked by openvswitch-ovn."
+                )
+                nwl.set_error_message(msg)
+                raise kopf.TemporaryError(msg)
+            server_sts = self.get_child_object(
+                "StatefulSet", "openvswitch-ovn-db"
+            )
+            server_sts.release_persistent_volume_claims(node_name)
+
+    def is_node_locked(self, node_name):
+        server_sts = self.get_child_object("StatefulSet", "openvswitch-ovn-db")
+        return server_sts.is_node_locked(node_name)
+
     def cleanup_metadata(self, nwl):
         node_name = nwl.obj["spec"]["nodeName"]
         os_client = openstack_utils.OpenStackClientManager()
