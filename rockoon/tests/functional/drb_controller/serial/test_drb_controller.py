@@ -8,7 +8,6 @@ from rockoon.tests.functional.drb_controller import base
 from rockoon.tests.functional import config
 from rockoon.tests.functional import waiters
 
-
 CONF = config.Config()
 LOG = logging.getLogger(__name__)
 

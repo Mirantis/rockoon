@@ -28,7 +28,6 @@ from pathlib import Path
 from rockoon import constants as const
 from rockoon.utils import get_logger
 
-
 faulthandler.register(signal.SIGHUP, all_threads=True)
 faulthandler.enable(file=sys.stderr, all_threads=True)
 

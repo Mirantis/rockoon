@@ -42,7 +42,6 @@ from rockoon.services.base import (
 )
 from urllib.parse import urlsplit
 
-
 LOG = utils.get_logger(__name__)
 CONF = settings.CONF
 

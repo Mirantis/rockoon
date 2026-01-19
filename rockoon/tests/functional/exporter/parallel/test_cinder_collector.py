@@ -6,7 +6,6 @@ from rockoon.exporter import constants
 from rockoon.tests.functional.exporter import base
 from rockoon.tests.functional import config
 
-
 CONF = config.Config()
 
 

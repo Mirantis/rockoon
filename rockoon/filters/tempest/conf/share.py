@@ -1,7 +1,6 @@
 from rockoon.constants import OpenStackVersion
 from rockoon.filters.tempest import base_section
 
-
 MICROVERSION_RELEASE_MAPPING = {
     "pike": {"min_api_microversion": "2.0", "max_api_microversion": "2.40"},
     "queens": {"min_api_microversion": "2.0", "max_api_microversion": "2.42"},

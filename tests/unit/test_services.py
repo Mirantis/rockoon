@@ -28,7 +28,6 @@ from rockoon import services
 from rockoon import settings
 from rockoon import maintenance
 
-
 NODE_OBJ = {
     "apiVersion": "v1",
     "kind": "Node",

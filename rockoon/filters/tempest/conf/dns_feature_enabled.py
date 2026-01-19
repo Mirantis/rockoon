@@ -1,6 +1,5 @@
 from rockoon.filters.tempest import base_section
 
-
 DNS_FEATURES_RELEASE_MAPPING = {
     "yoga": {
         "api_admin": True,

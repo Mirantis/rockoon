@@ -10,7 +10,6 @@ import pytest
 from rockoon import constants, layers
 from rockoon import secrets
 
-
 CREDS_KWARGS = {
     "ssh_credentials": {"private": "", "public": ""},
     "credentials": [

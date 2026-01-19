@@ -19,7 +19,6 @@ from prometheus_client.core import REGISTRY
 from rockoon import utils
 from rockoon.exporter import collectors
 
-
 LOG = utils.get_logger(__name__)
 
 

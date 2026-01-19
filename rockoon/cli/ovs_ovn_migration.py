@@ -184,13 +184,11 @@ def set_args():
         type=int,
         default=0,
         dest="max_workers",
-        help=(
-            """Maximum number of workers to spawn for parallel operations.
+        help=("""Maximum number of workers to spawn for parallel operations.
             If set to 0, internal defaults for operations will be used.
             For example for pods parallel operations (like exec) number of workers will be
             equal to number of target pods.
-            """
-        ),
+            """),
     )
 
     args = parser.parse_args()
@@ -202,8 +200,7 @@ def set_args():
 def get_logger():
     if not os.path.exists(LOG_DIR):
         os.makedirs(LOG_DIR)
-    logging_conf = yaml.safe_load(
-        f"""
+    logging_conf = yaml.safe_load(f"""
     disable_existing_loggers: false
     formatters:
       standard:
@@ -238,8 +235,7 @@ def get_logger():
       - default_file
       level: INFO
     version: 1
-    """
-    )
+    """)
     logging.config.dictConfig(logging_conf)
     return logging.getLogger(__name__)
 
@@ -1028,8 +1024,7 @@ def wait_for_object_absent(obj, timeout=600):
 def daemonsets_check_exec(results, raise_on_error=True):
     failed_nodes = []
     for res in results:
-        LOG.debug(
-            f"""
+        LOG.debug(f"""
         DaemonSet {res['daemonset']} Pod {res['pod']}:{res['container']} exec results:
             NODE:
               {res['node']}
@@ -1045,8 +1040,7 @@ def daemonsets_check_exec(results, raise_on_error=True):
               {res['error_json']}
             EXCEPTION:
               {res['exception']}
-        """
-        )
+        """)
         if res["status"] != "Success":
             failed_nodes.append(res["node"])
     if failed_nodes:
@@ -1787,12 +1781,10 @@ def do_migration(script_args):
                     f"Stage {stage_name} is already finished, skipping it"
                 )
                 continue
-            LOG.info(
-                f"""Running {stage_name} stage
+            LOG.info(f"""Running {stage_name} stage
                 Description: {stage['description']}
                 IMPACT: {stage['impact']}
-            """
-            )
+            """)
             state_cm.update(stage_name, STARTED)
             stage["executable"](script_args)
             state_cm.update(stage_name, COMPLETED)
@@ -1805,12 +1797,10 @@ def do_migration(script_args):
             current_index = WORKFLOW.index(stage)
             if script_args.interactive and current_index != len(WORKFLOW) - 1:
                 next_stage = WORKFLOW[current_index + 1]
-                LOG.info(
-                    f"""Next stage to run is {next_stage['name']}
+                LOG.info(f"""Next stage to run is {next_stage['name']}
                         Description: {next_stage['description']}
                         IMPACT: {next_stage['impact']}
-                    """
-                )
+                    """)
                 msg = "To proceed to next stage press Y, to abort WHOLE procedure press N"
                 res = check_input(lambda x: x in ["Y", "N"], msg)
                 if res == "Y":

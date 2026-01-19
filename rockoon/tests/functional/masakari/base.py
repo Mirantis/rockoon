@@ -3,7 +3,6 @@ import unittest
 
 from rockoon.tests.functional import base, config, data_utils
 
-
 LOG = logging.getLogger(__name__)
 CONF = config.Config()
 

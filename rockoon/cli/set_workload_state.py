@@ -3,7 +3,6 @@
 import sys
 from rockoon import kube
 
-
 if __name__ == "__main__":
     if len(sys.argv) < 3:
         print("usage: set_workload_state.py <node> <state>")

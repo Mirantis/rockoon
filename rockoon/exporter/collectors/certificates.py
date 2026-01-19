@@ -24,7 +24,6 @@ from rockoon import kube, utils
 from rockoon.exporter import settings
 from rockoon.exporter.collectors import base
 
-
 LOG = utils.get_logger(__name__)
 
 

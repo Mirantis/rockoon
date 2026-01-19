@@ -12,7 +12,6 @@ from rockoon import osdplstatus
 from rockoon import resource_view
 from rockoon import version
 
-
 LOG = utils.get_logger(__name__)
 
 

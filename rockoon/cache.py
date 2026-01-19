@@ -7,7 +7,6 @@ from . import layers
 from . import utils
 from . import settings
 
-
 LOG = utils.get_logger(__name__)
 
 

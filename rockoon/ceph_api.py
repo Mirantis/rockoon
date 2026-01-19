@@ -12,7 +12,6 @@ from dacite import from_dict
 from rockoon import settings
 from rockoon.utils import to_base64, from_base64
 
-
 OPENSTACK_KEYS_SECRET = "openstack-ceph-keys"
 OPENSTACK_RGW_SECRET = "openstack-rgw-creds"
 

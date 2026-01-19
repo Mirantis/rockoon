@@ -9,7 +9,6 @@ from rockoon import settings  # noqa
 from rockoon import utils
 from rockoon import osdplstatus
 
-
 LOG = utils.get_logger(__name__)
 CONF = settings.CONF
 

@@ -136,11 +136,9 @@ class BaseFunctionalTestCase(TestCase):
                 job_logs = cls.get_job_logs(job)
                 for pod, pod_logs in job_logs.items():
                     for container, logs in pod_logs.items():
-                        LOG.debug(
-                            f"""Job {job}/{pod}/{container} LOGS:
+                        LOG.debug(f"""Job {job}/{pod}/{container} LOGS:
                                   {logs}
-                            """
-                        )
+                            """)
         return job
 
     @classmethod

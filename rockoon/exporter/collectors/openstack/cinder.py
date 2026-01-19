@@ -20,7 +20,6 @@ from rockoon import utils
 from rockoon.exporter.collectors.openstack import base
 from rockoon.exporter import constants
 
-
 LOG = utils.get_logger(__name__)
 
 

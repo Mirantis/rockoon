@@ -29,7 +29,6 @@ from rockoon.osctl.plugins.sosreport.cinder import (
     CinderObjectsCollector,
 )
 
-
 __all__ = (
     ElasticLogsCollector,
     K8sObjectsCollector,

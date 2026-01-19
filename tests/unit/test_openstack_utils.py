@@ -23,7 +23,6 @@ import pytest
 from rockoon import openstack_utils
 from rockoon import kube
 
-
 NODE_OBJ = {
     "apiVersion": "v1",
     "kind": "Node",
