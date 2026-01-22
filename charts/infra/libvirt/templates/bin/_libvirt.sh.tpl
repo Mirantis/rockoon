@@ -161,5 +161,5 @@ if [[ "true" == "{{ .Values.conf.ceph.enabled }}" && -n "{{ .Values.conf.ceph.ke
   wait
 else
   #NOTE(portdirect): run libvirtd as a transient unit on the host with the osh-libvirt cgroups applied.
-  exec cgexec -g ${CGROUPS%,}:/osh-libvirt systemd-run --scope --slice=system libvirtd --listen
+  cgexec -g ${CGROUPS%,}:/osh-libvirt systemd-run --scope --slice=system libvirtd --listen
 fi
