@@ -27,6 +27,7 @@ class NeutronPluginOptions(base_section.BaseSection):
         "test_mtu_networks",
         "firewall_driver",
         "create_shared_resources",
+        "snat_rules_apply_to_nested_networks",
     ]
 
     @property
@@ -142,6 +143,17 @@ class NeutronPluginOptions(base_section.BaseSection):
     def create_shared_resources(self):
         if self.tf_enabled():
             return False
+        return True
+
+    @property
+    def snat_rules_apply_to_nested_networks(self):
+        neutron_backend = self.get_spec_item("features.neutron.backend", "ml2")
+        if neutron_backend == "ml2/ovn":
+            return self.get_values_item(
+                "neutron",
+                "conf.neutron.ovn.ovn_router_indirect_snat",
+            )
+
         return True
 
 
