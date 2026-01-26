@@ -13,7 +13,7 @@ all:
     rvl_registry_docker_mode: proxy
     rvl_images_public_base_url: mirantis.azurecr.io
     rvl_binary_public_base_url: https://binary.mirantis.com
-    rvl_images_build_tag: 1.1.7
+    rvl_images_build_tag: 1.2.2
     rvl_images_base_url: "{{ rvl_registry_host }}"
     rvl_binary_base_url: "{{ rvl_registry_binary_url }}"
     rvl_chart_ref_rockoon: "{{ rvl_registry_binary_url }}/openstack/helm/rockoon/rockoon-{{ rvl_images_build_tag }}.tgz"
