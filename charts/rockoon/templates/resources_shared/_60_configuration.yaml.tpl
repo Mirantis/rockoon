@@ -1,5 +1,4 @@
 apiVersion: v1
-data:
 kind: ConfigMap
 data:
   extra_conf.ini: |
