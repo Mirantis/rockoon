@@ -10,6 +10,7 @@ class VolumeFeatureEnabled(base_section.BaseSection):
         "api_v3",
         "backup",
         "clone",
+        "enable_volume_image_dep_tests",
         "extend_attached_volume",
         "manage_snapshot",
         "manage_volume",
@@ -46,6 +47,30 @@ class VolumeFeatureEnabled(base_section.BaseSection):
     @property
     def clone(self):
         pass
+
+    @property
+    def enable_volume_image_dep_tests(self):
+        """disable for glance on rbd
+
+        current rook/pelagia default min compat client is 'luminous',
+        passing these tests requires 'mimic' or later
+        """
+        # TODO: reconsider when min compat client version is raised
+        if (
+            # single backend
+            "rbd"
+            in self.get_values_item(
+                "glance", "conf.glance.glance_store.stores", ""
+            )
+            or
+            # multi-backend
+            "rbd"
+            in self.get_values_item(
+                "glance", "conf.glance.DEFAULT.enabled_backends", ""
+            )
+        ):
+            return False
+        return True
 
     @property
     def extend_attached_volume(self):
