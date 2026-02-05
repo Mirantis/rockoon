@@ -48,9 +48,10 @@ def wait_for_service_status_state(
             raise TimeoutError(message)
 
 
-def wait_for_server_status(openstack_client, server, status):
+def wait_for_server_status(
+    openstack_client, server, status, timeout=CONF.SERVER_TIMEOUT
+):
     start_time = int(time.time())
-    timeout = CONF.SERVER_TIMEOUT
     while True:
         server = openstack_client.oc.get_server(server.id)
         if server.status.upper() == status.upper():

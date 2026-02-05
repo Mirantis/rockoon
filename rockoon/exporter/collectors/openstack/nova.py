@@ -171,6 +171,11 @@ class OsdplNovaMetricCollector(base.OpenStackBaseMetricCollector):
                 "Total number of instances in active state",
                 labels=[],
             ),
+            "verify_resize_instances": GaugeMetricFamily(
+                f"{self._name}_verify_resize_instances",
+                "Total number of instances in VERIFY_RESIZE status",
+                labels=[],
+            ),
             "hypervisor_instances": GaugeMetricFamily(
                 f"{self._name}_hypervisor_instances",
                 "Total number of instances per hypervisor",
@@ -205,6 +210,11 @@ class OsdplNovaMetricCollector(base.OpenStackBaseMetricCollector):
                 f"{self._name}_aggregate_instances",
                 "Total number of instances on all compute hosts in host aggregate.",
                 labels=["name"],
+            ),
+            "instance_status": GaugeMetricFamily(
+                f"{self._name}_instance_status",
+                "Instance status (currently only VERIFY_RESIZE instances are exposed)",
+                labels=["name", "id", "status"],
             ),
         }
         for resource_class in self.hypervisor_resource_classes:
@@ -414,9 +424,15 @@ class OsdplNovaMetricCollector(base.OpenStackBaseMetricCollector):
 
     @utils.timeit
     def update_instances_samples(self):
-        instances = {"total": 0, "active": 0, "error": 0}
+        instances = {
+            "total": 0,
+            "active": 0,
+            "error": 0,
+            "verify_resize": 0,
+        }
         hypervisor_instances = {}
         availability_zone_instances_total = {}
+        instance_status_samples = []
         for zone in self.cache.get("availability_zones", []):
             availability_zone_instances_total[zone["name"]] = 0
         for instance in self.oc.oc.compute.servers(all_projects=True):
@@ -428,13 +444,28 @@ class OsdplNovaMetricCollector(base.OpenStackBaseMetricCollector):
                 instances[status] += 1
                 hypervisor_instances.setdefault(host, {"total": 0})
                 hypervisor_instances[host]["total"] += 1
+            if status == "verify_resize":
+                instance_status_samples.append(
+                    (
+                        [
+                            instance["name"],
+                            instance["id"],
+                            status,
+                        ],
+                        1,
+                    )
+                )
             if zone:
                 availability_zone_instances_total.setdefault(zone, 0)
                 availability_zone_instances_total[zone] += 1
 
         self.set_samples("instances", [([], instances["total"])])
-        for key in ["error", "active"]:
+        for key in ["error", "active", "verify_resize"]:
             self.set_samples(f"{key}_instances", [([], instances[key])])
+        self.set_samples(
+            "instance_status",
+            instance_status_samples,
+        )
 
         availability_zone_instances_samples = []
         for zone, total in availability_zone_instances_total.items():

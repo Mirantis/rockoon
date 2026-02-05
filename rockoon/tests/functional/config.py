@@ -25,6 +25,7 @@ class Config(metaclass=SingletonMeta):
         self.CIRROS_TEST_IMAGE_NAME = self.get_cirros_image()
         self.UBUNTU_TEST_IMAGE_NAME = "Ubuntu-18.04"
         self.TEST_FLAVOR_SMALL_NAME = "m1.small"
+        self.TEST_FLAVOR_TINY_NAME = "m1.tiny"
         self.TEST_FLAVOR_NAME = "m1.extra_tiny_test"
         self.TEST_SUBNET_RANGE = "10.20.30.0/24"
         self.TEST_SUBNET_RANGE_ALT = "10.20.31.0/24"
@@ -50,6 +51,8 @@ class Config(metaclass=SingletonMeta):
 
         # Time in seconds to wait for a server to change a status. Default is 60 seconds.
         self.SERVER_TIMEOUT = 60
+        # Time in seconds to wait for a server to resize. Default is 180 seconds.
+        self.SERVER_RESIZE_TIMEOUT = 60 * 3
         # Interval in seconds to check the server status. Default is 1 second.
         self.SERVER_READY_INTERVAL = 1
 
