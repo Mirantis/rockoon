@@ -36,6 +36,10 @@ limitations under the License.
           -- set Interface o-hm0 external-ids:skip_cleanup=true \
           -- set Interface o-hm0 mtu_request=$NETWORK_MTU
 
+  # By default OVS autogenerates MAC address for o-hm0,
+  # it can lead to races with ip link command.
+  sleep 1
+  ip a show o-hm0
   ip link set dev o-hm0 address "${!HM_PORT_MAC}" up
 
   iptables_params="INPUT -i o-hm0 -p udp --dport {{ .Values.conf.octavia.health_manager.bind_port }} -j ACCEPT"
