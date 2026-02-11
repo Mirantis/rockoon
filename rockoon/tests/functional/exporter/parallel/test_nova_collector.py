@@ -7,6 +7,9 @@ from retry import retry
 from rockoon.tests.functional.exporter import base
 from rockoon.tests.functional import data_utils
 from rockoon.tests.functional.base import LOG
+from rockoon.tests.functional import config
+
+CONF = config.Config()
 
 
 class NovaCollectorFunctionalTestCase(base.BaseFunctionalExporterTestCase):
@@ -16,6 +19,10 @@ class NovaCollectorFunctionalTestCase(base.BaseFunctionalExporterTestCase):
         "osdpl_nova_instances": {"labels": []},
         "osdpl_nova_active_instances": {"labels": []},
         "osdpl_nova_error_instances": {"labels": []},
+        "osdpl_nova_verify_resize_instances": {"labels": []},
+        # "osdpl_nova_instance_status": {
+        #     "labels": ["name", "id", "status"]
+        # },
         "osdpl_nova_hypervisor_instances": {"labels": ["host", "zone"]},
         # "osdpl_nova_aggregate_hosts": {"labels": ["name"]},
         # "osdpl_nova_host_aggregate_info": {"labels": ["hosts", "name"]},
@@ -216,6 +223,136 @@ class NovaInstancesCollectorInstancesFunctionalTestCase(
             len(error_servers),
             f"Current numbers of error servers in exporter's metrics are {int(metric.samples[0].value)}."
             f"Expected numbers of error servers: {len(error_servers)}.",
+        )
+
+    def test_nova_verify_resize_instances(self):
+        """Total number of instances in VERIFY_RESIZE status.
+
+        **Steps**
+
+        #. Get exporter metric `osdpl_nova_verify_resize_instances` with initial value
+        #. Create test instance
+        #. Resize instance and wait until it reaches VERIFY_RESIZE status
+        #. Check that number of VERIFY_RESIZE instances increased in exporter metrics
+        #. Confirm resize and delete test instance
+        #. Check that number of VERIFY_RESIZE instances decreased in exporter metrics
+        """
+
+        metric_name = "osdpl_nova_verify_resize_instances"
+
+        initial_metric = self.get_metric_after_refresh(
+            metric_name, self.scrape_collector
+        )
+        initial_servers = self.ocm.compute_get_all_servers(
+            status="VERIFY_RESIZE"
+        )
+
+        self.assertEqual(
+            int(initial_metric.samples[0].value),
+            len(initial_servers),
+            f"Current number of VERIFY_RESIZE servers in exporter's metrics is "
+            f"{int(initial_metric.samples[0].value)}. "
+            f"Expected number of VERIFY_RESIZE servers: {len(initial_servers)}.",
+        )
+        # Create a server with a smaller flavor to test resize
+        flavor_id = self.get_flavor_id(CONF.TEST_FLAVOR_TINY_NAME)
+        resize_flavor_id = self.get_flavor_id(CONF.TEST_FLAVOR_NAME)
+        server = self.server_create(flavorRef=flavor_id)
+        self.resize_server(server, resize_flavor_id)
+
+        metric_after_resize = self.get_metric_after_refresh(
+            metric_name, self.scrape_collector
+        )
+        servers_after_resize = self.ocm.compute_get_all_servers(
+            status="VERIFY_RESIZE"
+        )
+
+        self.assertEqual(
+            int(metric_after_resize.samples[0].value),
+            len(servers_after_resize),
+            f"Current number of VERIFY_RESIZE servers in exporter's metrics is "
+            f"{int(metric_after_resize.samples[0].value)}. "
+            f"Expected number of VERIFY_RESIZE servers: {len(servers_after_resize)}.",
+        )
+
+        self.server_delete(server)
+
+        metric = self.get_metric_after_refresh(
+            metric_name, self.scrape_collector
+        )
+        self.assertEqual(
+            int(metric.samples[0].value),
+            len(servers_after_resize) - 1,
+            f"Current number of VERIFY_RESIZE servers in exporter's metrics is "
+            f"{int(metric.samples[0].value)}. "
+            f"Expected number of VERIFY_RESIZE servers: {len(servers_after_resize) - 1}.",
+        )
+
+    def test_instance_status(self):
+        """Check that instance_status metric appears when VM is in VERIFY_RESIZE status.
+
+        **Steps:**
+
+        #. Create a test instance
+        #. Get initial samples for metric `osdpl_nova_instance_status`
+        #. Check that metric doesn't have sample for the test instance
+        #. Resize test instance
+        #. Refresh metric and check that a new sample with the VM's name, id and status appears
+        #. Delete the test instance
+        #. Refresh metric and check that the sample disappears
+        """
+        metric_name = "osdpl_nova_instance_status"
+
+        # Create a server with a smaller flavor to test resize
+        flavor_id = self.get_flavor_id(CONF.TEST_FLAVOR_TINY_NAME)
+        resize_flavor_id = self.get_flavor_id(CONF.TEST_FLAVOR_NAME)
+        server = self.server_create(flavorRef=flavor_id)
+        metric = self.get_metric_after_refresh(
+            metric_name, self.scrape_collector
+        )
+        labels = {
+            "id": server["id"],
+            "name": server["name"],
+            "status": server["status"].lower(),
+        }
+        samples = self.filter_metric_samples(metric, labels)
+        self.assertEqual(
+            len(samples),
+            0,
+            f"Instance_status metric contain sample for VM {server['name']}",
+        )
+
+        self.resize_server(server, resize_flavor_id)
+        server = self.ocm.oc.get_server(server.id)
+        labels = {
+            "id": server["id"],
+            "name": server["name"],
+            "status": server["status"].lower(),
+        }
+        metric = self.get_metric_after_refresh(
+            metric_name, self.scrape_collector
+        )
+        samples = self.filter_metric_samples(metric, labels)
+        self.assertEqual(
+            len(samples),
+            1,
+            f"Instance_status metric does not contain sample for VM {server['name']}",
+        )
+        self.assertCountEqual(
+            ["name", "id", "status"],
+            samples[0].labels.keys(),
+        )
+        self.server_delete(server)
+        metric_after_delete = self.get_metric_after_refresh(
+            metric_name, self.scrape_collector
+        )
+        deleted_samples = self.filter_metric_samples(
+            metric_after_delete, labels
+        )
+        self.assertEqual(
+            len(deleted_samples),
+            0,
+            f"Instance_status metric sample for VM {server['name']} still exists after deletion",
         )
 
 

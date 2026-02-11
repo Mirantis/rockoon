@@ -284,6 +284,19 @@ class BaseFunctionalTestCase(TestCase):
         if wait is True:
             waiters.wait_for_server_status(self.ocm, server, status=status)
 
+    def get_flavor_id(self, flavor_name):
+        return self.ocm.oc.compute.find_flavor(flavor_name).id
+
+    def resize_server(self, server, flavor_id, wait=True):
+        self.ocm.oc.compute.resize_server(server.id, flavor_id)
+        if wait is True:
+            waiters.wait_for_server_status(
+                self.ocm,
+                server,
+                status="VERIFY_RESIZE",
+                timeout=CONF.SERVER_RESIZE_TIMEOUT,
+            )
+
     @classmethod
     def lb_bundle_create(
         cls,
