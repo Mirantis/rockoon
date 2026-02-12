@@ -55,7 +55,6 @@ RUN set -ex; \
     if [[ "${TEST_IMAGE}" == "True" ]]; then \
         OPENSTACK_CONTROLLER_EXTRAS="[test]"; \
     fi; \
-    
     pip wheel --wheel-dir /opt/wheels --find-links /opt/wheels /opt/operator${OPENSTACK_CONTROLLER_EXTRAS}
 
 RUN wget -q -O /usr/local/bin/helm3 ${HELM_BINARY}; \
