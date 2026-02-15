@@ -110,7 +110,7 @@ tempest_run_tests: '{{ images_base_url }}/openstack/tempest:caracal-jammy-202602
 tempest-uuids-init: '{{ images_base_url }}/openstack/heat:caracal-jammy-20260213154113'
 glance_metadefs_load: '{{ images_base_url }}/openstack/glance:caracal-jammy-20260213154113'
 memcached: '{{ images_base_url }}/general/memcached:v1.6.38-alpine-20260130130224'
-ingress: '{{ images_base_url }}/openstack/extra/nginx-ingress-controller:1.12.8-alpine-20260129161955'
+ingress: '{{ images_base_url }}/openstack/extra/nginx-ingress-controller:1.13.7-alpine-20260211171701'
 error_pages: '{{ images_base_url }}/openstack/extra/defaultbackend:v1.19.2-77af1ef-20251105084411'
 ironic_manage_networks: '{{ images_base_url }}/openstack/heat:caracal-jammy-20260213154113'
 ironic_retrieve_networks: '{{ images_base_url }}/openstack/heat:caracal-jammy-20260213154113'
