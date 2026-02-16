@@ -237,6 +237,14 @@ class NovaInstancesCollectorInstancesFunctionalTestCase(
         #. Confirm resize and delete test instance
         #. Check that number of VERIFY_RESIZE instances decreased in exporter metrics
         """
+        if (
+            self.osdpl.obj["spec"]["features"]
+            .get("nova", {})
+            .get("images", {})
+            .get("backend")
+            == "lvm"
+        ):
+            raise unittest.SkipTest("Resize is not supported on LVM backend.")
 
         metric_name = "osdpl_nova_verify_resize_instances"
 
