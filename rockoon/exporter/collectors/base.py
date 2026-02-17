@@ -221,13 +221,13 @@ class BaseMetricsCollector(object):
     def validate_family_sample(self, family, sample):
         validator = BaseMetricValidator.registry.get(family.type)
         if not validator:
-            LOG.warning(f"Skip validation for family {family}")
+            LOG.debug(f"Skip validation for family {family.name}")
             return True
         try:
             validator.validate(sample)
         except Exception as e:
             LOG.error(
-                f"Failed to validate sample {sample} for family {family}, exception {e}"
+                f"Failed to validate sample {sample} for family {family.name}, exception {e}"
             )
             return False
         return True
