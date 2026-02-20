@@ -20,7 +20,7 @@ from enum import IntEnum
 
 from urllib.parse import urlparse, urlunparse
 
-from websocket import WebSocket, ABNF
+from websocket import WebSocket, ABNF, WebSocketException
 
 
 class channels(IntEnum):
@@ -31,6 +31,24 @@ class channels(IntEnum):
 
 
 DEFAULT_HTTP_TIMEOUT = 10
+DEFAULT_RETRIES = 12
+DEFAULT_RETRY_INTERVAL = 5
+
+
+def sock_retry(func):
+    def wrapper(*args, **kwargs):
+        attempt = 1
+        while True:
+            try:
+                res = func(*args, **kwargs)
+                return res
+            except WebSocketException as e:
+                if attempt == DEFAULT_RETRIES:
+                    raise e
+                attempt += 1
+                time.sleep(DEFAULT_RETRY_INTERVAL)
+
+    return wrapper
 
 
 class KubernetesWebSocketsClient:
@@ -56,9 +74,13 @@ class KubernetesWebSocketsClient:
         self.sock = WebSocket(
             sslopt=self.ssl_headers, skip_utf8_validation=False
         )
-        self.sock.connect(self.url, header=headers)
+        self._sock_connect(self.url, headers)
 
         self._connected = True
+
+    @sock_retry
+    def _sock_connect(self, url, headers):
+        self.sock.connect(url, header=headers)
 
     @property
     def url(self):
