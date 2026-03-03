@@ -15,7 +15,7 @@ builder:
     requirements:
       docker_build_args:
         <<: *build_args_common
-        PROJECT_REF: 'stable/2025.1'
+        PROJECT_REF: 'refs/changes/40/978740/1'
         KEEP_ALL_WHEELS: True
         PIP_PACKAGES: 'purestorage'
       target: "requirements"
