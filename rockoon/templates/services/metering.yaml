@@ -46,14 +46,6 @@ spec:
         ceilometer:
           DEFAULT:
             debug: false
-            event_dispatchers:
-              type: multistring
-              values:
-                - gnocchi
-            meter_dispatchers:
-              type: multistring
-              values:
-                - gnocchi
           coordination:
 {%- if OSVer.antelope <= OSVer[spec.openstack_version] < OSVer.master %}
             backend_url: {{ get_etcd3_endpoint(spec.openstack_version, 'etcd3gw') }}

@@ -115,10 +115,6 @@ limitations under the License.
 {{- $_ := set .Values.conf.ceilometer.service_credentials "password" .Values.endpoints.identity.auth.ceilometer.password -}}
 {{- end -}}
 
-{{- if empty .Values.conf.ceilometer.dispatcher_gnocchi.url -}}
-{{- $_ := tuple "metric" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.ceilometer.dispatcher_gnocchi "url" -}}
-{{- end -}}
-
 {{- if empty .Values.conf.ceilometer.api.aodh_url -}}
 {{- $_ := tuple "alarming" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.ceilometer.api "aodh_url" -}}
 {{- end -}}

@@ -679,14 +679,6 @@ spec:
         ceilometer:
           DEFAULT:
             debug: false
-            event_dispatchers:
-              type: multistring
-              values:
-                - gnocchi
-            meter_dispatchers:
-              type: multistring
-              values:
-                - gnocchi
           coordination:
             backend_url: etcd3+http://etcd:2379?api_version=auto
           api:

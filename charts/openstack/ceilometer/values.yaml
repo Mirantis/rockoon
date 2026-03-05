@@ -164,24 +164,8 @@ conf:
   ceilometer:
     DEFAULT:
       log_config_append: /etc/ceilometer/logging.conf
-      event_dispatchers:
-        type: multistring
-        values:
-          - database
-      meter_dispatchers:
-        type: multistring
-        values:
-          - database
-          - gnocchi
     api:
       aodh_is_enabled: "False"
-    # NOTE(portdirect): the following option will turn off the ability to retrieve
-    # metrics via the ceilometer API:
-    # gnocchi_is_enabled: "True"
-    dispatcher_gnocchi:
-      filter_service_activity: False
-      archive_policy: low
-      resources_definition_file: /etc/ceilometer/gnocchi_resources.yaml
     database:
       max_retries: -1
     dispatcher:
