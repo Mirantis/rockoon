@@ -10,6 +10,10 @@ metric:gnocchi:Deployment:gnocchi-api:
         component: evaluator
   - podSelector:
       matchLabels:
+        application: app_gateway
+        component: proxy
+  - podSelector:
+      matchLabels:
         application: keystone
         component: client
   - podSelector:

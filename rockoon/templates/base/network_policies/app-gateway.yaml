@@ -1,0 +1,16 @@
+{%- from 'macros/connections.j2' import from_all %}
+{%- from 'macros/connections.j2' import from_namespaces %}
+{%- set lma_ns_list = ["lma_deployment"] | namespaces  %}
+{%- set app_gateway_proxy = "app-gateway:app-gateway:DaemonSet:envoy-proxy" %}
+        proxy:
+          spec:
+            podSelector:
+              matchLabels:
+{{ service_childs[app_gateway_proxy].get_pod_labels() | toyaml | indent(16, first=True) }}
+            policyTypes:
+            - Ingress
+            ingress:
+              - from:
+{{ from_all(service_childs[app_gateway_proxy].get_np_ports(["http","https","pdns-tcp", "pdns-udp"])) | indent(16) }}
+              - from:
+{{ from_namespaces(lma_ns_list, service_childs[app_gateway_proxy].get_np_ports(["metrics"])) | indent(16) }}

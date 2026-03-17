@@ -57,6 +57,7 @@ features:
         pool_start: 10.255.1.0
         range: 10.255.0.0/16
   services:
+  - app-gateway
   - block-storage
   - compute
   - dns

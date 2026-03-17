@@ -48,6 +48,15 @@ CONF = settings.CONF
 # INFRA SERVICES
 
 
+class AppGateway(Service):
+    service = "app-gateway"
+    available_releases = ["openstack-app-gateway"]
+
+    @property
+    def health_groups(self):
+        return ["app-gateway"]
+
+
 class Ingress(Service):
     service = "ingress"
     available_releases = ["ingress-openstack"]

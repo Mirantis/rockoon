@@ -1,0 +1,49 @@
+images:
+  tags:
+    envoy: docker-dev-kaas-local.docker.mirantis.net/openstack/extra/envoy:1.37.1-noble-20260323165333
+  pull_policy: "IfNotPresent"
+  local_registry:
+    active: false
+    exclude:
+      - dep_check
+      - image_repo_sync
+
+endpoints:
+  cluster_domain_suffix: cluster.local
+  app_gateway:
+    hosts:
+      default:
+        host: app-gateway
+    port:
+      https:
+        default: 10443
+        public: 443
+    host_fqdn_override:
+      public: null
+
+labels:
+  proxy:
+    node_selector_key: kubernetes.io/os
+    node_selector_value: linux
+
+gateways:
+  default: {}
+gateway_classes:
+  default: {}
+envoy_proxies:
+  default: {}
+
+secrets:
+  tls:
+    app_gateway:
+      https:
+        public: app-gateway-https-certs
+
+network_policy: {}
+
+manifests:
+  gateway: true
+  gateway_class: true
+  envoy_proxy: true
+  secret_tls: true
+  network_policy: false

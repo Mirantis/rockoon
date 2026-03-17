@@ -103,6 +103,7 @@ features:
                   share_backend_name: cephfs
                   share_driver: manila.share.drivers.cephfs.driver.CephFSDriver
   services:
+  - app-gateway
   - block-storage
   - cloudprober
   - compute

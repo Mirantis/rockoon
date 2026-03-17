@@ -46,6 +46,7 @@ features:
     live_migration_interface: ens3
   services:
   - alarming
+  - app-gateway
   - block-storage
   - compute
   - dns

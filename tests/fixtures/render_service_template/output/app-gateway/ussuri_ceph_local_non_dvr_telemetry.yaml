@@ -1,0 +1,51 @@
+spec:
+  releases:
+  - chart: app-gateway
+    name: openstack-app-gateway
+    values:
+      images:
+        tags:
+          envoy: envoy:latest
+      endpoints:
+        cluster_domain_suffix: cluster.local
+        app_gateway:
+          host_fqdn_override:
+            public:
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+      manifests:
+        network_policy: true
+      network_policy:
+        proxy:
+          spec:
+            ingress:
+              - from:
+                  - ipBlock:
+                      cidr: 0.0.0.0/0
+                ports:
+                  - port: 80
+                    protocol: TCP
+                  - port: 53
+                    protocol: UDP
+                  - port: 53
+                    protocol: TCP
+                  - port: 10443
+                    protocol: TCP
+              - from:
+                  - namespaceSelector:
+                      matchLabels:
+                        kubernetes.io/metadata.name: stacklight
+                ports:
+                  - port: 19001
+                    protocol: TCP
+            podSelector:
+              matchLabels:
+                application: app_gateway
+                component: proxy
+            policyTypes:
+              - Ingress

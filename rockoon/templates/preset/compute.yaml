@@ -45,6 +45,7 @@ features:
     octavia:
       level: DEBUG
   services:
+    - app-gateway
     - block-storage
     - compute
     - dns

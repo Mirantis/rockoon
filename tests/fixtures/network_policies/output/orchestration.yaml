@@ -1,6 +1,10 @@
 orchestration:heat:Deployment:heat-api:
 - from:
   - podSelector:
+      matchLabels: &id004
+        application: app_gateway
+        component: proxy
+  - podSelector:
       matchLabels: &id001
         application: horizon
         component: server
@@ -21,6 +25,8 @@ orchestration:heat:Deployment:heat-api:
     protocol: TCP
 orchestration:heat:Deployment:heat-cfn:
 - from:
+  - podSelector:
+      matchLabels: *id004
   - podSelector:
       matchLabels: *id001
   - podSelector:

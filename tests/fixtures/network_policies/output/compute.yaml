@@ -1,6 +1,10 @@
 compute:nova:Deployment:nova-api-metadata:
 - from:
   - podSelector:
+      matchLabels: &id003
+        application: app_gateway
+        component: proxy
+  - podSelector:
       matchLabels: &id001
         application: ingress
         component: server
@@ -17,6 +21,8 @@ compute:nova:Deployment:nova-api-metadata:
     protocol: TCP
 compute:nova:Deployment:nova-api-osapi:
 - from:
+  - podSelector:
+      matchLabels: *id003
   - podSelector:
       matchLabels:
         application: cinder
@@ -111,6 +117,8 @@ compute:nova:Deployment:nova-api-osapi:
 compute:nova:Deployment:nova-novncproxy:
 - from:
   - podSelector:
+      matchLabels: *id003
+  - podSelector:
       matchLabels: *id001
   ports:
   - port: 6080
@@ -118,12 +126,16 @@ compute:nova:Deployment:nova-novncproxy:
 compute:nova:Deployment:nova-serialproxy:
 - from:
   - podSelector:
+      matchLabels: *id003
+  - podSelector:
       matchLabels: *id001
   ports:
   - port: 6083
     protocol: TCP
 compute:nova:Deployment:nova-spiceproxy:
 - from:
+  - podSelector:
+      matchLabels: *id003
   - podSelector:
       matchLabels: *id001
   ports:

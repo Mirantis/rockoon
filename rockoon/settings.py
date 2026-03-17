@@ -282,6 +282,9 @@ OSCTL_LMA_DEPLOYMENT_NAMESPACE = os.environ.get(
 OSCTL_TF_DEPLOYMENT_NAMESPACE = os.environ.get(
     "OSCTL_TF_DEPLOYMENT_NAMESPACE", "tf"
 )
+OSCTL_GTW_DEPLOYMENT_NAMESPACE = os.environ.get(
+    "OSCTL_GTW_DEPLOYMENT_NAMESPACE", "eg-system"
+)
 
 
 # The dict defining IAM data {"client": "os", "enabled": True, "oidcCASecret": "oidc-cert", url: "https://1.2.3.4"}

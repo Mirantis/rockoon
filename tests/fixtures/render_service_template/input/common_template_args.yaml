@@ -59,6 +59,7 @@ images:
   designate_pool_manage_hash: designate-pool-manage-hash:latest
   drb_controller: drb-controller:latest
   entrypoint: entrypoint:latest
+  envoy: envoy:latest
   error_pages: error-pages:latest
   etcd: etcd:latest
   etcd_db_compact: etcd-db-compact:latest
@@ -235,6 +236,7 @@ images:
   os_image_ubuntu_2404: https://ubuntu-image-url/ubuntu2404-latest
   os_image_ubuntu_2404_checksum: 6fb7322b32df
   redis-operator: redis-operator:latest
+  envoy: 'envoy:latest'
 proxy_vars:
   HTTP_PROXY: http://127.0.0.1:3128
   NO_PROXY: .svc.cluster.local

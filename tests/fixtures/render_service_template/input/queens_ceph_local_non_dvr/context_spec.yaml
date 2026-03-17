@@ -46,6 +46,7 @@ features:
       backend: local
     live_migration_interface: ens3
   services:
+  - app-gateway
   - block-storage
   - compute
   - dns

@@ -1,3 +1,6 @@
+app-gateway:
+  credentials: null
+  keystone_creds: {}
 block-storage:
   is_ceph_enabled: true
   ceph:

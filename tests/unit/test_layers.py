@@ -45,6 +45,7 @@ CREDS_KWARGS = {
 
 def test_apply_list_empty_stein(osdpl_min_stein):
     compute_services = {
+        "app-gateway",
         "block-storage",
         "compute",
         "dns",
@@ -72,6 +73,7 @@ def test_apply_list_empty_stein(osdpl_min_stein):
 
 def test_apply_list_empty_train(osdpl_min_train):
     compute_services = {
+        "app-gateway",
         "block-storage",
         "compute",
         "dns",
@@ -99,6 +101,7 @@ def test_apply_list_empty_train(osdpl_min_train):
 
 def test_apply_list_empty_rocky(osdpl_min_rocky):
     compute_services = {
+        "app-gateway",
         "block-storage",
         "compute",
         "dns",

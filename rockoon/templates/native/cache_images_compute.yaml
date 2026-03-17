@@ -2,6 +2,7 @@
 - openvswitch_vswitchd
 - nova_compute
 - ingress
+- envoy
 - libvirt
 - neutron_openvswitch_agent
 - neutron_l3

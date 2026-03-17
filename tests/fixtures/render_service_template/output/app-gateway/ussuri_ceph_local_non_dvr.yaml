@@ -1,0 +1,22 @@
+spec:
+  releases:
+  - chart: app-gateway
+    name: openstack-app-gateway
+    values:
+      images:
+        tags:
+          envoy: envoy:latest
+      endpoints:
+        cluster_domain_suffix: cluster.local
+        app_gateway:
+          host_fqdn_override:
+            public:
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+      manifests:
+        network_policy: false

@@ -2,6 +2,10 @@ dashboard:horizon:Deployment:horizon:
 - from:
   - podSelector:
       matchLabels:
+        application: app_gateway
+        component: proxy
+  - podSelector:
+      matchLabels:
         application: ingress
         component: server
   ports:

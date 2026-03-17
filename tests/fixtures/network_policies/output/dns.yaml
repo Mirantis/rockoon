@@ -1,6 +1,10 @@
 dns:designate:StatefulSet:designate-api:
 - from:
   - podSelector:
+      matchLabels: &id002
+        application: app_gateway
+        component: proxy
+  - podSelector:
       matchLabels:
         application: horizon
         component: server
@@ -41,6 +45,8 @@ dns:designate:StatefulSet:designate-api:
     protocol: TCP
 dns:designate:StatefulSet:designate-mdns:
 - from:
+  - podSelector:
+      matchLabels: *id002
   - podSelector:
       matchLabels: *id001
   ports:

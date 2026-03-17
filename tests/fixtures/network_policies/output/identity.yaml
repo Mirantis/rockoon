@@ -30,6 +30,10 @@ identity:keystone:Deployment:keystone-api:
         component: ks-user
   - podSelector:
       matchLabels:
+        application: app_gateway
+        component: proxy
+  - podSelector:
+      matchLabels:
         application: ironic
         component: api
   - podSelector:

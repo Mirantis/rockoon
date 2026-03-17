@@ -2,6 +2,10 @@ shared-file-system:manila:Deployment:manila-api:
 - from:
   - podSelector:
       matchLabels:
+        application: app_gateway
+        component: proxy
+  - podSelector:
+      matchLabels:
         application: horizon
         component: server
   - podSelector:

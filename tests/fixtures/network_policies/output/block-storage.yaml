@@ -2,6 +2,10 @@ block-storage:cinder:Deployment:cinder-api:
 - from:
   - podSelector:
       matchLabels:
+        application: app_gateway
+        component: proxy
+  - podSelector:
+      matchLabels:
         application: ironic
         component: conductor
   - podSelector:

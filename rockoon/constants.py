@@ -31,6 +31,7 @@ CHART_GROUP_MAPPING = {
         "manila",
     ],
     "infra": [
+        "app-gateway",
         "cloudprober",
         "rabbitmq",
         "mariadb",
