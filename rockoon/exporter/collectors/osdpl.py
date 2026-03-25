@@ -18,7 +18,6 @@ from prometheus_client.core import InfoMetricFamily
 from rockoon import utils
 from rockoon.exporter.collectors import base
 
-
 LOG = utils.get_logger(__name__)
 
 

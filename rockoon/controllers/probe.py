@@ -4,7 +4,6 @@ import time
 from rockoon import settings
 from rockoon import utils
 
-
 LOG = utils.get_logger(__name__)
 
 

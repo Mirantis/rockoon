@@ -3,7 +3,6 @@ import pykube
 from rockoon import kube
 from rockoon import utils
 
-
 LOG = utils.get_logger(__name__)
 
 

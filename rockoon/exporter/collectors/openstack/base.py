@@ -19,7 +19,6 @@ from rockoon import utils
 from rockoon.exporter.collectors import base
 from rockoon import openstack_utils
 
-
 LOG = utils.get_logger(__name__)
 
 

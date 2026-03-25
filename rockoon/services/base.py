@@ -21,7 +21,6 @@ from rockoon import utils
 from rockoon import helm
 from rockoon.osdplstatus import APPLYING, APPLIED, DELETING
 
-
 LOG = utils.get_logger(__name__)
 CONF = settings.CONF
 

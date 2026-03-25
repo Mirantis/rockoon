@@ -9,7 +9,6 @@ from rockoon.tests.functional import config
 from rockoon.tests.functional import base
 from rockoon.tests.functional import data_utils
 
-
 LOG = logging.getLogger(__name__)
 CONF = config.Config()
 

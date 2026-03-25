@@ -6,7 +6,6 @@ from rockoon import kube
 from rockoon import settings
 from rockoon import utils
 
-
 LOG = utils.get_logger("remove-legacy-finalizer")
 
 LEGACY_KOPF_FINALIZER = "lcm.mirantis.com/openstack-controller"
