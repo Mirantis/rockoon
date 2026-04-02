@@ -147,8 +147,8 @@ keystone_db_sync_expand: '{{ images_base_url }}/openstack/keystone:xena-focal-20
 keystone_db_sync_migrate: '{{ images_base_url }}/openstack/keystone:xena-focal-20240112082932'
 keystone_db_sync_contract: '{{ images_base_url }}/openstack/keystone:xena-focal-20240112082932'
 octavia_amphora: '{{ binary_base_url }}/openstack/bin/octavia/amphora-x64-haproxy-xena-20240112091031.qcow2'
-etcd: '{{ images_base_url }}/openstack/extra/etcd:v3.5.26-alpine-20260216175600'
-etcd_db_compact: '{{ images_base_url }}/openstack/extra/etcd:v3.5.26-alpine-20260216175600'
+etcd: '{{ images_base_url }}/openstack/extra/etcd:v3.5.28-alpine-20260326073703'
+etcd_db_compact: '{{ images_base_url }}/openstack/extra/etcd:v3.5.28-alpine-20260326073703'
 cinder_db_sync_online: '{{ images_base_url }}/openstack/cinder:xena-focal-20240112082932'
 cinder_db_purge: '{{ images_base_url }}/openstack/cinder:xena-focal-20240112082932'
 aodh_db_sync: '{{ images_base_url }}/openstack/aodh:xena-focal-20240112082932'
@@ -246,3 +246,4 @@ ironic_esp_checksum: 87b10bbb52ed7ea57ff2a5cf6d93f32e
 os_image_ubuntu_2404: '{{ binary_base_url }}/openstack/bin/ubuntu/24.04/noble-server-cloudimg-amd64-20251026.img'
 os_image_ubuntu_2404_checksum: e2f0561da667e43e2019466fe916f937
 tempest_bootstrap: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20260309060032'
+envoy: '{{ images_base_url }}/openstack/extra/envoy:1.37.1-noble-20260323165333'
