@@ -152,8 +152,8 @@ rvl_lvp_local_volume_provisioner_chart: "{{ rvl_directory }}/charts/infra/local-
 rvl_lvp_local_volume_provisioner_mounts_image: "{{ rvl_images_base_url }}/openstack/openstack-controller:0.1.1"
 rvl_lvp_local_volume_provisioner_image: "{{ rvl_images_base_url }}/bm/external/local-volume-provisioner:v2.4.0"
 
-rvl_metallb_metallb_crds_chart: "{{ rvl_binary_base_url }}/core/helm/metallb-crds-1.37.20.tgz"
-rvl_metallb_metallb_chart: "{{ rvl_binary_base_url }}/core/helm/metallb-1.37.20.tgz"
+rvl_metallb_metallb_crds_chart: "{{ rvl_binary_base_url }}/core/helm/metallb-crds-1.44.7.tgz"
+rvl_metallb_metallb_chart: "{{ rvl_binary_base_url }}/core/helm/metallb-1.44.7.tgz"
 rvl_metallb_metallb_dockerBaseUrl: "{{ rvl_images_base_url }}"
 
 rvl_registry_docker_release: 3.0.0
@@ -175,8 +175,8 @@ rvl_registry_binary_timeout: 900
 
 rvl_mirror_images: false
 rvl_mirror_images_extra:
- - "{{ rvl_images_public_base_url }}/bm/metallb/controller:v0.13.9-53df4a9c-amd64"
- - "{{ rvl_images_public_base_url }}/bm/metallb/speaker:v0.13.9-53df4a9c-amd64"
+ - "{{ rvl_images_public_base_url }}/bm/metallb/controller:v0.15.2-88e6b110-amd64"
+ - "{{ rvl_images_public_base_url }}/bm/metallb/speaker:v0.15.2-88e6b110-amd64"
  - "{{ rvl_images_public_base_url }}/bm/external/local-volume-provisioner:v2.4.0"
  - "{{ rvl_images_public_base_url }}/openstack/openstack-controller:0.1.1"
 
@@ -185,8 +185,8 @@ rvl_registry_binaries_dir: /var/lib/binary-registry
 
 rvl_mirror_charts: false
 rvl_mirror_charts_extra:
- - "{{ rvl_binary_public_base_url }}/core/helm/metallb-crds-1.37.20.tgz"
- - "{{ rvl_binary_public_base_url }}/core/helm/metallb-1.37.20.tgz"
+ - "{{ rvl_binary_public_base_url }}/core/helm/metallb-crds-1.44.7.tgz"
+ - "{{ rvl_binary_public_base_url }}/core/helm/metallb-1.44.7.tgz"
 
 rvl_openvpn_enable: false
 rvl_openvpn_home: /etc/openvpn
