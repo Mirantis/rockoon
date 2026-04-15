@@ -309,6 +309,15 @@ class NovaInstancesCollectorInstancesFunctionalTestCase(
         #. Delete the test instance
         #. Refresh metric and check that the sample disappears
         """
+        if (
+            self.osdpl.obj["spec"]["features"]
+            .get("nova", {})
+            .get("images", {})
+            .get("backend")
+            == "lvm"
+        ):
+            raise unittest.SkipTest("Resize is not supported on LVM backend.")
+
         metric_name = "osdpl_nova_instance_status"
 
         # Create a server with a smaller flavor to test resize
