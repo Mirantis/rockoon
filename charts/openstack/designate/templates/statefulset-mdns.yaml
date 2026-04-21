@@ -9,7 +9,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-{{- define "powerdnsProbeTemplate" }}
+{{- define "powerdnsReadinessProbeTemplate" }}
+exec:
+  command:
+  - /tmp/pdns-readiness.sh
+{{- end }}
+{{- define "powerdnsLivenessProbeTemplate" }}
 tcpSocket:
   port: {{ tuple "powerdns" "internal" "powerdns_tcp" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
 {{- end }}
@@ -72,8 +77,8 @@ spec:
 {{ tuple $envAll "powerdns" | include "helm-toolkit.snippets.image" | indent 10 }}
 {{ tuple $envAll $envAll.Values.pod.resources.server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
 {{ dict "envAll" $envAll "application" "designate" "container" "designate_powerdns" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
-{{ dict "envAll" $envAll "component" "powerdns" "container" "powerdns" "type" "readiness" "probeTemplate" (include "powerdnsProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | trim | indent 10 }}
-{{ dict "envAll" $envAll "component" "powerdns" "container" "powerdns" "type" "liveness" "probeTemplate" (include "powerdnsProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | trim | indent 10 }}
+{{ dict "envAll" $envAll "component" "powerdns" "container" "powerdns" "type" "readiness" "probeTemplate" (include "powerdnsReadinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | trim | indent 10 }}
+{{ dict "envAll" $envAll "component" "powerdns" "container" "powerdns" "type" "liveness" "probeTemplate" (include "powerdnsLivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | trim | indent 10 }}
           command:
             - pdns_server
           ports:
@@ -88,6 +93,10 @@ spec:
             - name: designate-powerdns-etc
               mountPath: /etc/pdns/conf.d/pdns.conf
               subPath: pdns.conf
+              readOnly: true
+            - name: designate-powerdns-bin
+              mountPath: /tmp/pdns-readiness.sh
+              subPath: pdns-readiness.sh
               readOnly: true
             - name: run-pdns
               mountPath: {{ index $envAll.Values.conf.powerdns "socket-dir" }}
@@ -195,6 +204,10 @@ spec:
           secret:
             secretName: designate-powerdns-etc
             defaultMode: 416
+        - name: designate-powerdns-bin
+          configMap:
+            name: designate-powerdns-bin
+            defaultMode: 504
         {{- end }}
         - name: pod-tmp
           emptyDir: {}
