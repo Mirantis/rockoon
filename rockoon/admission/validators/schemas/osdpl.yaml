@@ -38,7 +38,8 @@ properties:
       - yoga # LTS version
       - antelope # LTS version
       - caracal # LTS version
-      - epoxy # not supported, technical release
+      - epoxy # LTS version
+      - gazpacho # not supported, technical release
       - master # not supported, only for example
   preset:
     description: Preset of features to deploy

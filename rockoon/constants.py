@@ -161,7 +161,7 @@ LIBVIRT_SERVER_TLS_SECRET_NAME = "libvirt-server-tls"
 EXPORTER_CA_CERT_SECRET_NAME = "exporter-ca-cert"
 EXPORTER_NAMESPACE = "osh-system"
 
-SLURP_RELEASES = ["yoga", "antelope", "caracal", "epoxy"]
+SLURP_RELEASES = ["yoga", "antelope", "caracal", "epoxy", "gazpacho"]
 
 
 class OpenStackVersion(enum.IntEnum):
@@ -182,6 +182,8 @@ class OpenStackVersion(enum.IntEnum):
     caracal = 13
     dalmatian = 14
     epoxy = 15
+    flamingo = 16
+    gazpacho = 17
     master = sys.maxsize
 
 
