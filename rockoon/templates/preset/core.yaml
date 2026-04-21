@@ -264,6 +264,7 @@ services:
            {%- if ovn_enabled  %}
             # Use HTTP scheme that is not supported by OVN
             - (?:heat_tempest_plugin.tests.scenario.test_octavia_lbaas.LoadBalancerTest)
+            - (?:neutron_tempest_plugin.scenario.test_trunk.TrunkTest.test_trunk_vm_migration)
            {%- endif %}
             # Skip SoftwareConfigIntegrationTest because it requires a custom image
             # https://github.com/openstack/heat/blob/stable/train/heat_integrationtests/prepare_test_env.sh
