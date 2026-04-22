@@ -268,7 +268,7 @@ def get_child_object_templates():
     )
     all_openstack_versions = set(
         [it.name for it in constants.OpenStackVersion]
-    ) - set(["zed", "bobcat", "dalmatian", "master"])
+    ) - set(["zed", "bobcat", "dalmatian", "flamingo", "master"])
     service_excludes = {
         "shared-file-system": [
             "queens",
@@ -282,7 +282,15 @@ def get_child_object_templates():
         ],
         "placement": ["queens", "rocky"],
         "instance-ha": ["queens", "rocky", "stein", "train", "ussuri"],
-        "event": ["xena", "yoga", "antelope", "caracal", "epoxy", "master"],
+        "event": [
+            "xena",
+            "yoga",
+            "antelope",
+            "caracal",
+            "epoxy",
+            "gazpacho",
+            "master",
+        ],
     }
     res = []
     for service in all_services:

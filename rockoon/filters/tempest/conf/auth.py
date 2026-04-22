@@ -1,6 +1,7 @@
 from rockoon.filters.tempest import base_section
 
 DEFAULT_CREDENTIALS_DOMAIN_NAME = {
+    "gazpacho": "tempest",
     "epoxy": "tempest",
     "caracal": "tempest",
     "antelope": "tempest",
