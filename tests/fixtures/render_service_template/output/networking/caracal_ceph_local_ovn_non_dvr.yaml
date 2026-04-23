@@ -313,6 +313,9 @@ spec:
             dns_servers: 10.172.1.100
             enable_distributed_floating_ip: false
             ovn_l3_scheduler: "noop"
+            mac_binding_age_threshold: 60
+          ovn_nb_global:
+            mac_binding_removal_limit: 100
           service_providers:
             service_provider:
               type: multistring
