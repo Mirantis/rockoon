@@ -39,6 +39,7 @@ features:
       backend: local
     live_migration_interface: vhost0
   services:
+  - app-gateway
   - block-storage
   - compute
   - dns

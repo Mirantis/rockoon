@@ -1,5 +1,6 @@
 - mariadb
 - ingress
+- envoy
 - neutron_server
 - neutron_l3
 # PRODX-34488: for fast cold start we need to cache redis image

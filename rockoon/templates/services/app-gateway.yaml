@@ -1,0 +1,30 @@
+spec:
+  releases:
+  - name: openstack-app-gateway
+    chart: app-gateway
+    values:
+      images:
+        tags:
+{%- for image in ['envoy'] %}
+        {%- if image in images %}
+          {{ image }}: {{ images[image] }}
+        {%- endif %}
+{%- endfor %}
+      endpoints:
+        cluster_domain_suffix: {{ spec.internal_domain_name }}
+        app_gateway:
+          host_fqdn_override:
+            public:
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+      manifests:
+        network_policy: {{ spec.features.network_policies.enabled }}
+{%- if spec.features.network_policies.enabled %}
+      network_policy:
+{% include 'base/network_policies/app-gateway.yaml' %}
+{%- endif %}

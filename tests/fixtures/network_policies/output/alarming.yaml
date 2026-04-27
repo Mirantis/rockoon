@@ -2,6 +2,10 @@ alarming:aodh:Deployment:aodh-api:
 - from:
   - podSelector:
       matchLabels:
+        application: app_gateway
+        component: proxy
+  - podSelector:
+      matchLabels:
         application: keystone
         component: client
   - podSelector:

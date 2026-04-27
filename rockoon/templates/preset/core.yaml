@@ -45,6 +45,7 @@ features:
     octavia:
       level: DEBUG
   services:
+    - app-gateway
     - compute
     - identity
     - dashboard

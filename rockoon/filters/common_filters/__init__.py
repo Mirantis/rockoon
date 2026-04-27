@@ -22,5 +22,6 @@ def namespaces(names):
         "ceph_deployment": settings.OSCTL_CEPH_DEPLOYMENT_NAMESPACE,
         "lma_deployment": settings.OSCTL_LMA_DEPLOYMENT_NAMESPACE,
         "tf_deployment": settings.OSCTL_TF_DEPLOYMENT_NAMESPACE,
+        "gtw_deployment": settings.OSCTL_GTW_DEPLOYMENT_NAMESPACE,
     }
     return [v for k, v in all_namespaces.items() if k in names]

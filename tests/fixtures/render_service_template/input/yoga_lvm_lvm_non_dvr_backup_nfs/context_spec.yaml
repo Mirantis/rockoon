@@ -116,6 +116,7 @@ features:
         volume_group: "custom-group"
     live_migration_interface: ens3
   services:
+  - app-gateway
   - block-storage
   - cloudprober
   - compute

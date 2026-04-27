@@ -1,0 +1,46 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+{{- define "ag.default_envoy_proxy" }}
+{{- $envAll := . }}
+metadata:
+  name: openstack-envoy-proxy-config
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        name: {{ tuple "app_gateway" "internal" . | include "helm-toolkit.endpoints.hostname_short_endpoint_lookup" }}
+      envoyDaemonSet:
+        container:
+          image: {{ tuple $envAll "envoy" | include "helm-toolkit.snippets.imageName" | indent 10 }}
+        patch:
+          value:
+            spec:
+              template:
+                metadata:
+                  labels:
+{{ tuple $envAll "app_gateway" "proxy" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 20 }}
+                spec:
+                  nodeSelector:
+                    {{ .Values.labels.proxy.node_selector_key }}: {{ .Values.labels.proxy.node_selector_value | quote }}
+{{- end -}}
+
+{{- if .Values.manifests.envoy_proxy }}
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+{{- $envoy_proxy := include "ag.default_envoy_proxy" . | fromYaml }}
+{{- $mergedEnvoyProxy := merge .Values.envoy_proxies.default $envoy_proxy }}
+{{ toYaml $mergedEnvoyProxy }}
+{{- end -}}

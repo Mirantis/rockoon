@@ -1,0 +1,15 @@
+apiVersion: v2
+description: |
+  The Helm chart for Application Gateway based on Gateway Api.
+  Supported providers - Kubernetes (Envoy Gateway)
+keywords:
+- gateway-api
+maintainers:
+  - name: OpenStack-Helm Authors
+name: app-gateway
+type: application
+version: 0.1.0
+dependencies:
+  - name: helm-toolkit
+    repository: file://../helm-toolkit
+    version: ">= 0.1.0"

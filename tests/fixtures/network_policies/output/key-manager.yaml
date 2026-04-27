@@ -2,6 +2,10 @@ key-manager:barbican:Deployment:barbican-api:
 - from:
   - podSelector:
       matchLabels:
+        application: app_gateway
+        component: proxy
+  - podSelector:
+      matchLabels:
         application: cinder
         component: volume_daemonset
   - podSelector:

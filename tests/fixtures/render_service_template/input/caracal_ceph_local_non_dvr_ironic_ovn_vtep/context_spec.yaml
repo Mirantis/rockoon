@@ -81,6 +81,7 @@ features:
       initramfs: tinyipa-stable-ussuri-20201008064914.gz
       kernel: tinyipa-stable-ussuri-20201008064914.vmlinuz
   services:
+  - app-gateway
   - block-storage
   - compute
   - dns

@@ -1,6 +1,10 @@
 image:glance:Deployment:glance-api:
 - from:
   - podSelector:
+      matchLabels: &id002
+        application: app_gateway
+        component: proxy
+  - podSelector:
       matchLabels:
         application: ironic
         component: bootstrap
@@ -101,6 +105,8 @@ image:glance:Deployment:glance-api:
     protocol: TCP
 image:glance:Deployment:glance-registry:
 - from:
+  - podSelector:
+      matchLabels: *id002
   - podSelector:
       matchLabels: *id001
   ports:

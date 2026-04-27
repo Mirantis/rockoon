@@ -188,6 +188,7 @@ excluded_services = {
     "stepler",
 }
 infra_services = {
+    "app-gateway",
     "cloudprober",
     "messaging",
     "database",

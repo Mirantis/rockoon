@@ -2,6 +2,10 @@ baremetal:ironic:Deployment:ironic-api:
 - from:
   - podSelector:
       matchLabels:
+        application: app_gateway
+        component: proxy
+  - podSelector:
+      matchLabels:
         application: ironic
         component: update-nodes-metadata
   - podSelector:
