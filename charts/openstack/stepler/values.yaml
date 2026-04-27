@@ -25,7 +25,7 @@ labels:
 images:
   tags:
     dep_check: quay.io/stackanetes/kubernetes-entrypoint:v0.3.1
-    stepler_run_tests: docker-dev-kaas-local.docker.mirantis.net/openstack/stepler:ussuri-20201224173522
+    stepler_run_tests: mirantis.azurecr.io/openstack/stepler:ussuri-20201224173522
     ks_user: docker.io/openstackhelm/heat:ocata-ubuntu_xenial
     bootstrap: docker.io/openstackhelm/heat:ocata-ubuntu_xenial
   pull_policy: "IfNotPresent"

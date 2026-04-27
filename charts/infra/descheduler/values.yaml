@@ -25,7 +25,7 @@ release_group: null
 
 images:
   tags:
-    descheduler: docker-dev-kaas-local.docker.mirantis.net/openstack/extra/descheduler:v0.21.0
+    descheduler: mirantis.azurecr.io/openstack/extra/descheduler:v0.21.0
   pull_policy: IfNotPresent
 
 pod:

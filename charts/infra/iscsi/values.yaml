@@ -28,8 +28,8 @@ labels:
 
 images:
   tags:
-    iscsi_iscsi: docker-dev-kaas-local.docker.mirantis.net/openstack/cinder:ussuri-bionic-20210405180643
-    iscsi_tgt: docker-dev-kaas-local.docker.mirantis.net/openstack/cinder:ussuri-bionic-20210405180643
+    iscsi_iscsi: mirantis.azurecr.io/openstack/cinder:ussuri-bionic-20210405180643
+    iscsi_tgt: mirantis.azurecr.io/openstack/cinder:ussuri-bionic-20210405180643
     dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
   pull_policy: "IfNotPresent"
   local_registry:

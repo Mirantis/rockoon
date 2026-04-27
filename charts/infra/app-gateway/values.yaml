@@ -1,6 +1,6 @@
 images:
   tags:
-    envoy: docker-dev-kaas-local.docker.mirantis.net/openstack/extra/envoy:1.37.1-noble-20260323165333
+    envoy: mirantis.azurecr.io/openstack/extra/envoy:1.37.1-noble-20260323165333
   pull_policy: "IfNotPresent"
   local_registry:
     active: false
