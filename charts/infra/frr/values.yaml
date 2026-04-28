@@ -15,7 +15,7 @@ images:
   tags:
     frr: docker.io/frrouting/frr:v7.5.0
     frr_init: docker.io/openstackhelm/heat:train-ubuntu_bionic
-    frr_info: docker-dev-kaas-local.docker.mirantis.net/openstack/extra/ceph-config-helper:nautilus-bionic-20210202133935
+    frr_info: mirantis.azurecr.io/openstack/extra/ceph-config-helper:nautilus-bionic-20210202133935
     dep_check: quay.io/stackanetes/kubernetes-entrypoint:v0.3.1
     image_repo_sync: docker.io/docker:17.07.0
   pull_policy: IfNotPresent
