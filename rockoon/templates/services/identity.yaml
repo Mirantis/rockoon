@@ -116,6 +116,7 @@ spec:
         logging:
           logger_keystone:
             level: {{ spec.get('features', {}).get('logging', {}).get('keystone', {}).get('level', 'INFO') }}
+        use_wsgi_script: {{ OSVer[spec.openstack_version] >= OSVer.gazpacho }}
         keystone:
           DEFAULT:
             notification_format: cadf
@@ -176,7 +177,11 @@ spec:
           <VirtualHost *:{% raw %}{{ $portInt }}{% endraw %}>
               WSGIDaemonProcess keystone-public processes=8 threads=1 user=keystone group=keystone display-name=%{GROUP}
               WSGIProcessGroup keystone-public
+{%- if OSVer[spec.openstack_version] >= OSVer.gazpacho %}
+              WSGIScriptAlias / /var/www/cgi-bin/keystone/wsgi.py
+{%- else %}
               WSGIScriptAlias / /var/www/cgi-bin/keystone/keystone-wsgi-public
+{%- endif %}
               WSGIApplicationGroup %{GLOBAL}
               WSGIPassAuthorization On
               ServerSignature Off

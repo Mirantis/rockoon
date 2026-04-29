@@ -36,7 +36,11 @@ conf:
       ServerName {{ printf "%s.%s.svc.%s" "keystone-api" .Release.Namespace .Values.endpoints.cluster_domain_suffix }}
       WSGIDaemonProcess keystone-public processes=1 threads=1 user=keystone group=keystone display-name=%{GROUP}
       WSGIProcessGroup keystone-public
+      {{- if .Values.conf.use_wsgi_script }}
+      WSGIScriptAlias / /var/www/cgi-bin/keystone/wsgi.py
+      {{- else }}
       WSGIScriptAlias / /var/www/cgi-bin/keystone/keystone-wsgi-public
+      {{- end }}
       WSGIApplicationGroup %{GLOBAL}
       WSGIPassAuthorization On
       <IfVersion >= 2.4>
