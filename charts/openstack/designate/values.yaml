@@ -458,7 +458,7 @@ pod:
           enabled: true
           params:
             failureThreshold: 3
-            periodSeconds: 10
+            periodSeconds: 5
             successThreshold: 1
             timeoutSeconds: 5
         liveness:

@@ -12,19 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */}}
-
-{{- $mysql := .Values.conf.mysql.client }}
-{{- if empty $mysql.port -}}
-{{- $_ :=  tuple "oslo_db_powerdns" "internal" "mysql" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | set $mysql "port" -}}
-{{- end -}}
 set -ex
 
-BACKEND_PORT={{ $mysql.port }}
 PDNS_PORT={{ tuple "powerdns" "internal" "powerdns_tcp" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
-PDNS_PROCESS='pdns_server-instance'
 
 nc -zv 127.0.0.1 "${PDNS_PORT}"
-
-PDNS_PID="$(pidof ${PDNS_PROCESS})"
-
-netstat -ntp | grep " ${PDNS_PID}/" | grep ":${BACKEND_PORT} " | grep ESTABLISHED
+# Checking for non-existing record/zone, when PDNS backend is operational
+# REFUSED string is returned.
+nslookup __healthcheck__.__mosk_internal__ 127.0.0.1 | grep REFUSED
