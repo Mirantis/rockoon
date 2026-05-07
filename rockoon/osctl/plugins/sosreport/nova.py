@@ -55,7 +55,6 @@ class NovaObjectsCollector(base.BaseLogsCollector):
                 ("dumpxml.txt", ["virsh", "dumpxml", instance]),
                 ("domiflist.txt", ["virsh", "domiflist", instance]),
                 ("domblklist.txt", ["virsh", "domblklist", instance]),
-                ("error.txt", ["/bin/foo", "domblklist", instance]),
             ]
             for dst, command in domain_info:
                 self.dump_exec_result(
