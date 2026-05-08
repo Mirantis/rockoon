@@ -85,8 +85,15 @@ spec:
 {{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "placement" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
             - name: pod-tmp
               mountPath: /tmp
+            {{- if .Values.conf.use_wsgi_script }}
+            - name: placement-bin
+              mountPath: /var/www/cgi-bin/placement/placement-api
+              subPath: wsgi.py
+              readOnly: true
+            {{- else }}
             - name: wsgi-placement
               mountPath: /var/www/cgi-bin/placement
+            {{- end }}
             - name: placement-bin
               mountPath: /tmp/placement-api.sh
               subPath: placement-api.sh
@@ -130,8 +137,10 @@ spec:
 {{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "placement" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
         - name: pod-tmp
           emptyDir: {}
+        {{- if not .Values.conf.use_wsgi_script }}
         - name: wsgi-placement
           emptyDir: {}
+        {{- end }}
         - emptyDir: {}
           name: logs-apache
         - emptyDir: {}

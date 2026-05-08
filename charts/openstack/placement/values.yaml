@@ -68,6 +68,19 @@ network:
       port: 30778
 
 conf:
+  # Use python WSGI wrapper script from configmap instead of image entrypoint copy.
+  use_wsgi_script: false
+  wsgi_script: |
+    import threading
+
+    from placement import wsgi
+
+    application = None
+
+    lock = threading.Lock()
+    with lock:
+      if application is None:
+        application = wsgi.init_application()
   security: |
     #
     # Disable access to the entire file system except for the directories that

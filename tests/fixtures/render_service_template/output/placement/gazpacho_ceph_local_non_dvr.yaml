@@ -10,7 +10,7 @@ spec:
         logging:
           logger_placement:
             level: INFO
-        use_wsgi_script: false
+        use_wsgi_script: true
         placement:
           audit_middleware_notifications:
             driver: noop
@@ -131,8 +131,36 @@ spec:
         ks_user:
           restartPolicy: Never
       manifests:
-        network_policy: false
+        network_policy: true
         secret_ca_bundle: true
+      network_policy:
+        api:
+          spec:
+            ingress:
+              - from:
+                  - default: selector
+              - from:
+                  - ipBlock:
+                      cidr: 192.168.0.0/16
+                ports:
+                  - port: 8778
+                    protocol: TCP
+              - from:
+                  - namespaceSelector:
+                      matchLabels:
+                        kubernetes.io/metadata.name: osh-system
+                  - namespaceSelector:
+                      matchLabels:
+                        kubernetes.io/metadata.name: stacklight
+                ports:
+                  - port: 8778
+                    protocol: TCP
+            podSelector:
+              matchLabels:
+                application: placement
+                component: api
+            policyTypes:
+              - Ingress
       pod:
         replicas:
           api: 1
