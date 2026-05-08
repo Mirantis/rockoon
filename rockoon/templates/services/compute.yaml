@@ -1050,6 +1050,7 @@ spec:
             level: {{ spec.get('features', {}).get('logging', {}).get('nova', {}).get('level', 'INFO') }}
           logger_os.brick:
             level: {{ spec.get('features', {}).get('logging', {}).get('nova', {}).get('level', 'INFO') }}
+        use_wsgi_script: {{ OSVer[spec.openstack_version] >= OSVer.gazpacho }}
         ssh_private: |
           {{ ssh_credentials.private|indent(10)|trim }}
         ssh_public: |
