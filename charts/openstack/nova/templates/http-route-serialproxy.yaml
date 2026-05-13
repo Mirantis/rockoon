@@ -1,0 +1,6 @@
+{{- if and .Values.manifests.http_route_serialproxy }}
+{{- $envAll := . -}}
+{{- $port := tuple "compute_serial_proxy" "internal" "serial_proxy" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- $httpRouteOpts := dict "envAll" $envAll "backendServiceType" "compute_serial_proxy" "backendService" "serialproxy" "backendPort" $port -}}
+{{ $httpRouteOpts | include "helm-toolkit.manifests.http_route" }}
+{{- end }}

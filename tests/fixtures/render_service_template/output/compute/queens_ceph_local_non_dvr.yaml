@@ -475,8 +475,11 @@ spec:
         ceph_conf: true
         cron_job_db_purge: true
         ingress_novncproxy: true
+        http_route_novncproxy: true
         ingress_serialproxy: false
+        http_route_serialproxy: false
         ingress_spiceproxy: false
+        http_route_spiceproxy: false
         job_rabbit_init: false
         network_policy: false
         secret_ca_bundle: true

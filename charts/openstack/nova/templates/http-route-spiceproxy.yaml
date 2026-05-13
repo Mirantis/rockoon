@@ -1,0 +1,6 @@
+{{- if and .Values.manifests.http_route_spiceproxy }}
+{{- $envAll := . -}}
+{{- $port := tuple "compute_spice_proxy" "internal" "spice_proxy" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- $httpRouteOpts := dict "envAll" $envAll "backendServiceType" "compute_spice_proxy" "backendService" "spiceproxy" "backendPort" $port -}}
+{{ $httpRouteOpts | include "helm-toolkit.manifests.http_route" }}
+{{- end }}

@@ -1,0 +1,6 @@
+{{- if and .Values.manifests.http_route_novncproxy }}
+{{- $envAll := . -}}
+{{- $port := tuple "compute_novnc_proxy" "internal" "novnc_proxy" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- $httpRouteOpts := dict "envAll" $envAll "backendServiceType" "compute_novnc_proxy" "backendService" "novncproxy" "backendPort" $port -}}
+{{ $httpRouteOpts | include "helm-toolkit.manifests.http_route" }}
+{{- end }}

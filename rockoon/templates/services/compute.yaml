@@ -567,6 +567,7 @@ spec:
 # Since Rocky placemnt is deployed as separate service
         deployment_placement: false
         ingress_placement: false
+        http_route_placement: false
         job_db_init_placement: false
         job_ks_placement_endpoints: false
         job_ks_placement_service: false
@@ -583,10 +584,13 @@ spec:
         secret_novncproxy_tls: {{ vnc_tls_enabled }}
         service_ingress_novncproxy: {{ vnc_enabled }}
         ingress_novncproxy: {{ vnc_enabled }}
+        http_route_novncproxy: {{ vnc_enabled }}
         service_ingress_spiceproxy: {{ spice_enabled }}
         ingress_spiceproxy: {{ spice_enabled }}
+        http_route_spiceproxy: {{ spice_enabled }}
         service_ingress_serialproxy: {{ ironic_serial_enabled }}
         ingress_serialproxy: {{ ironic_serial_enabled }}
+        http_route_serialproxy: {{ ironic_serial_enabled }}
 {%- if OSVer[spec.openstack_version] >= OSVer.ussuri %}
         cron_job_placement_audit: true
 {%- endif %}

@@ -265,6 +265,21 @@ network:
         cluster: "nginx-cluster"
       annotations:
         nginx.ingress.kubernetes.io/rewrite-target: /
+    http_route:
+      # HTTPrule see https://gateway-api.sigs.k8s.io/reference/1.5/spec/#httprouterule
+      # filters are transformed to list, in alphabet order of filters dict keys
+      rule:
+        timeouts: {}
+        retry: {}
+        sessionPersistence: {}
+        filters: {}
+          # 0_host_rewrite:
+          #   enabled: true
+          #   type: "URLRewrite"
+          #   urlRewrite:
+          #     path:
+          #       replacePrefixMatch: /
+          #       type: ReplacePrefixMatch
     external_policy_local: false
     node_port:
       enabled: false
@@ -278,6 +293,21 @@ network:
         cluster: "nginx-cluster"
       annotations:
         nginx.ingress.kubernetes.io/rewrite-target: /
+    http_route:
+      # HTTPrule see https://gateway-api.sigs.k8s.io/reference/1.5/spec/#httprouterule
+      # filters are transformed to list, in alphabet order of filters dict keys
+      rule:
+        timeouts: {}
+        retry: {}
+        sessionPersistence: {}
+        filters: {}
+          # 0_host_rewrite:
+          #   enabled: true
+          #   type: "URLRewrite"
+          #   urlRewrite:
+          #     path:
+          #       replacePrefixMatch: /
+          #       type: ReplacePrefixMatch
     external_policy_local: false
     node_port:
       enabled: false
@@ -291,6 +321,21 @@ network:
         cluster: "nginx-cluster"
       annotations:
         nginx.ingress.kubernetes.io/rewrite-target: /
+    http_route:
+      # HTTPrule see https://gateway-api.sigs.k8s.io/reference/1.5/spec/#httprouterule
+      # filters are transformed to list, in alphabet order of filters dict keys
+      rule:
+        timeouts: {}
+        retry: {}
+        sessionPersistence: {}
+        filters: {}
+          # 0_host_rewrite:
+          #   enabled: true
+          #   type: "URLRewrite"
+          #   urlRewrite:
+          #     path:
+          #       replacePrefixMatch: /
+          #       type: ReplacePrefixMatch
     node_port:
       enabled: false
       port: 30778
@@ -302,6 +347,21 @@ network:
         cluster: "nginx-cluster"
       annotations:
         nginx.ingress.kubernetes.io/rewrite-target: /
+    http_route:
+      # HTTPrule see https://gateway-api.sigs.k8s.io/reference/1.5/spec/#httprouterule
+      # filters are transformed to list, in alphabet order of filters dict keys
+      rule:
+        timeouts: {}
+        retry: {}
+        sessionPersistence: {}
+        filters: {}
+          # 0_host_rewrite:
+          #   enabled: true
+          #   type: "URLRewrite"
+          #   urlRewrite:
+          #     path:
+          #       replacePrefixMatch: /
+          #       type: ReplacePrefixMatch
     node_port:
       enabled: false
       port: 30680
@@ -313,6 +373,21 @@ network:
         cluster: "nginx-cluster"
       annotations:
         nginx.ingress.kubernetes.io/rewrite-target: /
+    http_route:
+      # HTTPrule see https://gateway-api.sigs.k8s.io/reference/1.5/spec/#httprouterule
+      # filters are transformed to list, in alphabet order of filters dict keys
+      rule:
+        timeouts: {}
+        retry: {}
+        sessionPersistence: {}
+        filters: {}
+          # 0_host_rewrite:
+          #   enabled: true
+          #   type: "URLRewrite"
+          #   urlRewrite:
+          #     path:
+          #       replacePrefixMatch: /
+          #       type: ReplacePrefixMatch
     node_port:
       enabled: false
       port: 30682
@@ -324,6 +399,21 @@ network:
         cluster: "nginx-cluster"
       annotations:
         nginx.ingress.kubernetes.io/rewrite-target: /
+    http_route:
+      # HTTPrule see https://gateway-api.sigs.k8s.io/reference/1.5/spec/#httprouterule
+      # filters are transformed to list, in alphabet order of filters dict keys
+      rule:
+        timeouts: {}
+        retry: {}
+        sessionPersistence: {}
+        filters: {}
+          # 0_host_rewrite:
+          #   enabled: true
+          #   type: "URLRewrite"
+          #   urlRewrite:
+          #     path:
+          #       replacePrefixMatch: /
+          #       type: ReplacePrefixMatch
     node_port:
       enabled: false
       port: 30684
@@ -1803,6 +1893,16 @@ endpoints:
     port:
       registry:
         node: 5000
+  app_gateway:
+    hosts:
+      default:
+        host: app-gateway
+    port:
+      https:
+        default: 10443
+        public: 443
+    host_fqdn_override:
+      public: null
   oslo_db:
     auth:
       admin:
@@ -2996,11 +3096,17 @@ manifests:
   deployment_serialproxy: true
   deployment_scheduler: false
   ingress_metadata: true
+  http_route_metadata: true
   ingress_novncproxy: true
+  http_route_novncproxy: true
   ingress_spiceproxy: false
+  http_route_spiceproxy: false
   ingress_serialproxy: false
+  http_route_serialproxy: false
   ingress_placement: true
+  http_route_placement: true
   ingress_osapi: true
+  http_route_osapi: true
   job_bootstrap: true
   job_db_init: true
   job_db_init_placement: true

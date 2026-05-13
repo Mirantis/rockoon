@@ -505,9 +505,13 @@ spec:
         deployment_consoleauth: false
         deployment_placement: false
         ingress_novncproxy: true
+        http_route_novncproxy: true
         ingress_placement: false
+        http_route_placement: false
         ingress_serialproxy: false
+        http_route_serialproxy: false
         ingress_spiceproxy: false
+        http_route_spiceproxy: false
         job_db_init_placement: false
         job_ks_placement_endpoints: false
         job_ks_placement_service: false
