@@ -172,6 +172,12 @@ network:
         cluster: "nginx-cluster"
       annotations:
         nginx.ingress.kubernetes.io/rewrite-target: /
+    http_route:
+      rule:
+        timeouts: {}
+        retry: {}
+        sessionPersistence: {}
+        filters: {}
     external_policy_local: false
     node_port:
       enabled: false
@@ -2615,6 +2621,16 @@ endpoints:
     port:
       registry:
         node: 5000
+  app_gateway:
+    hosts:
+      default:
+        host: app-gateway
+    port:
+      https:
+        default: 10443
+        public: 443
+    host_fqdn_override:
+      public: null
   ovn_db:
     namespace: null
     hosts:
@@ -2959,6 +2975,7 @@ manifests:
   deployment_ironic_agent: false
   deployment_server: true
   ingress_server: true
+  http_route_server: true
   job_bootstrap: true
   job_db_init: true
   job_db_sync: true
