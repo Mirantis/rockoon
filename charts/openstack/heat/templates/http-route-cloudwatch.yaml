@@ -1,0 +1,6 @@
+{{- if and .Values.manifests.http_route_cloudwatch }}
+{{- $envAll := . -}}
+{{- $port := tuple "cloudwatch" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- $httpRouteOpts := dict "envAll" $envAll "backendServiceType" "cloudwatch" "backendService" "cloudwatch" "backendPort" $port -}}
+{{ $httpRouteOpts | include "helm-toolkit.manifests.http_route" }}
+{{- end }}

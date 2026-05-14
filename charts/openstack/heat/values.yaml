@@ -794,6 +794,12 @@ network:
         cluster: "nginx-cluster"
       annotations:
         nginx.ingress.kubernetes.io/rewrite-target: /
+    http_route:
+      rule:
+        timeouts: {}
+        retry: {}
+        sessionPersistence: {}
+        filters: {}
     external_policy_local: false
     node_port:
       enabled: false
@@ -806,6 +812,12 @@ network:
         cluster: "nginx-cluster"
       annotations:
         nginx.ingress.kubernetes.io/rewrite-target: /
+    http_route:
+      rule:
+        timeouts: {}
+        retry: {}
+        sessionPersistence: {}
+        filters: {}
     node_port:
       enabled: false
       port: 30800
@@ -817,6 +829,12 @@ network:
         cluster: "nginx-cluster"
       annotations:
         nginx.ingress.kubernetes.io/rewrite-target: /
+    http_route:
+      rule:
+        timeouts: {}
+        retry: {}
+        sessionPersistence: {}
+        filters: {}
     node_port:
       enabled: false
       port: 30003
@@ -1050,6 +1068,16 @@ endpoints:
     port:
       registry:
         node: 5000
+  app_gateway:
+    hosts:
+      default:
+        host: app-gateway
+    port:
+      https:
+        default: 10443
+        public: 443
+    host_fqdn_override:
+      public: null
   identity:
     name: keystone
     auth:
@@ -1695,8 +1723,11 @@ manifests:
   deployment_cloudwatch: false
   deployment_engine: true
   ingress_api: true
+  http_route_api: true
   ingress_cfn: true
+  http_route_cfn: true
   ingress_cloudwatch: false
+  http_route_cloudwatch: false
   job_bootstrap: true
   job_db_init: true
   job_db_sync: true
