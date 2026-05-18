@@ -3,7 +3,7 @@ ARG FROM=docker-remote.docker.mirantis.net/ubuntu:noble
 FROM $FROM as builder
 SHELL ["/bin/bash", "-c"]
 ARG TEST_IMAGE
-ARG HELM_BINARY="https://binary.mirantis.com/openstack/bin/utils/helm/helm-v3.19.1-linux-amd64"
+ARG HELM_BINARY="https://binary.mirantis.com/openstack/bin/utils/helm/helm-v3.19.5-mosk1-linux-amd64"
 
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
 # Build wheels in a single thread, because uwsgi build system has race conditions
