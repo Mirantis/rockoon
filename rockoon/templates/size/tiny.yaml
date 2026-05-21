@@ -162,7 +162,7 @@ services:
               service_down_time: 180
               rpc_response_timeout: 60
               # increase the timeout due to PRODX-50272
-              reimage_timeout_per_gb: 30
+              reimage_timeout_per_gb: 40
             api_database:
               max_pool_size: 10
               max_retries: -1
