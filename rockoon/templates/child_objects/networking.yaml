@@ -1,7 +1,8 @@
 {%- from 'macros/connections.j2' import to_child_object %}
+{%- set is_ovn_backend = spec.get("features", {}).get("neutron", {}).get("backend") == "ml2/ovn" %}
 neutron:
   DaemonSet:
-    {%- if spec.get("features", {}).get("neutron", {}).get("backend") == "ml2/ovn" %}
+    {%- if is_ovn_backend %}
     neutron-server:
       connections:
         egress:
@@ -190,8 +191,9 @@ neutron:
           name: qpp-exporter
           protocol: TCP
       type: dynamic
-    {%- if spec.get("features", {}).get("neutron", {}).get("backend") != "ml2/ovn" %}
+  {%- if not is_ovn_backend or OSVer[spec.openstack_version] >= OSVer.gazpacho %}
   Deployment:
+    {%- if not is_ovn_backend %}
     neutron-server:
       connections:
         egress:
@@ -216,6 +218,25 @@ neutron:
           name: q-api
           protocol: TCP
     {%- endif %}
+    {%- if OSVer[spec.openstack_version] >= OSVer.gazpacho %}
+    neutron-periodic-workers:
+      connections:
+        egress:
+          - {{ to_child_object("networking", "rabbitmq", "StatefulSet", "openstack-neutron-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
+          - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
+      hash_fields: []
+      images:
+      - neutron_periodic_workers
+      {%- if is_ovn_backend %}
+      - neutron_ovn_maintenance
+      {%- endif %}
+      manifest: deployment_periodic_workers
+      pod_labels:
+        application: neutron
+        component: periodic_workers
+    {%- endif %}
+  {%- endif %}
   Job:
     neutron-bootstrap:
       connections:

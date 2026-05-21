@@ -525,6 +525,8 @@ spec:
     "neutron_rpc_server",
     "neutron_portprober_agent",
     "neutron_ovn_vpn_agent",
+    "neutron_periodic_workers",
+    "neutron_ovn_maintenance",
     "purge_test",
     "neutron_server_logrotate",
     "test",] %}
@@ -814,6 +816,9 @@ spec:
       {%- endif %}
       {%- if vpnaas.enabled and ovn_enabled %}
         daemonset_ovn_vpn_agent: true
+      {%- endif %}
+      {%- if OSVer[spec.openstack_version] >= OSVer.gazpacho %}
+        deployment_periodic_workers: true
       {%- endif %}
       network:
         server:

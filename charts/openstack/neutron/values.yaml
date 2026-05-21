@@ -34,6 +34,8 @@ images:
     neutron_server: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
     neutron_server_logrotate: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
     neutron_rpc_server: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
+    neutron_periodic_workers: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
+    neutron_ovn_maintenance: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
     neutron_dhcp: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
     neutron_metadata: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
     neutron_l3: docker.io/openstackhelm/neutron:stein-ubuntu_bionic
@@ -122,6 +124,9 @@ labels:
     node_selector_key: openstack-compute-node
     node_selector_value: enabled
   server:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  periodic_workers:
     node_selector_key: openstack-control-plane
     node_selector_value: enabled
   ironic_agent:
@@ -291,6 +296,9 @@ dependencies:
       server:
         jobs:
           - neutron-rabbit-init
+      periodic_workers:
+        jobs:
+          - neutron-rabbit-init
       ironic_agent:
         jobs:
           - neutron-rabbit-init
@@ -383,6 +391,19 @@ dependencies:
         - endpoint: internal
           service: network
     server:
+      jobs:
+        - neutron-db-sync
+        - neutron-ks-user
+      services:
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: oslo_cache
+        - endpoint: internal
+          service: identity
+    periodic_workers:
       jobs:
         - neutron-db-sync
         - neutron-ks-user
@@ -609,9 +630,10 @@ pod:
             timeoutSeconds: 5
         startup:
           enabled: true
-          periodSeconds: 15
-          successThreshold: 1
-          timeoutSeconds: 5
+          params:
+            periodSeconds: 15
+            successThreshold: 1
+            timeoutSeconds: 5
       logrotate:
         readiness:
           enabled: true
@@ -622,6 +644,37 @@ pod:
           enabled: true
           params:
             periodSeconds: 15
+            timeoutSeconds: 5
+    periodic_workers:
+      periodic_workers:
+        readiness:
+          enabled: true
+          params:
+            periodSeconds: 30
+            timeoutSeconds: 5
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+      ovn_maintenance:
+        readiness:
+          enabled: true
+          params:
+            periodSeconds: 30
+            timeoutSeconds: 5
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+        startup:
+          enabled: true
+          params:
+            periodSeconds: 30
+            successThreshold: 1
             timeoutSeconds: 5
     ironic_agent:
       default:
@@ -840,6 +893,24 @@ pod:
           capabilities:
             drop:
               - ALL
+    neutron_periodic_workers:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+      container:
+        periodic_workers:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+        ovn_maintenance:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
     neutron_sriov_agent:
       pod:
         fsGroup: 42424
@@ -986,6 +1057,14 @@ pod:
       neutron_server:
         volumeMounts:
         volumes:
+    neutron_periodic_workers:
+      init_container: null
+      periodic_workers:
+        volumeMounts:
+        volumes:
+      ovn_maintenance:
+        volumeMounts:
+        volumes:
     neutron_dhcp_agent:
       init_container: null
       neutron_dhcp_agent:
@@ -1078,6 +1157,9 @@ pod:
             readOnly: true
   replicas:
     server: 1
+    # Only one worker is supported for OVN due to startup
+    # probe limitation PRODX-55022
+    periodic_workers: 1
     ironic_agent: 1
   lifecycle:
     upgrades:
@@ -1138,6 +1220,8 @@ pod:
         min_available: 0
     termination_grace_period:
       server:
+        timeout: 30
+      periodic_workers:
         timeout: 30
       l3_agent:
         timeout: 180
@@ -2973,6 +3057,7 @@ manifests:
   daemonset_dragent: false
   daemonset_netns_cleanup_cron: false
   deployment_ironic_agent: false
+  deployment_periodic_workers: false
   deployment_server: true
   ingress_server: true
   http_route_server: true

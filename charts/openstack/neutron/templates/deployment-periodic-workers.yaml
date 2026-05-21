@@ -1,0 +1,324 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "periodicWorkerReadinessProbeTemplate" }}
+exec:
+  command:
+    - python
+    - /tmp/generic-health-probe.py
+    - --process-name
+    - neutron-periodic-workers
+    - --check
+    - rabbitmq_sockets
+    - --probe-type
+    - readiness
+    - --config-file
+    - /etc/neutron/neutron.conf
+{{- end }}
+
+{{- define "periodicWorkerLivenessProbeTemplate" }}
+exec:
+  command:
+    - python
+    - /tmp/generic-health-probe.py
+    - --process-name
+    - neutron-periodic-workers
+    - --check
+    - rabbitmq_sockets
+{{- if ( has "ovn" .Values.network.backend ) }}
+    - --check
+    - k8s_svc_ip_change
+    - --k8s-svcs
+    - {{ tuple "ovn_db" "internal" . | include "helm-toolkit.endpoints.endpoint_host_lookup" }}
+{{- end }}
+    - --probe-type
+    - liveness
+    - --config-file
+    - /etc/neutron/neutron.conf
+{{- end }}
+
+{{- define "ovnMaintenanceReadinessProbeTemplate" }}
+exec:
+  command:
+    - python
+    - /tmp/generic-health-probe.py
+    - --process-name
+    - neutron-ovn-maintenance-worker
+    - --check
+    - tcp_sockets
+    - --tcp-ports
+    - {{ tuple "ovn_db" "internal" "nb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | quote }}
+    - --probe-type
+    - readiness
+    - --config-file
+    - /etc/neutron/neutron.conf
+{{- end }}
+
+{{- define "ovnMaintenanceLivenessProbeTemplate" }}
+exec:
+  command:
+    - python
+    - /tmp/generic-health-probe.py
+    - --process-name
+    - neutron-ovn-maintenance-worker
+    - --check
+    - tcp_sockets
+    - --check
+    - k8s_svc_ip_change
+    - --tcp-ports
+    - {{ tuple "ovn_db" "internal" "nb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | quote }}
+    - --k8s-svcs
+    - {{ tuple "ovn_db" "internal" . | include "helm-toolkit.endpoints.endpoint_host_lookup" }}
+    - --probe-type
+    - liveness
+    - --config-file
+    - /etc/neutron/neutron.conf
+{{- end }}
+
+{{- define "ovnMaintenanceStartupProbeTemplate" }}
+exec:
+  command:
+    - python
+    - /tmp/health-probe.py
+    - --process-name
+    - neutron-ovn-maintenance-worker
+    - --probe-type
+    - startup
+    - --check
+    - ovn_maintenance
+    - --config-file
+    - /etc/neutron/neutron.conf
+{{- end }}
+
+{{- if .Values.manifests.deployment_periodic_workers }}
+{{- $envAll := . }}
+
+{{- $dependencyOpts := dict "envAll" $envAll "dependencyMixinParam" $envAll.Values.network.backend "dependencyKey" "periodic_workers" -}}
+{{- $_ := include "helm-toolkit.utils.dependency_resolver" $dependencyOpts | toString | fromYaml }}
+
+{{- $mounts_neutron_periodic_workers := .Values.pod.mounts.neutron_periodic_workers.periodic_workers }}
+{{- $mounts_neutron_periodic_workers_init := .Values.pod.mounts.neutron_periodic_workers.init_container }}
+{{- $mounts_neutron_ovn_maintenance := .Values.pod.mounts.neutron_periodic_workers.ovn_maintenance }}
+
+{{- $serviceAccountName := "neutron-periodic-workers" }}
+
+{{ tuple $envAll "pod_dependency" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: neutron-periodic-workers
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "neutron" "periodic_workers" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  replicas: {{ .Values.pod.replicas.periodic_workers }}
+{{ tuple $envAll | include "helm-toolkit.snippets.kubernetes_upgrades_deployment" | indent 2 }}
+  selector:
+    matchLabels:
+{{ tuple $envAll "neutron" "periodic_workers" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "neutron" "periodic_workers" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+        endpoints-hash: {{ .Values.endpoints | include "helm-toolkit.utils.get_hash" }}
+{{ dict "envAll" $envAll "podName" "neutron-periodic-workers" "containerNames" (list "periodic-workers" "ovn-maintenance" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+    spec:
+{{ dict "envAll" $envAll "application" "neutron_periodic_workers" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      serviceAccountName: {{ $serviceAccountName }}
+      affinity:
+{{ tuple $envAll "neutron" "periodic_workers" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      nodeSelector:
+        {{ .Values.labels.periodic_workers.node_selector_key }}: {{ .Values.labels.periodic_workers.node_selector_value }}
+      terminationGracePeriodSeconds: {{ .Values.pod.lifecycle.termination_grace_period.periodic_workers.timeout | default "30" }}
+      initContainers:
+{{ tuple $envAll "pod_dependency" $mounts_neutron_periodic_workers_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+      containers:
+        - name: periodic-workers
+{{ tuple $envAll "neutron_periodic_workers" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.periodic_workers | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "neutron_periodic_workers" "container" "periodic_workers" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ dict "envAll" $envAll "component" "periodic_workers" "container" "periodic_workers" "type" "readiness" "probeTemplate" (include "periodicWorkerReadinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "periodic_workers" "container" "periodic_workers" "type" "liveness" "probeTemplate" (include "periodicWorkerLivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          command:
+            - /tmp/neutron-periodic-workers.sh
+            - start
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /tmp/neutron-periodic-workers.sh
+                  - stop
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "neutron" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: varlibneutron
+              mountPath: {{ .Values.conf.neutron.DEFAULT.state_path }}
+            - name: neutron-bin
+              mountPath: /tmp/neutron-periodic-workers.sh
+              subPath: neutron-periodic-workers.sh
+              readOnly: true
+            - name: neutron-etc
+              mountPath: /etc/neutron/neutron.conf
+              subPath: neutron.conf
+              readOnly: true
+            {{- if .Values.conf.neutron.DEFAULT.log_config_append }}
+            - name: neutron-etc
+              mountPath: {{ .Values.conf.neutron.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.neutron.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+            {{- if eq .Values.network.core_plugin "tungstenfabric" }}
+            - name: neutron-etc
+              mountPath: /etc/neutron/plugins/tungstenfabric/tf_plugin.ini
+              subPath: tf_plugin.ini
+              readOnly: true
+            - name: neutron-etc
+              mountPath: /etc/contrail/vnc_api_lib.ini
+              subPath: vnc_api_lib.ini
+              readOnly: true
+            {{- else }}
+            - name: neutron-etc
+              mountPath: /etc/neutron/plugins/ml2/ml2_conf.ini
+              subPath: ml2_conf.ini
+              readOnly: true
+            {{- end }}
+            {{ if ( has "sriovnicswitch" .Values.network.backend ) }}
+            - name: neutron-etc
+              mountPath: /etc/neutron/plugins/ml2/sriov_agent.ini
+              subPath: sriov_agent.ini
+              readOnly: true
+            {{ end }}
+            {{- if .Values.conf.plugins.taas.taas.enabled }}
+            - name: neutron-etc
+              mountPath: /etc/neutron/taas_plugin.ini
+              subPath: taas_plugin.ini
+              readOnly: true
+            {{ end }}
+            {{- if .Values.conf.plugins.l2gateway }}
+            - name: neutron-etc
+              mountPath: /etc/neutron/l2gw_plugin.ini
+              subPath: l2gw_plugin.ini
+              readOnly: true
+            {{ end }}
+            - name: neutron-bin
+              mountPath: /tmp/generic-health-probe.py
+              subPath: generic-health-probe.py
+              readOnly: true
+{{ if $mounts_neutron_periodic_workers.volumeMounts }}{{ toYaml $mounts_neutron_periodic_workers.volumeMounts | indent 12 }}{{ end }}
+{{- if ( has "ovn" .Values.network.backend ) }}
+        - name: ovn-maintenance
+{{ tuple $envAll "neutron_ovn_maintenance" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.ovn_maintenance | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "neutron_periodic_workers" "container" "ovn_maintenance" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ dict "envAll" $envAll "component" "periodic_workers" "container" "ovn_maintenance" "type" "readiness" "probeTemplate" (include "ovnMaintenanceReadinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "periodic_workers" "container" "ovn_maintenance" "type" "liveness" "probeTemplate" (include "ovnMaintenanceLivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "periodic_workers" "container" "ovn_maintenance" "type" "startup" "probeTemplate" (include "ovnMaintenanceStartupProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          command:
+            - /tmp/neutron-ovn-maintenance.sh
+            - start
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /tmp/neutron-ovn-maintenance.sh
+                  - stop
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: varlibneutron
+              mountPath: {{ .Values.conf.neutron.DEFAULT.state_path }}
+            - name: neutron-bin
+              mountPath: /tmp/neutron-ovn-maintenance.sh
+              subPath: neutron-ovn-maintenance.sh
+              readOnly: true
+            - name: neutron-etc
+              mountPath: /etc/neutron/neutron.conf
+              subPath: neutron.conf
+              readOnly: true
+            {{- if .Values.conf.neutron.DEFAULT.log_config_append }}
+            - name: neutron-etc
+              mountPath: {{ .Values.conf.neutron.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.neutron.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+            - name: neutron-etc
+              mountPath: /etc/neutron/plugins/ml2/ml2_conf.ini
+              subPath: ml2_conf.ini
+              readOnly: true
+            {{ if ( has "sriovnicswitch" .Values.network.backend ) }}
+            - name: neutron-etc
+              mountPath: /etc/neutron/plugins/ml2/sriov_agent.ini
+              subPath: sriov_agent.ini
+              readOnly: true
+            {{ end }}
+            {{- if .Values.conf.plugins.taas.taas.enabled }}
+            - name: neutron-etc
+              mountPath: /etc/neutron/taas_plugin.ini
+              subPath: taas_plugin.ini
+              readOnly: true
+            {{ end }}
+            - name: neutron-bin
+              mountPath: /tmp/generic-health-probe.py
+              subPath: generic-health-probe.py
+              readOnly: true
+            - name: neutron-bin
+              mountPath: /tmp/health-probe.py
+              subPath: health-probe.py
+              readOnly: true
+{{ if $mounts_neutron_ovn_maintenance.volumeMounts }}{{ toYaml $mounts_neutron_ovn_maintenance.volumeMounts | indent 12 }}{{ end }}
+{{- end }}
+      volumes:
+{{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "neutron" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
+        - name: varlibneutron
+          hostPath:
+            path: /var/lib/neutron
+        - name: pod-tmp
+          emptyDir: {}
+        - name: neutron-bin
+          configMap:
+            name: neutron-bin
+            defaultMode: 504
+        - name: neutron-etc
+          secret:
+            secretName: neutron-etc
+            defaultMode: 416
+        - name: neutron-oslo-policy
+          secret:
+            secretName: neutron-oslo-policy
+            defaultMode: 416
+        {{- if ( has "tungstenfabric" .Values.network.backend ) }}
+        - name: neutron-plugin-shared
+          emptyDir: {}
+        {{- end }}
+{{ if $mounts_neutron_periodic_workers.volumes }}{{ toYaml $mounts_neutron_periodic_workers.volumes | indent 8 }}{{ end }}
+{{ if $mounts_neutron_ovn_maintenance.volumes }}{{ toYaml $mounts_neutron_ovn_maintenance.volumes | indent 8 }}{{ end }}
+{{- end }}

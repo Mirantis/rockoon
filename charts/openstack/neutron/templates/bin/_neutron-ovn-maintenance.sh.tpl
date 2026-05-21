@@ -1,0 +1,61 @@
+#!/bin/bash
+
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+set -ex
+COMMAND="${@:-start}"
+
+function start () {
+  mkdir -p /tmp/pod-shared
+  # NOTE(vsaienko): unless PRODX-24795 is fixed Pick IP on the start
+  ovn_db_host={{ tuple "ovn_db" "internal" . | include "helm-toolkit.endpoints.endpoint_host_lookup" }}
+  ovn_db_ip=$(dig ${ovn_db_host} +short)
+  ovn_db_proto={{ tuple "ovn_db" "internal" "sb" . | include "helm-toolkit.endpoints.keystone_endpoint_scheme_lookup" }}
+  ovn_db_nb_port={{ tuple "ovn_db" "internal" "nb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | quote }}
+  ovn_db_sb_port={{ tuple "ovn_db" "internal" "sb" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | quote }}
+  if [[ -z $ovn_db_ip ]]; then
+    echo "Can't resolve ovn-db service IP"
+    exit 1
+  fi
+
+  rm -f {{ .Values.conf.neutron.DEFAULT.state_path }}/ovn_maintenance.json
+
+  tee > /tmp/pod-shared/maintenance-ovn.ini << EOF
+[DEFAULT]
+host = $NODE_NAME
+
+[ovn]
+ovn_nb_connection=${ovn_db_proto}:${ovn_db_ip}:${ovn_db_nb_port}
+ovn_sb_connection=${ovn_db_proto}:${ovn_db_ip}:${ovn_db_sb_port}
+EOF
+  cat /tmp/pod-shared/maintenance-ovn.ini
+
+  exec neutron-ovn-maintenance-worker \
+        --config-file /etc/neutron/neutron.conf \
+        --config-file /tmp/pod-shared/maintenance-ovn.ini \
+        --config-file /etc/neutron/plugins/ml2/ml2_conf.ini
+{{- if .Values.conf.plugins.taas.taas.enabled }} \
+        --config-file /etc/neutron/taas_plugin.ini
+{{- end }}
+{{- if ( has "sriovnicswitch" .Values.network.backend ) }} \
+        --config-file /etc/neutron/plugins/ml2/sriov_agent.ini
+{{- end }}
+}
+
+function stop () {
+  kill -TERM 1
+}
+
+$COMMAND
