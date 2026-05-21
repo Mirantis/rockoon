@@ -1,4 +1,5 @@
 import pytest
+import re
 import logging
 
 import unittest
@@ -12,6 +13,7 @@ from rockoon.tests.functional import (
     test_utils,
 )
 from rockoon import kube
+from rockoon import settings
 
 LOG = logging.getLogger(__name__)
 CONF = config.Config()
@@ -200,3 +202,108 @@ class TestSriovFunctionalBaseTestCase(base.BaseFunctionalTestCase):
                 "Skip running inter hosts sriov tests, as not enough sriov nodes are found"
             )
         self._check_connectivity_vmA2_vmA1()
+
+
+class IpsecFipsFunctionalTestCase(base.BaseFunctionalTestCase):
+    """Check Ipsec Fips compliance for Strongswan service"""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        if (
+            not cls.osdpl.obj["spec"]["features"]
+            .get("neutron", {})
+            .get("ipsec", {})
+            .get("enabled", False)
+        ):
+            raise unittest.SkipTest("IPSec is not enabled.")
+
+    def setUp(self):
+        super().setUp()
+        kube_api = kube.kube_client()
+        pods = kube.Pod.objects(kube_api).filter(
+            namespace=settings.OSCTL_OS_DEPLOYMENT_NAMESPACE,
+            selector={
+                "application": "strongswan",
+                "component": "server",
+            },
+        )
+        pods = [pod for pod in pods]
+        self.assertTrue(
+            pods,
+            "Failed to get Strongswan pods.",
+        )
+        self.strongswan_pod = pods[0]
+
+    def strongswan_exec(self, cmd):
+        pod_stdout = self.strongswan_pod.exec(
+            cmd,
+            container="strongswan",
+        )["stdout"].lower()
+        return pod_stdout
+
+    def test_ipsec_openssl_providers(self):
+        # checks that only permitted providers are active
+        # the command output looks like:
+        # Providers:
+        #   default
+        #     name: OpenSSL Default Provider
+        #     version: 3.6.2
+        #     status: active
+        providers = {"default", "legacy", "fips", "base", "null"}
+        expected_providers = {"fips", "base"}
+        active_providers = set()
+        current_provider = ""
+        response = self.strongswan_exec(["openssl", "list", "-providers"])
+        for l in response.split("\n"):
+            line = l.strip()
+            if line in providers:
+                current_provider = line
+                continue
+            if current_provider:
+                m = re.search(r"status:\s+([a-z]+)$", line)
+                if m and m.group(1) == "active":
+                    active_providers.add(current_provider)
+        self.assertTrue(
+            expected_providers == active_providers,
+            f"Active provider are {active_providers} but expected {expected_providers}",
+        )
+
+    def test_strongswan_config(self):
+        # checks that the config file contains the required options
+        # the file content looks like
+        # openssl {
+        #      fips_mode = 1
+        #      load = yes
+        #      load_legacy = no
+        # }
+        expected_opts = {"fips_mode=1", "load_legacy=no"}
+        current_opts = set()
+        response = self.strongswan_exec(
+            ["cat", "/etc/strongswan.d/charon/openssl.conf"]
+        )
+        for line in response.split("\n"):
+            m = re.search(
+                r"^(fips_mode=.+|load_legacy=.+)$", line.replace(" ", "")
+            )
+            if m:
+                current_opts.add(m.group(1))
+        self.assertTrue(
+            expected_opts == current_opts,
+            f"Config options are {current_opts} but we expect {expected_opts}",
+        )
+
+    def test_ipsec_ike_algorithms(self):
+        # checks that only permitted algorithms are used
+        # the command response looks like (provider name is in the square brackets)
+        # List of registered IKE algorithms:
+        #
+        #   encryption: 3DES_CBC[openssl] AES_CBC[openssl] AES_CTR[openssl] AES_ECB[openssl] AES_CFB[openssl]
+        #               CAMELLIA_CBC[openssl] CAMELLIA_CTR[openssl] CAST_CBC[openssl] BLOWFISH_CBC[openssl] DES_CBC[openssl]
+        expected_libs = {"openssl", "nonce"}
+        response = self.strongswan_exec(["ipsec", "listalgs"])
+        used_libs = set(re.findall(r"\[(.+?)\]", response))
+        self.assertTrue(
+            used_libs == expected_libs,
+            f"Active cryptography libs are {used_libs} but expected {expected_libs}",
+        )
