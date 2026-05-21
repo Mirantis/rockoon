@@ -101,6 +101,16 @@ dependencies:
 # values, but should include all endpoints
 # required by this chart
 endpoints:
+  app_gateway:
+    hosts:
+      default:
+        host: app-gateway
+    port:
+      https:
+        default: 10443
+        public: 443
+    host_fqdn_override:
+      public: null
   compute:
     name: nova
     hosts:
@@ -179,6 +189,12 @@ network:
         cluster: "nginx-cluster"
       annotations:
         nginx.ingress.kubernetes.io/rewrite-target: /
+    http_route:
+      rule:
+        timeouts: {}
+        retry: {}
+        sessionPersistence: {}
+        filters: {}
     external_policy_local: false
     node_port:
       enabled: false
@@ -303,6 +319,7 @@ manifests:
   configmap_bin: true
   deployment: true
   ingress: false
+  http_route: false
   network_policy: false
   secret_ingress_tls: false
   service: true
