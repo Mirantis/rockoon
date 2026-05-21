@@ -104,10 +104,8 @@ data:
 {{ tuple "bin/_neutron-l2gw-agent.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   neutron-bagpipe-bgp.sh: |
 {{ tuple "bin/_neutron-bagpipe-bgp.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-{{- if .Values.manifests.certificates }}
   neutron-rpc-server.sh: |
 {{ tuple "bin/_neutron-rpc-server.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-{{- end }}
   neutron-ovn-maintenance.sh: |
 {{ tuple "bin/_neutron-ovn-maintenance.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   neutron-periodic-workers.sh: |

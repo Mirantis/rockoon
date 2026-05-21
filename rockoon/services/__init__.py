@@ -1381,6 +1381,14 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
             ("Job", "neutron-db-sync"),
             (neutron_server_deployment_type, "neutron-server"),
         ]
+        os_version_num = constants.OpenStackVersion[
+            self.openstack_version
+        ].value
+
+        if os_version_num >= constants.OpenStackVersion["gazpacho"].value:
+            static_map.append(
+                (neutron_server_deployment_type, "neutron-rpc-server")
+            )
 
         dynamic_map = [
             ("DaemonSet", "neutron-sriov-agent"),

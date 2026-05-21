@@ -117,7 +117,9 @@ spec:
 {{ dict "envAll" $envAll "application" "neutron_server" "container" "neutron_server" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
 {{ dict "envAll" $envAll "component" "server" "container" "server" "type" "readiness" "probeTemplate" (include "serverReadinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
 {{ dict "envAll" $envAll "component" "server" "container" "server" "type" "liveness" "probeTemplate" (include "serverLivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{- if not .Values.conf.software.uwsgi.enabled }}
 {{ dict "envAll" $envAll "component" "server" "container" "server" "type" "startup" "probeTemplate" (include "serverStartupProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{- end }}
           command:
             - /tmp/neutron-server.sh
             - start
@@ -198,6 +200,16 @@ spec:
               readOnly: true
             - name: neutron-oslo-policy
               mountPath: /etc/neutron/policy.d/
+            {{- if .Values.conf.software.uwsgi.enabled }}
+            - name: neutron-etc
+              mountPath: /etc/neutron/neutron-api-uwsgi.ini
+              subPath: neutron-api-uwsgi.ini
+              readOnly: true
+            {{ else }}
+            - name: neutron-bin
+              mountPath: /tmp/neutron-server-startup-probe.sh
+              subPath: neutron-server-startup-probe.sh
+            {{- end }}
             - name: neutron-bin
               mountPath: /tmp/generic-health-probe.py
               subPath: generic-health-probe.py
@@ -209,81 +221,9 @@ spec:
             - name: neutron-bin
               mountPath: /tmp/neutron-server-liveness-probe.sh
               subPath: neutron-server-liveness-probe.sh
-            - name: neutron-bin
-              mountPath: /tmp/neutron-server-startup-probe.sh
-              subPath: neutron-server-startup-probe.sh
 {{- dict "enabled" .Values.manifests.certificates "name" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
 {{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.network.server.internal "path" "/etc/neutron/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
 {{ if $mounts_neutron_server.volumeMounts }}{{ toYaml $mounts_neutron_server.volumeMounts | indent 12 }}{{ end }}
-{{- if .Values.manifests.certificates }}
-        - name: neutron-rpc-server
-{{ tuple $envAll "neutron_rpc_server" | include "helm-toolkit.snippets.image" | indent 10 }}
-{{ tuple $envAll $envAll.Values.pod.resources.rpc_server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
-{{ dict "envAll" $envAll "application" "neutron_server" "container" "neutron_rpc_server" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
-{{ dict "envAll" $envAll "component" "server" "container" "server" "type" "readiness" "probeTemplate" (include "serverReadinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
-{{ dict "envAll" $envAll "component" "server" "container" "server" "type" "liveness" "probeTemplate" (include "serverLivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
-          command:
-            - /tmp/neutron-rpc-server.sh
-            - start
-          lifecycle:
-            preStop:
-              exec:
-                command:
-                  - /tmp/neutron-rpc-server.sh
-                  - stop
-          volumeMounts:
-            - name: neutron-bin
-              mountPath: /tmp/neutron-rpc-server.sh
-              subPath: neutron-rpc-server.sh
-              readOnly: true
-            - name: neutron-etc
-              mountPath: /etc/neutron/neutron.conf
-              subPath: neutron.conf
-              readOnly: true
-            {{- if .Values.conf.neutron.DEFAULT.log_config_append }}
-            - name: neutron-etc
-              mountPath: {{ .Values.conf.neutron.DEFAULT.log_config_append }}
-              subPath: {{ base .Values.conf.neutron.DEFAULT.log_config_append }}
-              readOnly: true
-            {{- end }}
-            - name: neutron-etc
-              mountPath: /etc/neutron/plugins/ml2/ml2_conf.ini
-              subPath: ml2_conf.ini
-              readOnly: true
-            {{- if( has "tungstenfabric" .Values.network.backend ) }}
-            - name: neutron-etc
-              mountPath: /etc/neutron/plugins/tungstenfabric/tf_plugin.ini
-              subPath: tf_plugin.ini
-              readOnly: true
-            {{ end }}
-            {{ if ( has "sriovnicswitch" .Values.network.backend ) }}
-            - name: neutron-etc
-              mountPath: /etc/neutron/plugins/ml2/sriov_agent.ini
-              subPath: sriov_agent.ini
-              readOnly: true
-            {{ end }}
-            {{- if .Values.conf.plugins.taas.taas.enabled }}
-            - name: neutron-etc
-              mountPath: /etc/neutron/taas_plugin.ini
-              subPath: taas_plugin.ini
-              readOnly: true
-            {{ end }}
-            {{- if .Values.conf.plugins.l2gateway }}
-            - name: neutron-etc
-              mountPath: /etc/neutron/l2gw_plugin.ini
-              subPath: l2gw_plugin.ini
-              readOnly: true
-            {{ end }}
-            - name: neutron-bin
-              mountPath: /tmp/generic-health-probe.py
-              subPath: generic-health-probe.py
-              readOnly: true
-            - name: neutron-bin
-              mountPath: /tmp/neutron-server-liveness-probe.sh
-              subPath: neutron-server-liveness-probe.sh
-{{- dict "enabled" .Values.manifests.certificates "name" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
-{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.network.server.internal "path" "/etc/neutron/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
-{{- end }}
 {{- if .Values.pod.logrotate.neutron_server.enabled }}
         - name: logrotate
 {{ tuple $envAll "neutron_server_logrotate" | include "helm-toolkit.snippets.image" | indent 10 }}

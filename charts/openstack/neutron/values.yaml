@@ -126,6 +126,9 @@ labels:
   server:
     node_selector_key: openstack-control-plane
     node_selector_value: enabled
+  rpc_server:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
   periodic_workers:
     node_selector_key: openstack-control-plane
     node_selector_value: enabled
@@ -302,8 +305,14 @@ dependencies:
       ironic_agent:
         jobs:
           - neutron-rabbit-init
+      rpc_server:
+        jobs:
+          - neutron-rabbit-init
     job_ks_endpoints:
       server:
+        jobs:
+          - neutron-ks-endpoints
+      rpc_server:
         jobs:
           - neutron-ks-endpoints
       ironic_agent:
@@ -391,6 +400,19 @@ dependencies:
         - endpoint: internal
           service: network
     server:
+      jobs:
+        - neutron-db-sync
+        - neutron-ks-user
+      services:
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: oslo_messaging
+        - endpoint: internal
+          service: oslo_cache
+        - endpoint: internal
+          service: identity
+    rpc_server:
       jobs:
         - neutron-db-sync
         - neutron-ks-user
@@ -645,6 +667,19 @@ pod:
           params:
             periodSeconds: 15
             timeoutSeconds: 5
+    rpc_server:
+      rpc_server:
+        readiness:
+          enabled: true
+          params:
+            periodSeconds: 15
+            timeoutSeconds: 5
+        liveness:
+          enabled: true
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 5
     periodic_workers:
       periodic_workers:
         readiness:
@@ -881,13 +916,29 @@ pod:
           capabilities:
             drop:
               - ALL
-        neutron_rpc_server:
+        neutron_logrotate:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
           capabilities:
             drop:
               - ALL
-        neutron_logrotate:
+    neutron_rpc_server:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+      container:
+        perms:
+          readOnlyRootFilesystem: true
+          runAsUser: 0
+          runAsNonRoot: false
+          capabilities:
+            drop:
+              - ALL
+            add:
+              - CHOWN
+              - DAC_READ_SEARCH
+        neutron_rpc_server:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
           capabilities:
@@ -1057,6 +1108,11 @@ pod:
       neutron_server:
         volumeMounts:
         volumes:
+    neutron_rpc_server:
+      init_container: null
+      neutron_rpc_server:
+        volumeMounts:
+        volumes:
     neutron_periodic_workers:
       init_container: null
       periodic_workers:
@@ -1157,6 +1213,7 @@ pod:
             readOnly: true
   replicas:
     server: 1
+    rpc_server: 1
     # Only one worker is supported for OVN due to startup
     # probe limitation PRODX-55022
     periodic_workers: 1
@@ -1172,6 +1229,10 @@ pod:
       daemonsets:
         pod_replacement_strategy: RollingUpdate
         server:
+          enabled: true
+          min_ready_seconds: 0
+          max_unavailable: 1
+        rpc_server:
           enabled: true
           min_ready_seconds: 0
           max_unavailable: 1
@@ -1218,8 +1279,12 @@ pod:
     disruption_budget:
       server:
         min_available: 0
+      rpc_server:
+        min_available: 0
     termination_grace_period:
       server:
+        timeout: 30
+      rpc_server:
         timeout: 30
       periodic_workers:
         timeout: 30
@@ -1305,6 +1370,13 @@ pod:
           memory: "1024Mi"
           cpu: "2000m"
     server:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    rpc_server:
       requests:
         memory: "128Mi"
         cpu: "100m"
@@ -1405,6 +1477,32 @@ pod:
           cpu: "2000m"
 
 conf:
+  software:
+    uwsgi:
+      enabled: false
+  neutron_api_uwsgi:
+    # uwsgi ini source https://github.com/openstack/openstack-helm/commit/1913194abe92d65665b8b5ab62bf5838a1abdb98
+    uwsgi:
+      add-header: "Connection: close"
+      buffer-size: 65535
+      die-on-term: true
+      enable-threads: true
+      exit-on-reload: false
+      hook-master-start: unix_signal:15 gracefully_kill_them_all
+      lazy-apps: true
+      log-x-forwarded-for: true
+      master: true
+      procname-prefix-spaced: "neutron-api:"
+      route-user-agent: '^kube-probe.* donotlog:'
+      # start-time provides unix time at instance startup, used by ML2/OVN
+      # for OVN hash ring registers. See:
+      # https://docs.openstack.org/neutron/latest/admin/config-wsgi.html
+      start-time: "%t"
+      thunder-lock: true
+      worker-reload-mercy: 80
+      module: neutron.wsgi.api:application
+      stats: 0.0.0.0:1717
+      stats-http: true
   logrotate_conf: |
     /var/lib/neutron/ngs/logs/*.log {
       size 100M
@@ -2687,6 +2785,9 @@ secrets:
       server:
         public: neutron-tls-public
         internal: neutron-tls-server
+      rpc_server:
+        public: neutron-tls-public
+        internal: neutron-tls-server
 
 # typically overridden by environmental
 # values, but should include all endpoints
@@ -3059,6 +3160,7 @@ manifests:
   deployment_ironic_agent: false
   deployment_periodic_workers: false
   deployment_server: true
+  deployment_rpc_server: false
   ingress_server: true
   http_route_server: true
   job_bootstrap: true
@@ -3072,6 +3174,7 @@ manifests:
   job_ks_user: true
   job_rabbit_init: true
   pdb_server: true
+  pdb_rpc_server: false
   pod_rally_test: true
   network_policy: false
   secret_db: true

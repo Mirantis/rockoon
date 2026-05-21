@@ -38,7 +38,9 @@ if [[ -z $ovn_db_ip ]]; then
   exit 1
 fi
 
+{{- if not .Values.conf.software.uwsgi.enabled }}
 rm -f {{ .Values.conf.neutron.DEFAULT.state_path }}/ovn_maintenance.json
+{{- end }}
 
 tee > /tmp/pod-shared/neutron-ovn.ini << EOF
 [DEFAULT]
@@ -51,24 +53,29 @@ EOF
 cat /tmp/pod-shared/neutron-ovn.ini
 {{- end }}
 
-exec neutron-server \
-  --config-file /etc/neutron/neutron.conf
-{{- if ( has "ovn" .Values.network.backend ) }} \
-  --config-file /tmp/pod-shared/neutron-ovn.ini
+confs="--config-file /etc/neutron/neutron.conf"
+{{- if ( has "ovn" .Values.network.backend ) }}
+  confs+=" --config-file /tmp/pod-shared/neutron-ovn.ini"
 {{- end }}
-{{- if eq .Values.network.core_plugin "tungstenfabric" }} \
-  --config-file /etc/neutron/plugins/tungstenfabric/tf_plugin.ini
-{{- else }} \
-  --config-file /etc/neutron/plugins/ml2/ml2_conf.ini
+{{- if eq .Values.network.core_plugin "tungstenfabric" }}
+  confs+=" --config-file /etc/neutron/plugins/tungstenfabric/tf_plugin.ini"
+{{- else }}
+  confs+=" --config-file /etc/neutron/plugins/ml2/ml2_conf.ini"
 {{- end }}
-{{- if .Values.conf.plugins.taas.taas.enabled }} \
-  --config-file /etc/neutron/taas_plugin.ini
+{{- if .Values.conf.plugins.taas.taas.enabled }}
+  confs+=" --config-file /etc/neutron/taas_plugin.ini"
 {{- end }}
-{{- if ( has "sriovnicswitch" .Values.network.backend ) }} \
-  --config-file /etc/neutron/plugins/ml2/sriov_agent.ini
+{{- if ( has "sriovnicswitch" .Values.network.backend ) }}
+  confs+=" --config-file /etc/neutron/plugins/ml2/sriov_agent.ini"
 {{- end }}
-{{- if .Values.conf.plugins.l2gateway }} \
-  --config-file /etc/neutron/l2gw_plugin.ini
+{{- if .Values.conf.plugins.l2gateway }}
+  confs+=" --config-file /etc/neutron/l2gw_plugin.ini"
+{{- end }}
+
+{{- if .Values.conf.software.uwsgi.enabled }}
+exec uwsgi --ini /etc/neutron/neutron-api-uwsgi.ini --pyargv " $confs "
+{{- else }}
+exec neutron-server $confs
 {{- end }}
 }
 

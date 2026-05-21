@@ -1,0 +1,218 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "rpcServerReadinessProbeTemplate" }}
+exec:
+  command:
+    - python
+    - /tmp/generic-health-probe.py
+    - --process-name
+    - neutron-rpc-server
+    - --check
+    - rabbitmq_sockets
+    - --probe-type
+    - readiness
+    - --config-file
+    - /etc/neutron/neutron.conf
+{{- end }}
+
+{{- define "rpcServerLivenessProbeTemplate" }}
+exec:
+  command:
+    - python
+    - /tmp/generic-health-probe.py
+    - --process-name
+    - neutron-rpc-server
+    - --check
+    - rabbitmq_sockets
+    - --probe-type
+    - liveness
+    - --config-file
+    - /etc/neutron/neutron.conf
+{{- if ( has "ovn" .Values.network.backend ) }}
+    - --check
+    - k8s_svc_ip_change
+    - --k8s-svcs
+    - {{ tuple "ovn_db" "internal" . | include "helm-toolkit.endpoints.endpoint_host_lookup" }}
+{{- end }}
+{{- end }}
+
+{{- if .Values.manifests.deployment_rpc_server }}
+{{- $envAll := . }}
+
+{{- $dependencyOpts := dict "envAll" $envAll "dependencyMixinParam" $envAll.Values.network.backend "dependencyKey" "server" -}}
+{{- $_ := include "helm-toolkit.utils.dependency_resolver" $dependencyOpts | toString | fromYaml }}
+
+{{- $mounts_neutron_rpc_server := .Values.pod.mounts.neutron_rpc_server.neutron_rpc_server }}
+{{- $mounts_neutron_rpc_server_init := .Values.pod.mounts.neutron_rpc_server.init_container }}
+
+{{- $serviceAccountName := "neutron-rpc-server" }}
+
+{{ tuple $envAll "pod_dependency" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+
+---
+apiVersion: apps/v1
+{{- if ( has "ovn" .Values.network.backend ) }}
+kind: DaemonSet
+{{- else }}
+kind: Deployment
+{{- end }}
+metadata:
+  name: neutron-rpc-server
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "neutron" "rpc_server" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+{{- if ( has "ovn" .Values.network.backend ) }}
+{{ tuple $envAll "server" | include "helm-toolkit.snippets.kubernetes_upgrades_daemonset" | indent 2 }}
+{{- else }}
+  replicas: {{ .Values.pod.replicas.rpc_server }}
+{{ tuple $envAll | include "helm-toolkit.snippets.kubernetes_upgrades_deployment" | indent 2 }}
+{{- end }}
+  selector:
+    matchLabels:
+{{ tuple $envAll "neutron" "rpc_server" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "neutron" "rpc_server" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+        endpoints-hash: {{ .Values.endpoints | include "helm-toolkit.utils.get_hash" }}
+{{ dict "envAll" $envAll "podName" "neutron-rpc-server" "containerNames" (list "neutron-rpc-server" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+    spec:
+{{ dict "envAll" $envAll "application" "neutron_rpc_server" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      serviceAccountName: {{ $serviceAccountName }}
+      affinity:
+{{ tuple $envAll "neutron" "rpc_server" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      nodeSelector:
+        {{ .Values.labels.rpc_server.node_selector_key }}: {{ .Values.labels.rpc_server.node_selector_value }}
+      terminationGracePeriodSeconds: {{ .Values.pod.lifecycle.termination_grace_period.rpc_server.timeout | default "30" }}
+      initContainers:
+{{ tuple $envAll "pod_dependency" $mounts_neutron_rpc_server_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+        - name: perms
+{{ tuple $envAll "neutron_rpc_server" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "neutron_rpc_server" "container" "perms" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+          command:
+            - chown
+            - -R
+            - {{ $envAll.Values.pod.security_context.neutron_rpc_server.pod.runAsUser | quote }}
+            - /var/lib/neutron
+          volumeMounts:
+            - name: varlibneutron
+              mountPath: /var/lib/neutron
+      containers:
+        - name: neutron-rpc-server
+{{ tuple $envAll "neutron_rpc_server" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.rpc_server | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "neutron_rpc_server" "container" "neutron_rpc_server" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ dict "envAll" $envAll "component" "rpc_server" "container" "rpc_server" "type" "readiness" "probeTemplate" (include "rpcServerReadinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" $envAll "component" "rpc_server" "container" "rpc_server" "type" "liveness" "probeTemplate" (include "rpcServerLivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          command:
+            - /tmp/neutron-rpc-server.sh
+            - start
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /tmp/neutron-rpc-server.sh
+                  - stop
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: varlibneutron
+              mountPath: {{ .Values.conf.neutron.DEFAULT.state_path }}
+            - name: neutron-bin
+              mountPath: /tmp/neutron-rpc-server.sh
+              subPath: neutron-rpc-server.sh
+              readOnly: true
+            - name: neutron-etc
+              mountPath: /etc/neutron/neutron.conf
+              subPath: neutron.conf
+              readOnly: true
+            {{- if .Values.conf.neutron.DEFAULT.log_config_append }}
+            - name: neutron-etc
+              mountPath: {{ .Values.conf.neutron.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.neutron.DEFAULT.log_config_append }}
+              readOnly: true
+            {{- end }}
+            - name: neutron-etc
+              mountPath: /etc/neutron/plugins/ml2/ml2_conf.ini
+              subPath: ml2_conf.ini
+              readOnly: true
+            {{- if( has "tungstenfabric" .Values.network.backend ) }}
+            - name: neutron-etc
+              mountPath: /etc/neutron/plugins/tungstenfabric/tf_plugin.ini
+              subPath: tf_plugin.ini
+              readOnly: true
+            {{ end }}
+            {{ if ( has "sriovnicswitch" .Values.network.backend ) }}
+            - name: neutron-etc
+              mountPath: /etc/neutron/plugins/ml2/sriov_agent.ini
+              subPath: sriov_agent.ini
+              readOnly: true
+            {{ end }}
+            {{- if .Values.conf.plugins.taas.taas.enabled }}
+            - name: neutron-etc
+              mountPath: /etc/neutron/taas_plugin.ini
+              subPath: taas_plugin.ini
+              readOnly: true
+            {{ end }}
+            {{- if .Values.conf.plugins.l2gateway }}
+            - name: neutron-etc
+              mountPath: /etc/neutron/l2gw_plugin.ini
+              subPath: l2gw_plugin.ini
+              readOnly: true
+            {{ end }}
+            - name: neutron-bin
+              mountPath: /tmp/generic-health-probe.py
+              subPath: generic-health-probe.py
+              readOnly: true
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal "path" "/etc/mysql/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.network.rpc_server.internal "path" "/etc/neutron/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+      volumes:
+{{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "neutron" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
+        - name: varlibneutron
+          hostPath:
+            path: /var/lib/neutron
+        - name: pod-tmp
+          emptyDir: {}
+        - name: neutron-bin
+          configMap:
+            name: neutron-bin
+            defaultMode: 504
+        - name: neutron-etc
+          secret:
+            secretName: neutron-etc
+            defaultMode: 416
+        - name: neutron-oslo-policy
+          secret:
+            secretName: neutron-oslo-policy
+            defaultMode: 416
+        {{- if ( has "tungstenfabric" .Values.network.backend ) }}
+        - name: neutron-plugin-shared
+          emptyDir: {}
+        {{- end }}
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.endpoints.oslo_db.auth.admin.secret.tls.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.network.rpc_server.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{ if $mounts_neutron_rpc_server.volumes }}{{ toYaml $mounts_neutron_rpc_server.volumes | indent 8 }}{{ end }}
+{{- end }}

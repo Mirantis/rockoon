@@ -199,9 +199,12 @@ services:
         pod:
           replicas:
             server: 3
+            rpc_server: 3
           lifecycle:
             disruption_budget:
               server:
+                min_available: 2
+              rpc_server:
                 min_available: 2
             upgrades:
               deployments:

@@ -155,9 +155,11 @@ services:
       values:
         manifests:
           pdb_server: false
+          pdb_rpc_server: false
         pod:
           replicas:
             server: 1
+            rpc_server: 1
           lifecycle:
             upgrades:
               daemonsets:
