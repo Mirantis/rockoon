@@ -95,6 +95,9 @@ spec:
           02-custom.yaml: {}
         ceph:
           enabled: false
+        software:
+          uwsgi:
+            enabled: false
         glance:
           DEFAULT:
             enable_v2_registry: true

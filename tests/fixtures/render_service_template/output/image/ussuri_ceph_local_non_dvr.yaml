@@ -106,6 +106,9 @@ spec:
           keyrings:
             glance:
               key: AQDKZLJfoTtgAhAA7f9e8GriyIpFbj8Ez88l2A==
+        software:
+          uwsgi:
+            enabled: false
         glance:
           DEFAULT:
             enable_v2_registry: true
