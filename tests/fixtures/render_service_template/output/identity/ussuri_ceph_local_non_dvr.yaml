@@ -38,6 +38,7 @@ spec:
         logging:
           logger_keystone:
             level: INFO
+        use_wsgi_script: false
         ks_domains:
           domain.with.ldap:
             assignment:

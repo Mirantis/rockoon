@@ -111,8 +111,15 @@ spec:
               mountPath: /var/log/apache2
             - name: run-apache
               mountPath: /var/run/apache2
+            {{- if .Values.conf.use_wsgi_script }}
+            - name: keystone-bin
+              mountPath: /var/www/cgi-bin/keystone/wsgi.py
+              subPath: wsgi.py
+              readOnly: true
+            {{- else }}
             - name: wsgi-keystone
               mountPath: /var/www/cgi-bin/keystone
+            {{- end }}
             - name: keystone-etc
               mountPath: /etc/keystone/keystone.conf
               subPath: keystone.conf
@@ -190,8 +197,10 @@ spec:
           emptyDir: {}
         - name: etckeystone
           emptyDir: {}
+        {{- if not .Values.conf.use_wsgi_script }}
         - name: wsgi-keystone
           emptyDir: {}
+        {{- end }}
         - name: federation-metadata
           emptyDir: {}
         - name: logs-apache
