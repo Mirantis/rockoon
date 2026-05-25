@@ -288,6 +288,7 @@ spec:
 {%- endif %}
         # NOTE(okononenko): We need to enable iSCSI support when use iSCSI/LVM backend
         enable_iscsi: {{ overrides.enabled }}
+        use_wsgi_script: {{ OSVer[spec.openstack_version] >= OSVer.gazpacho }}
         logging:
           logger_cinder:
             level: {{ spec.get('features', {}).get('logging', {}).get('cinder', {}).get('level', 'INFO') }}

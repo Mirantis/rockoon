@@ -39,7 +39,11 @@ conf:
       ServerName {{ printf "%s.%s.svc.%s" "cinder-api" .Release.Namespace .Values.endpoints.cluster_domain_suffix }}
       WSGIDaemonProcess cinder-api processes=1 threads=1 user=cinder display-name=%{GROUP}
       WSGIProcessGroup cinder-api
+      {{- if .Values.conf.use_wsgi_script }}
+      WSGIScriptAlias /  /var/www/cgi-bin/cinder/wsgi.py
+      {{- else }}
       WSGIScriptAlias /  /var/www/cgi-bin/cinder/cinder-wsgi
+      {{- end }}
       WSGIApplicationGroup %{GLOBAL}
       WSGIPassAuthorization On
       AllowEncodedSlashes On

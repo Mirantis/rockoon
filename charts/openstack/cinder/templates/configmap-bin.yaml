@@ -43,6 +43,9 @@ data:
 {{ tuple "bin/_db-sync-online.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   db-drop.py: |
 {{- include "helm-toolkit.scripts.db_drop" . | indent 4 }}
+{{- if .Values.conf.use_wsgi_script }}
+{{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.wsgi_script "key" "wsgi.py" "format" "ConfigMap" ) | indent 2 }}
+{{- end }}
   ks-service.py: |
 {{- include "helm-toolkit.scripts.keystone_service" . | indent 4 }}
   ks-endpoints.py: |

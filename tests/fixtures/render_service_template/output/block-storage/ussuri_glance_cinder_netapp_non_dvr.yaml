@@ -103,6 +103,7 @@ spec:
             auth_section: keystone_authtoken
             auth_type: password
         enable_iscsi: false
+        use_wsgi_script: false
         logging:
           logger_cinder:
             level: INFO

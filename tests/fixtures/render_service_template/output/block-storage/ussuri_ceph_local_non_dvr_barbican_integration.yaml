@@ -83,6 +83,7 @@ spec:
           glance:
             verify_glance_signatures: true
         enable_iscsi: false
+        use_wsgi_script: false
         logging:
           logger_cinder:
             level: INFO
