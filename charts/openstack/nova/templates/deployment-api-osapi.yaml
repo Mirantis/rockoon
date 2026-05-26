@@ -98,6 +98,12 @@ spec:
               mountPath: /tmp/nova-api.sh
               subPath: nova-api.sh
               readOnly: true
+            {{- if .Values.conf.use_wsgi_script }}
+            - name: nova-bin
+              mountPath: /var/www/cgi-bin/nova/nova-api-wsgi
+              subPath: wsgi-osapi.py
+              readOnly: true
+            {{- end }}
             - name: nova-etc
               mountPath: /etc/nova/nova.conf
               subPath: nova.conf
@@ -118,8 +124,10 @@ spec:
               mountPath: /etc/nova/api_audit_map.conf
               subPath: api_audit_map.conf
               readOnly: true
+            {{- if not .Values.conf.use_wsgi_script }}
             - name: wsgi-nova
               mountPath: /var/www/cgi-bin/nova
+            {{- end }}
             - name: nova-etc
               mountPath: {{ .Values.conf.software.apache2.conf_dir }}/wsgi-nova.conf
               subPath: wsgi-nova.conf
@@ -167,8 +175,10 @@ spec:
         {{- end }}
         - name: pod-var-nova
           emptyDir: {}
+        {{- if not .Values.conf.use_wsgi_script }}
         - name: wsgi-nova
           emptyDir: {}
+        {{- end }}
         - name: logs-apache
           emptyDir: {}
         - name: run-apache

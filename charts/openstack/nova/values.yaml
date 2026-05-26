@@ -1208,6 +1208,44 @@ conf:
     # INFO means log all usage
     # ERROR means only log unsuccessful attempts
     syslog_log_level=ERROR
+  # Use python WSGI wrapper scripts from configmap instead of image entrypoint copy.
+  use_wsgi_script: false
+  wsgi_script_nova_api: |
+    # autopep8: off
+    from nova import monkey_patch; monkey_patch.patch(backend='threading')  # noqa
+    # autopep8: on
+
+    import threading
+
+    from nova.api.openstack import wsgi_app
+
+    NAME = "osapi_compute"
+    PROG = "nova-api-os-compute"
+
+    application = None
+
+    lock = threading.Lock()
+    with lock:
+      if application is None:
+        application = wsgi_app.init_application(NAME, PROG)
+  wsgi_script_nova_metadata: |
+    # autopep8: off
+    from nova import monkey_patch; monkey_patch.patch(backend='threading')  # noqa
+    # autopep8: on
+
+    import threading
+
+    from nova.api.openstack import wsgi_app
+
+    NAME = "metadata"
+    PROG = "nova-api-metadata"
+
+    application = None
+
+    lock = threading.Lock()
+    with lock:
+      if application is None:
+        application = wsgi_app.init_application(NAME, PROG)
   apache_wsgi_placement:
     config:
       keepalive_timeout: 75

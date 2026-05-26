@@ -146,8 +146,15 @@ spec:
               readOnly: true
             {{- end }}
             {{- end }}
+            {{- if .Values.conf.use_wsgi_script }}
+            - name: nova-bin
+              mountPath: /var/www/cgi-bin/nova/nova-metadata-wsgi
+              subPath: wsgi-metadata.py
+              readOnly: true
+            {{- else }}
             - name: wsgi-nova
               mountPath: /var/www/cgi-bin/nova
+            {{- end }}
             - name: nova-etc
               mountPath: {{ .Values.conf.software.apache2.conf_dir }}/wsgi-metadata.conf
               subPath: wsgi-metadata.conf
@@ -167,8 +174,10 @@ spec:
             - name: run-apache
               mountPath: /var/run/apache2
             {{- if .Values.manifests.certificates }}
+            {{- if not .Values.conf.use_wsgi_script }}
             - name: wsgi-nova
               mountPath: /var/www/cgi-bin/nova
+            {{- end }}
             - name: nova-etc
               mountPath: {{ .Values.conf.software.apache2.conf_dir }}/wsgi-metadata.conf
               subPath: wsgi-metadata.conf
@@ -189,8 +198,10 @@ spec:
 {{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "nova" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
         - name: pod-tmp
           emptyDir: {}
+        {{- if not .Values.conf.use_wsgi_script }}
         - name: wsgi-nova
           emptyDir: {}
+        {{- end }}
         - name: logs-apache
           emptyDir: {}
         - name: run-apache
