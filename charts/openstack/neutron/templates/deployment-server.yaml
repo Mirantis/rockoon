@@ -198,22 +198,6 @@ spec:
               readOnly: true
             - name: neutron-oslo-policy
               mountPath: /etc/neutron/policy.d/
-            - name: neutron-etc
-              mountPath: /etc/apache2/ports.conf
-              subPath: ports.conf
-              readOnly: true
-            {{- if .Values.manifests.certificates }}
-            - name: wsgi-neutron
-              mountPath: /var/www/cgi-bin/neutron
-            - name: neutron-etc
-              mountPath: {{ .Values.conf.software.apache2.site_dir }}/wsgi-server.conf
-              subPath: wsgi-server.conf
-              readOnly: true
-            - name: neutron-etc
-              mountPath: {{ .Values.conf.software.apache2.mods_dir }}/mpm_event.conf
-              subPath: mpm_event.conf
-              readOnly: true
-            {{ end }}
             - name: neutron-bin
               mountPath: /tmp/generic-health-probe.py
               subPath: generic-health-probe.py
@@ -330,10 +314,6 @@ spec:
             path: /var/lib/neutron
         - name: pod-tmp
           emptyDir: {}
-        {{- if .Values.manifests.certificates }}
-        - name: wsgi-neutron
-          emptyDir: {}
-        {{- end }}
         - name: neutron-bin
           configMap:
             name: neutron-bin
