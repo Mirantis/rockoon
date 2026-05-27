@@ -436,6 +436,10 @@ spec:
           ingress:
             annotations:
               nginx.ingress.kubernetes.io/proxy-read-timeout: '120'
+          http_route:
+            rule:
+              timeouts:
+                request: 120s
       overrides:
         neutron_ovs-agent:
           labels: null
