@@ -1,4 +1,5 @@
 block-storage:
+  is_ceph_enabled: true
   ceph:
     cinder:
       keyring: 'AQDLZLJfNPtTOxAAQm248Q9AyoirvELaSyPz5w==
@@ -13,6 +14,10 @@ block-storage:
           role: volumes
       secrets: cinder-rbd-keyring
       username: cinder
+    mon_host:
+      - "10.10.10.1:6789"
+      - "10.10.10.2:6789"
+      - "10.10.10.3:6789"
   credentials: &credentials_block-storage
   - database:
       user:
@@ -182,6 +187,8 @@ identity:
   keystone_creds: {}
   credentials_secret_name: keystone-credential-data
   fernet_secret_name: keystone-fernet-data
+  federation:
+    enabled: false
 image:
   ceph:
     glance:
