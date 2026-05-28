@@ -111,8 +111,15 @@ spec:
               mountPath: /etc/apache2/ports.conf
               subPath: ports.conf
               readOnly: true
+            {{- if .Values.conf.use_wsgi_script }}
+            - name: designate-bin
+              mountPath: /var/www/cgi-bin/designate/designate-api-wsgi
+              subPath: wsgi.py
+              readOnly: true
+            {{- else }}
             - name: wsgi-designate
               mountPath: /var/www/cgi-bin/designate
+            {{- end }}
             - name: logs-apache
               mountPath: /var/log/apache2
             - name: run-apache
@@ -140,8 +147,10 @@ spec:
             secretName: designate-oslo-policy
             defaultMode: 416
         {{- if .Values.conf.software.apache2.enabled }}
+        {{- if not .Values.conf.use_wsgi_script }}
         - name: wsgi-designate
           emptyDir: {}
+        {{- end }}
         - name: logs-apache
           emptyDir: {}
         - name: run-apache

@@ -939,6 +939,19 @@ conf:
         port: api
     template: |
       {{ include "helm-toolkit.snippets.apache_wsgi_config" ( tuple $ .Values.conf.apache_wsgi ) }}
+  # Use python WSGI wrapper script from configmap instead of image entrypoint copy.
+  use_wsgi_script: false
+  wsgi_script: |
+    import threading
+
+    from designate.api import wsgi
+
+    application = None
+
+    lock = threading.Lock()
+    with lock:
+      if application is None:
+        application = wsgi.init_application()
 
 # Names of secrets used by bootstrap and environmental checks
 secrets:

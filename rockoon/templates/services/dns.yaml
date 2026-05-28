@@ -106,6 +106,7 @@ spec:
           apache2:
             enabled: true
       {%- endif %}
+        use_wsgi_script: {{ OSVer[spec.openstack_version] >= OSVer.gazpacho }}
         powerdns:
           # zone-cache-refresh-interval param must be less then poller total timeout
           # it can be calcalated as poll_delay + poll_retry_interval * poll_max_retries

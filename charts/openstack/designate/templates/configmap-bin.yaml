@@ -36,6 +36,10 @@ data:
 {{ tuple "bin/_db-sync.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   designate-api.sh: |
 {{ tuple "bin/_designate-api.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{- if and .Values.conf.software.apache2.enabled .Values.conf.use_wsgi_script }}
+  wsgi.py: |
+{{ .Values.conf.wsgi_script | indent 4 }}
+{{- end }}
   designate-central.sh: |
 {{ tuple "bin/_designate-central.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   designate-central-init.py: |
