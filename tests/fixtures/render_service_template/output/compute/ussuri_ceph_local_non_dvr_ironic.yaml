@@ -575,6 +575,10 @@ spec:
           ingress:
             annotations:
               nginx.ingress.kubernetes.io/proxy-read-timeout: '300'
+          http_route:
+            rule:
+              timeouts:
+                request: 300s
         sshd:
           enabled: true
       pod:
