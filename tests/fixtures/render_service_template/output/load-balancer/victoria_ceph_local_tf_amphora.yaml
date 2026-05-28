@@ -8,6 +8,10 @@ spec:
           ingress:
             annotations:
               nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+          http_route:
+            rule:
+              timeouts:
+                request: 120s
         core_plugin: tungstenfabric
         proxy:
           enabled: true

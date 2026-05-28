@@ -177,6 +177,12 @@ spec:
               # NOTE(vsaienko): octavia driver agents are synchronous
               # they may require a bit more time to setup lb
               nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+          http_route:
+            rule:
+              timeouts:
+                # NOTE(vsaienko): octavia driver agents are synchronous
+                # they may require a bit more time to setup lb
+                request: "120s"
       {%- if ovn_enabled %}
         backend:
           - ovn
