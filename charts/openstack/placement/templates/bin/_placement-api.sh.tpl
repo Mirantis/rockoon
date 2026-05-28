@@ -22,7 +22,9 @@ COMMAND="${@:-start}"
 
 function start () {
 
+  {{- if not .Values.conf.use_wsgi_script }}
   cp -a $(type -p placement-api) /var/www/cgi-bin/placement/
+  {{- end }}
 
   # Start Apache2
   {{- if .Values.conf.software.apache2.a2enmod }}
