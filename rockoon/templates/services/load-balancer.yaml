@@ -190,6 +190,7 @@ spec:
         policy.d:
           01-controller-default.yaml: {{ service_policy }}
           02-custom.yaml: {{ spec.get("features", {}).get("policies", {}).get("octavia", {}) }}
+        use_wsgi_script: {{ OSVer[spec.openstack_version] >= OSVer.gazpacho }}
         octavia:
 {% set _default_provider_driver = 'amphorav2' %}
 {%- if OSVer[spec.openstack_version] <= OSVer.queens %}

@@ -24,7 +24,9 @@ function start () {
   # Mask permissions to files 416 dirs 0750
   umask 0027
 
+  {{- if not .Values.conf.use_wsgi_script }}
   cp -a $(type -p octavia-wsgi) /var/www/cgi-bin/octavia/
+  {{- end }}
 
   {{- if .Values.conf.software.apache2.a2enmod }}
     {{- range .Values.conf.software.apache2.a2enmod }}

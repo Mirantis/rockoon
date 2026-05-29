@@ -540,7 +540,11 @@ conf:
     <VirtualHost *:{{ $portInt }}>
         WSGIDaemonProcess octavia-api processes={{ .Values.conf.software.apache2.processes }} threads=1 user=octavia group=octavia display-name=%{GROUP}
         WSGIProcessGroup octavia-api
+        {{- if .Values.conf.use_wsgi_script }}
+        WSGIScriptAlias / /var/www/cgi-bin/octavia/wsgi.py
+        {{- else }}
         WSGIScriptAlias / /var/www/cgi-bin/octavia/octavia-wsgi
+        {{- end }}
         WSGIApplicationGroup %{GLOBAL}
         WSGIPassAuthorization On
         <IfVersion >= 2.4>
@@ -562,6 +566,23 @@ conf:
       a2enmod: null
       a2dismod: null
       processes: 5
+  # Use python WSGI entrypoint from configmap instead of distro script.
+  use_wsgi_script: false
+  wsgi_script: |
+    """WSGI application entry-point for the Octavia API."""
+
+    from sys import argv
+    import threading
+
+    from octavia.api import app
+
+    application = None
+    args = None
+
+    lock = threading.Lock()
+    with lock:
+        if application is None:
+            application = app.setup_app(argv=args)
   security: |
     #
     # Disable access to the entire file system except for the directories that
