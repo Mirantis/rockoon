@@ -8,36 +8,36 @@ spec:
         ks_user: glance
         structured:
           images:
-            cirros-5.1:
-              checksum: 050056e630cf
+            cirros-6.0:
+              checksum: f4027b89e99e
               container_format: bare
               image_type: qcow2
               min_disk: 1
-              name: Cirros-5.1
+              name: Cirros-6.0
               private: false
               properties:
                 os_distro: cirros
-              source_url: https://cirros-image-url/cirros051-latest
-            cirros-5.1.alt:
-              checksum: 050056e630cf
+              source_url: https://cirros-image-url/cirros060-latest
+            cirros-6.0.alt:
+              checksum: f4027b89e99e
               container_format: bare
               image_type: qcow2
               min_disk: 1
-              name: Cirros-5.1.alt
+              name: Cirros-6.0.alt
               private: false
               properties:
                 os_distro: cirros
-              source_url: https://cirros-image-url/cirros051-latest
-            cirros-5.1.raw:
-              checksum: 479256d697ca
+              source_url: https://cirros-image-url/cirros060-latest
+            cirros-6.0.raw:
+              checksum: f756328a32fa
               container_format: bare
               image_type: raw
               min_disk: 1
-              name: Cirros-5.1.raw
+              name: Cirros-6.0.raw
               private: false
               properties:
                 os_distro: cirros
-              source_url: https://cirros-raw-image-url/cirros051-raw-latest
+              source_url: https://cirros-raw-image-url/cirros060-raw-latest
             fedora:
               checksum: 8bc56d70a3e2
               container_format: bare
@@ -79,9 +79,14 @@ spec:
               source_url: 'https://amphora-image-url/amphora-latest'
               tags:
                 - amphora
-      ceph_client:
-        configmap: rook-ceph-config
-        user_secret_name: glance-rbd-keyring
+            manila-service-image:
+              container_format: bare
+              image_type: qcow2
+              name: manila-service-image
+              properties:
+                os_distro: ubuntu
+              private: true
+              source_url: 'https://manila-service-image-url/manila-latest'
       network:
         api:
           ingress:
@@ -97,18 +102,10 @@ spec:
           01-controller-default.yaml: {'image_rule1': 'image_value1'}
           02-custom.yaml: {}
         ceph:
-          config:
-            global:
-              mon_host:
-                - "10.10.10.1:6789"
-                - "10.10.10.2:6789"
-                - "10.10.10.3:6789"
-          keyrings:
-            glance:
-              key: AQDKZLJfoTtgAhAA7f9e8GriyIpFbj8Ez88l2A==
+          enabled: false
         software:
           uwsgi:
-            enabled: false
+            enabled: true
         glance:
           DEFAULT:
             enable_v2_registry: true
@@ -313,48 +310,6 @@ spec:
             config:
               age: 30
               max_rows: -1
-      network_policy:
-        api:
-          spec:
-            ingress:
-              - from:
-                - default: selector
-              - from:
-                - ipBlock:
-                    cidr: 192.168.0.0/16
-                ports:
-                - port: 9292
-                  protocol: TCP
-              - from:
-                - namespaceSelector:
-                    matchLabels:
-                      kubernetes.io/metadata.name: osh-system
-                - namespaceSelector:
-                    matchLabels:
-                      kubernetes.io/metadata.name: stacklight
-                - namespaceSelector:
-                    matchLabels:
-                      kubernetes.io/metadata.name: tf
-                ports:
-                - port: 9292
-                  protocol: TCP
-            podSelector:
-              matchLabels:
-                application: glance
-                component: api
-            policyTypes:
-            - Ingress
-        registry:
-          spec:
-            ingress:
-              - from:
-                - default: selector
-            podSelector:
-              matchLabels:
-                application: glance
-                component: registry
-            policyTypes:
-            - Ingress
       manifests:
         cron_job_db_purge: true
         job_rabbit_init: false
@@ -364,10 +319,49 @@ spec:
         ceph_conf: true
         job_clean: false
         pvc_images: false
+      network_policy:
+        registry:
+          spec:
+            policyTypes:
+            - Ingress
+            ingress:
+            - from:
+              - default: selector
+            podSelector:
+              matchLabels:
+                application: glance
+                component: registry
+        api:
+          spec:
+            podSelector:
+              matchLabels:
+                application: glance
+                component: api
+            policyTypes:
+            - Ingress
+            ingress:
+            - from:
+              - default: selector
+            - from:
+              - ipBlock:
+                  cidr: 192.168.0.0/16
+              ports:
+              - port: 9292
+                protocol: TCP
+            - from:
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: osh-system
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: stacklight
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: tf
+              ports:
+              - port: 9292
+                protocol: TCP
       pod:
         replicas:
           api: 1
           registry: 1
-      secrets:
-        rbd: glance-rbd-keyring
-      storage: rbd

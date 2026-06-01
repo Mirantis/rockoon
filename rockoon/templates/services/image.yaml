@@ -296,6 +296,9 @@ spec:
 {%- else %}
           enabled: false
 {%- endif %}
+        software:
+          uwsgi:
+            enabled: {{ OSVer[spec.openstack_version] >= OSVer.gazpacho }}
         glance:
           cors:
             allow_headers: Content-Type,Cache-Control,Content-Language,Expires,Last-Modified,Pragma,X-Custom-Header,X-Auth-Token

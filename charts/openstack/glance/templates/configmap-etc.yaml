@@ -194,6 +194,16 @@ limitations under the License.
 {{- $_ := tuple "identity" "internal" "api" . | include "helm-toolkit.endpoints.keystone_endpoint_uri_lookup"| set .Values.conf.glance.barbican "auth_endpoint" -}}
 {{- end -}}
 
+{{- if .Values.conf.software.uwsgi.enabled -}}
+{{- if empty .Values.conf.glance_api_uwsgi.uwsgi.processes -}}
+{{- $_ := set .Values.conf.glance_api_uwsgi.uwsgi "processes" .Values.conf.glance.DEFAULT.workers -}}
+{{- end -}}
+{{- if empty (index .Values.conf.glance_api_uwsgi.uwsgi "http-socket") -}}
+{{- $http_socket_port := tuple "image" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | toString }}
+{{- $http_socket := printf "0.0.0.0:%s" $http_socket_port }}
+{{- $_ := set .Values.conf.glance_api_uwsgi.uwsgi "http-socket" $http_socket -}}
+{{- end -}}
+{{- end -}}
 
 {{- if and (empty .Values.conf.logging.handler_fluent) (has "fluent" .Values.conf.logging.handlers.keys) -}}
 {{- $fluentd_host := tuple "fluentd" "internal" $envAll | include "helm-toolkit.endpoints.hostname_namespaced_endpoint_lookup" }}
@@ -243,6 +253,9 @@ data:
   api_audit_map.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.api_audit_map | b64enc }}
 {{- if .Values.manifests.ceph_conf }}
   ceph.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.ceph.config | b64enc }}
+{{- end }}
+{{- if .Values.conf.software.uwsgi.enabled }}
+  glance-api-uwsgi.ini: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.glance_api_uwsgi | b64enc }}
 {{- end }}
 {{- if has "rbd" $configured_storages }}
 {{- dict "envAll" $envAll "objectType" "secret_entry" | include "helm-toolkit.snippets.kubernetes_ceph_keyring_objects" | indent 2 }}

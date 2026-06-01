@@ -258,6 +258,12 @@ spec:
               mountPath: /etc/glance/rootwrap.d/glance_cinder.filters
               subPath: rootwrap_filters
               readOnly: true
+            {{- if .Values.conf.software.uwsgi.enabled }}
+            - name: glance-etc
+              mountPath: /etc/glance/glance-api-uwsgi.ini
+              subPath: glance-api-uwsgi.ini
+              readOnly: true
+            {{- end }}
             - name: run-dir
               mountPath: /run
             - name: lockpath
