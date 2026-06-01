@@ -824,6 +824,14 @@ spec:
             {%- else %}
               nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
             {%- endif %}
+          http_route:
+            rule:
+              timeouts:
+            {%- if 'baremetal' in spec.features.services %}
+                request: "300s"
+            {%- else %}
+                request: "120s"
+            {%- endif %}
         core_plugin: {{ core_plugin }}
       {%- if spec.get('features', {}).get('neutron', {}).get('tunnel_interface') %}
         interface:
