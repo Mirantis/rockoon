@@ -16,7 +16,7 @@ fi
 python3 tools/set-cluster-insecure.py $KUBECFG_FILE_NAME
 echo using kube config file $KUBECFG_FILE_NAME
 export KUBECONFIG=$KUBECFG_FILE_NAME
-HELM_BINARY="https://binary.mirantis.com/openstack/bin/utils/helm/helm-v3.19.5-mosk1-linux-amd64"
+HELM_BINARY="https://binary.mirantis.com/openstack/bin/utils/helm/helm-v3.19.5-mosk2-linux-amd64"
 
 export NODE_IP=${NODE_IP:$(ip route get 4.2.2.1 | awk '{print $7}' | head -1)}
 export OSCTL_POD_NETWORKS_DATA=${OSCTL_POD_NETWORKS_DATA:-'[{"cidr":"192.168.0.0/16"}]'}
