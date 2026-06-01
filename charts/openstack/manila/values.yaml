@@ -503,9 +503,28 @@ conf:
       a2enmod: null
       a2dismod: null
       processes: 4
+  # Use python WSGI entrypoint from configmap instead of distro script.
+  use_wsgi_script: false
+  wsgi_script: |
+    """WSGI application entry-point for the Manila API."""
+
+    import threading
+
+    from manila.wsgi import wsgi
+
+    application = None
+
+    lock = threading.Lock()
+    with lock:
+        if application is None:
+            application = wsgi.initialize_application()
   wsgi_manila: |
     {{- $portInt := tuple "sharev2" "internal" "api" $ | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+    {{- if .Values.conf.use_wsgi_script }}
+    {{ include "helm-toolkit.snippets.apache_wsgi" ( tuple "wsgi.py" "manila" $portInt .Values.conf.software.apache2.processes ) }}
+    {{- else }}
     {{ include "helm-toolkit.snippets.apache_wsgi" ( tuple "manila-wsgi" "manila" $portInt .Values.conf.software.apache2.processes ) }}
+    {{- end }}
   security: |
     {{ include "helm-toolkit.snippets.apache_security" ( tuple "Prod" "Off" "Off" ) }}
 
