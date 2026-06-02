@@ -10,7 +10,7 @@ spec:
         paste:
           composite:main:
             /v1: barbican-api-keystone-audit
-        use_wsgi_script: false
+        use_wsgi_script: true
         barbican:
           DEFAULT:
             sql_idle_timeout: 3600
@@ -180,12 +180,43 @@ spec:
           restartPolicy: Never
         db_purge:
           enabled: true
-          cron: "1 2 3 4 5"
+          cron: "1 4 * * 1"
           script:
             config:
-              age: 1
+              age: 30
+      network_policy:
+        api:
+          spec:
+            ingress:
+              - from:
+                  - default: selector
+              - from:
+                  - ipBlock:
+                      cidr: 192.168.0.0/16
+                ports:
+                  - port: 9311
+                    protocol: TCP
+              - from:
+                  - namespaceSelector:
+                      matchLabels:
+                        kubernetes.io/metadata.name: osh-system
+                  - namespaceSelector:
+                      matchLabels:
+                        kubernetes.io/metadata.name: stacklight
+                  - namespaceSelector:
+                      matchLabels:
+                        kubernetes.io/metadata.name: tf
+                ports:
+                  - port: 9311
+                    protocol: TCP
+            podSelector:
+              matchLabels:
+                application: barbican
+                component: api
+            policyTypes:
+              - Ingress
       manifests:
         cron_job_db_purge: true
         job_rabbit_init: false
-        network_policy: false
+        network_policy: true
         secret_ca_bundle: true

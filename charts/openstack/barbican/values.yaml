@@ -484,6 +484,20 @@ conf:
         port: api
     template: |
       {{ include "helm-toolkit.snippets.apache_wsgi_config" ( tuple $ .Values.conf.apache_wsgi ) }}
+  # Use python WSGI entrypoint from configmap instead of distro script.
+  use_wsgi_script: false
+  wsgi_script: |
+    """WSGI application entry-point for Barbican API."""
+    import threading
+
+    from barbican.api import app
+
+    application = None
+
+
+    with threading.Lock():
+        if application is None:
+            application = app.get_api_wsgi_script()
   policy: {}
   policy.d: {}
   audit_map:
