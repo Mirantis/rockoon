@@ -51,6 +51,7 @@ spec:
         policy.d:
           01-controller-default.yaml: {{ service_policy }}
           02-custom.yaml: {{ spec.get("features", {}).get("policies", {}).get("masakari", {}) }}
+        use_wsgi_script: {{ OSVer[spec.openstack_version] >= OSVer.gazpacho }}
         masakari:
           DEFAULT:
             os_privileged_user_name: {{ admin_creds.identity.username }}

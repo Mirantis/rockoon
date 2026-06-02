@@ -10,14 +10,14 @@ spec:
         policy.d:
           01-controller-default.yaml: {'instance-ha_rule1': 'instance-ha_value1'}
           02-custom.yaml: {}
-        use_wsgi_script: false
+        use_wsgi_script: true
         masakari:
           DEFAULT:
             os_privileged_user_name: admin
             os_privileged_user_password: ZUqTyP2XwsgEGKZ7qNhhecYyq9NLkGE6
             nova_catalog_admin_info: compute:nova:internalURL
           coordination:
-            backend_url: etcd3+http://etcd:2379
+            backend_url: etcd3+http://etcd:2379?api_version=auto
           keystone_authtoken:
             memcache_secret_key: 3vySYJq0rDZ32KGG
             memcache_security_strategy: ENCRYPT
@@ -177,8 +177,33 @@ spec:
             config:
               age: 30
               max_rows: 1000
+      network_policy:
+        api:
+          spec:
+            ingress:
+              - from:
+                  - default: selector
+              - from:
+                  - ipBlock:
+                      cidr: 192.168.0.0/16
+                ports:
+                  - port: 15868
+                    protocol: TCP
+              - from:
+                  - namespaceSelector:
+                      matchLabels:
+                        kubernetes.io/metadata.name: osh-system
+                ports:
+                  - port: 15868
+                    protocol: TCP
+            podSelector:
+              matchLabels:
+                application: masakari
+                component: api
+            policyTypes:
+              - Ingress
       manifests:
         cron_job_db_purge: true
         job_rabbit_init: false
-        network_policy: false
+        network_policy: true
         secret_ca_bundle: true

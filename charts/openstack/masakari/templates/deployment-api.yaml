@@ -86,8 +86,15 @@ spec:
 {{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "masakari" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
             - name: pod-tmp
               mountPath: /tmp
+            {{- if .Values.conf.use_wsgi_script }}
+            - name: masakari-bin
+              mountPath: /var/www/cgi-bin/masakari/wsgi.py
+              subPath: wsgi.py
+              readOnly: true
+            {{- else }}
             - name: wsgi-masakari
               mountPath: /var/www/cgi-bin/masakari
+            {{- end }}
             - name: etcmasakari
               mountPath: /etc/masakari
             - name: masakari-etc
@@ -127,8 +134,10 @@ spec:
 {{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "masakari" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
         - name: pod-tmp
           emptyDir: {}
+        {{- if not .Values.conf.use_wsgi_script }}
         - name: wsgi-masakari
           emptyDir: {}
+        {{- end }}
         - name: etcmasakari
           emptyDir: {}
         - name: masakari-etc
