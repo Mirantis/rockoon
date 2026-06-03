@@ -13,6 +13,31 @@ spec:
           env_vars:
             HTTP_PROXY: http://127.0.0.1:3128
             NO_PROXY: .svc.cluster.local
+      network_policy:
+        api:
+          spec:
+            ingress:
+              - from:
+                - default: selector
+              - from:
+                - namespaceSelector:
+                    matchLabels:
+                      kubernetes.io/metadata.name: osh-system
+                - namespaceSelector:
+                    matchLabels:
+                      kubernetes.io/metadata.name: stacklight
+                - namespaceSelector:
+                    matchLabels:
+                      kubernetes.io/metadata.name: tf
+                ports:
+                - port: 9876
+                  protocol: TCP
+            podSelector:
+              matchLabels:
+                application: octavia
+                component: api
+            policyTypes:
+            - Ingress
       conf:
         policy.d:
           01-controller-default.yaml: {'load-balancer_rule1': 'load-balancer_value1'}
@@ -22,10 +47,10 @@ spec:
             level: INFO
           logger_cotyledon_config:
             level: INFO
-        use_wsgi_script: false
+        use_wsgi_script: true
         octavia:
           api_settings:
-            default_provider_driver: amphora
+            default_provider_driver: amphorav2
             enabled_provider_drivers: amphora:The Octavia Amphora driver.,octavia:Deprecated
               alias of the Octavia Amphora driver.,amphorav2:Extented Octavia Amphora
               driver with jobboard support.
@@ -61,7 +86,7 @@ spec:
             memcache_security_strategy: ENCRYPT
           task_flow:
             jobboard_enabled: true
-            jobboard_backend_driver: redis_taskflow_driver
+            jobboard_backend_driver: etcd_taskflow_driver
             jobboard_expiration_time: 90
       dependencies:
         static:
@@ -229,31 +254,6 @@ spec:
         worker:
           node_selector_key: openstack-gateway
           node_selector_value: enabled
-      network_policy:
-        api:
-          spec:
-            ingress:
-              - from:
-                - default: selector
-              - from:
-                - namespaceSelector:
-                    matchLabels:
-                      kubernetes.io/metadata.name: osh-system
-                - namespaceSelector:
-                    matchLabels:
-                      kubernetes.io/metadata.name: stacklight
-                - namespaceSelector:
-                    matchLabels:
-                      kubernetes.io/metadata.name: tf
-                ports:
-                - port: 9876
-                  protocol: TCP
-            podSelector:
-              matchLabels:
-                application: octavia
-                component: api
-            policyTypes:
-            - Ingress
       manifests:
         job_db_sync_persistence: true
         job_rabbit_init: false
@@ -265,9 +265,9 @@ spec:
           enable_amphorav2: true
           lbmgmt_network_name: lb-mgmt-net
           lbmgmt_subnets:
-            - pool_end: 10.255.255.254
-              pool_start: 10.255.1.0
-              range: 10.255.0.0/16
+            - pool_end: 192.168.0.254
+              pool_start: 192.168.0.1
+              range: 192.168.0.0/24
           certs:
             ca_pem: |
               LOAD BALANCER TEST TLS CA
@@ -276,18 +276,6 @@ spec:
             cakey: |
               LOAD BALANCER TEST TLS KEY
       pod:
-        security_context:
-          octavia_health_manager:
-            container:
-              nic_init:
-                capabilities:
-                  add:
-                   # Add NET_RAW as required for focal 2.13 openvswitch image and kernel on the host PRODX-37293
-                   - NET_RAW
-                   - NET_ADMIN
-                   - DAC_OVERRIDE
-                  drop:
-                   - ALL
         replicas:
           health_manager: 3
           housekeeping: 3
