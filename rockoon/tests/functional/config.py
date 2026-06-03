@@ -49,8 +49,8 @@ class Config(metaclass=SingletonMeta):
         # Interval in seconds to check the status of a compute resource. Default is 1 second.
         self.VOLUME_BUILD_INTERVAL = 1
 
-        # Time in seconds to wait for a server to change a status. Default is 60 seconds.
-        self.SERVER_TIMEOUT = 60
+        # Time in seconds to wait for a server to change a status. Default is 300 seconds.
+        self.SERVER_TIMEOUT = 300
         # Time in seconds to wait for a server to resize. Default is 180 seconds.
         self.SERVER_RESIZE_TIMEOUT = 60 * 3
         # Interval in seconds to check the server status. Default is 1 second.
