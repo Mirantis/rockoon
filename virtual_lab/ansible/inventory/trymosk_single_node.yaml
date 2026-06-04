@@ -4,6 +4,7 @@ all:
     k0s_worker_on_controller: true
     k0s_no_taints: true
     k0s_version: 1.31.8+k0s.0
+    kubernetes_py_version: 31.0.0
     ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
     kubeconfig: "{{ inventory_dir }}/artifacts/k0s-kubeconfig.yml"
     rvl_images_build_rockoon: false

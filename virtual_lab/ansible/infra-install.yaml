@@ -8,7 +8,8 @@
       pip:
         name:
           - kubernetes
-        extra_args: --break-system-packages
+        break_system_packages: yes
+        version: "{{ kubernetes_py_version }}"
 
 - name: Setup infrastructure requirements
   hosts: k8s_controllers:controllers:computes
