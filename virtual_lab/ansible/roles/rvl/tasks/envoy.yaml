@@ -1,0 +1,22 @@
+- name: Deploy envoy gateway
+  kubernetes.core.helm:
+    kubeconfig: "{{ kubeconfig }}"
+    name: envoy-gateway
+    chart_ref: "{{ rvl_envoy_gateway_chart }}"
+    release_namespace: eg-system
+    create_namespace: true
+    values:
+      global:
+        dockerBaseUrl: "{{ rvl_images_base_url }}"
+      deployment:
+        pod:
+          nodeSelector:
+            openstack-control-plane: enabled
+      config:
+        envoyGateway:
+          provider:
+            type: Kubernetes
+            kubernetes:
+              deploy:
+                type: GatewayNamespace
+

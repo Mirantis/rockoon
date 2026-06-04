@@ -156,6 +156,8 @@ rvl_metallb_metallb_crds_chart: "{{ rvl_binary_base_url }}/core/helm/metallb-crd
 rvl_metallb_metallb_chart: "{{ rvl_binary_base_url }}/core/helm/metallb-1.44.7.tgz"
 rvl_metallb_metallb_dockerBaseUrl: "{{ rvl_images_base_url }}"
 
+rvl_envoy_gateway_chart: "{{ rvl_binary_public_base_url }}/openstack/helm/envoy-gateway/gateway-helm-1.7.1-4.tgz"
+
 rvl_registry_docker_release: 3.0.0
 rvl_registry_docker_archive_url: "https://github.com/distribution/distribution/releases/download/v{{ rvl_registry_docker_release }}/registry_{{ rvl_registry_docker_release }}_linux_amd64.tar.gz"
 rvl_registry_docker_dir: /var/lib/docker-registry
@@ -179,6 +181,7 @@ rvl_mirror_images_extra:
  - "{{ rvl_images_public_base_url }}/bm/metallb/speaker:v0.15.2-88e6b110-amd64"
  - "{{ rvl_images_public_base_url }}/bm/external/local-volume-provisioner:v2.4.0"
  - "{{ rvl_images_public_base_url }}/openstack/openstack-controller:0.1.1"
+ - "{{ rvl_images_public_base_url }}/openstack/extra/envoy-gateway:1.7.1-noble-20260325122428"
 
 rvl_mirror_binaries: false
 rvl_registry_binaries_dir: /var/lib/binary-registry
@@ -187,6 +190,7 @@ rvl_mirror_charts: false
 rvl_mirror_charts_extra:
  - "{{ rvl_binary_public_base_url }}/core/helm/metallb-crds-1.44.7.tgz"
  - "{{ rvl_binary_public_base_url }}/core/helm/metallb-1.44.7.tgz"
+ - "{{ rvl_binary_public_base_url }}/openstack/helm/envoy-gateway/gateway-helm-1.7.1-4.tgz"
 
 rvl_openvpn_enable: false
 rvl_openvpn_home: /etc/openvpn
