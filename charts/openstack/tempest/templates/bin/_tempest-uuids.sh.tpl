@@ -78,6 +78,18 @@ die_if_not_set $LINENO IMAGE_RAW_REF "Failure getting IMAGE_RAW_REF for {{ $imag
 iniset $TEMPEST_CONF compute image_raw_ref $IMAGE_RAW_REF
 {{- end }}
 
+{{- if .Values.conf.convert_to_uuid.compute.image_iso_ref }}
+{{- $imageIsoRef := .Values.conf.convert_to_uuid.compute.image_iso_ref }}
+# Get image ref iso id
+IMAGE_ISO_REF=$(openstack image show {{ $imageIsoRef }} -f value -c id)
+
+# Check if image ref iso not set
+die_if_not_set $LINENO IMAGE_ISO_REF "Failure getting IMAGE_ISO_REF for {{ $imageIsoRef }}"
+
+# Set image ref iso id to tempest configuration file
+iniset $TEMPEST_CONF compute image_iso_ref $IMAGE_ISO_REF
+{{- end }}
+
 {{- if .Values.conf.convert_to_uuid.compute.windows10_image_ref }}
 {{- $windows10ImageRef := .Values.conf.convert_to_uuid.compute.windows10_image_ref }}
 WINDOWS10_IMAGE_REF=$(openstack image show {{ $windows10ImageRef }} -f value -c id)
