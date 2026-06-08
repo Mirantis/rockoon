@@ -4,6 +4,7 @@ spec:
     name: openstack-manila
     values:
       conf:
+        use_wsgi_script: false
         aux_conf:
           policies:
           - definition:
