@@ -159,7 +159,7 @@ spec:
               mountPath: /etc/neutron/plugins/ml2/ml2_conf.ini
               subPath: ml2_conf.ini
               readOnly: true
-            {{- if( has "tungstenfabric" .Values.network.backend ) }}
+            {{- if eq .Values.network.core_plugin "tungstenfabric" }}
             - name: neutron-etc
               mountPath: /etc/neutron/plugins/tungstenfabric/tf_plugin.ini
               subPath: tf_plugin.ini
