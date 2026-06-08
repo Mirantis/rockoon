@@ -54,6 +54,7 @@ spec:
         paste:
           composite:main:
             /v1: barbican-api-keystone-audit
+        use_wsgi_script: {{ OSVer[spec.openstack_version] >= OSVer.gazpacho }}
         barbican:
           keystone_authtoken:
             memcache_security_strategy: ENCRYPT

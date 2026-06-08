@@ -10,6 +10,7 @@ spec:
         paste:
           composite:main:
             /v1: barbican-api-keystone-audit
+        use_wsgi_script: false
         barbican:
           DEFAULT:
             sql_idle_timeout: 3600
