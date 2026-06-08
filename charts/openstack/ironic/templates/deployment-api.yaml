@@ -139,6 +139,10 @@ spec:
               mountPath: /etc/ironic/api_audit_map.conf
               subPath: api_audit_map.conf
               readOnly: true
+            - name: ironic-etc
+              mountPath: /etc/ironic/ironic-api-uwsgi.ini
+              subPath: ironic-api-uwsgi.ini
+              readOnly: true
             {{- if .Values.conf.ironic.DEFAULT.log_config_append }}
             - name: ironic-etc
               mountPath: {{ .Values.conf.ironic.DEFAULT.log_config_append }}

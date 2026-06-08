@@ -158,6 +158,11 @@ spec:
         policy.d:
           01-controller-default.yaml: {{ service_policy }}
           02-custom.yaml: {{ spec.get("features", {}).get("policies", {}).get("ironic", {}) }}
+        {%- if OSVer[spec.openstack_version] >= OSVer.gazpacho %}
+        software:
+          uwsgi:
+            enabled: true
+        {%- endif %}
         ironic:
           DEFAULT:
             enabled_hardware_types: ipmi,fake-hardware,redfish
