@@ -4,6 +4,11 @@ all:
     ansible_ssh_user: ubuntu
     k0s_worker_on_controller: true
     k0s_no_taints: true
+    # The Kubernetes 36.0.1 and later require PyYAML 6.0.3
+    # Ubunti provides this version since Resolute so we
+    # pin Kubernetes 35.0.0 and korrespond k0s version
+    k0s_version: 1.35.4+k0s.0
+    kubernetes_py_version: 35.0.0
     ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
 
   hosts:
