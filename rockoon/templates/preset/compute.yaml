@@ -256,8 +256,8 @@ services:
               image_raw_ref: {{ cirros_image_name ~ '.raw' }}
             {%- if ironic_enabled %}
               # TODO(vsaienko): change name to more generic
-              flavor_ref:  baremetal-ram1024-cpus2-disk10
-              flavor_ref_alt: baremetal-ram1024-cpus2-disk10
+              flavor_ref:  baremetal-ram4096-cpus2-disk10
+              flavor_ref_alt: baremetal-ram4096-cpus2-disk10
             {%- else %}
               flavor_ref:  m1.extra_tiny_test
               flavor_ref_alt: m1.tiny_test
