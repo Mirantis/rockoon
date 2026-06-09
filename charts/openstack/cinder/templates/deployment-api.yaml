@@ -85,15 +85,12 @@ spec:
 {{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "cinder" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
             - name: pod-tmp
               mountPath: /tmp
-            {{- if .Values.conf.use_wsgi_script }}
-            - name: cinder-bin
-              mountPath: /var/www/cgi-bin/cinder/wsgi.py
-              subPath: wsgi.py
-              readOnly: true
-            {{- else }}
             - name: wsgi-cinder
               mountPath: /var/www/cgi-bin/cinder
-            {{- end }}
+            - name: cinder-bin
+              mountPath: /tmp/wsgi.py
+              subPath: wsgi.py
+              readOnly: true
             - name: cinder-bin
               mountPath: /tmp/cinder-api.sh
               subPath: cinder-api.sh
@@ -157,10 +154,8 @@ spec:
 {{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "cinder" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
         - name: pod-tmp
           emptyDir: {}
-        {{- if not .Values.conf.use_wsgi_script }}
         - name: wsgi-cinder
           emptyDir: {}
-        {{- end }}
         - name: cinder-bin
           configMap:
             name: cinder-bin

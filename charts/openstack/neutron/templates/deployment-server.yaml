@@ -200,16 +200,13 @@ spec:
               readOnly: true
             - name: neutron-oslo-policy
               mountPath: /etc/neutron/policy.d/
-            {{- if .Values.conf.software.uwsgi.enabled }}
             - name: neutron-etc
               mountPath: /etc/neutron/neutron-api-uwsgi.ini
               subPath: neutron-api-uwsgi.ini
               readOnly: true
-            {{ else }}
             - name: neutron-bin
               mountPath: /tmp/neutron-server-startup-probe.sh
               subPath: neutron-server-startup-probe.sh
-            {{- end }}
             - name: neutron-bin
               mountPath: /tmp/generic-health-probe.py
               subPath: generic-health-probe.py

@@ -20,11 +20,12 @@ set -ex
 COMMAND="${@:-start}"
 
 function start () {
-  {{- if not .Values.conf.use_wsgi_script }}
-  for KEYSTONE_WSGI_SCRIPT in keystone-wsgi-public; do
-    cp -a $(type -p ${KEYSTONE_WSGI_SCRIPT}) /var/www/cgi-bin/keystone/
-  done
-  {{- end }}
+  WSGI_BIN="$(type -p keystone-wsgi-public || true)"
+  if [ -n "$WSGI_BIN" ]; then
+    cp -a "$WSGI_BIN" /var/www/cgi-bin/keystone/
+  else
+    cp -a /tmp/wsgi.py /var/www/cgi-bin/keystone/keystone-wsgi-public
+  fi
 
   {{- if .Values.conf.software.apache2.a2enmod }}
     {{- range .Values.conf.software.apache2.a2enmod }}

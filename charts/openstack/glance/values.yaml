@@ -126,6 +126,8 @@ conf:
   software:
     rbd:
       rbd_store_pool_app_name: glance-image
+    # Gazpacho images still ship the glance-api binary, so entrypoint cannot
+    # be chosen by type -p alone; enable uWSGI explicitly from gazpacho release.
     uwsgi:
       enabled: false
   ceph:

@@ -43,6 +43,7 @@ data:
 {{ tuple "bin/_manila-uuids.py.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   manila-api.sh: |
 {{ tuple "bin/_manila-api.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.wsgi_script "key" "wsgi.py" "format" "ConfigMap" ) | indent 2 }}
   manila-scheduler.sh: |
 {{ tuple "bin/_manila-scheduler.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   manila-share.sh: |
@@ -64,9 +65,6 @@ data:
 {{- if .Values.manifests.job_db_drop }}
   db-drop.py: |
 {{- include "helm-toolkit.scripts.db_drop" . | indent 4 }}
-{{- end }}
-{{- if .Values.conf.use_wsgi_script }}
-{{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.wsgi_script "key" "wsgi.py" "format" "ConfigMap" ) | indent 2 }}
 {{- end }}
 {{- if .Values.manifests.job_storage_init }}
   storage-init.sh: |

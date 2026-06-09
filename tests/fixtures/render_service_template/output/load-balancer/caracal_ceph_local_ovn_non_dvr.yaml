@@ -28,7 +28,6 @@ spec:
             level: INFO
           logger_cotyledon_config:
             level: INFO
-        use_wsgi_script: false
         octavia:
           driver_agent:
             enabled_provider_agents: ovn

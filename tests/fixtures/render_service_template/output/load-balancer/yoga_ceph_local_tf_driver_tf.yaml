@@ -27,7 +27,6 @@ spec:
             level: INFO
           logger_cotyledon_config:
             level: INFO
-        use_wsgi_script: false
         octavia:
           apiserver:
             api_server_ip: tf-config-api.tf.svc.cluster.local

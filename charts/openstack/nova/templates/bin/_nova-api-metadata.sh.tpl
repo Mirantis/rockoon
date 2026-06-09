@@ -19,9 +19,12 @@ set -ex
 COMMAND="${@:-start}"
 
 function start () {
-  {{- if not .Values.conf.use_wsgi_script }}
-  cp -a $(type -p nova-metadata-wsgi) /var/www/cgi-bin/nova/
-  {{- end }}
+  WSGI_BIN="$(type -p nova-metadata-wsgi || true)"
+  if [ -n "$WSGI_BIN" ]; then
+    cp -a "$WSGI_BIN" /var/www/cgi-bin/nova/
+  else
+    cp -a /tmp/wsgi-metadata.py /var/www/cgi-bin/nova/nova-metadata-wsgi
+  fi
 
   {{- if .Values.conf.software.apache2.a2enmod }}
     {{- range .Values.conf.software.apache2.a2enmod }}

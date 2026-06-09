@@ -10,7 +10,6 @@ spec:
         logging:
           logger_placement:
             level: INFO
-        use_wsgi_script: true
         placement:
           audit_middleware_notifications:
             driver: noop

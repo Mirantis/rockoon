@@ -484,7 +484,8 @@ conf:
         port: api
     template: |
       {{ include "helm-toolkit.snippets.apache_wsgi_config" ( tuple $ .Values.conf.apache_wsgi ) }}
-  # Use python WSGI entrypoint from configmap instead of distro script.
+  # Gazpacho images still ship the barbican-wsgi-api binary, so entrypoint
+  # cannot be chosen by type -p alone; enable WSGI script explicitly from gazpacho release.
   use_wsgi_script: false
   wsgi_script: |
     """WSGI application entry-point for Barbican API."""

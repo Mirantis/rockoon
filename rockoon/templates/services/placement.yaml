@@ -70,7 +70,6 @@ spec:
         logging:
           logger_placement:
             level: {{ spec.get('features', {}).get('logging', {}).get('placement', {}).get('level', 'INFO') }}
-        use_wsgi_script: {{ OSVer[spec.openstack_version] >= OSVer.gazpacho }}
       manifests:
         network_policy: {{ spec.features.network_policies.enabled }}
         secret_ca_bundle: true

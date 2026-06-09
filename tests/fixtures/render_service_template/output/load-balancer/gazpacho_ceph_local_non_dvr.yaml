@@ -51,7 +51,6 @@ spec:
             level: INFO
           logger_cotyledon_config:
             level: INFO
-        use_wsgi_script: true
         octavia:
           api_settings:
             default_provider_driver: amphorav2

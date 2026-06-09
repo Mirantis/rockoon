@@ -1277,8 +1277,6 @@ conf:
       mods_dir: /etc/apache2/mods-available
       a2enmod: null
       a2dismod: null
-  # Use python WSGI wrapper script from configmap instead of image entrypoint copy.
-  use_wsgi_script: false
   wsgi_script: |
     import threading
 

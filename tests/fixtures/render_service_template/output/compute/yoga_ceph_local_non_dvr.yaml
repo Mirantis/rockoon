@@ -70,7 +70,6 @@ spec:
             level: INFO
           logger_os.brick:
             level: INFO
-        use_wsgi_script: false
         nova:
           DEFAULT:
             allow_resize_to_same_host: true

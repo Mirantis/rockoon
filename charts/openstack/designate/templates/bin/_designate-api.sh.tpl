@@ -21,9 +21,12 @@ COMMAND="${@:-start}"
 {{- if .Values.conf.software.apache2.enabled }}
 
 function start () {
-  {{- if not .Values.conf.use_wsgi_script }}
-  cp -a $(type -p designate-api-wsgi) /var/www/cgi-bin/designate/
-  {{- end }}
+  WSGI_BIN="$(type -p designate-api-wsgi || true)"
+  if [ -n "$WSGI_BIN" ]; then
+    cp -a "$WSGI_BIN" /var/www/cgi-bin/designate/
+  else
+    cp -a /tmp/wsgi.py /var/www/cgi-bin/designate/designate-api-wsgi
+  fi
 
   {{- if .Values.conf.software.apache2.a2enmod }}
     {{- range .Values.conf.software.apache2.a2enmod }}

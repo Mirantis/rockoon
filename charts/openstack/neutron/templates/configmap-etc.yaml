@@ -163,7 +163,6 @@ just set it along with nova_metadata_host.
 {{- $_ := tuple "network" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | set .Values.conf.neutron.DEFAULT "bind_port" -}}
 {{- end -}}
 
-{{- if .Values.conf.software.uwsgi.enabled -}}
 {{- if empty .Values.conf.neutron_api_uwsgi.uwsgi.processes -}}
 {{- $_ := set .Values.conf.neutron_api_uwsgi.uwsgi "processes" .Values.conf.neutron.DEFAULT.api_workers -}}
 {{- end -}}
@@ -171,7 +170,6 @@ just set it along with nova_metadata_host.
 {{- $http_socket_port := tuple "network" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | toString }}
 {{- $http_socket := printf "0.0.0.0:%s" $http_socket_port }}
 {{- $_ := set .Values.conf.neutron_api_uwsgi.uwsgi "http-socket" $http_socket -}}
-{{- end -}}
 {{- end -}}
 
 {{- if and (empty .Values.conf.logging.handler_fluent) (has "fluent" .Values.conf.logging.handlers.keys) -}}
