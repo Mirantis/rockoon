@@ -55,6 +55,10 @@
     include_role:
       name: rvl
       tasks_from: metallb
+  - name: Setup Envoy gateway
+    include_role:
+      name: rvl
+      tasks_from: envoy
   - name: Setup osdpl certs
     include_role:
       name: rvl
