@@ -47,7 +47,7 @@ cat /tmp/pod-shared/periodic-workers-ovn.ini
 {{- if ( has "ovn" .Values.network.backend ) }} \
         --config-file /tmp/pod-shared/periodic-workers-ovn.ini
 {{- end }}
-{{- if ( has "tungstenfabric" .Values.network.backend ) }} \
+{{- if eq .Values.network.core_plugin "tungstenfabric" }} \
         --config-file /etc/neutron/plugins/tungstenfabric/tf_plugin.ini
 {{- else }} \
         --config-file /etc/neutron/plugins/ml2/ml2_conf.ini
