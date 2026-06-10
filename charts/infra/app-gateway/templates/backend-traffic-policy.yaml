@@ -1,0 +1,32 @@
+{{/*
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+
+{{- define "ag.default_backend_traffic_policy" }}
+targetRefs:
+  - group: gateway.networking.k8s.io
+    kind: Gateway
+    name: {{ tuple "app_gateway" "internal" . | include "helm-toolkit.endpoints.hostname_short_endpoint_lookup" }}
+{{- end -}}
+
+{{- if .Values.manifests.backend_traffic_policy }}
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: {{ tuple "app_gateway" "internal" . | include "helm-toolkit.endpoints.hostname_short_endpoint_lookup" }}
+spec:
+{{- $policy := include "ag.default_backend_traffic_policy" . | fromYaml }}
+{{- $mergedPolicy := merge .Values.policies.backend_traffic.default $policy }}
+{{ toYaml $mergedPolicy | indent 2 }}
+{{- end -}}

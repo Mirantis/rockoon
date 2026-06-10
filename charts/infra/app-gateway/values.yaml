@@ -32,6 +32,11 @@ gateway_classes:
   default: {}
 envoy_proxies:
   default: {}
+policies:
+  backend_traffic:
+    default:
+      retry:
+        numRetries: 3
 
 secrets:
   tls:
@@ -46,4 +51,5 @@ manifests:
   gateway_class: true
   envoy_proxy: true
   secret_tls: true
+  backend_traffic_policy: true
   network_policy: false
