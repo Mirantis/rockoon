@@ -15,6 +15,7 @@ limitations under the License.
 {{/*
 abstract: |
   Creates a manifest for a services Gateway API http route for fqdn.
+  Optionally backend traffic policy can be created for http route.
 examples:
   - values: |
       network:
@@ -32,6 +33,11 @@ examples:
                     path:
                       replacePrefixMatch: /
                       type: ReplacePrefixMatch
+            policies:
+              backend_traffic:
+                timeout:
+                  http:
+                    requestTimeout: 60s
       endpoints:
         cluster_domain_suffix: cluster.local
         app_gateway:
@@ -73,6 +79,7 @@ examples:
       {{- $httpRouteOpts := dict "envAll" $envAll "backendServiceType" "key_manager" "backendService" "api" "backendPort" 9311 -}}
       {{ $httpRouteOpts | include "helm-toolkit.manifests.http_route" }}
     return: |
+      ---
       apiVersion: gateway.networking.k8s.io/v1
       kind: HTTPRoute
       metadata:
@@ -104,6 +111,19 @@ examples:
             timeouts:
               backendRequest: 15s
               request: 30s
+      ---
+      kind: BackendTrafficPolicy
+      metadata:
+        name: barbican-api-fqdn
+      spec:
+        mergeType: StrategicMerge
+        timeout:
+          http:
+            requestTimeout: 60s
+        targetRefs:
+        - group: gateway.networking.k8s.io
+          kind: HTTPRoute
+          name: barbican-api-fqdn
 */}}
 
 {{- define "helm-toolkit.manifests.http_route._host_rules._filters" }}
@@ -189,4 +209,25 @@ spec:
     name: {{ $gatewayName }}
   rules:
 {{ $hostNameFullRules | include "helm-toolkit.manifests.http_route._host_rules" | indent 4 }}
+
+{{- $backendPolicyOpts := dig "policies" "backend_traffic" dict $httpRouteConf -}}
+{{- if $backendPolicyOpts }}
+{{- if (dig "enabled" true $backendPolicyOpts) }}
+{{- if empty $backendPolicyOpts.mergeType }}
+{{- $_ := set $backendPolicyOpts "mergeType" "StrategicMerge" }}
+{{- end }}
+{{- $_ := unset $backendPolicyOpts "enabled" }}
+---
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: {{ $routeName }}
+spec:
+{{ $backendPolicyOpts | toYaml | indent 2 }}
+  targetRefs:
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: {{ $routeName }}
+{{- end }}
+{{- end }}
 {{- end }}
