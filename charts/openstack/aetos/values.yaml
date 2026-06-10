@@ -30,6 +30,8 @@ labels:
 images:
   pull_policy: IfNotPresent
   tags:
+    # FIXME: this image does not exist.
+    # Replace with one from mirantis.azurecr.io/ once available.
     aetos_api: docker.io/openstackhelm/aetos:master-ubuntu_jammy
     ks_user: docker.io/openstackhelm/heat:stein-ubuntu_bionic
     ks_service: docker.io/openstackhelm/heat:stein-ubuntu_bionic

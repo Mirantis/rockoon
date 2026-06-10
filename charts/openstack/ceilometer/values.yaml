@@ -62,6 +62,9 @@ images:
     ceilometer_notification: docker.io/kolla/ubuntu-source-ceilometer-notification:ocata
     dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
     image_repo_sync: docker.io/docker:17.07.0
+    # FIXME: this image won't in fact work with this chart
+    # Replace it with one from mirantis.azurecr.io once available
+    sg_core: quay.io/openstack-k8s-operators/sg-core:latest
   pull_policy: "IfNotPresent"
   local_registry:
     active: false
@@ -161,6 +164,34 @@ conf:
       mods_dir: /etc/apache2/mods-available
       a2enmod: null
       a2dismod: null
+  # NOTE: the content of .Values.conf.sg_core is transformed to a proper YAML
+  # configuration file consumed by the sg-core sidecar container
+  # (see manifests.sidecar_sg_core and template/configmap-etc).
+  # This structure here in .Values uses maps instead of lists for handlers,
+  # applications and transports, as lists are very hard to override in helm,
+  # but sg-core config expects lists there.
+  # Tcp socket IP is hardcoded to 127.0.0.1, the ports are populated from .Values.endpoints.
+  # The ceilometer pipeline.yaml config then have to specify
+  # 'tcp://127.0.0.1:30000' as additional publisher, tcp publisher does not
+  # support events, so don't bother with events_pipeline.yaml.
+  sg_core:
+    pluginDir: /lib/sg-core
+    logLevel: info
+    transports:
+      socket:
+        name: socket
+        config:
+          type: tcp
+        handlers:
+          ceilometer-metrics:
+            name: ceilometer-metrics
+            config:
+              source: tcp
+    applications:
+      prometheus:
+        name: prometheus
+        config:
+          host: 0.0.0.0
   ceilometer:
     DEFAULT:
       log_config_append: /etc/ceilometer/logging.conf
@@ -1899,6 +1930,9 @@ endpoints:
       api:
         default: 8777
         public: 80
+      sg_core:
+        tcp_ingest: 30000
+        scrape: 3000
   metric:
     name: gnocchi
     hosts:
@@ -2034,6 +2068,12 @@ pod:
         fsGroup: 42424
       container:
         ceilometer_notification:
+          capabilities:
+            drop:
+              - ALL
+        sg_core:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           capabilities:
             drop:
               - ALL
@@ -2235,6 +2275,13 @@ pod:
       limits:
         memory: "1024Mi"
         cpu: "2000m"
+    sg_core:
+      requests:
+        memory: "64Mi"
+        cpu: "50m"
+      limits:
+        memory: "512Mi"
+        cpu: "1000m"
     central:
       requests:
         memory: "128Mi"
@@ -2368,6 +2415,20 @@ pod:
             timeoutSeconds: 30
             successThreshold: 1
             failureThreshold: 5
+      sg_core:
+        liveness:
+          enabled: True
+          params:
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+        readiness:
+          enabled: True
+          params:
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+
 
 network_policy: {}
 
@@ -2402,4 +2463,5 @@ manifests:
   secret_rabbitmq: true
   service_api: true
   service_ingress_api: true
+  sidecar_sg_core: false
 ...

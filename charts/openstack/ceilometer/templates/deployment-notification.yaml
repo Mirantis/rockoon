@@ -27,6 +27,12 @@ exec:
     - --check
     - rabbitmq_sockets
 {{- end }}
+{{- define "sgCoreProbeTemplate" }}
+httpGet:
+  scheme: HTTP
+  path: /metrics
+  port: {{ tuple "metering" "scrape" "sg_core" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- end }}
 
 {{- if .Values.manifests.deployment_notification }}
 {{- $envAll := . }}
@@ -133,6 +139,27 @@ spec:
               subPath: health-probe.py
               readOnly: true
 {{ if $mounts_ceilometer_notification.volumeMounts }}{{ toYaml $mounts_ceilometer_notification.volumeMounts | indent 12 }}{{ end }}
+        {{- if .Values.manifests.sidecar_sg_core }}
+        - name: sg-core
+{{ tuple $envAll "sg_core" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ dict "envAll" $envAll "application" "ceilometer_notification" "container" "sg_core" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.sg_core | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" . "component" "notification" "container" "sg_core" "type" "liveness" "probeTemplate" (include "sgCoreProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" . "component" "notification" "container" "sg_core" "type" "readiness" "probeTemplate" (include "sgCoreProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          command:
+            - /bin/sg-core
+            - -config
+            - /etc/sg_core.conf.yaml
+          ports:
+            - name: prometheus
+              containerPort: {{ tuple "metering" "scrape" "sg_core" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+              protocol: TCP
+          volumeMounts:
+            - name: ceilometer-etc
+              mountPath: /etc/sg_core.conf.yaml
+              subPath: sg_core.conf.yaml
+              readOnly: true
+        {{- end }}
       volumes:
 {{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "ceilometer" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
         - name: pod-tmp

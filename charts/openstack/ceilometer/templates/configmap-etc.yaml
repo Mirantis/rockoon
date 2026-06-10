@@ -131,6 +131,24 @@ limitations under the License.
 {{- $formatter_fluent := dict "class" "oslo_log.formatters.FluentFormatter" -}}
 {{- $_ := set .Values.conf.logging "formatter_fluent" $formatter_fluent -}}
 {{- end -}}
+
+{{- $sg_conf := deepCopy .Values.conf.sg_core -}}
+{{- if .Values.manifests.sidecar_sg_core -}}
+{{/* insert internal and external ports from endpoints */}}
+{{- $scrapeport := tuple "metering" "scrape" "sg_core" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | int -}}
+{{- $_ := set $sg_conf.applications.prometheus.config "port" $scrapeport -}}
+{{- $socketaddr := tuple "metering" "tcp_ingest" "sg_core" . | include "helm-toolkit.endpoints.endpoint_port_lookup" | printf "127.0.0.1:%s" -}}
+{{- $_ := set $sg_conf.transports.socket.config "socketaddr" $socketaddr -}}
+{{/* applications, transports, and handlers inside each transport must be lists */}}
+{{- range $_, $transport := $sg_conf.transports -}}
+{{- $handlers_list := values $transport.handlers -}}
+{{- $_ := set $transport "handlers" $handlers_list -}}
+{{- end -}}
+{{- $transports_list := values $sg_conf.transports -}}
+{{- $_ := set $sg_conf "transports" $transports_list -}}
+{{- $applications_list := values $sg_conf.applications -}}
+{{- $_ := set $sg_conf "applications" $applications_list -}}
+{{- end -}}
 ---
 apiVersion: v1
 kind: Secret
@@ -150,6 +168,9 @@ data:
   polling.yaml: {{ .Values.conf.polling | b64enc }}
   panko.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.panko | b64enc }}
   logging.conf: {{ include "helm-toolkit.utils.to_oslo_conf" .Values.conf.logging | b64enc }}
+{{- if .Values.manifests.sidecar_sg_core }}
+  sg_core.conf.yaml: {{ toYaml $sg_conf | b64enc }}
+{{- end }}
 {{- if .Values.conf.security }}
 {{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.security "key" "security.conf" "format" "Secret" ) | indent 2 }}
 {{- end}}
