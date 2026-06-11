@@ -19,12 +19,17 @@ set -ex
 COMMAND="${@:-start}"
 
 function start () {
-  {{- if .Values.conf.software.uwsgi.enabled }}
-  exec uwsgi --ini /etc/glance/glance-api-uwsgi.ini
-  {{- else }}
-  exec glance-api \
-        --config-file /etc/glance/glance-api.conf
+  confs="--config-file /etc/glance/glance-api.conf"
+
+  GLANCE_API=""
+  {{- if not .Values.conf.software.uwsgi.enabled }}
+  GLANCE_API="$(type -p glance-api || true)"
   {{- end }}
+  if [ -n "$GLANCE_API" ]; then
+    exec glance-api $confs
+  else
+    exec uwsgi --ini /etc/glance/glance-api-uwsgi.ini --pyargv " $confs "
+  fi
 }
 
 function stop () {

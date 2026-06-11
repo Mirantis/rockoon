@@ -24,10 +24,8 @@ metadata:
 data:
   placement-api.sh: |
 {{ tuple "bin/_placement-api.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-{{- if .Values.conf.use_wsgi_script }}
   wsgi.py: |
 {{ .Values.conf.wsgi_script | indent 4 }}
-{{- end }}
   db-nova-migrate-placement.sh: |
 {{ tuple "bin/_db-nova-migrate-placement.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   db-sync.sh: |

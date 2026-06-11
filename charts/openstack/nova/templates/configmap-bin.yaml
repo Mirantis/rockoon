@@ -61,12 +61,10 @@ data:
 {{ tuple "bin/_health-probe.py.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   nova-api.sh: |
 {{ tuple "bin/_nova-api.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
-{{- if .Values.conf.use_wsgi_script }}
   wsgi-osapi.py: |
 {{ .Values.conf.wsgi_script_nova_api | indent 4 }}
   wsgi-metadata.py: |
 {{ .Values.conf.wsgi_script_nova_metadata | indent 4 }}
-{{- end }}
   nova-api-metadata.sh: |
 {{ tuple "bin/_nova-api-metadata.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   nova-placement-api.sh: |

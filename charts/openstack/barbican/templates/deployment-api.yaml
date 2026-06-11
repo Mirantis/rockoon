@@ -110,15 +110,12 @@ spec:
               readOnly: true
             - name: barbican-oslo-policy
               mountPath: /etc/barbican/policy.d/
-            {{- if .Values.conf.use_wsgi_script }}
-            - name: barbican-bin
-              mountPath: /var/www/cgi-bin/barbican/wsgi.py
-              subPath: wsgi.py
-              readOnly: true
-            {{- else }}
             - name: wsgi-barbican
               mountPath: /var/www/cgi-bin/barbican
-            {{- end }}
+            - name: barbican-bin
+              mountPath: /tmp/wsgi.py
+              subPath: wsgi.py
+              readOnly: true
             - name: barbican-etc
               mountPath: {{ .Values.conf.software.apache2.conf_dir }}/wsgi-barbican.conf
               subPath: wsgi-barbican.conf
@@ -160,10 +157,8 @@ spec:
           emptyDir: {}
         - name: etcbarbican
           emptyDir: {}
-        {{- if not .Values.conf.use_wsgi_script }}
         - name: wsgi-barbican
           emptyDir: {}
-        {{- end }}
         - name: logs-apache
           emptyDir: {}
         - name: run-apache

@@ -145,9 +145,6 @@ limitations under the License.
 {{- $formatter_fluent := dict "class" "oslo_log.formatters.FluentFormatter" -}}
 {{- $_ := set .Values.conf.logging "formatter_fluent" $formatter_fluent -}}
 {{- end -}}
-{{- if .Values.conf.use_wsgi_script -}}
-{{- $_ := set .Values.conf.apache_wsgi.config "script_name" "wsgi.py" -}}
-{{- end -}}
 ---
 apiVersion: v1
 kind: Secret

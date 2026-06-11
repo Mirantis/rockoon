@@ -38,7 +38,6 @@ spec:
         logging:
           logger_keystone:
             level: INFO
-        use_wsgi_script: true
         ks_domains:
           domain.with.ldap:
             assignment:
@@ -79,7 +78,7 @@ spec:
           <VirtualHost *:{{ $portInt }}>
               WSGIDaemonProcess keystone-public processes=8 threads=1 user=keystone group=keystone display-name=%{GROUP}
               WSGIProcessGroup keystone-public
-              WSGIScriptAlias / /var/www/cgi-bin/keystone/wsgi.py
+              WSGIScriptAlias / /var/www/cgi-bin/keystone/keystone-wsgi-public
               WSGIApplicationGroup %{GLOBAL}
               WSGIPassAuthorization On
               ServerSignature Off

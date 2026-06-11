@@ -24,9 +24,12 @@ function start () {
   # Mask permissions to files 416 dirs 0750
   umask 0027
 
-  {{- if not .Values.conf.use_wsgi_script }}
-  cp -a $(type -p octavia-wsgi) /var/www/cgi-bin/octavia/
-  {{- end }}
+  WSGI_BIN="$(type -p octavia-wsgi || true)"
+  if [ -n "$WSGI_BIN" ]; then
+    cp -a "$WSGI_BIN" /var/www/cgi-bin/octavia/
+  else
+    cp -a /tmp/wsgi.py /var/www/cgi-bin/octavia/octavia-wsgi
+  fi
 
   {{- if .Values.conf.software.apache2.a2enmod }}
     {{- range .Values.conf.software.apache2.a2enmod }}

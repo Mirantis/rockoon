@@ -21,9 +21,12 @@ set -ex
 COMMAND="${@:-start}"
 
 function start () {
-  {{- if not .Values.conf.use_wsgi_script }}
-  cp -a $(type -p masakari-wsgi) /var/www/cgi-bin/masakari/
-  {{- end }}
+  WSGI_BIN="$(type -p masakari-wsgi || true)"
+  if [ -n "$WSGI_BIN" ]; then
+    cp -a "$WSGI_BIN" /var/www/cgi-bin/masakari/
+  else
+    cp -a /tmp/wsgi.py /var/www/cgi-bin/masakari/masakari-wsgi
+  fi
 
   {{- if .Values.conf.software.apache2.a2enmod }}
     {{- range .Values.conf.software.apache2.a2enmod }}

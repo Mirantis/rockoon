@@ -21,10 +21,12 @@ set -ex
 COMMAND="${@:-start}"
 
 function start () {
-
-  {{- if not .Values.conf.use_wsgi_script }}
-  cp -a $(type -p placement-api) /var/www/cgi-bin/placement/
-  {{- end }}
+  WSGI_BIN="$(type -p placement-api || true)"
+  if [ -n "$WSGI_BIN" ]; then
+    cp -a "$WSGI_BIN" /var/www/cgi-bin/placement/
+  else
+    cp -a /tmp/wsgi.py /var/www/cgi-bin/placement/placement-api
+  fi
 
   # Start Apache2
   {{- if .Values.conf.software.apache2.a2enmod }}

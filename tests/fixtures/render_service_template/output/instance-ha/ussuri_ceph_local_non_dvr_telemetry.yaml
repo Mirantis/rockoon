@@ -10,7 +10,6 @@ spec:
         policy.d:
           01-controller-default.yaml: {'instance-ha_rule1': 'instance-ha_value1'}
           02-custom.yaml: {}
-        use_wsgi_script: false
         masakari:
           DEFAULT:
             os_privileged_user_name: admin

@@ -98,12 +98,12 @@ spec:
               mountPath: /tmp/nova-api.sh
               subPath: nova-api.sh
               readOnly: true
-            {{- if .Values.conf.use_wsgi_script }}
+            - name: wsgi-nova
+              mountPath: /var/www/cgi-bin/nova
             - name: nova-bin
-              mountPath: /var/www/cgi-bin/nova/nova-api-wsgi
+              mountPath: /tmp/wsgi-osapi.py
               subPath: wsgi-osapi.py
               readOnly: true
-            {{- end }}
             - name: nova-etc
               mountPath: /etc/nova/nova.conf
               subPath: nova.conf
@@ -124,10 +124,6 @@ spec:
               mountPath: /etc/nova/api_audit_map.conf
               subPath: api_audit_map.conf
               readOnly: true
-            {{- if not .Values.conf.use_wsgi_script }}
-            - name: wsgi-nova
-              mountPath: /var/www/cgi-bin/nova
-            {{- end }}
             - name: nova-etc
               mountPath: {{ .Values.conf.software.apache2.conf_dir }}/wsgi-nova.conf
               subPath: wsgi-nova.conf
@@ -147,8 +143,6 @@ spec:
             - name: run-apache
               mountPath: /var/run/apache2
             {{- if .Values.manifests.certificates }}
-            - name: wsgi-nova
-              mountPath: /var/www/cgi-bin/nova
             - name: nova-etc
               mountPath: {{ .Values.conf.software.apache2.conf_dir }}/wsgi-api.conf
               subPath: wsgi-api.conf
@@ -169,16 +163,10 @@ spec:
 {{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "nova" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
         - name: pod-tmp
           emptyDir: {}
-        {{- if .Values.manifests.certificates }}
         - name: wsgi-nova
           emptyDir: {}
-        {{- end }}
         - name: pod-var-nova
           emptyDir: {}
-        {{- if not .Values.conf.use_wsgi_script }}
-        - name: wsgi-nova
-          emptyDir: {}
-        {{- end }}
         - name: logs-apache
           emptyDir: {}
         - name: run-apache

@@ -155,15 +155,12 @@ spec:
               mountPath: /etc/octavia/api_audit_map.conf
               subPath: api_audit_map.conf
               readOnly: true
-            {{- if .Values.conf.use_wsgi_script }}
-            - name: octavia-bin
-              mountPath: /var/www/cgi-bin/octavia/wsgi.py
-              subPath: wsgi.py
-              readOnly: true
-            {{- else }}
             - name: wsgi-octavia
               mountPath: /var/www/cgi-bin/octavia
-            {{- end }}
+            - name: octavia-bin
+              mountPath: /tmp/wsgi.py
+              subPath: wsgi.py
+              readOnly: true
             - name: octavia-etc
               mountPath: {{ .Values.conf.software.apache2.conf_dir }}/wsgi-octavia.conf
               subPath: wsgi-octavia.conf
@@ -259,10 +256,8 @@ spec:
 {{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "octavia" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
         - name: pod-etc-octavia
           emptyDir: {}
-        {{- if not .Values.conf.use_wsgi_script }}
         - name: wsgi-octavia
           emptyDir: {}
-        {{- end }}
         - name: logs-apache
           emptyDir: {}
         - name: run-apache

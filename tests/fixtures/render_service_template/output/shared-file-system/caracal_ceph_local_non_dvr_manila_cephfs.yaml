@@ -24,7 +24,6 @@ spec:
                     share_backend_name: cephfs
                     share_driver: manila.share.drivers.cephfs.driver.CephFSDriver
       conf:
-        use_wsgi_script: false
         ceph:
           config:
             global:

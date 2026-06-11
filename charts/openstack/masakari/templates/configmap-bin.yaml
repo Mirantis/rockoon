@@ -43,6 +43,7 @@ data:
 {{- include "helm-toolkit.scripts.db_drop" . | indent 4 }}
   masakari-api.sh: |
 {{ tuple "bin/_masakari-api.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
+{{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.wsgi_script "key" "wsgi.py" "format" "ConfigMap" ) | indent 2 }}
   masakari-engine.sh: |
 {{ tuple "bin/_masakari-engine.sh.tpl" . | include "helm-toolkit.utils.template" | indent 4 }}
   masakari-hostmonitor.sh: |
@@ -61,9 +62,6 @@ data:
 {{- include "helm-toolkit.scripts.keystone_user" . | indent 4 }}
   health-probe.py: |
 {{- include "helm-toolkit.scripts.generic_health_probe" . | indent 4 }}
-{{- if .Values.conf.use_wsgi_script }}
-{{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.wsgi_script "key" "wsgi.py" "format" "ConfigMap" ) | indent 2 }}
-{{- end }}
 {{- end }}
 {{- end }}
 

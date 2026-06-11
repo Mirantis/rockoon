@@ -19,9 +19,12 @@ set -ex
 COMMAND="${@:-start}"
 
 function start () {
-  {{- if not .Values.conf.use_wsgi_script }}
-  cp -a $(type -p cinder-wsgi) /var/www/cgi-bin/cinder/
-  {{- end }}
+  WSGI_BIN="$(type -p cinder-wsgi || true)"
+  if [ -n "$WSGI_BIN" ]; then
+    cp -a "$WSGI_BIN" /var/www/cgi-bin/cinder/
+  else
+    cp -a /tmp/wsgi.py /var/www/cgi-bin/cinder/cinder-wsgi
+  fi
 
   {{- if .Values.conf.software.apache2.a2enmod }}
     {{- range .Values.conf.software.apache2.a2enmod }}

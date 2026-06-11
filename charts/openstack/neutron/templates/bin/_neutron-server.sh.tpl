@@ -72,11 +72,15 @@ confs="--config-file /etc/neutron/neutron.conf"
   confs+=" --config-file /etc/neutron/l2gw_plugin.ini"
 {{- end }}
 
-{{- if .Values.conf.software.uwsgi.enabled }}
-exec uwsgi --ini /etc/neutron/neutron-api-uwsgi.ini --pyargv " $confs "
-{{- else }}
-exec neutron-server $confs
+NEUTRON_SERVER=""
+{{- if not .Values.conf.software.uwsgi.enabled }}
+NEUTRON_SERVER="$(type -p neutron-server || true)"
 {{- end }}
+if [ -n "$NEUTRON_SERVER" ]; then
+  exec neutron-server $confs
+else
+  exec uwsgi --ini /etc/neutron/neutron-api-uwsgi.ini --pyargv " $confs "
+fi
 }
 
 function stop () {

@@ -19,9 +19,15 @@ set -ex
 COMMAND="${@:-start}"
 
 function start () {
+  WSGI_BIN=""
   {{- if not .Values.conf.use_wsgi_script }}
-  cp -a $(type -p barbican-wsgi-api) /var/www/cgi-bin/barbican/
+  WSGI_BIN="$(type -p barbican-wsgi-api || true)"
   {{- end }}
+  if [ -n "$WSGI_BIN" ]; then
+    cp -a "$WSGI_BIN" /var/www/cgi-bin/barbican/
+  else
+    cp -a /tmp/wsgi.py /var/www/cgi-bin/barbican/barbican-wsgi-api
+  fi
 
   {{- if .Values.conf.software.apache2.a2enmod }}
     {{- range .Values.conf.software.apache2.a2enmod }}

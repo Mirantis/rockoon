@@ -39,7 +39,6 @@ spec:
         logging:
           logger_designate:
             level: INFO
-        use_wsgi_script: false
       dependencies:
         static:
           db_init:
