@@ -17,17 +17,25 @@ limitations under the License.
 set -ex
 {{ dict "envAll" . "objectType" "script_sh" "secretPrefix" "ironic" | include "helm-toolkit.snippets.kubernetes_ssl_objects" }}
 COMMAND="${@:-start}"
-{{- if and (.Values.bootstrap.object_store.enabled) (.Values.bootstrap.object_store.openstack.enabled) }}
-OPTIONS=" --config-file /tmp/pod-shared/swift.conf"
-{{- end }}
-{{- if and (.Values.bootstrap.network.enabled) (.Values.bootstrap.network.openstack.enabled) }}
-OPTIONS="${OPTIONS} --config-file /tmp/pod-shared/networks.conf"
-{{- end }}
 
 function start () {
-  exec ironic-api \
-        --config-file /etc/ironic/ironic.conf \
-        ${OPTIONS}
+  confs="--config-file /etc/ironic/ironic.conf"
+{{- if and (.Values.bootstrap.object_store.enabled) (.Values.bootstrap.object_store.openstack.enabled) }}
+  confs+=" --config-file /tmp/pod-shared/swift.conf"
+{{- end }}
+{{- if and (.Values.bootstrap.network.enabled) (.Values.bootstrap.network.openstack.enabled) }}
+  confs+=" --config-file /tmp/pod-shared/networks.conf"
+{{- end }}
+
+  IRONIC_API=""
+  {{- if not .Values.conf.software.uwsgi.enabled }}
+  IRONIC_API="$(type -p ironic-api || true)"
+  {{- end }}
+  if [ -n "$IRONIC_API" ]; then
+    exec ironic-api $confs
+  else
+    exec uwsgi --ini /etc/ironic/ironic-api-uwsgi.ini --pyargv " $confs "
+  fi
 }
 
 function stop () {

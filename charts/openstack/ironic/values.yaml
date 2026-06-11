@@ -86,6 +86,11 @@ conf:
       baremetal: service/compute/baremetal
   policy: {}
   policy.d: {}
+  # Gazpacho images still ship the ironic-api binary, so entrypoint cannot
+  # be chosen by type -p alone; enable uWSGI explicitly from gazpacho release.
+  software:
+    uwsgi:
+      enabled: false
   tftp_map_file: |
     re ^(/tftpboot/) /tftpboot/\2
     re ^/tftpboot/ /tftpboot/
@@ -125,6 +130,7 @@ conf:
       isolinux_bin: /usr/lib/ISOLINUX/isolinux.bin
     api:
       port: null
+      api_workers: 4
     audit:
       audit_map_file: /etc/ironic/api_audit_map.conf
       enabled: false
@@ -246,6 +252,22 @@ conf:
   nodes:
     deploy_kernel_image: ironic-agent.kernel
     deploy_ramdisk_image: ironic-agent.initramfs
+  ironic_api_uwsgi:
+    uwsgi:
+      add-header: "Connection: close"
+      buffer-size: 65535
+      die-on-term: true
+      enable-threads: true
+      exit-on-reload: false
+      hook-master-start: unix_signal:15 gracefully_kill_them_all
+      lazy-apps: true
+      log-x-forwarded-for: true
+      master: true
+      procname-prefix-spaced: "ironic-api:"
+      route-user-agent: '^kube-probe.* donotlog:'
+      thunder-lock: true
+      worker-reload-mercy: 80
+      module: ironic.wsgi:application
 
 network:
   provisioning: {}
