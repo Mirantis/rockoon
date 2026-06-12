@@ -70,7 +70,7 @@ spec:
         deployment_error: false
         deployment_ingress: false
         job_cluster_wait: true
-        network_policy: false
+        network_policy: true
         service_ingress: false
         service_master: true
         secret_ca_bundle: true
@@ -105,3 +105,28 @@ spec:
         phy_backup:
           class_name: mirablock-k8s-block-hdd
           enabled: true
+      network_policy:
+        mariadb-server:
+          spec:
+            ingress:
+              - from:
+                  - default: selector
+              - from:
+                  - ipBlock:
+                      cidr: 192.168.0.0/16
+                ports:
+                  - port: 3306
+                    protocol: TCP
+              - from:
+                  - namespaceSelector:
+                      matchLabels:
+                        kubernetes.io/metadata.name: stacklight
+                ports:
+                  - port: 9104
+                    protocol: TCP
+            podSelector:
+              matchLabels:
+                application: mariadb
+                component: server
+            policyTypes:
+              - Ingress

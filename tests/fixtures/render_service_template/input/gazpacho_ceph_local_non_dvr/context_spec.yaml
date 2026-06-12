@@ -113,6 +113,7 @@ features:
   - redis
   - instance-ha
   - shared-file-system
+  - dynamic-resource-balancer
   ssl:
     public_endpoints:
       api_cert: "TEST CRT"

@@ -42,6 +42,26 @@ block-storage:
       test:
         password: 55Y1R3QdGFvuntBCtD2iNZQcZiQUnsTJ
         username: testtFQE
+  - database:
+      user:
+        password: backupPassword
+        username: backupUsername
+    memcached: backupMemcached
+    messaging:
+      user:
+        password: backupPassword
+        username: backupUser
+    notifications:
+      user:
+        password: backupNotificationPassword
+        username: backupNotificationUser
+    identity:
+      cinder:
+        password: 7SJvTD3HZ4gm3eU2UDGdjrcZC4wyj2zA
+        username: cinderJCh8Iz
+      test:
+        password: 55Y1R3QdGFvuntBCtD2iNZQcZiQUnsTJ
+        username: testtFQE
   keystone_creds: {}
 compute:
   is_ceph_enabled: true
@@ -102,8 +122,7 @@ coordination:
   credentials: null
   keystone_creds: {}
 dashboard:
-  os_policy_services: ['cinder', 'nova', 'designate', 'keystone', 'glance', 'neutron', 'heat', 'octavia', 'barbican', 'placement', 'ironic', 'aodh', 'panko', 'gnocchi', 'masakari']
-  rgw_internal_cacert: "RGW CRT"
+  os_policy_services: ['cinder', 'nova', 'designate', 'keystone', 'glance', 'neutron', 'heat', 'octavia', 'barbican', 'placement', 'ironic', 'aodh', 'gnocchi', 'masakari']
   credentials: &credentials_dashboard
   - database:
       user:
@@ -172,7 +191,6 @@ dns:
       username: powerdns4TuEzVpk
   keystone_creds: {}
 identity:
-  rgw_internal_cacert: "RGW CRT"
   credentials: &credentials_identity
   - database:
       user:
@@ -386,12 +404,86 @@ redis:
   redis_creds:
     password: |
       Y2ZMRFlTc05idUN5d2E2Vm1Cdlo4aDJzSlh1Wm52cVc=
+alarming:
+  credentials: &credentials_alarming
+  - database:
+      user:
+        password: WxMxKPef5uHCHZHPfYBMNwY1fGxUG8pD
+        username: aodh3dEe
+    memcached: vaT1fSWMgCwFlXem
+    messaging:
+      user:
+        password: D3R9K371zxx2bygGZRXgz2Mrp2XsL1P6
+        username: aodhfe3v
+    notifications:
+      user:
+        password: dxDZQgkkcVjGQAQw5dfZKSlpbHlMpxlA
+        username: aodh3FeH
+    identity:
+      aodh:
+        password: 9iaJ9hP83P41Mz8WMww1IggDCclZXWFM
+        username: aodheGbd
+      test:
+        password: DExly456mr4ZGIlmtccQRs5jsmMR1W9A
+        username: testZL04
+  keystone_creds: {}
+metering:
+  rgw_metrics_user_secret_key: D0Elptf91fPJiJBQltgWrc3AoC4nxjQjsTc6hfTG
+  rgw_metrics_user_access_key: WMBSY70L0DTKJVRENQ9A
+  credentials: &credentials_metering
+  - database:
+      user:
+        password: U9KwPjPgK1txi5kMm9pvVdlJDvtUr1lM
+        username: ceilometerxfkr4HZF3z
+    memcached: 3TftRxhU2IZ7maTD
+    messaging:
+      user:
+        password: VCBEs3bsRHNqXjDFRBEABAqqhsAgcK1E
+        username: ceilometerdNwnaAFUJC
+    notifications:
+      user:
+        password: PYVPcRruzubVN2sguGarI6rbgFTb7FSd
+        username: ceilometerxkaMcrLDm7
+    identity:
+      ceilometer:
+        password: Tnhbrnl6g31pzRaFdbxvyeMr1CSe7yDF
+        username: ceilometerXhxs2HihzX
+      test:
+        password: CTKDtRix0ZAAHJZCVuQ60hWe2MiUHxAg
+        username: testHl4x
+  keystone_creds: {}
+metric:
+  credentials: &credentials_metric
+  - database:
+      user:
+        password: hY4hMF1YKC5DBbdjTtMdNRfDVgviki7a
+        username: gnocchiuTTQl1b
+    memcached: mAcisvqaTNUVKNeE
+    messaging:
+      user:
+        password: YfcVqYjgwIGlgM0vVAg31JBBbQ8bSQqK
+        username: gnocchirnLp3GB
+    notifications:
+      user:
+        password: AmlSFp4mL6MW5RyTqnYhcLVe3H9uqglL
+        username: gnocchi3uKHLFZ
+    identity:
+      gnocchi:
+        password: 4WEYNKaBF95C8UqMpj7ZD8u1q7Z3WdcR
+        username: gnocchicx1gn3j
+      test:
+        password: 5s94mESUaC5t4gTrNKmFIIEAVj3JEJ6p
+        username: testSTmV
+  redis_namespace: openstack-redis
+  redis_secret: cfLDYSsNbuCywa6VmBvZ8h2sJXuZnvqW
+  keystone_creds: {}
 instance-ha:
   credentials: &credentials_instance-ha
   - database:
       user:
         password: R441HIJxfNF8iAfAfwxASnndFXqSBfVn
         username: masakariteW3kGBC
+    kek: SDJTR0lEQVFXeFhkMjdyS05WVGxnR3MxbHkxWlNIaWg=
     memcached: 3vySYJq0rDZ32KGG
     messaging:
       user:
@@ -409,38 +501,9 @@ instance-ha:
         password: KI40mJVQ9fZP3MBZLpgrFSf2nqZIbbqg
         username: testC7BY
   keystone_creds: {}
-baremetal:
-  credentials: &credentials_baremetal
-  - database:
-      user:
-        password: knwFGHdZ6KCqcKqBidXXEqiEpZhBD7h4
-        username: ironicdrGjrFm
-    memcached: 4zDhycwch09UPx4j
-    messaging:
-      user:
-        password: TRRhbnUMsepnqSzyJngJtgZD9gRu0Fwy
-        username: ironicx7uHpit
-    metadata_secret: mN0aLDTcg1AVqyLWNDjCd2Jz6DA61cZJ
-    notifications:
-      user:
-        password: hL3STFyPBLCdR2qUCdaGEUeRB5jRIFPf
-        username: ironictvAcFA3
-    identity:
-      ironic:
-        password: 9d4CIP5ismqTa7l5N5FdD8MAuFMXx9EV
-        username: ironicAhFsr
-      test:
-        password: q38BqVBqRH8mwfvI3uZeTmwe7JhKm3q1
-        username: testLJtA
-  keystone_creds:
-    nova:
-      password: BLFKrb8JhAMBb1v9BnRGDckMaYY7XUbq
-      username: novaZzHG
-    neutron:
-      password: KBecvsPZsWBFzDqYnevHWArm7tFycZKr
-      username: neutronLeRjiDsyT
 messaging:
   credentials:
+    alarming: *credentials_alarming
     block-storage: *credentials_block-storage
     compute: *credentials_compute
     dashboard: *credentials_dashboard
@@ -449,15 +512,17 @@ messaging:
     image: *credentials_image
     key-manager: *credentials_key-manager
     load-balancer: *credentials_load-balancer
+    metering: *credentials_metering
+    metric: *credentials_metric
     networking: *credentials_networking
     orchestration: *credentials_orchestration
     placement: *credentials_placement
     instance-ha: *credentials_instance-ha
-    barmetal: *credentials_baremetal
     stacklight:
       username: stacklight123456
       password: ptehSf4lZxF0TAs16INhV9XmuVXHbL6R
   services:
+    alarming: null
     block-storage: null
     compute: null
     coordination: null
@@ -471,10 +536,10 @@ messaging:
     load-balancer: null
     memcached: null
     messaging: null
+    metering: null
+    metric: null
     networking: null
     orchestration: null
     placement: null
     redis: null
     instance-ha: null
-descheduler:
-    openstack_namespace: "openstack"

@@ -29,7 +29,7 @@ spec:
             gnocchi_external_project_owner: service
             gnocchi_external_domain_name: service
           coordination:
-            backend_url: etcd3://etcd:2379
+            backend_url: etcd3+http://etcd:2379?api_version=auto
           database:
             alarm_history_time_to_live: 86400
           keystone_authtoken:
@@ -188,23 +188,3 @@ spec:
           restartPolicy: Never
         ks_user:
           restartPolicy: Never
-      pod:
-        probes:
-          evaluator:
-            evaluator:
-              readiness:
-                enabled: false
-              liveness:
-                enabled: false
-          listener:
-            listener:
-              readiness:
-                enabled: false
-              liveness:
-                enabled: false
-          notifier:
-            notifier:
-              readiness:
-                enabled: false
-              liveness:
-                enabled: false

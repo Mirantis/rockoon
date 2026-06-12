@@ -1,3 +1,6 @@
+app-gateway:
+  credentials: null
+  keystone_creds: {}
 block-storage:
   is_ceph_enabled: true
   ceph:
@@ -45,6 +48,13 @@ cloudprober:
     cloudprober:
       password: QXH50EtBVsiCptehSf4l55Y1R3QdGFv8xc
       username: osctlQECh8
+dynamic-resource-balancer:
+  credentials:
+  - identity:
+      drb-controller:
+        password: iCptehQXf4l55GFv8xc50EtBVY1HSR3Qds
+        username: drbcontrollerJhd
+  keystone_creds: {}
 compute:
   ceph:
     nova:
@@ -118,6 +128,7 @@ dashboard:
         username: test5JeB
     secret_key: kQt7XsbPVNDABuHyngdJuppnzP5i82Mz
   keystone_creds: {}
+  federation: {}
 database:
   galera_creds:
     audit:
@@ -500,3 +511,5 @@ messaging:
     placement: null
     redis: null
     instance-ha: null
+descheduler:
+  openstack_namespace: "openstack"

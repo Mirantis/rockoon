@@ -11,59 +11,59 @@ spec:
             name: heat_engine_rpc_expire
             pattern: ^heat-engine-listener\.
             priority: 1
-            vhost: heat_ussuri
+            vhost: heat_gazpacho
           - definition:
               expires: 600000
             name: heat_worker_rpc_expire
             pattern: ^engine_worker\.
             priority: 1
-            vhost: heat_ussuri
+            vhost: heat_gazpacho
           - definition:
               expires: 600000
             name: results_expire
             pattern: ^results\.
             priority: 1
-            vhost: heat_ussuri
+            vhost: heat_gazpacho
           - definition:
               expires: 600000
             name: tasks_expire
             pattern: ^tasks\.
             priority: 1
-            vhost: heat_ussuri
+            vhost: heat_gazpacho
           - definition:
               message-ttl: 120000
             name: default-policy
             pattern: ^(?!amq\.).*
-            vhost: heat_ussuri
+            vhost: heat_gazpacho
           - definition:
               expires: 600000
             name: heat_engine_rpc_expire
             pattern: ^heat-engine-listener\.
             priority: 1
-            vhost: heat_victoria
+            vhost: heat_master
           - definition:
               expires: 600000
             name: heat_worker_rpc_expire
             pattern: ^engine_worker\.
             priority: 1
-            vhost: heat_victoria
+            vhost: heat_master
           - definition:
               expires: 600000
             name: results_expire
             pattern: ^results\.
             priority: 1
-            vhost: heat_victoria
+            vhost: heat_master
           - definition:
               expires: 600000
             name: tasks_expire
             pattern: ^tasks\.
             priority: 1
-            vhost: heat_victoria
+            vhost: heat_master
           - definition:
               message-ttl: 120000
             name: default-policy
             pattern: ^(?!amq\.).*
-            vhost: heat_victoria
+            vhost: heat_master
           - definition:
               message-ttl: 120000
             name: default-policy-openstack
@@ -307,8 +307,8 @@ spec:
                 password: BY5CvE9aGG3jUkQghTCACvcDZbp6VcUI
                 username: heatekEb
             path:
-            - /heat_ussuri
-            - /heat_victoria
+            - /heat_gazpacho
+            - /heat_master
           heat_service_notifications:
             auth:
               heat_1:
@@ -417,7 +417,7 @@ spec:
           rabbitmq_scripted_test: rabbitmq-scripted-test:latest
       manifests:
         job_users_create: true
-        network_policy: false
+        network_policy: true
       pod:
         replicas:
           server: 1
@@ -434,3 +434,39 @@ spec:
                   timeoutSeconds: 30
       volume:
         enabled: false
+      network_policy:
+        server:
+          spec:
+            ingress:
+              - from:
+                  - default: selector
+              - from:
+                  - ipBlock:
+                      cidr: 192.168.0.0/16
+                ports:
+                  - port: 5671
+                    protocol: TCP
+                  - port: 5672
+                    protocol: TCP
+              - from:
+                  - ipBlock:
+                      cidr: 0.0.0.0/0
+                ports:
+                  - port: 5671
+                    protocol: TCP
+                  - port: 5672
+                    protocol: TCP
+              - from:
+                  - namespaceSelector:
+                      matchLabels:
+                        kubernetes.io/metadata.name: stacklight
+                ports:
+                  - port: 15692
+                    protocol: TCP
+            podSelector:
+              matchLabels:
+                application: rabbitmq
+                component: server
+                release_group: openstack-rabbitmq
+            policyTypes:
+              - Ingress
