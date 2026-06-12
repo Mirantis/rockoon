@@ -38,9 +38,9 @@ if [[ -z $ovn_db_ip ]]; then
   exit 1
 fi
 
-{{- if not .Values.conf.software.uwsgi.enabled }}
-rm -f {{ .Values.conf.neutron.DEFAULT.state_path }}/ovn_maintenance.json
-{{- end }}
+if [ -n "$(type -p neutron-server || true)" ]; then
+  rm -f {{ .Values.conf.neutron.DEFAULT.state_path }}/ovn_maintenance.json
+fi
 
 tee > /tmp/pod-shared/neutron-ovn.ini << EOF
 [DEFAULT]
@@ -72,10 +72,7 @@ confs="--config-file /etc/neutron/neutron.conf"
   confs+=" --config-file /etc/neutron/l2gw_plugin.ini"
 {{- end }}
 
-NEUTRON_SERVER=""
-{{- if not .Values.conf.software.uwsgi.enabled }}
 NEUTRON_SERVER="$(type -p neutron-server || true)"
-{{- end }}
 if [ -n "$NEUTRON_SERVER" ]; then
   exec neutron-server $confs
 else

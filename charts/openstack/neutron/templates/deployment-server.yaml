@@ -117,9 +117,7 @@ spec:
 {{ dict "envAll" $envAll "application" "neutron_server" "container" "neutron_server" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
 {{ dict "envAll" $envAll "component" "server" "container" "server" "type" "readiness" "probeTemplate" (include "serverReadinessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
 {{ dict "envAll" $envAll "component" "server" "container" "server" "type" "liveness" "probeTemplate" (include "serverLivenessProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
-{{- if not .Values.conf.software.uwsgi.enabled }}
 {{ dict "envAll" $envAll "component" "server" "container" "server" "type" "startup" "probeTemplate" (include "serverStartupProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
-{{- end }}
           command:
             - /tmp/neutron-server.sh
             - start
