@@ -874,11 +874,6 @@ spec:
         floating_network: {{ floating_network }}
       {%- endif %}
       conf:
-        {%- if OSVer[spec.openstack_version] >= OSVer.gazpacho %}
-        software:
-          uwsgi:
-            enabled: true
-        {%- endif %}
         policy.d:
           01-controller-default.yaml: {{ service_policy }}
           02-custom.yaml: {{ spec.get("features", {}).get("policies", {}).get("neutron", {}) }}

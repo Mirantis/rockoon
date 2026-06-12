@@ -1477,9 +1477,6 @@ pod:
           cpu: "2000m"
 
 conf:
-  software:
-    uwsgi:
-      enabled: false
   neutron_api_uwsgi:
     # uwsgi ini source https://github.com/openstack/openstack-helm/commit/1913194abe92d65665b8b5ab62bf5838a1abdb98
     uwsgi:

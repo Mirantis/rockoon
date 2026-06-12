@@ -188,9 +188,6 @@ spec:
             pool_start: 10.11.12.100
             range: 10.11.12.0/24
       conf:
-        software:
-          uwsgi:
-            enabled: true
         auto_bridge_add:
           br-ex: veth-phy
         l3_agent:
