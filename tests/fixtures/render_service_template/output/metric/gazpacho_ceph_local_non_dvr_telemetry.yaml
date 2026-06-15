@@ -74,7 +74,7 @@ spec:
         gnocchi:
           DEFAULT:
             debug: false
-            coordination_url: etcd3://etcd:2379
+            coordination_url: etcd3+http://etcd:2379?api_version=auto
           storage:
             driver: redis
             redis_url: redis://:cfLDYSsNbuCywa6VmBvZ8h2sJXuZnvqW@rfs-openstack-redis.openstack-redis:26379?sentinel=mymaster&db=0

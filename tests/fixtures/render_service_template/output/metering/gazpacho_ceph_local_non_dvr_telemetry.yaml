@@ -27,7 +27,6 @@ spec:
           sinks:
             - name: event_sink
               publishers:
-                - panko://
                 - notifier://?topic=alarm.all
               transformers: null
           sources:
@@ -681,7 +680,7 @@ spec:
           DEFAULT:
             debug: false
           coordination:
-            backend_url: etcd3://etcd:2379
+            backend_url: etcd3+http://etcd:2379?api_version=auto
           api:
             aodh_is_enabled: "True"
           compute:
@@ -759,11 +758,6 @@ spec:
             ceilometer:
               username: ceilometerxfkr4HZF3z
               password: U9KwPjPgK1txi5kMm9pvVdlJDvtUr1lM
-        oslo_db_panko:
-          auth:
-            panko:
-              username:   panko3sgfP
-              password:   G9bGeEQSxdWpQDgV9bpNIidBpWvpZ8V4
         oslo_messaging:
           auth:
             admin:
@@ -843,23 +837,3 @@ spec:
           restartPolicy: Never
         ks_user:
           restartPolicy: Never
-      pod:
-        probes:
-          ceilometer_compute_agent:
-            ceilometer_compute_agent:
-              readiness:
-                enabled: false
-              liveness:
-                enabled: false
-          central:
-            central:
-              readiness:
-                enabled: false
-              liveness:
-                enabled: false
-          notification:
-            notification:
-              readiness:
-                enabled: false
-              liveness:
-                enabled: false

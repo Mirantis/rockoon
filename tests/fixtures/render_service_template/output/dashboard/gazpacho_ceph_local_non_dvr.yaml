@@ -20,7 +20,7 @@ spec:
       conf:
         software:
           horizon:
-            dashboard_path: '/var/lib/openstack/lib/python3.6/site-packages/openstack_dashboard'
+            dashboard_path: '/usr/local/share/openstack_dashboard'
         policy.d: {}
         horizon:
           policy:
@@ -41,6 +41,8 @@ spec:
             placement: {'placement_rule1': 'placement_value1'}
           local_settings:
             config:
+              cache:
+                backend: django.core.cache.backends.memcached.PyMemcacheCache
               horizon_images_upload_mode: direct
               horizon_secret_key: kQt7XsbPVNDABuHyngdJuppnzP5i82Mz
               csrf_cookie_secure: "True"
@@ -70,8 +72,6 @@ spec:
                 - compressor
                 - horizon
                 - openstack_auth
-                - openstack_dashboard.django_pyscss_fix
-                - django_pyscss
             custom_themes:
               mirantis:
                 description: Mirantis
@@ -164,6 +164,18 @@ spec:
           horizon_db_sync: horizon-db-sync:latest
           image_repo_sync: image-repo-sync:latest
           test: test:latest
+      network_policy:
+        horizon:
+          spec:
+            ingress:
+              - from:
+                  - default: selector
+            podSelector:
+              matchLabels:
+                application: horizon
+                component: server
+            policyTypes:
+              - Ingress
       manifests:
-        network_policy: false
+        network_policy: true
         secret_ca_bundle: true
