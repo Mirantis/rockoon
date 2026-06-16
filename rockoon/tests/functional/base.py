@@ -1,6 +1,8 @@
 import logging
 import exec_helpers
 import paramiko
+import socket
+import ssl
 
 from kombu import Connection
 from unittest import TestCase
@@ -56,6 +58,13 @@ LOGGING_CONFIG = {
         "handlers": ["default", "file"],
         "level": "DEBUG",
     },
+}
+
+TLS_VERSION_MAP = {
+    "tlsv1.0": ssl.TLSVersion.TLSv1,
+    "tlsv1.1": ssl.TLSVersion.TLSv1_1,
+    "tlsv1.2": ssl.TLSVersion.TLSv1_2,
+    "tlsv1.3": ssl.TLSVersion.TLSv1_3,
 }
 
 logging.config.dictConfig(LOGGING_CONFIG)
@@ -846,3 +855,45 @@ class BaseFunctionalTestCase(TestCase):
         waiters.wait_for_network_portprober_ports(
             cls.ocm, network_id, CONF.PORTPROBER_AGENTS_PER_NETWORK
         )
+
+    def check_ciphersuite(
+        self,
+        host,
+        port,
+        test_tls_version,
+        test_cipher,
+        expected_state,
+        ca_bundle=None,
+    ):
+        # Create a TLS context
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        tls_version = TLS_VERSION_MAP.get(test_tls_version.lower())
+        context.minimum_version = tls_version
+        context.maximum_version = tls_version
+        if ca_bundle:
+            context.load_verify_locations(ca_bundle)
+        if test_cipher.lower() != "auto":
+            # Explicitly restrict the context to ONLY use the target cipher
+            context.set_ciphers(test_cipher)
+
+        # Create network socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(10.0)  # Avoid hanging indefinitely
+
+        test_passed = False
+        secure_sock = None
+        try:
+            # Wrap the socket with our strict TLS context
+            secure_sock = context.wrap_socket(sock, server_hostname=host)
+            secure_sock.connect((host, port))
+            test_passed = expected_state == "positive"
+        except ssl.SSLError:
+            # Handshake failure means the remote libvirt doesn't allow the cipher
+            test_passed = expected_state == "negative"
+        finally:
+            if secure_sock:
+                secure_sock.close()
+            else:
+                sock.close()
+
+        self.assertTrue(test_passed)
