@@ -818,9 +818,11 @@ spec:
         daemonset_ovn_vpn_agent: true
       {%- endif %}
       {%- if OSVer[spec.openstack_version] >= OSVer.gazpacho %}
-        deployment_periodic_workers: true
+      {%- if not tungstenfabric_enabled %}
         deployment_rpc_server: true
+        deployment_periodic_workers: true
         pdb_rpc_server: true
+      {%- endif %}
       {%- endif %}
       network:
         server:
