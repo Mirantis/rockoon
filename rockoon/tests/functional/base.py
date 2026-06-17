@@ -1,8 +1,10 @@
 import logging
 import exec_helpers
+import os
 import paramiko
 import socket
 import ssl
+import tempfile
 
 from kombu import Connection
 from unittest import TestCase
@@ -907,3 +909,22 @@ class BaseFunctionalTestCase(TestCase):
                 sock.close()
 
         self.assertTrue(test_passed)
+
+    def exec_script_in_pod(self, pod, container, script_name):
+        cmd_res = ""
+        temp_name = next(tempfile._get_candidate_names())
+        remote_script_name = f"/tmp/{temp_name}.py"
+        base_folder = os.path.dirname(os.path.realpath(__file__))
+        with open(f"{base_folder}/../scripts/{script_name}") as f:
+            script = f.read()
+            try:
+                cmd_res = pod.exec(
+                    ["bash", "-c", f"echo '{script}' > {remote_script_name}"],
+                    container,
+                )
+                if cmd_res["error_json"]["status"] == "Success":
+                    pod.exec(["chmod", "+x", remote_script_name], container)
+                    cmd_res = pod.exec([remote_script_name], container)
+            finally:
+                pod.exec(["rm", "-f", remote_script_name], container)
+        return cmd_res
