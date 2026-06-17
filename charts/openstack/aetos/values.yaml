@@ -1,0 +1,506 @@
+# Copyright 2026 Mirantis Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Default values for openstack-aetos.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+---
+release_group: null
+
+labels:
+  api:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  job:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+
+images:
+  pull_policy: IfNotPresent
+  tags:
+    aetos_api: docker.io/openstackhelm/aetos:master-ubuntu_jammy
+    ks_user: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    ks_service: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    ks_endpoints: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+    dep_check: quay.io/airshipit/kubernetes-entrypoint:v1.0.0
+    image_repo_sync: docker.io/docker:17.07.0
+  local_registry:
+    active: false
+    exclude:
+      - dep_check
+      - image_repo_sync
+
+network:
+  api:
+    ingress:
+      public: true
+      classes:
+        namespace: "nginx"
+        cluster: "nginx-cluster"
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /
+    http_route:
+      rule:
+        timeouts: {}
+        retry: {}
+        sessionPersistence: {}
+        filters: {}
+    external_policy_local: false
+    node_port:
+      enabled: false
+      port: 30780
+
+conf:
+  security: |
+    #
+    # Disable access to the entire file system except for the directories that
+    # are explicitly allowed later.
+    #
+    # This currently breaks the configurations that come with some web application
+    # Debian packages.
+    #
+    #<Directory />
+    #   AllowOverride None
+    #   Require all denied
+    #</Directory>
+
+    # Changing the following options will not really affect the security of the
+    # server, but might make attacks slightly more difficult in some cases.
+
+    #
+    # ServerTokens
+    # This directive configures what you return as the Server HTTP response
+    # Header. The default is 'Full' which sends information about the OS-Type
+    # and compiled in modules.
+    # Set to one of:  Full | OS | Minimal | Minor | Major | Prod
+    # where Full conveys the most information, and Prod the least.
+    ServerTokens Prod
+
+    #
+    # Optionally add a line containing the server version and virtual host
+    # name to server-generated pages (internal error documents, FTP directory
+    # listings, mod_status and mod_info output etc., but not CGI generated
+    # documents or custom error documents).
+    # Set to "EMail" to also include a mailto: link to the ServerAdmin.
+    # Set to one of:  On | Off | EMail
+    ServerSignature Off
+
+    #
+    # Allow TRACE method
+    #
+    # Set to "extended" to also reflect the request body (only for testing and
+    # diagnostic purposes).
+    #
+    # Set to one of:  On | Off | extended
+    TraceEnable Off
+
+    #
+    # Forbid access to version control directories
+    #
+    # If you use version control systems in your document root, you should
+    # probably deny access to their directories. For example, for subversion:
+    #
+    #<DirectoryMatch "/\.svn">
+    #   Require all denied
+    #</DirectoryMatch>
+
+    #
+    # Setting this header will prevent MSIE from interpreting files as something
+    # else than declared by the content type in the HTTP headers.
+    # Requires mod_headers to be enabled.
+    #
+    #Header set X-Content-Type-Options: "nosniff"
+
+    #
+    # Setting this header will prevent other sites from embedding pages from this
+    # site as frames. This defends against clickjacking attacks.
+    # Requires mod_headers to be enabled.
+    #
+    #Header set X-Frame-Options: "sameorigin"
+  software:
+    apache2:
+      binary: apache2
+      start_parameters: -DFOREGROUND
+      conf_dir: /etc/apache2/conf-enabled
+      site_dir: /etc/apache2/sites-enable
+      mods_dir: /etc/apache2/mods-available
+      a2enmod: null
+      a2dismod: null
+  policy: {}
+  policy.d: {}
+  wsgi_script: |
+    import threading
+    from aetos import app
+    application = None
+    lock = threading.Lock()
+    with lock:
+        if application is None:
+            application = app.build_wsgi_app()
+  aetos:
+    DEFAULT:
+      debug: false
+      use_syslog: false
+      log_config_append: /etc/aetos/logging.conf
+      auth_mode: keystone
+    keystone_authtoken:
+      auth_version: v3
+      auth_type: password
+      memcache_security_strategy: ENCRYPT
+    # NOTE: host/port are auto-populated from endpoints.prometheus in
+    # templates/configmap-etc.yaml when left empty.
+    prometheus:
+      host: null
+      port: null
+      use_tls: false
+      project_label_name: project
+  logging:
+    loggers:
+      keys:
+        - root
+        - aetos
+    handlers:
+      keys:
+        - stdout
+        - stderr
+        - "null"
+    formatters:
+      keys:
+        - context
+        - default
+    logger_root:
+      level: WARNING
+      handlers: stdout
+    logger_aetos:
+      level: INFO
+      handlers: ""
+      qualname: aetos
+    handler_null:
+      class: logging.NullHandler
+      formatter: default
+      args: ()
+    handler_stdout:
+      class: StreamHandler
+      args: (sys.stdout,)
+      formatter: context
+    handler_stderr:
+      class: StreamHandler
+      args: (sys.stderr,)
+      formatter: context
+    formatter_context:
+      class: oslo_log.formatters.ContextFormatter
+      datefmt: "%Y-%m-%d %H:%M:%S"
+    formatter_default:
+      format: "%(message)s"
+      datefmt: "%Y-%m-%d %H:%M:%S"
+  apache_wsgi:
+    config:
+      keepalive_timeout: 75
+      user_ident: aetos
+      script_name: aetos-api
+      processes: 5
+      service_name: metric_storage
+      endpoint:
+        type: metric_storage
+        endpoint: internal
+        port: api
+    template: |
+      {{ include "helm-toolkit.snippets.apache_wsgi_config" ( tuple $ .Values.conf.apache_wsgi ) }}
+
+endpoints:
+  cluster_domain_suffix: cluster.local
+  local_image_registry:
+    name: docker-registry
+    namespace: docker-registry
+    hosts:
+      default: localhost
+      internal: docker-registry
+      node: localhost
+    host_fqdn_override:
+      default: null
+    port:
+      registry:
+        node: 5000
+  app_gateway:
+    hosts:
+      default:
+        host: app-gateway
+    port:
+      https:
+        default: 10443
+        public: 443
+    host_fqdn_override:
+      public: null
+  oslo_cache:
+    auth:
+      # NOTE(portdirect): this is used to define the value for keystone
+      # authtoken cache encryption key, if not set it will be populated
+      # automatically with a random value, but to take advantage of
+      # this feature all services should be set to use the same key,
+      # and memcache service.
+      memcache_secret_key: null
+    hosts:
+      default: memcached
+    host_fqdn_override:
+      default: null
+    port:
+      memcache:
+        default: 11211
+  identity:
+    name: keystone
+    auth:
+      admin:
+        region_name: RegionOne
+        username: admin
+        password: password
+        project_name: admin
+        user_domain_name: Default
+        project_domain_name: Default
+      aetos:
+        role: admin,service
+        region_name: RegionOne
+        username: aetos
+        password: password
+        project_name: service
+        user_domain_name: service
+        project_domain_name: service
+    hosts:
+      default: keystone
+      internal: keystone-api
+    host_fqdn_override:
+      default: null
+    path:
+      default: /v3
+    scheme:
+      default: http
+    port:
+      api:
+        default: 80
+        internal: 5000
+  metric_storage:
+    name: aetos
+    hosts:
+      default: aetos-api
+      public:
+        host: aetos
+    host_fqdn_override:
+      default: null
+    path:
+      default: /
+    scheme:
+      default: 'http'
+    port:
+      api:
+        default: 8780
+        public: 80
+  prometheus:
+    name: prometheus
+    hosts:
+      default: prometheus-server
+    host_fqdn_override:
+      default: null
+    path:
+      default: /
+    scheme:
+      default: 'http'
+    port:
+      api:
+        default: 9090
+
+pod:
+  user:
+    aetos:
+      uid: 42424
+  security_context:
+    aetos:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+        fsGroup: 42424
+      container:
+        aetos_api:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    ks_user:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+        fsGroup: 42424
+      container:
+        ks_user:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    ks_endpoints:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+        fsGroup: 42424
+      container:
+        ks_endpoints:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    ks_service:
+      pod:
+        runAsUser: 42424
+        runAsNonRoot: true
+        fsGroup: 42424
+      container:
+        ks_service:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+  affinity:
+    anti:
+      type:
+        default: preferredDuringSchedulingIgnoredDuringExecution
+      topologyKey:
+        default: kubernetes.io/hostname
+  mounts:
+    aetos:
+      init_container: null
+      aetos:
+        volumeMounts:
+        volumes:
+  probes:
+    api:
+      default:
+        liveness:
+          enabled: True
+          params:
+            initialDelaySeconds: 50
+            periodSeconds: 10
+            timeoutSeconds: 5
+        readiness:
+          enabled: True
+          params:
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+  replicas:
+    api: 1
+  lifecycle:
+    upgrades:
+      deployments:
+        revision_history: 3
+        pod_replacement_strategy: RollingUpdate
+        rolling_update:
+          max_unavailable: 1
+          max_surge: 3
+    disruption_budget:
+      api:
+        min_available: 0
+    termination_grace_period:
+      api:
+        timeout: 30
+  resources:
+    enabled: false
+    api:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    jobs:
+      ks_endpoints:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      ks_service:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      ks_user:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+
+secrets:
+  identity:
+    admin: aetos-keystone-admin
+    aetos: aetos-keystone-user
+  tls:
+    metric_storage:
+      api:
+        public: aetos-tls-public
+        internal: aetos-tls-internal
+
+dependencies:
+  dynamic:
+    common:
+      local_image_registry:
+        jobs:
+          - image-repo-sync
+        services:
+          - endpoint: node
+            service: local_image_registry
+    job_ks_endpoints:
+      api:
+        jobs:
+          - aetos-ks-endpoints
+  static:
+    api:
+      jobs:
+        - aetos-ks-service
+        - aetos-ks-user
+    ks_endpoints:
+      jobs:
+        - aetos-ks-user
+        - aetos-ks-service
+      services:
+        - endpoint: internal
+          service: identity
+    ks_service:
+      services:
+        - endpoint: internal
+          service: identity
+    ks_user:
+      services:
+        - endpoint: internal
+          service: identity
+
+manifests:
+  configmap_bin: true
+  configmap_etc: true
+  configmap_oslo_policy: true
+  deployment: true
+  job_image_repo_sync: true
+  job_ks_endpoints: true
+  job_ks_service: true
+  job_ks_user: true
+  network_policy: false
+  secret_ingress_tls: true
+  pdb: true
+  ingress: true
+  http_route: true
+  secret_keystone: true
+  service: true
+...

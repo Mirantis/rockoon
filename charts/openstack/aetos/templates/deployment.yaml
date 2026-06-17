@@ -1,0 +1,151 @@
+{{/*
+Copyright 2026 Mirantis Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+{{- define "apiProbeTemplate" }}
+httpGet:
+  scheme: HTTP
+  path: /
+  port: {{ tuple "metric_storage" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- end }}
+
+{{- if .Values.manifests.deployment }}
+{{- $envAll := . }}
+
+{{- $mounts_aetos := .Values.pod.mounts.aetos.aetos }}
+{{- $mounts_aetos_init := .Values.pod.mounts.aetos.init_container }}
+
+{{- $serviceAccountName := "aetos-api" }}
+{{ tuple $envAll "api" $serviceAccountName | include "helm-toolkit.snippets.kubernetes_pod_rbac_serviceaccount" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aetos-api
+  annotations:
+    {{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" }}
+  labels:
+{{ tuple $envAll "aetos" "api" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
+spec:
+  replicas: {{ .Values.pod.replicas.api }}
+  selector:
+    matchLabels:
+{{ tuple $envAll "aetos" "api" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}
+{{ tuple $envAll | include "helm-toolkit.snippets.kubernetes_upgrades_deployment" | indent 2 }}
+  template:
+    metadata:
+      labels:
+{{ tuple $envAll "aetos" "api" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 8 }}
+      annotations:
+{{ tuple $envAll | include "helm-toolkit.snippets.release_uuid" | indent 8 }}
+        configmap-bin-hash: {{ tuple "configmap-bin.yaml" . | include "helm-toolkit.utils.hash" }}
+        configmap-etc-hash: {{ tuple "configmap-etc.yaml" . | include "helm-toolkit.utils.hash" }}
+        endpoints-hash: {{ .Values.endpoints | include "helm-toolkit.utils.get_hash" }}
+{{ dict "envAll" $envAll "podName" "aetos-api" "containerNames" (list "aetos-api" "init") | include "helm-toolkit.snippets.kubernetes_mandatory_access_control_annotation" | indent 8 }}
+    spec:
+      serviceAccountName: {{ $serviceAccountName }}
+{{ dict "envAll" $envAll "application" "aetos" | include "helm-toolkit.snippets.kubernetes_pod_security_context" | indent 6 }}
+      affinity:
+{{ tuple $envAll "aetos" "api" | include "helm-toolkit.snippets.kubernetes_pod_anti_affinity" | indent 8 }}
+      nodeSelector:
+        {{ .Values.labels.api.node_selector_key }}: {{ .Values.labels.api.node_selector_value }}
+      terminationGracePeriodSeconds: {{ .Values.pod.lifecycle.termination_grace_period.api.timeout | default "30" }}
+      initContainers:
+{{ tuple $envAll "api" $mounts_aetos_init | include "helm-toolkit.snippets.kubernetes_entrypoint_init_container" | indent 8 }}
+      containers:
+        - name: aetos-api
+{{ tuple $envAll "aetos_api" | include "helm-toolkit.snippets.image" | indent 10 }}
+{{ tuple $envAll $envAll.Values.pod.resources.api | include "helm-toolkit.snippets.kubernetes_resources" | indent 10 }}
+{{ dict "envAll" $envAll "application" "aetos" "container" "aetos_api" | include "helm-toolkit.snippets.kubernetes_container_security_context" | indent 10 }}
+{{ dict "envAll" . "component" "api" "container" "default" "type" "liveness" "probeTemplate" (include "apiProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+{{ dict "envAll" . "component" "api" "container" "default" "type" "readiness" "probeTemplate" (include "apiProbeTemplate" $envAll | fromYaml) | include "helm-toolkit.snippets.kubernetes_probe" | indent 10 }}
+          command:
+            - /tmp/aetos-api.sh
+            - start
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /tmp/aetos-api.sh
+                  - stop
+          ports:
+            - name: ae-api
+              containerPort: {{ tuple "metric_storage" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+          volumeMounts:
+{{ dict "envAll" $envAll "objectType" "mountpoint" "secretPrefix" "aetos" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 12 }}
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: aetos-bin
+              subPath: wsgi.py
+              mountPath: /var/www/cgi-bin/aetos/aetos-api
+              readOnly: true
+            - name: aetos-bin
+              mountPath: /tmp/aetos-api.sh
+              subPath: aetos-api.sh
+              readOnly: true
+            - name: aetos-etc
+              mountPath: /etc/aetos/aetos.conf
+              subPath: aetos.conf
+              readOnly: true
+            - name: aetos-etc
+              mountPath: {{ .Values.conf.aetos.DEFAULT.log_config_append }}
+              subPath: {{ base .Values.conf.aetos.DEFAULT.log_config_append }}
+              readOnly: true
+            - name: aetos-oslo-policy
+              mountPath: /etc/aetos/policy.d/
+            - name: aetos-etc
+              mountPath: /etc/apache2/conf-enabled/wsgi-aetos.conf
+              subPath: wsgi-aetos.conf
+              readOnly: true
+            - mountPath: /var/log/apache2
+              name: logs-apache
+            - mountPath: /var/run/apache2
+              name: run-apache
+            - mountPath: /etc/apache2/ports.conf
+              name: aetos-etc
+              readOnly: true
+              subPath: ports.conf
+{{- if .Values.conf.security }}
+            - name: aetos-etc
+              mountPath: {{ .Values.conf.software.apache2.conf_dir }}/security.conf
+              subPath: security.conf
+              readOnly: true
+{{- end }}
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.metric_storage.api.internal "path" "/etc/aetos/certs" | include "helm-toolkit.snippets.tls_volume_mount" | indent 12 }}
+{{ if $mounts_aetos.volumeMounts }}{{ toYaml $mounts_aetos.volumeMounts | indent 12 }}{{ end }}
+      volumes:
+{{ dict "envAll" $envAll "objectType" "volume" "secretPrefix" "aetos" | include "helm-toolkit.snippets.kubernetes_ssl_objects" | indent 8 }}
+        - name: pod-tmp
+          emptyDir: {}
+        - name: wsgi-aetos
+          emptyDir: {}
+        - emptyDir: {}
+          name: logs-apache
+        - emptyDir: {}
+          name: run-apache
+        - name: aetos-bin
+          configMap:
+            name: aetos-bin
+            defaultMode: 504
+        - name: aetos-etc
+          secret:
+            secretName: aetos-etc
+            defaultMode: 416
+        - name: aetos-oslo-policy
+          secret:
+            secretName: aetos-oslo-policy
+            defaultMode: 416
+{{- dict "enabled" .Values.manifests.certificates "name" .Values.secrets.tls.metric_storage.api.internal | include "helm-toolkit.snippets.tls_volume" | indent 8 }}
+{{ if $mounts_aetos.volumes }}{{ toYaml $mounts_aetos.volumes | indent 8 }}{{ end }}
+{{- end }}
