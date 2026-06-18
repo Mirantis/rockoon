@@ -61,7 +61,7 @@ values: |
           port: 53
 usage: |
   {{ dict "envAll" . "name" "application" "label" "myLabel" | include "helm-toolkit.manifests.kubernetes_network_policy" }}
-  {{ dict "envAll" . "key" "myLabel" "labels" (dict "application" "myApp" "component" "myComp")}}
+  {{ dict "envAll" . "key" "myLabel" "labels" (dict "application" "myApp" "component" "myComp") | include "helm-toolkit.manifests.kubernetes_network_policy" }}
 return: |
   ---
   apiVersion: networking.k8s.io/v1
