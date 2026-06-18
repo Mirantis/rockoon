@@ -1385,7 +1385,11 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
             self.openstack_version
         ].value
 
-        if os_version_num >= constants.OpenStackVersion["gazpacho"].value:
+        if (
+            os_version_num >= constants.OpenStackVersion["gazpacho"].value
+            and utils.get_in(self.mspec["features"], ["neutron", "backend"])
+            != "tungstenfabric"
+        ):
             static_map.append(
                 (neutron_server_deployment_type, "neutron-rpc-server")
             )
