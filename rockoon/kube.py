@@ -729,17 +729,8 @@ class CronJob(pykube.CronJob, HelmBundleMixin):
         kube_job = Job(kube_api, job)
         kube_job.create()
 
-        def _wait_completion(job, delay):
-            while not job.ready:
-                time.sleep(delay)
-
         if wait_completion:
-            utils.run_with_timeout(
-                self._wait_completion,
-                args=(kube_job,),
-                kwargs={"delay": delay},
-                timeout=timeout,
-            )
+            kube_job.wait_ready(timeout=timeout, interval=delay)
         return kube_job
 
 
