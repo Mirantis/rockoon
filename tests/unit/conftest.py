@@ -259,7 +259,7 @@ def safe_node(mocker):
 @pytest.fixture
 def nwl(mocker):
     nwl = mocker.patch("rockoon.maintenance.NodeWorkloadLock.get_by_node")
-    nwl.reteurn_value = mock.Mock()
+    nwl.return_value = mock.Mock()
     yield nwl
     mocker.stopall()
 
@@ -267,7 +267,7 @@ def nwl(mocker):
 @pytest.fixture
 def socket(mocker):
     nwl = mocker.patch("socket.socket")
-    nwl.reteurn_value = mock.Mock()
+    nwl.return_value = mock.Mock()
     yield nwl
     mocker.stopall()
 
@@ -304,5 +304,22 @@ def federation_provider():
                     }
                 }
             },
+        },
+    }
+
+
+@pytest.fixture
+def cronjob():
+    return {
+        "metadata": {"annotations": "", "name": "nova-cell-setup"},
+        "spec": {
+            "jobTemplate": {
+                "metadata": {"labels": ""},
+                "spec": {
+                    "template": {
+                        "spec": {"containers": [{"name": "nova-cell-setup"}]},
+                    }
+                },
+            }
         },
     }
