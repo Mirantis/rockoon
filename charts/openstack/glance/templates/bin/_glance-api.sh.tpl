@@ -19,7 +19,7 @@ set -ex
 COMMAND="${@:-start}"
 
 function start () {
-  confs="--config-file /etc/glance/glance-api.conf"
+  confs="--config-file /etc/glance/glance-api.conf --config-dir /etc/glance/glance-api.conf.d"
 
   GLANCE_API=""
   {{- if not .Values.conf.software.uwsgi.enabled }}

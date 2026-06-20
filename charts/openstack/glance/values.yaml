@@ -239,6 +239,7 @@ conf:
       swift_store_endpoint_type: internalURL
     paste_deploy:
       flavor: keystone
+      config_file: /etc/glance/glance-api-paste.ini
     database:
       max_retries: -1
     oslo_messaging_notifications:
@@ -439,6 +440,7 @@ conf:
       memcache_security_strategy: ENCRYPT
     paste_deploy:
       flavor: keystone
+      config_file: /etc/glance/glance-api-paste.ini
     database:
       max_retries: -1
     oslo_messaging_notifications:
