@@ -37,6 +37,9 @@ policies:
     default:
       retry:
         numRetries: 3
+      timeout:
+        http:
+          requestTimeout: 60s
 
 secrets:
   tls:
