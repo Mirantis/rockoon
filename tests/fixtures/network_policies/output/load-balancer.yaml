@@ -26,6 +26,10 @@ load-balancer:octavia:Deployment:octavia-api:
         component: lb_failover
   - podSelector:
       matchLabels:
+        application: ceilometer
+        component: central
+  - podSelector:
+      matchLabels:
         application: heat
         component: engine
   - podSelector:

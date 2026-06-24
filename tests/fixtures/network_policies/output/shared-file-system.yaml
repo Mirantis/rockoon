@@ -18,6 +18,10 @@ shared-file-system:manila:Deployment:manila-api:
         component: server
   - podSelector:
       matchLabels:
+        application: ceilometer
+        component: central
+  - podSelector:
+      matchLabels:
         application: heat
         component: engine
   - podSelector:
