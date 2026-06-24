@@ -126,7 +126,7 @@ metadata:
 {{ tuple $envAll "neutron" "periodic_workers" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 4 }}
 spec:
   replicas: {{ .Values.pod.replicas.periodic_workers }}
-{{ tuple $envAll | include "helm-toolkit.snippets.kubernetes_upgrades_deployment" | indent 2 }}
+{{ tuple $envAll "periodic_workers" | include "helm-toolkit.snippets.kubernetes_upgrades_deployment" | indent 2 }}
   selector:
     matchLabels:
 {{ tuple $envAll "neutron" "periodic_workers" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 6 }}

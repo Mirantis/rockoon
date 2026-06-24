@@ -1226,6 +1226,12 @@ pod:
         rolling_update:
           max_unavailable: 1
           max_surge: 3
+        periodic_workers:
+          revision_history: 3
+          pod_replacement_strategy: RollingUpdate
+          rolling_update:
+            max_unavailable: 1
+            max_surge: 0
       daemonsets:
         pod_replacement_strategy: RollingUpdate
         server:
