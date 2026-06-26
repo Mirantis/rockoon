@@ -74,7 +74,7 @@
     tags:
       - dns
     vars:
-      rvl_dns_discover_ingress_ip: false
+      rvl_dns_discover_public_api_ip: false
   - name: Setup VPN server
     include_role:
       name: rvl

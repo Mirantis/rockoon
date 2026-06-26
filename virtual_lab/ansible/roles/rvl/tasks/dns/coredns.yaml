@@ -6,20 +6,20 @@
   loop:
     - "{{ rvl_dns_coredns_dir }}"
 
-- name: Get an existing ingress object
+- name: Get an existing public api service object
   kubernetes.core.k8s_info:
     api_version: v1
     kind: Service
-    name: ingress
+    name: app-gateway
     namespace: openstack
-  register: ingress_service
-  until: ingress_service.resources | json_query('[0].status.loadBalancer.ingress[0].ip') is not none
+  register: public_api_service
+  until: public_api_service.resources | json_query('[0].status.loadBalancer.ingress[0].ip') is not none
   retries: 60
   delay: 10
   ignore_errors: yes
   tags:
     - dns
-  when: rvl_dns_discover_ingress_ip
+  when: rvl_dns_discover_public_api_ip
 
 - name: Template file Corefile
   ansible.builtin.template:
@@ -42,12 +42,12 @@
     group: root
     mode: '0644'
   vars:
-    ingress_service_ip: "{{ ingress_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+    public_api_service_ip: "{{ public_api_service.resources[0].status.loadBalancer.ingress[0].ip }}"
   tags:
     - dns
-  when: rvl_dns_discover_ingress_ip
+  when: rvl_dns_discover_public_api_ip
 
-- name: Template coredns zone no ingress
+- name: Template coredns zone no public ip
   ansible.builtin.template:
     src: coredns_zone.j2
     dest: "{{ rvl_dns_coredns_dir }}/it.just.works.db"
@@ -56,7 +56,7 @@
     mode: '0644'
   tags:
     - dns
-  when: not rvl_dns_discover_ingress_ip
+  when: not rvl_dns_discover_public_api_ip
 
 - name: Setup coredns
   include_role:

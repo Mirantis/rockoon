@@ -38,7 +38,7 @@ rvl_dns_resolver_ip_address: "{{ ansible_default_ipv4.address|default(ansible_al
 rvl_dns_nameservers:
   - 8.8.8.8
   - 4.2.2.1
-rvl_dns_discover_ingress_ip: true
+rvl_dns_discover_public_api_ip: true
 
 rvl_registry_node_port: 32500
 rvl_registry_binary_port: 32443

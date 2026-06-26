@@ -4,6 +4,7 @@ import unittest
 from rockoon.tests.functional import base
 from rockoon import settings
 from rockoon import kube
+from rockoon import helm
 
 
 class TlsProxyFunctionalTestCase(base.BaseFunctionalTestCase):
@@ -16,6 +17,8 @@ class TlsProxyFunctionalTestCase(base.BaseFunctionalTestCase):
             .get("enabled", True)
         ):
             raise unittest.SkipTest("TLS proxy not enabled.")
+        if not helm.HelmManager().exist("ingress-openstack"):
+            raise unittest.SkipTest("No ingress helm release found")
 
     @property
     def ingress_pods(self):

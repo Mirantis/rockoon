@@ -51,6 +51,7 @@ class OpenStackValidator(base.BaseValidator):
         self._deny_encrypted_api_key(new_obj)
         self._deny_strict_admin_policy(new_obj)
         self._check_schedules(new_obj)
+        self._check_ingress_migration(new_obj)
 
     def validate_status(self, review_request):
         old_obj = review_request.get("oldObject", {})
@@ -373,4 +374,15 @@ class OpenStackValidator(base.BaseValidator):
             raise exception.OsDplValidationFailed(
                 "Shared Filesystems (Manila) does not supported "
                 "in OpenStack version before Yoga release."
+            )
+
+    def _check_ingress_migration(self, new_obj):
+        ingress_state = get_in(
+            new_obj, ["spec", "migration", "ingress", "state"]
+        )
+        ingress_allowed = ["absent", "present"]
+        if ingress_state and ingress_state not in ingress_allowed:
+            raise exception.OsDplValidationFailed(
+                f"Ingress state is set to {ingress_state}"
+                f"It should be set to one of {ingress_allowed} or unset"
             )

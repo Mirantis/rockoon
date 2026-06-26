@@ -65,6 +65,19 @@ class Ingress(Service):
     def health_groups(self):
         return ["ingress"]
 
+    def apply(self, event, **kwargs):
+        ingress_state = utils.get_in(
+            self.mspec, ["migration", "ingress", "state"]
+        )
+        if ingress_state == "absent":
+            LOG.info("Ingress removal is requested, skipping installation")
+        elif ingress_state == "present" or self.helm_manager.exist(
+            "ingress-openstack"
+        ):
+            super().apply(event, **kwargs)
+        else:
+            LOG.info("Ingress is deprecated, deployment is skipped")
+
 
 class FederationMixin:
 

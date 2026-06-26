@@ -94,7 +94,7 @@ def services(mspec, logger, **kwargs):
     to_apply = set(mspec["features"].get("services", []))
     LOG.debug(f"Working with openstack services: {to_apply}")
 
-    to_delete = {}
+    to_delete = set()
     # NOTE(pas-ha) each diff is (op, (path, parts, ...), old, new)
     # kopf ignores changes to status except its own internal fields
     # and metadata except labels and annotations
@@ -105,6 +105,8 @@ def services(mspec, logger, **kwargs):
             # NOTE(pas-ha) something changed in services,
             # need to check if any were deleted
             to_delete = set(old or []) - set(new or [])
+    if utils.get_in(mspec, ["migration", "ingress", "state"]) == "absent":
+        to_delete.add("ingress")
     return to_apply, to_delete
 
 
