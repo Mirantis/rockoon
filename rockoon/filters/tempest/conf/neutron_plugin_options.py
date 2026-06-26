@@ -154,6 +154,10 @@ class NeutronPluginOptions(base_section.BaseSection):
                 "conf.neutron.ovn.ovn_router_indirect_snat",
             )
 
+        # Nested SNAT via extra routes is not implemented for DVR
+        if self.get_spec_item("features.neutron.dvr.enabled", False):
+            return False
+
         return True
 
 
