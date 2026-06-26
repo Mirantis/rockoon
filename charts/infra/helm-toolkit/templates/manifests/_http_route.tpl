@@ -99,8 +99,8 @@ examples:
                   type: ReplacePrefixMatch
             matches:
             - path:
-              type: PathPrefix
-              value: /
+                type: PathPrefix
+                value: /
             timeouts:
               backendRequest: 15s
               request: 30s
@@ -142,8 +142,8 @@ examples:
 {{- end }}
   matches:
   - path:
-    type: PathPrefix
-    value: {{ $endpointPath }}
+      type: PathPrefix
+      value: {{ $endpointPath }}
 {{- if $retry }}
   retry:
 {{ toYaml $retry | indent 4 }}
