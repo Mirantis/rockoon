@@ -18,6 +18,7 @@ from concurrent.futures import ThreadPoolExecutor, ALL_COMPLETED, wait
 from jinja2 import Environment, BaseLoader
 from pykube import ConfigMap
 
+from rockoon import constants
 from rockoon import health
 from rockoon import helm
 from rockoon import kube
@@ -912,6 +913,19 @@ class StateCM:
         self.cm.update(is_strategic=False)
 
 
+def has_neutron_rpc_and_periodic_deployments(osdpl):
+    """Whether rpc_server and periodic_workers deployments exist.
+
+    These neutron deployments were introduced in gazpacho; on older
+    releases they must not be toggled.
+    """
+    version = osdpl.mspec["openstack_version"]
+    return (
+        constants.OpenStackVersion[version]
+        >= constants.OpenStackVersion.gazpacho
+    )
+
+
 def get_service(osdpl, service):
     osdpl.reload()
     mspec = osdpl.mspec
@@ -947,6 +961,8 @@ def get_objects_by_id(svc, id):
         )
     elif id == "neutron-server":
         return svc.get_child_objects_dynamic("DaemonSet", "neutron-server")
+    elif id == "neutron-periodic-workers":
+        return [svc.get_child_object("Deployment", "neutron-periodic-workers")]
     elif id == "mariadb-server":
         return [svc.get_child_object("StatefulSet", "mariadb-server")]
     elif id == "neutron-rabbitmq":
@@ -1319,6 +1335,13 @@ def deploy_ovn_db(script_args):
             ds.ensure_finalizer_present(MIGRATION_FINALIZER)
 
     LOG.info("Patching Openstack deployment to deploy ovn database")
+    neutron_manifests = {
+        "deployment_server": False,
+        "daemonset_metadata_agent": False,
+    }
+    if has_neutron_rpc_and_periodic_deployments(osdpl):
+        neutron_manifests["deployment_periodic_workers"] = False
+        neutron_manifests["deployment_rpc_server"] = False
     osdpl.patch(
         {
             "spec": {
@@ -1357,12 +1380,7 @@ def deploy_ovn_db(script_args):
                     },
                     "networking": {
                         "neutron": {
-                            "values": {
-                                "manifests": {
-                                    "deployment_server": False,
-                                    "daemonset_metadata_agent": False,
-                                }
-                            }
+                            "values": {"manifests": neutron_manifests}
                         },
                         "openvswitch": {
                             "values": {
@@ -1435,31 +1453,45 @@ def deploy_ovn_controllers(script_args):
         network_svc, ["neutron-ovn-db-sync-migrate"], timeout=3600
     )
     LOG.info("Neutron database sync to OVN database is completed")
-    # Enable server without messaging dependency
+    # Enable server and periodic workers without messaging dependency.
+    # Periodic workers probes are disabled as rabbitmq is not available yet.
     LOG.info("Starting neutron server to process OVN ports")
-    utils.merger.merge(
-        neutron_patch,
-        {
-            "manifests": {
-                "deployment_server": True,
-            },
-            "dependencies": {
-                "static": {
-                    "server": {
-                        "services": [
-                            {"endpoint": "internal", "service": "oslo_db"},
-                            {"endpoint": "internal", "service": "oslo_cache"},
-                            {"endpoint": "internal", "service": "identity"},
-                        ]
+    no_messaging_services = [
+        {"endpoint": "internal", "service": "oslo_db"},
+        {"endpoint": "internal", "service": "oslo_cache"},
+        {"endpoint": "internal", "service": "identity"},
+    ]
+    neutron_patch_extra = {
+        "manifests": {"deployment_server": True},
+        "dependencies": {
+            "static": {
+                "server": {"services": no_messaging_services},
+            }
+        },
+    }
+    if has_neutron_rpc_and_periodic_deployments(osdpl):
+        neutron_patch_extra["manifests"]["deployment_periodic_workers"] = True
+        neutron_patch_extra["dependencies"]["static"]["periodic_workers"] = {
+            "services": no_messaging_services
+        }
+        neutron_patch_extra["pod"] = {
+            "probes": {
+                "periodic_workers": {
+                    "periodic_workers": {
+                        "readiness": {"enabled": False},
+                        "liveness": {"enabled": False},
                     }
                 }
-            },
-        },
-    )
+            }
+        }
+    utils.merger.merge(neutron_patch, neutron_patch_extra)
     update_service_release(
         helm_manager, network_svc, "openstack-neutron", neutron_patch
     )
-    wait_for_objects_ready(network_svc, ["neutron-server"])
+    objects_to_wait = ["neutron-server"]
+    if has_neutron_rpc_and_periodic_deployments(osdpl):
+        objects_to_wait.append("neutron-periodic-workers")
+    wait_for_objects_ready(network_svc, objects_to_wait)
     LOG.info("Sleeping for 1200 seconds to let neutron process all ports")
     time.sleep(1200)
     LOG.info("Finished waiting neutron server to process OVN ports")
@@ -1527,6 +1559,10 @@ def finalize_migration(script_args):
         ds.ensure_finalizer_absent(MIGRATION_FINALIZER)
 
     LOG.info("Patching Openstack deployment to exit from draft mode")
+    neutron_manifests = {"deployment_server": True}
+    if has_neutron_rpc_and_periodic_deployments(osdpl):
+        neutron_manifests["deployment_periodic_workers"] = True
+        neutron_manifests["deployment_rpc_server"] = True
     osdpl.patch(
         {
             "spec": {
@@ -1534,9 +1570,7 @@ def finalize_migration(script_args):
                 "services": {
                     "networking": {
                         "neutron": {
-                            "values": {
-                                "manifests": {"deployment_server": True}
-                            }
+                            "values": {"manifests": neutron_manifests}
                         },
                         "openvswitch": {
                             "values": {
