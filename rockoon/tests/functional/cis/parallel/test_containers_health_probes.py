@@ -26,15 +26,6 @@ def get_objects_for_test():
     return check_list
 
 
-def health_check_custom_name_func(testcase_func, param_num, param):
-    return "%s_%s" % (
-        testcase_func.__name__,
-        parameterized.to_safe_name(
-            "_".join(str(x).lower() for x in param.args)
-        ),
-    )
-
-
 class HealthFunctionalTestCase(base.BaseFunctionalTestCase):
 
     @classmethod
@@ -52,7 +43,7 @@ class HealthFunctionalTestCase(base.BaseFunctionalTestCase):
     @parameterized.expand(
         get_objects_for_test,
         skip_on_empty=True,
-        name_func=health_check_custom_name_func,
+        name_func=base.default_custom_name_func,
     )
     def test_containers(
         self,
