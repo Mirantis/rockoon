@@ -13,17 +13,17 @@ limitations under the License.
 */}}
 
 {{- define "ag.default_gateway_class" -}}
-metadata:
-  name: openstack-gatewayclass
-spec:
-  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+controllerName: gateway.envoyproxy.io/gatewayclass-controller
 {{- end -}}
 
 {{- if .Values.manifests.gateway_class }}
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
+metadata:
+  name: {{ .Release.Namespace }}-gatewayclass
+spec:
 {{- $gateway_class := include "ag.default_gateway_class" . | fromYaml }}
 {{- $mergedGatewayClass := merge .Values.gateway_classes.default $gateway_class }}
-{{ toYaml $mergedGatewayClass }}
+{{ toYaml $mergedGatewayClass | indent 2 }}
 {{- end }}

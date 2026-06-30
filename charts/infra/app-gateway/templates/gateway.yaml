@@ -13,35 +13,35 @@ limitations under the License.
 */}}
 
 {{- define "ag.default_gateway" }}
-metadata:
-  name: {{ tuple "app_gateway" "internal" . | include "helm-toolkit.endpoints.hostname_short_endpoint_lookup" }}
-spec:
-  gatewayClassName: openstack-gatewayclass
-  infrastructure:
-    parametersRef:
-      group: gateway.envoyproxy.io
-      kind: EnvoyProxy
-      name: openstack-envoy-proxy-config
-  listeners:
-  - allowedRoutes:
-      namespaces:
-        from: All
-    name: https
-    port: {{ tuple "app_gateway" "public" "https" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
-    protocol: HTTPS
-    tls:
-      certificateRefs:
-      - group: ""
-        kind: Secret
-        name: {{ index .Values.secrets "tls" "app_gateway" "https" "public" }}
-      mode: Terminate
+gatewayClassName: {{ .Release.Namespace }}-gatewayclass
+infrastructure:
+  parametersRef:
+    group: gateway.envoyproxy.io
+    kind: EnvoyProxy
+    name: {{ .Release.Namespace }}-envoy-proxy-config
+listeners:
+- allowedRoutes:
+    namespaces:
+      from: All
+  name: https
+  port: {{ tuple "app_gateway" "public" "https" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+  protocol: HTTPS
+  tls:
+    certificateRefs:
+    - group: ""
+      kind: Secret
+      name: {{ index .Values.secrets "tls" "app_gateway" "https" "public" }}
+    mode: Terminate
 {{- end -}}
 
 {{- if .Values.manifests.gateway }}
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
+metadata:
+  name: {{ tuple "app_gateway" "internal" . | include "helm-toolkit.endpoints.hostname_short_endpoint_lookup" }}
+spec:
 {{- $gateway := include "ag.default_gateway" . | fromYaml }}
 {{- $mergedGateway := merge .Values.gateways.default $gateway }}
-{{ toYaml $mergedGateway }}
+{{ toYaml $mergedGateway | indent 2 }}
 {{- end -}}
