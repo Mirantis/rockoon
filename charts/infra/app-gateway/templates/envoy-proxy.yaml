@@ -13,34 +13,34 @@ limitations under the License.
 */}}
 {{- define "ag.default_envoy_proxy" }}
 {{- $envAll := . }}
-metadata:
-  name: openstack-envoy-proxy-config
-spec:
-  provider:
-    type: Kubernetes
-    kubernetes:
-      envoyService:
-        name: {{ tuple "app_gateway" "internal" . | include "helm-toolkit.endpoints.hostname_short_endpoint_lookup" }}
-      envoyDaemonSet:
-        container:
-          image: {{ tuple $envAll "envoy" | include "helm-toolkit.snippets.imageName" | indent 10 }}
-        patch:
-          value:
-            spec:
-              template:
-                metadata:
-                  labels:
-{{ tuple $envAll "app_gateway" "proxy" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 20 }}
-                spec:
-                  nodeSelector:
-                    {{ .Values.labels.proxy.node_selector_key }}: {{ .Values.labels.proxy.node_selector_value | quote }}
+provider:
+  type: Kubernetes
+  kubernetes:
+    envoyService:
+      name: {{ tuple "app_gateway" "internal" . | include "helm-toolkit.endpoints.hostname_short_endpoint_lookup" }}
+    envoyDaemonSet:
+      container:
+        image: {{ tuple $envAll "envoy" | include "helm-toolkit.snippets.imageName" | indent 8 }}
+      patch:
+        value:
+          spec:
+            template:
+              metadata:
+                labels:
+{{ tuple $envAll "app_gateway" "proxy" | include "helm-toolkit.snippets.kubernetes_metadata_labels" | indent 18 }}
+              spec:
+                nodeSelector:
+                  {{ .Values.labels.proxy.node_selector_key }}: {{ .Values.labels.proxy.node_selector_value | quote }}
 {{- end -}}
 
 {{- if .Values.manifests.envoy_proxy }}
 ---
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyProxy
+metadata:
+  name: {{ .Release.Namespace }}-envoy-proxy-config
+spec:
 {{- $envoy_proxy := include "ag.default_envoy_proxy" . | fromYaml }}
 {{- $mergedEnvoyProxy := merge .Values.envoy_proxies.default $envoy_proxy }}
-{{ toYaml $mergedEnvoyProxy }}
+{{ toYaml $mergedEnvoyProxy | indent 2 }}
 {{- end -}}
