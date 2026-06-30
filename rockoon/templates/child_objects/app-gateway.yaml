@@ -36,6 +36,14 @@ app-gateway:
         - name: http
           port: 80
           protocol: TCP
+      # Envoy gateway expose privileged ports
+      # as 10XXX in envoy proxy pod
+        - name: dns-udp
+          port: 10053
+          protocol: UDP
+        - name: dns-tcp
+          port: 10053
+          protocol: TCP
         - name: pdns-udp
           port: 53
           protocol: UDP

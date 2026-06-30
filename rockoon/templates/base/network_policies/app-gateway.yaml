@@ -11,6 +11,6 @@
             - Ingress
             ingress:
               - from:
-{{ from_all(service_childs[app_gateway_proxy].get_np_ports(["http","https","pdns-tcp", "pdns-udp"])) | indent(16) }}
+{{ from_all(service_childs[app_gateway_proxy].get_np_ports(["http","https","dns-tcp","dns-udp"])) | indent(16) }}
               - from:
 {{ from_namespaces(lma_ns_list, service_childs[app_gateway_proxy].get_np_ports(["metrics"])) | indent(16) }}
