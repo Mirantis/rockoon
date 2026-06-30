@@ -19,11 +19,13 @@ infrastructure:
     group: gateway.envoyproxy.io
     kind: EnvoyProxy
     name: {{ .Release.Namespace }}-envoy-proxy-config
-listeners:
-- allowedRoutes:
+{{- end -}}
+
+{{- define "ag.default_listeners" }}
+https:
+  allowedRoutes:
     namespaces:
       from: All
-  name: https
   port: {{ tuple "app_gateway" "public" "https" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
   protocol: HTTPS
   tls:
@@ -32,7 +34,23 @@ listeners:
       kind: Secret
       name: {{ index .Values.secrets "tls" "app_gateway" "https" "public" }}
     mode: Terminate
-{{- end -}}
+{{- end }}
+
+{{- define "ag.to_listeners_list" }}
+{{- $list_items := list }}
+{{- $dict_items := . }}
+{{- range $name := sortAlpha (keys $dict_items) }}
+  {{- $f := deepCopy (index $dict_items $name) }}
+  {{- $_ := set $f "name" $name }}
+  {{- if dig "enabled" true $f }}
+    {{- $_ := unset $f "enabled" }}
+    {{- $list_items = append $list_items $f }}
+  {{- end }}
+{{- end }}
+{{- if $list_items }}
+{{ toYaml $list_items }}
+{{- end }}
+{{- end }}
 
 {{- if .Values.manifests.gateway }}
 ---
@@ -42,6 +60,13 @@ metadata:
   name: {{ tuple "app_gateway" "internal" . | include "helm-toolkit.endpoints.hostname_short_endpoint_lookup" }}
 spec:
 {{- $gateway := include "ag.default_gateway" . | fromYaml }}
-{{- $mergedGateway := merge .Values.gateways.default $gateway }}
+{{- $listeners := include "ag.default_listeners" . | fromYaml }}
+{{- $user_gateway := deepCopy .Values.gateways.default }}
+{{- $user_listeners := index $user_gateway "listeners" }}
+{{- $_ := unset $user_gateway "listeners" }}
+{{- $merged_listeners := merge $user_listeners $listeners | include "ag.to_listeners_list" }}
+{{- $mergedGateway := merge $user_gateway $gateway }}
 {{ toYaml $mergedGateway | indent 2 }}
+  listeners:
+{{- $merged_listeners | indent 4 -}}
 {{- end -}}

@@ -28,6 +28,28 @@ labels:
 
 gateways:
   default: {}
+    # The Gateway object spec is formed as follows:
+    # 1. listeners dict is converted to Gateway API expected list
+    #    of listeners where key in dict is name of listener.
+    #    List of listeners is formed in alfanumeric order. Optional
+    #    flag enabled can be used to disable listener
+    # Example dict:
+    # listeners:
+    #   https1:
+    #     allowedRoutes:
+    #       namespaces:
+    #         from: All
+    #     port: 444
+    #     protocol: HTTPS
+    # Resulting list:
+    # listeners:
+    #   - allowedRoutes:
+    #       namespaces:
+    #         from: All
+    #     name: https1
+    #     port: 444
+    #     protocol: HTTPS
+    # 2. All other options are translated as is.
 gateway_classes:
   default: {}
 envoy_proxies:
