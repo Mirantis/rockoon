@@ -22,6 +22,10 @@ dns:designate:StatefulSet:designate-api:
         component: server
   - podSelector:
       matchLabels:
+        application: ceilometer
+        component: central
+  - podSelector:
+      matchLabels:
         application: neutron
         component: server
   - podSelector:
