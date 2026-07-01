@@ -521,6 +521,10 @@ network:
     node_port_enabled: false
     external_policy_local: false
     external: {}
+    udp_route:
+      listenerName: "dns-udp"
+    tcp_route:
+      listenerName: "dns-tcp"
 # Example below shows how to configure Service for PowerDNS
 # and set specific IP address for both or single service which
 # is enabled by appropriate manifest.
@@ -1162,6 +1166,8 @@ manifests:
   deployment_sink: false
   ingress_api: true
   http_route_api: true
+  tcp_route_powerdns: true
+  udp_route_powerdns: true
   job_bootstrap: true
   job_pool_manage: true
   job_zone_setup: false

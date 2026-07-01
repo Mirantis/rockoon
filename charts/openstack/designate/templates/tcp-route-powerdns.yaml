@@ -1,0 +1,6 @@
+{{- if .Values.manifests.tcp_route_powerdns }}
+{{- $envAll := . -}}
+{{- $port := tuple "powerdns" "internal" "powerdns_tcp" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
+{{- $tcpRouteOpts := dict "envAll" $envAll "backendServiceType" "powerdns" "backendService" "powerdns" "backendPort" $port -}}
+{{ $tcpRouteOpts | include "helm-toolkit.manifests.tcp_route" }}
+{{- end }}

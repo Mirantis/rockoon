@@ -22,6 +22,29 @@ spec:
 {{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
                 key: |
 {{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+{%- if 'dns' in spec.features.services %}
+      gateways:
+        default:
+          listeners:
+            dns-tcp:
+              allowedRoutes:
+                kinds:
+                - group: gateway.networking.k8s.io
+                  kind: TCPRoute
+                namespaces:
+                  from: Same
+              port: 53
+              protocol: TCP
+            dns-udp:
+              allowedRoutes:
+                kinds:
+                - group: gateway.networking.k8s.io
+                  kind: UDPRoute
+                namespaces:
+                  from: Same
+              port: 53
+              protocol: UDP
+{%- endif %}
       manifests:
         network_policy: {{ spec.features.network_policies.enabled }}
 {%- if spec.features.network_policies.enabled %}

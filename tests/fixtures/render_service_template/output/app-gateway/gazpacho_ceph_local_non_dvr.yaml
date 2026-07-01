@@ -18,6 +18,27 @@ spec:
                   TEST CRT
                 key: |
                   TEST KEY
+      gateways:
+        default:
+          listeners:
+            dns-tcp:
+              allowedRoutes:
+                kinds:
+                - group: gateway.networking.k8s.io
+                  kind: TCPRoute
+                namespaces:
+                  from: Same
+              port: 53
+              protocol: TCP
+            dns-udp:
+              allowedRoutes:
+                kinds:
+                - group: gateway.networking.k8s.io
+                  kind: UDPRoute
+                namespaces:
+                  from: Same
+              port: 53
+              protocol: UDP
       manifests:
         network_policy: true
       network_policy:
@@ -30,9 +51,9 @@ spec:
                 ports:
                   - port: 80
                     protocol: TCP
-                  - port: 53
+                  - port: 10053
                     protocol: UDP
-                  - port: 53
+                  - port: 10053
                     protocol: TCP
                   - port: 10443
                     protocol: TCP
