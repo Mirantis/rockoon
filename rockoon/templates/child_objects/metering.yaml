@@ -82,6 +82,10 @@ ceilometer:
       pod_labels:
         application: ceilometer
         component: notification
+      ports:
+        - port: 3000
+          name: prometheus
+          protocol: TCP
   Job:
     ceilometer-bootstrap:
       connections:

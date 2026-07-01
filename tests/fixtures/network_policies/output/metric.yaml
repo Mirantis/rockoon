@@ -1,37 +1,56 @@
 metric:gnocchi:Deployment:gnocchi-api:
-- from:
-  - podSelector:
-      matchLabels:
-        application: aodh
-        component: api
-  - podSelector:
-      matchLabels:
-        application: aodh
-        component: evaluator
-  - podSelector:
-      matchLabels:
-        application: app_gateway
-        component: proxy
-  - podSelector:
-      matchLabels:
-        application: keystone
-        component: client
-  - podSelector:
-      matchLabels:
-        application: ingress
-        component: server
-  - podSelector:
-      matchLabels:
-        application: ceilometer
-        component: notification
-  - podSelector:
-      matchLabels:
-        application: ceilometer
-        component: db-sync
-  - podSelector:
-      matchLabels:
-        application: gnocchi
-        component: resources-cleaner
-  ports:
-  - port: 8041
-    protocol: TCP
+  - from:
+      - podSelector:
+          matchLabels:
+            application: aodh
+            component: api
+      - podSelector:
+          matchLabels:
+            application: aodh
+            component: evaluator
+      - podSelector:
+          matchLabels:
+            application: app_gateway
+            component: proxy
+      - podSelector:
+          matchLabels:
+            application: keystone
+            component: client
+      - podSelector:
+          matchLabels:
+            application: ingress
+            component: server
+      - podSelector:
+          matchLabels:
+            application: ceilometer
+            component: notification
+      - podSelector:
+          matchLabels:
+            application: ceilometer
+            component: db-sync
+      - podSelector:
+          matchLabels:
+            application: gnocchi
+            component: resources-cleaner
+    ports:
+      - port: 8041
+        protocol: TCP
+# NOTE(mkarpin): the network policy generation test needs fixing PRODX-64380
+metric-storage:aetos:Deployment:aetos-api:
+  - from:
+      - podSelector:
+          matchLabels:
+            application: aodh
+            component: evaluator
+    ports:
+      - protocol: TCP
+        port: 8780
+metric-storage:prometheus:StatefulSet:openstack-prometheus-server:
+  - from:
+      - podSelector:
+          matchLabels:
+            application: aetos
+            component: api
+    ports:
+      - protocol: TCP
+        port: 9090

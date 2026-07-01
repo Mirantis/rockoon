@@ -42,6 +42,7 @@ aodh:
           - {{ to_child_object("messaging", "rabbitmq", "StatefulSet", "openstack-rabbitmq-rabbitmq", ["amqp"]) | indent(12)}}
           - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12)}}
           - {{ to_child_object("metric", "gnocchi", "Deployment", "gnocchi-api", ["gn-api"]) | indent(12)}}
+          - {{ to_child_object("metric-storage", "aetos", "Deployment", "aetos-api", ["ae-api"]) | indent(12)}}
           - {{ to_child_object("load-balancer", "octavia", "Deployment", "octavia-api", ["o-api"]) | indent(12)}}
       hash_fields: []
       images:

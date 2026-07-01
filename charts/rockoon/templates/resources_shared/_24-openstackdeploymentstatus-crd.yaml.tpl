@@ -98,6 +98,7 @@ spec:
                     messaging: *component_status
                     metering: *component_status
                     metric: *component_status
+                    metric-storage: *component_status
                     networking: *component_status
                     object-storage: *component_status
                     orchestration: *component_status

@@ -174,6 +174,10 @@ memcached:memcached:StatefulSet:openstack-memcached-memcached:
         component: notification
   - podSelector:
       matchLabels:
+        application: aetos
+        component: api
+  - podSelector:
+      matchLabels:
         application: gnocchi
         component: metricd
   - podSelector:

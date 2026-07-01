@@ -45,6 +45,8 @@ class OpenStackValidator(base.BaseValidator):
                 self._validate_openstack_upgrade(old_obj, new_obj)
                 self._validate_for_another_upgrade(review_request)
         self._check_masakari_allowed(new_obj)
+        self._check_metric_allowed(new_obj)
+        self._check_metric_storage_allowed(new_obj)
         self._check_baremetal_allowed(new_obj)
         self._check_panko_allowed(new_obj)
         self._check_manila_allowed(new_obj)
@@ -94,6 +96,40 @@ class OpenStackValidator(base.BaseValidator):
         if (
             "instance-ha" in openstack_services
             and os_num_version < constants.OpenStackVersion["victoria"].value
+        ):
+            raise exception.OsDplValidationFailed(
+                "This set of services is not permitted to use with"
+                "current OpenStack version."
+            )
+
+    def _check_metric_allowed(self, new_obj):
+        # Do not call heavy render logic, assume default values in preset is ok
+        openstack_services = (
+            new_obj.get("spec", {}).get("features", {}).get("services", [])
+        )
+        os_num_version = constants.OpenStackVersion[
+            new_obj["spec"]["openstack_version"]
+        ].value
+        if (
+            "metric" in openstack_services
+            and os_num_version > constants.OpenStackVersion["epoxy"].value
+        ):
+            raise exception.OsDplValidationFailed(
+                "This set of services is not permitted to use with"
+                "current OpenStack version."
+            )
+
+    def _check_metric_storage_allowed(self, new_obj):
+        # Do not call heavy render logic, assume default values in preset is ok
+        openstack_services = (
+            new_obj.get("spec", {}).get("features", {}).get("services", [])
+        )
+        os_num_version = constants.OpenStackVersion[
+            new_obj["spec"]["openstack_version"]
+        ].value
+        if (
+            "metric-storage" in openstack_services
+            and os_num_version < constants.OpenStackVersion["gazpacho"].value
         ):
             raise exception.OsDplValidationFailed(
                 "This set of services is not permitted to use with"
@@ -221,10 +257,14 @@ class OpenStackValidator(base.BaseValidator):
             )
 
         # validate that nothing else is changed together with
-        # openstack_version
+        # openstack_version but allow services list to change
         _old_spec = copy.deepcopy(old_obj["spec"])
         _old_spec.pop("openstack_version")
+        if _old_spec.get("features", {}).get("services"):
+            _old_spec["features"].pop("services")
         _new_spec = copy.deepcopy(new_obj["spec"])
+        if _new_spec.get("features", {}).get("services"):
+            _new_spec["features"].pop("services")
         _new_spec.pop("openstack_version")
         if _new_spec != _old_spec:
             raise exception.OsDplValidationFailed(

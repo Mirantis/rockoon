@@ -1,4 +1,4 @@
-openstack_version: gazpacho
+openstack_version: epoxy
 features:
   barbican:
     backends:

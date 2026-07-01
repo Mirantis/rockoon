@@ -1,0 +1,18 @@
+metric-storage:aetos:Deployment:aetos-api:
+  - from:
+      - podSelector:
+          matchLabels:
+            application: aodh
+            component: evaluator
+    ports:
+      - port: 8780
+        protocol: TCP
+metric-storage:prometheus:StatefulSet:openstack-prometheus-server:
+  - from:
+      - podSelector:
+          matchLabels:
+            application: aetos
+            component: api
+    ports:
+      - port: 9090
+        protocol: TCP

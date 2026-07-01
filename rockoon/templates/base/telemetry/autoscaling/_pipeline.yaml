@@ -18,4 +18,8 @@
             - name: meter_sink
               transformers:
               publishers:
+                {%- if OSVer.gazpacho <= OSVer[spec.openstack_version] < OSVer.master %}
+                - tcp://127.0.0.1:30000
+                {%- else %}
                 - gnocchi://?filter_project=service&filter_domain=service
+                {%- endif %}

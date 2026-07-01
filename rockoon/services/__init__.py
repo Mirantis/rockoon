@@ -44,6 +44,7 @@ from urllib.parse import urlsplit
 
 LOG = utils.get_logger(__name__)
 CONF = settings.CONF
+OSVer = constants.OpenStackVersion
 
 # INFRA SERVICES
 
@@ -792,6 +793,13 @@ class Gnocchi(OpenStackService):
         return t_args
 
 
+class MetricStorage(OpenStackService):
+
+    service = "metric-storage"
+    available_releases = ["openstack-aetos", "openstack-prometheus"]
+    openstack_chart = "aetos"
+
+
 # OPENSTACK SERVICES
 
 
@@ -1405,12 +1413,9 @@ class Neutron(OpenStackService, MaintenanceApiMixin):
             ("Job", "neutron-db-sync"),
             (neutron_server_deployment_type, "neutron-server"),
         ]
-        os_version_num = constants.OpenStackVersion[
-            self.openstack_version
-        ].value
 
         if (
-            os_version_num >= constants.OpenStackVersion["gazpacho"].value
+            OSVer[self.openstack_version] >= OSVer.gazpacho
             and utils.get_in(self.mspec["features"], ["neutron", "backend"])
             != "tungstenfabric"
         ):

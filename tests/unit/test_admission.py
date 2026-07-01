@@ -309,6 +309,18 @@ def test_upgrade_with_extra_changes_fail(client):
     )
 
 
+def test_upgrade_with_extra_service_changes_ok(client):
+    req = copy.deepcopy(ADMISSION_REQ)
+    req["request"]["operation"] = "UPDATE"
+    req["request"]["oldObject"] = copy.deepcopy(req["request"]["object"])
+    req["request"]["object"]["spec"]["features"]["services"].append(
+        "cloudprober"
+    )
+    response = client.simulate_post("/validate", json=req)
+    assert response.status == falcon.HTTP_OK
+    assert response.json["response"]["allowed"] is True
+
+
 def test_openstack_upgrade_on_slurp_release_ok(client, osdplst):
     allow_in = ["yoga", "zed"]
     req = copy.deepcopy(ADMISSION_REQ)
@@ -587,6 +599,58 @@ def test_insance_ha_deny_in_services(client):
         response = client.simulate_post("/validate", json=req)
         assert response.status == falcon.HTTP_OK
         assert response.json["response"]["allowed"] is False
+        assert response.json["response"]["status"]["code"] == 400
+
+
+def test_metric_allow_in_services(client):
+    allow_in = ["caracal", "epoxy"]
+    for os_version in allow_in:
+        req = copy.deepcopy(ADMISSION_REQ)
+        req["request"]["object"]["spec"]["openstack_version"] = os_version
+        req["request"]["object"]["spec"]["features"]["services"].append(
+            "metric"
+        )
+        response = client.simulate_post("/validate", json=req)
+        assert response.status == falcon.HTTP_OK
+        assert response.json["response"]["allowed"] is True
+
+
+def test_metric_deny_in_services(client):
+    deny_in = ["gazpacho"]
+    for os_version in deny_in:
+        req = copy.deepcopy(ADMISSION_REQ)
+        req["request"]["object"]["spec"]["openstack_version"] = os_version
+        req["request"]["object"]["spec"]["features"]["services"].append(
+            "metric"
+        )
+        response = client.simulate_post("/validate", json=req)
+        assert response.status == falcon.HTTP_OK
+        assert response.json["response"]["status"]["code"] == 400
+
+
+def test_metric_storage_allow_in_services(client):
+    allow_in = ["gazpacho"]
+    for os_version in allow_in:
+        req = copy.deepcopy(ADMISSION_REQ)
+        req["request"]["object"]["spec"]["openstack_version"] = os_version
+        req["request"]["object"]["spec"]["features"]["services"].append(
+            "metric-storage"
+        )
+        response = client.simulate_post("/validate", json=req)
+        assert response.status == falcon.HTTP_OK
+        assert response.json["response"]["allowed"] is True
+
+
+def test_metric_storage_deny_in_services(client):
+    deny_in = ["caracal", "epoxy"]
+    for os_version in deny_in:
+        req = copy.deepcopy(ADMISSION_REQ)
+        req["request"]["object"]["spec"]["openstack_version"] = os_version
+        req["request"]["object"]["spec"]["features"]["services"].append(
+            "metric-storage"
+        )
+        response = client.simulate_post("/validate", json=req)
+        assert response.status == falcon.HTTP_OK
         assert response.json["response"]["status"]["code"] == 400
 
 

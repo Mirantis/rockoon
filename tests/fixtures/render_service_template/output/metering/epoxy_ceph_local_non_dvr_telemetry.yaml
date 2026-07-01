@@ -22,7 +22,6 @@ spec:
           ceilometer_ipmi: ceilometer-ipmi:latest
           ceilometer_notification: ceilometer-notification:latest
           image_repo_sync: image-repo-sync:latest
-          sg_core: sg-core:latest
       conf:
         event_pipeline: |
           sinks:
@@ -657,7 +656,7 @@ spec:
             - name: meter_sink
               transformers:
               publishers:
-                - tcp://127.0.0.1:30000
+                - gnocchi://?filter_project=service&filter_domain=service
         polling: |
           sources:
             - name: ascale_pollsters
@@ -727,8 +726,6 @@ spec:
         job_ks_endpoints: false
         job_ks_service: false
         pdb_api: false
-        sidecar_sg_core: true
-        job_db_sync: false
       endpoints:
         cluster_domain_suffix: cluster.local
         identity:

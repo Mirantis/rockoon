@@ -479,7 +479,19 @@ metric:
   keystone_creds: {}
 metric-storage:
   credentials: &credentials_metric_storage
-  - memcached: mAcisvqaTNUVKNeE
+  - database:
+      user:
+        password: hY4hMF1YKC5DBbdjTtMdNRfDVgviki7a
+        username: gnocchiuTTQl1b
+    memcached: mAcisvqaTNUVKNeE
+    messaging:
+      user:
+        password: YfcVqYjgwIGlgM0vVAg31JBBbQ8bSQqK
+        username: gnocchirnLp3GB
+    notifications:
+      user:
+        password: AmlSFp4mL6MW5RyTqnYhcLVe3H9uqglL
+        username: gnocchi3uKHLFZ
     identity:
       aetos:
         password: hdqBavi7cY1Qke6FahK87WrHm7JqD5iN

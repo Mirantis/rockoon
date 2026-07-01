@@ -11,6 +11,8 @@ admin_creds:
 guest_creds:
   password: 7TnAuP0dKMsgaVHErehZkC5HCK3ZxOi4
 images:
+  aetos_api: aetos-api:latest
+  alpine-utils: alpine-utils:latest
   aodh_db_purge: aodh-db-purge:latest
   aodh_api: aodh-api:latest
   aodh_db_sync: aodh-db-sync:latest
@@ -41,6 +43,7 @@ images:
   cinder_service_cleaner: cinder-service-cleaner:latest
   cloudprober: cloudprober:latest
   cloudprober_openstack_discovery: cloudprober-openstack-discovery:latest
+  configmap-reload: configmap-reload:latest
   create_resources: create-resources:latest
   octavia_lb_failover: octavia_lb_failover:latest
   stepler_run_tests: stepler-run-tests:latest
@@ -199,6 +202,7 @@ images:
   placement_db_sync: placement-db-sync:latest
   powerdns: powerdns:latest
   powerdns_db_sync: powerdns-db-sync:latest
+  prometheus: prometheus:latest
   prometheus_create_mysql_user: prometheus-create-mysql-user:latest
   prometheus_memcached_exporter: prometheus-memcached-exporter:latest
   prometheus_mysql_exporter: prometheus-mysql-exporter:latest
@@ -239,6 +243,7 @@ images:
   os_image_ubuntu_2404_checksum: 6fb7322b32df
   redis-operator: redis-operator:latest
   envoy: 'envoy:latest'
+  sg_core: sg-core:latest
 proxy_vars:
   HTTP_PROXY: http://127.0.0.1:3128
   NO_PROXY: .svc.cluster.local
@@ -313,6 +318,12 @@ network_policies:
       - from:
         - default: selector
     metric:gnocchi:Deployment:gnocchi-api:
+      - from:
+        - default: selector
+    metric-storage:aetos:Deployment:aetos-api:
+      - from:
+        - default: selector
+    metric-storage:prometheus:StatefulSet:openstack-prometheus-server:
       - from:
         - default: selector
     dns:designate:StatefulSet:designate-api:

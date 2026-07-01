@@ -732,6 +732,7 @@ properties:
             - event
             - metering
             - metric
+            - metric-storage
             - instance-ha
             - shared-file-system
             - dynamic-resource-balancer
@@ -1918,6 +1919,8 @@ properties:
           octavia:
             <<: *logging_level
           aodh:
+            <<: *logging_level
+          aetos:
             <<: *logging_level
           panko:
             <<: *logging_level

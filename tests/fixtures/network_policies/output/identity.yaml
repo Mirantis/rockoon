@@ -439,6 +439,22 @@ identity:keystone:Deployment:keystone-api:
         component: ks-user
   - podSelector:
       matchLabels:
+        application: aetos
+        component: api
+  - podSelector:
+      matchLabels:
+        application: aetos
+        component: ks-endpoints
+  - podSelector:
+      matchLabels:
+        application: aetos
+        component: ks-service
+  - podSelector:
+      matchLabels:
+        application: aetos
+        component: ks-user
+  - podSelector:
+      matchLabels:
         application: gnocchi
         component: metricd
   - podSelector:

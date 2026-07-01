@@ -1,0 +1,175 @@
+#apiVersion: lcm.mirantis.com/v1alpha1
+#kind: HelmBundle
+
+{%- set service = 'aetos' %}
+
+spec:
+  releases:
+  - name: openstack-aetos
+    chart: aetos
+    values:
+      images:
+        tags:
+{%- for image in [
+    "aetos_api",
+    "dep_check",
+    "ks_user",
+    "ks_service",
+    "ks_endpoints",
+    "image_repo_sync",] %}
+        {%- if image in images %}
+          {{ image }}: {{ images[image] }}
+        {%- endif %}
+{%- endfor %}
+      conf:
+        policy.d:
+          01-controller-default.yaml: {{ service_policy }}
+          02-custom.yaml: {{ spec.get("features", {}).get("policies", {}).get("aetos", {}) }}
+      logging:
+        logging_aetos:
+          level: {{ spec.get('features', {}).get('logging', {}).get('aetos', {}).get('level', 'INFO') }}
+      manifests:
+        network_policy: {{ spec.features.network_policies.enabled }}
+{%- if spec.features.network_policies.enabled %}
+      network_policy:
+{% include 'base/network_policies/metric-storage.yaml' %}
+{%- endif %}
+      endpoints:
+        cluster_domain_suffix: {{ spec.internal_domain_name }}
+{% include 'base/_admin_identity.yaml' %}
+{% include 'base/_cache.yaml' %}
+        metric_storage:
+          host_fqdn_override:
+            public:
+              host: aetos.{{ spec.public_domain_name }}
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          hosts:
+            admin:
+              host: aetos-api
+            default: aetos
+            internal: aetos-api
+            public:
+              host: aetos
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          port:
+            api:
+              admin: 8780
+              default: 80
+              internal: 8780
+              public: 443
+          scheme:
+            default: http
+            public: https
+        prometheus:
+          hosts:
+            default: openstack-prometheus-server
+          port:
+            api:
+              default: 80
+
+  - name: openstack-prometheus
+    chart: prometheus
+    values:
+{%- if spec.features.network_policies.enabled %}
+      network_policy:
+{% include 'base/network_policies/metric-storage-prometheus.yaml' %}
+{%- endif %}
+      configmapReload:
+        {%- set image_url, image_tag = images["configmap-reload"].rsplit(":", 1) %}
+        image:
+          repository: {{ image_url }}
+          tag: {{ image_tag }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - all
+      initChownData:
+        {%- set image_url, image_tag = images["alpine-utils"].rsplit(":", 1) %}
+        image:
+          repository: {{ image_url }}
+          tag: {{ image_tag }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            add:
+            - CHOWN
+            drop:
+            - all
+          runAsNonRoot: false
+          runAsUser: 0
+      server:
+        {%- set image_url, image_tag = images["prometheus"].rsplit(":", 1) %}
+        image:
+          repository: {{ image_url }}
+          tag: {{ image_tag }}
+        global:
+          scrape_interval: 30s
+          scrape_timeout: 10s
+        extraArgs:
+          enable-feature: memory-snapshot-on-shutdown
+          query.max-concurrency: 20
+          storage.tsdb.path: /data
+          storage.tsdb.retention.size: 1GB
+          storage.tsdb.retention.time: 2h
+        nodeSelector:
+          openstack-control-plane: enabled
+        persistentVolume:
+          enabled: true
+          mountPath: /data
+          size: 1Gi
+          storageClass: lvp-fake-root
+        podSecurityContext:
+          fsGroup: 65534
+          runAsGroup: 65534
+          runAsNonRoot: true
+          runAsUser: 65534
+        replicaCount: 1
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 8Gi
+          requests:
+            cpu: 500m
+            memory: 2Gi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - all
+        service:
+          type: ClusterIP
+      serverFiles:
+        prometheus.yml:
+          scrape_configs:
+            sg-core:
+              honor_timestamps: true
+              metrics_path: /metrics
+              scheme: http
+              kubernetes_sd_configs:
+              - role: pod
+                namespaces:
+                  names:
+                  - openstack
+                selectors:
+                  - role: pod
+                    label: "application=ceilometer,component=notification"
+              metric_relabel_configs:
+              - regex: "(node|publisher|instance)"
+                action: labeldrop
+              relabel_configs:
+              - source_labels: [__meta_kubernetes_pod_container_port_name]
+                regex: prometheus
+                action: keep
