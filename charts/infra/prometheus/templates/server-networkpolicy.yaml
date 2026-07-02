@@ -1,0 +1,3 @@
+{{- if .Values.network_policy -}}
+{{ dict "envAll" . | include "helm-toolkit.manifests.kubernetes_network_policy" }}
+{{- end -}}

@@ -1,0 +1,368 @@
+network_policy: {}
+# see helm-toolkit.manifests.kubernetes_network_policy for expected format
+
+imagePullSecrets:
+# - name: "image-pull-secret"
+
+## Define serviceAccount names for components. Defaults to component's fully qualified name.
+##
+serviceAccounts:
+  server:
+    name:
+
+# Unique cluster identifier.
+#
+clusterId: ""
+
+## Monitors ConfigMap changes and POSTs to a URL
+## Ref: https://github.com/jimmidyson/configmap-reload
+##
+configmapReload:
+  ## configmap-reload container name
+  ##
+  name: configmap-reload
+
+  ## configmap-reload container image
+  ##
+  image:
+    repository: "docker-dev-kaas-virtual.docker.mirantis.net/stacklight/configmap-reload"
+    tag: "v0.8.0"
+    pullPolicy: IfNotPresent
+
+  ## Additional configmap-reload container arguments
+  ##
+  extraArgs: {}
+  ## Additional configmap-reload volume directories
+  ##
+  extraVolumeDirs: []
+
+
+  ## Additional configmap-reload mounts
+  ##
+  extraConfigmapMounts: []
+    # - name: prometheus-alerts
+    #   mountPath: /etc/alerts.d
+    #   subPath: ""
+    #   configMap: prometheus-alerts
+    #   readOnly: true
+
+
+  ## configmap-reload resource requests and limits
+  ## Ref: http://kubernetes.io/docs/user-guide/compute-resources/
+  ##
+  resources: {}
+
+  ## configmap-reload container security context
+  ##
+  securityContext: {}
+
+  service:
+    containerPort: 9533
+
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 3
+    periodSeconds: 30
+    failureThreshold: 3
+    timeoutSeconds: 3
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 3
+    periodSeconds: 15
+    failureThreshold: 3
+    timeoutSeconds: 3
+
+initChownData:
+  ## If false, data ownership will not be reset at startup
+  ## This allows the prometheus-server to be run with an arbitrary user
+  ##
+  enabled: true
+
+  ## initChownData container name
+  ##
+  name: init-chown-data
+
+  ## initChownData container image
+  ##
+  image:
+    repository: "docker-dev-kaas-virtual.docker.mirantis.net/stacklight/alpine-utils"
+    tag: "1-20230531114917"
+    pullPolicy: IfNotPresent
+
+  ## initChownData resource requests and limits
+  ## Ref: http://kubernetes.io/docs/user-guide/compute-resources/
+  ##
+  resources: {}
+
+  ## initChownData container security context
+  ##
+  securityContext: {}
+
+server:
+  ## Prometheus server container name
+  ##
+  name: server
+  sidecarContainers:
+
+  ## Prometheus server container image
+  ##
+  image:
+    repository: "docker-dev-kaas-virtual.docker.mirantis.net/stacklight/prometheus"
+    tag: "v3.0.1"
+    pullPolicy: IfNotPresent
+
+  ## prometheus server priorityClassName
+  ##
+  priorityClassName: ""
+
+  ## The URL prefix at which the container can be accessed. Useful in the case the '-web.external-url' includes a slug
+  ## so that the various internal URLs are still able to access as they are in the default case.
+  ## (Optional)
+  prefixURL: ""
+
+  ## External URL which can access prometheus server
+  ## Maybe same with Ingress host name
+  baseURL: ""
+
+  ## Additional server container environment variables
+  ##
+  ## You specify this manually like you would a raw deployment manifest.
+  ## This means you can bind in environment variables from secrets.
+  ##
+  ## e.g. static environment variable:
+  ##  - name: DEMO_GREETING
+  ##    value: "Hello from the environment"
+  ##
+  ## e.g. secret environment variable:
+  ## - name: USERNAME
+  ##   valueFrom:
+  ##     secretKeyRef:
+  ##       name: mysecret
+  ##       key: username
+  env: {}
+
+  ## This flag controls access to the administrative HTTP API which includes functionality such as deleting time
+  ## series. This is disabled by default.
+  enableAdminApi: false
+
+  ## This flag controls DB locking
+  skipTSDBLock: false
+
+  ## Path to a configuration file on prometheus server container FS
+  configPath: /etc/config/prometheus.yml
+
+  global:
+    ## How frequently to scrape targets by default
+    ##
+    scrape_interval: 1m
+    ## How long until a scrape request times out
+    ##
+    scrape_timeout: 10s
+    ## How frequently to evaluate rules
+    ##
+    evaluation_interval: 1m
+
+  ## Additional Prometheus server container arguments
+  ##
+  extraArgs: {}
+
+  ## Additional Prometheus server Volume mounts
+  ##
+  extraVolumeMounts: []
+
+  ## Additional Prometheus server Volumes
+  ##
+  extraVolumes: []
+
+  ## Additional Prometheus server hostPath mounts
+  ##
+  extraHostPathMounts: []
+    # - name: certs-dir
+    #   mountPath: /etc/kubernetes/certs
+    #   subPath: ""
+    #   hostPath: /etc/kubernetes/certs
+    #   readOnly: true
+
+  extraConfigmapMounts: []
+    # - name: certs-configmap
+    #   mountPath: /prometheus
+    #   subPath: ""
+    #   configMap: certs-configmap
+    #   readOnly: true
+
+  ## Additional Prometheus server Secret mounts
+  # Defines additional mounts with secrets. Secrets must be manually created in the namespace.
+  extraSecretMounts: []
+    # - name: prom-secret-files
+    #   mountPath: /etc/secrets/secret-file.key
+    #   subPath: secret-file.key
+    #   secretName: prom-secret-files
+    #   readOnly: true
+    #
+    #   # If true, Prometheus reload will be triggered for any changes made to the secret.
+    #   reloadConfigMap: false
+
+  ## ConfigMap override where fullname is {{.Release.Name}}-{{.Values.server.configMapOverrideName}}
+  ## Defining configMapOverrideName will cause templates/server-configmap.yaml
+  ## to NOT generate a ConfigMap resource
+  ##
+  configMapOverrideName: ""
+
+  ## Server Deployment Strategy type
+  # strategy:
+  #   type: Recreate
+
+  ## Node tolerations for server scheduling to nodes with taints
+  ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+  ##
+  tolerations: []
+    # - key: "key"
+    #   operator: "Equal|Exists"
+    #   value: "value"
+    #   effect: "NoSchedule|PreferNoSchedule|NoExecute(1.6 only)"
+
+  ## Node labels for Prometheus server pod assignment
+  ## Ref: https://kubernetes.io/docs/user-guide/node-selection/
+  ##
+  nodeSelector: {}
+
+  ## Pod affinity
+  ##
+  affinity: {}
+
+  ## Use an alternate scheduler, e.g. "stork".
+  ## ref: https://kubernetes.io/docs/tasks/administer-cluster/configure-multiple-schedulers/
+  ##
+  # schedulerName:
+
+  persistentVolume:
+    ## If true, Prometheus server will create/use a Persistent Volume Claim
+    ## If false, use emptyDir
+    ##
+    enabled: true
+
+    ## Prometheus server data Persistent Volume access modes
+    ## Must match those of existing PV or dynamic provisioner
+    ## Ref: http://kubernetes.io/docs/user-guide/persistent-volumes/
+    ##
+    accessModes:
+      - ReadWriteOnce
+
+    ## Prometheus server data Persistent Volume annotations
+    ##
+    annotations: {}
+
+    ## Prometheus server data Persistent Volume mount root path
+    ##
+    mountPath: /data
+
+    ## Prometheus server data Persistent Volume size
+    ##
+    size: 8Gi
+
+    ## Prometheus server data Persistent Volume Storage Class
+    ## If defined, storageClassName: <storageClass>
+    ## If set to "-", storageClassName: "", which disables dynamic provisioning
+    ## If undefined (the default) or set to null, no storageClassName spec is
+    ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+    ##   GKE, AWS & OpenStack)
+    ##
+    # storageClass: "-"
+
+    ## Subdirectory of Prometheus server data Persistent Volume to mount
+    ## Useful if the volume's root directory is not empty
+    ##
+    subPath: ""
+
+  emptyDir:
+    sizeLimit: ""
+
+  ## Annotations to be added to Prometheus server pods
+  ##
+  podAnnotations: {}
+    # iam.amazonaws.com/role: prometheus
+
+  ## Use a StatefulSet if replicaCount needs to be greater than 1 (see below)
+  ##
+  replicaCount: 1
+
+  statefulSet:
+    annotations: {}
+    podManagementPolicy: OrderedReady
+
+    ## Prometheus headless service to use for the statefulset
+    ##
+    headless:
+      annotations: {}
+      labels: {}
+      servicePort: 80
+
+  ## Prometheus server resource requests and limits
+  ## Ref: http://kubernetes.io/docs/user-guide/compute-resources/
+  ##
+  resources: {}
+    # limits:
+    #   cpu: 500m
+    #   memory: 512Mi
+    # requests:
+    #   cpu: 500m
+    #   memory: 512Mi
+
+  ## Prometheus Server pod security context
+  ##
+  podSecurityContext: {}
+
+  ## Prometheus Server main container security context
+  ##
+  securityContext: {}
+
+  service:
+    annotations:
+      prometheus.io/scrape: "true"
+    labels: {}
+    clusterIP: ""
+
+    ## List of IP addresses at which the Prometheus server service is available
+    ## Ref: https://kubernetes.io/docs/user-guide/services/#external-ips
+    ##
+    externalIPs: []
+
+    loadBalancerIP: ""
+    loadBalancerSourceRanges: []
+    servicePort: 80
+    containerPort: 9090
+    type: ClusterIP
+
+  ## Prometheus server pod termination grace period
+  ##
+  terminationGracePeriodSeconds: 300
+
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    timeoutSeconds: 10
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    timeoutSeconds: 4
+
+## Prometheus server ConfigMap entries
+##
+serverFiles:
+  prometheus.yml:
+    scrape_configs: {}
+
+metricFilter: {}
+#  cAdvisor:
+#  - action: keep
+#    separator: ';'
+#    labelRegexes:
+#      namespace: ''
+#      id: '/'
+#  kubeStateMetrics:
+#  - action: drop
+#    labelRegexes:
+#      namespace: 'kube-system'
+#  - action: drop
+#    labelRegexes:
+#      namespace: 'stacklight'

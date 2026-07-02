@@ -1,0 +1,61 @@
+{{- if (empty .Values.server.configMapOverrideName) -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    {{- include "prometheus.server.labels" . | nindent 4 }}
+  name: {{ template "prometheus.server.fullname" . }}
+data:
+{{- $root := . }}
+{{- range $key, $value := .Values.serverFiles }}
+  {{ $key }}: |
+  {{- if eq $key "prometheus.yml" }}
+    {{- $metricFilterKeyMap := dict "cadvisor" "cAdvisor" "prometheus-kube-state-metrics" "kubeStateMetrics" }}
+    global:
+    {{- omit $root.Values.server.global "external_labels" | toYaml | trimSuffix "\n" | nindent 6 }}
+    {{- if or $root.Values.server.global.external_labels $value.remote_write }}
+      external_labels:
+      {{- if $value.remote_write }}
+        __replica__: ${HOSTNAME}
+        {{- if $.Values.clusterId }}
+        mcc_cluster_id: {{ $.Values.clusterId }}
+        {{- end }}
+      {{- end }}
+      {{- if $root.Values.server.global.external_labels }}
+        {{- $root.Values.server.global.external_labels | toYaml | nindent 8 }}
+      {{- end }}
+    {{- end }}
+    {{- $except_scrape_configs := omit $value "scrape_configs" }}
+    {{- if $except_scrape_configs }}
+      {{ toYaml $except_scrape_configs | nindent 4 }}
+    {{- end }}
+    {{- $scrapeConfigs := $value.scrape_configs }}
+    {{- if empty $scrapeConfigs }}
+    scrape_configs: []
+    {{- else }}
+    scrape_configs:
+      {{- range $job_name, $job_config := $scrapeConfigs }}
+        {{- if or (not (hasKey $job_config "enabled")) (index $job_config "enabled") }}
+          {{- $metricRelabelConfigs := list }}
+          {{- range $metricRelabelConfig := $job_config.metric_relabel_configs | default list }}
+            {{- $metricRelabelConfigs = append $metricRelabelConfigs $metricRelabelConfig }}
+          {{- end }}
+          {{- range $metricRelabelConfig := index $root.Values.metricFilter (index $metricFilterKeyMap $job_name | default "") | default list }}
+            {{- $labelRegexes := $metricRelabelConfig.labelRegexes | default dict }}
+            {{- $separator := $metricRelabelConfig.separator | default ";" }}
+            {{- if $labelRegexes }}{{- $metricRelabelConfigs = append $metricRelabelConfigs (dict "source_labels" (keys $labelRegexes) "regex" (values $labelRegexes | join $separator | default "^$") "action" $metricRelabelConfig.action "separator" $separator) }}{{- end }}
+          {{- end }}
+    - job_name: '{{ $job_name }}'
+      {{ omit $job_config "enabled" "metric_relabel_configs" | toYaml | default "{}" | nindent 6 }}
+          {{- if $metricRelabelConfigs }}
+      metric_relabel_configs:
+      {{ $metricRelabelConfigs | toYaml | nindent 6 }}
+          {{- end }}
+        {{- end -}}
+      {{- end -}}
+    {{- end }}
+  {{- else }}
+    {{ toYaml $value | default "{}" | nindent 4 }}
+  {{- end -}}
+{{- end -}}
+{{- end -}}
