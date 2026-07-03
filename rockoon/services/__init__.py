@@ -62,21 +62,32 @@ class Ingress(Service):
     available_releases = ["ingress-openstack"]
 
     @property
+    def _is_managed(self):
+        state = utils.get_in(self.mspec, ["migration", self.service, "state"])
+        if state == "absent":
+            LOG.info(f"{self.service} removal is requested, skipping applying")
+            return False
+        elif state == "present":
+            return True
+        elif any(self.helm_manager.exist(r) for r in self.available_releases):
+            return True
+        else:
+            LOG.info(f"{self.service} is deprecated, skipping applying")
+        return False
+
+    @property
     def health_groups(self):
         return ["ingress"]
 
+    def wait_service_healthy(self):
+        if self._is_managed:
+            super().wait_service_healthy()
+
     def apply(self, event, **kwargs):
-        ingress_state = utils.get_in(
-            self.mspec, ["migration", "ingress", "state"]
-        )
-        if ingress_state == "absent":
-            LOG.info("Ingress removal is requested, skipping installation")
-        elif ingress_state == "present" or self.helm_manager.exist(
-            "ingress-openstack"
-        ):
+        if self._is_managed:
             super().apply(event, **kwargs)
-        else:
-            LOG.info("Ingress is deprecated, deployment is skipped")
+            return
+        self.osdplst.remove_service_status(self.service)
 
 
 class FederationMixin:
