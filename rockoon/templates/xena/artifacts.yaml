@@ -22,7 +22,7 @@ designate_mdns: '{{ images_base_url }}/openstack/designate:xena-focal-2024011208
 designate_producer: '{{ images_base_url }}/openstack/designate:xena-focal-20240112082932'
 designate_sink: '{{ images_base_url }}/openstack/designate:xena-focal-20240112082932'
 designate_worker: '{{ images_base_url }}/openstack/designate:xena-focal-20240112082932'
-drb_controller: '{{ images_base_url }}/openstack/extra/drb-controller:0.1.0-20260629074723'
+drb_controller: '{{ images_base_url }}/openstack/extra/drb-controller:0.1.0-20260703060751'
 glance_api: '{{ images_base_url }}/openstack/glance:xena-focal-20240112082932'
 glance_db_sync: '{{ images_base_url }}/openstack/glance:xena-focal-20240112082932'
 glance_db_expand: '{{ images_base_url }}/openstack/glance:xena-focal-20240112082932'
@@ -246,6 +246,6 @@ ironic_esp_checksum: 87b10bbb52ed7ea57ff2a5cf6d93f32e
 os_image_ubuntu_2404: '{{ binary_base_url }}/openstack/bin/ubuntu/24.04/noble-server-cloudimg-amd64-20251026.img'
 os_image_ubuntu_2404_checksum: e2f0561da667e43e2019466fe916f937
 tempest_bootstrap: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20260413060029'
-envoy: '{{ images_base_url }}/openstack/extra/envoy:1.38.2-noble-20260623094340'
+envoy: '{{ images_base_url }}/openstack/extra/envoy:1.38.2-noble-20260702231450'
 neutron_periodic_workers: '{{ images_base_url }}/openstack/neutron:xena-focal-20240112082932'
 neutron_ovn_maintenance: '{{ images_base_url }}/openstack/neutron:xena-focal-20240112082932'
