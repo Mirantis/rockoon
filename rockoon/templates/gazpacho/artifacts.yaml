@@ -254,3 +254,8 @@ tempest_bootstrap: '{{ images_base_url }}/openstack/openstack-tools:gazpacho-nob
 envoy: '{{ images_base_url }}/openstack/extra/envoy:1.38.2-noble-20260702231450'
 neutron_periodic_workers: '{{ images_base_url }}/openstack/neutron:gazpacho-noble-20260713060034'
 neutron_ovn_maintenance: '{{ images_base_url }}/openstack/neutron:gazpacho-noble-20260713060034'
+aetos_api: '{{ images_base_url }}/openstack/aetos:gazpacho-noble-20260713060034'
+sg_core: '{{ images_base_url }}/openstack/extra/sg-core:8394860-20260526140955'
+prometheus: '{{ images_base_url }}/stacklight/prometheus:v3.7.3'
+configmap-reload: '{{ images_base_url }}/stacklight/configmap-reload:v0.15.0'
+alpine-utils: '{{ images_base_url }}/stacklight/alpine-utils:1-20260713010029'
