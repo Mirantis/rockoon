@@ -1495,6 +1495,7 @@ conf:
       lazy-apps: true
       log-x-forwarded-for: true
       master: true
+      need-app: true
       procname-prefix-spaced: "neutron-api:"
       route-user-agent: '^kube-probe.* donotlog:'
       # start-time provides unix time at instance startup, used by ML2/OVN
