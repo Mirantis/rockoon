@@ -4,6 +4,18 @@
 {%- set neutron_server_deployment_type = "DaemonSet"%}
 {%- endif %}
 horizon:
+  CronJob:
+    horizon-db-purge:
+      hash_fields: []
+      images:
+      - horizon_db_purge
+      manifest: cron_job_db_purge
+      pod_labels:
+        application: horizon
+        component: db-purge
+      connections:
+        egress:
+          - {{ to_child_object("database", "mariadb", "StatefulSet", "mariadb-server", ["mysql"]) | indent(12)}}
   Deployment:
     horizon:
       connections:

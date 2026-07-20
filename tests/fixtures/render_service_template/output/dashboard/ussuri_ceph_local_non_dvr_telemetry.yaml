@@ -160,6 +160,7 @@ spec:
           dep_check: dep-check:latest
           horizon: horizon:latest
           horizon_db_sync: horizon-db-sync:latest
+          horizon_db_purge: horizon-db-purge:latest
           image_repo_sync: image-repo-sync:latest
           test: test:latest
       network_policy:
@@ -174,6 +175,11 @@ spec:
                 component: server
             policyTypes:
             - Ingress
+      jobs:
+        db_purge:
+          cron: '1 8 * * 1'
+          enabled: true
       manifests:
+        cron_job_db_purge: true
         network_policy: true
         secret_ca_bundle: true
