@@ -182,6 +182,7 @@ spec:
           CustomLog /dev/stdout combined env=!forwarded
           CustomLog /dev/stdout proxy env=forwarded
           <VirtualHost *:{% raw %}{{ $portInt }}{% endraw %}>
+              KeepAliveTimeout 75
               WSGIDaemonProcess keystone-public processes=8 threads=1 user=keystone group=keystone display-name=%{GROUP}
               WSGIProcessGroup keystone-public
               WSGIScriptAlias / /var/www/cgi-bin/keystone/keystone-wsgi-public
