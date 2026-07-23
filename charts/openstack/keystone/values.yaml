@@ -1147,6 +1147,7 @@ conf:
     CustomLog /dev/stdout proxy env=forwarded
 
     <VirtualHost *:{{ $portInt }}>
+        KeepAliveTimeout 75
         WSGIDaemonProcess keystone-public processes=1 threads=1 user=keystone group=keystone display-name=%{GROUP}
         WSGIProcessGroup keystone-public
         WSGIScriptAlias / /var/www/cgi-bin/keystone/keystone-wsgi-public

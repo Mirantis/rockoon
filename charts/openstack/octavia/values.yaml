@@ -538,6 +538,7 @@ conf:
     CustomLog /dev/stdout proxy env=forwarded
 
     <VirtualHost *:{{ $portInt }}>
+        KeepAliveTimeout 75
         WSGIDaemonProcess octavia-api processes={{ .Values.conf.software.apache2.processes }} threads=1 user=octavia group=octavia display-name=%{GROUP}
         WSGIProcessGroup octavia-api
         WSGIScriptAlias / /var/www/cgi-bin/octavia/octavia-wsgi
