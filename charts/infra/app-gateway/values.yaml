@@ -59,9 +59,19 @@ policies:
     default:
       retry:
         numRetries: 3
+        retryOn:
+          triggers:
+          - connect-failure
+          - refused-stream
+          - unavailable
+          - cancelled
+          - retriable-status-codes
+          # Safe reset retry
+          - reset-before-request
       timeout:
         http:
           requestTimeout: 60s
+          connectionIdleTimeout: 60s
 
 secrets:
   tls:
