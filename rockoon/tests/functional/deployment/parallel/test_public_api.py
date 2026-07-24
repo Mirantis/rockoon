@@ -1,15 +1,13 @@
 import os.path
 from parameterized import parameterized
-import requests
-from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.ssl_ import create_urllib3_context
 from rockoon import kube, settings
 from rockoon.tests.functional import base
+import socket
 import ssl
 import tempfile
 import time
 
-TLS_MATRIX = {
+TLS_VERSION_MAP = {
     "tlsv1.0": ssl.TLSVersion.TLSv1,
     "tlsv1.1": ssl.TLSVersion.TLSv1_1,
     "tlsv1.2": ssl.TLSVersion.TLSv1_2,
@@ -24,34 +22,9 @@ def cipersuite_check_custom_name_func(testcase_func, param_num, param):
     )
 
 
-class TestCipherAdapter(HTTPAdapter):
-    def __init__(self, test_tls_version, test_ciphers):
-        # Setting this parameter to 'auto' allows the SSL library to select
-        # appropriate ciphers for the TLS connection. Otherwise, this
-        # parameter should be a list of desired cipher suites for testing.
-        self.test_ciphers = (
-            None
-            if (
-                isinstance(test_ciphers, str)
-                and test_ciphers.lower() == "auto"
-            )
-            else ":".join(test_ciphers)
-        )
-        self.test_tls_version = TLS_MATRIX.get(test_tls_version.lower())
-        return super(TestCipherAdapter, self).__init__()
-
-    def init_poolmanager(self, *args, **kwargs):
-        context = create_urllib3_context(
-            ciphers=self.test_ciphers,
-            ssl_minimum_version=self.test_tls_version,
-            ssl_maximum_version=self.test_tls_version,
-        )
-        kwargs["ssl_context"] = context
-        return super(TestCipherAdapter, self).init_poolmanager(*args, **kwargs)
-
-
 class FipsFunctionalTestCase(base.BaseFunctionalTestCase):
-    test_url = "https://keystone.it.just.works"
+    test_host = "keystone.it.just.works"
+    test_port = 443
 
     @classmethod
     def _count_container_restarts(cls):
@@ -96,24 +69,41 @@ class FipsFunctionalTestCase(base.BaseFunctionalTestCase):
         ), f"During the test, {current_restarts - cls.restarts} Ingress containers were restarted"
 
     def _test_ciphersuite(
-        self, url, test_tls_version, test_ciphers, expected_state
+        self, host, port, test_tls_version, test_cipher, expected_state
     ):
-        session = requests.Session()
-        session.mount(
-            "https://", TestCipherAdapter(test_tls_version, test_ciphers)
-        )
         # this sleep was added for reducing requests frequency during testing
         time.sleep(0.5)
+        # Create a TLS context
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        tls_version = TLS_VERSION_MAP.get(test_tls_version.lower())
+        context.minimum_version = tls_version
+        context.maximum_version = tls_version
+        context.load_verify_locations(self.ca_bundle)
+        if test_cipher.lower() != "auto":
+            # Explicitly restrict the context to ONLY use the target cipher
+            context.set_ciphers(test_cipher)
 
-        if expected_state == "negative":
-            self.assertRaises(
-                requests.exceptions.SSLError,
-                session.get,
-                url,
-                verify=self.ca_bundle,
-            )
-        else:
-            self.assertTrue(session.get(url, verify=self.ca_bundle))
+        # Create network socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(10.0)  # Avoid hanging indefinitely
+
+        test_passed = False
+        secure_sock = None
+        try:
+            # Wrap the socket with our strict TLS context
+            secure_sock = context.wrap_socket(sock, server_hostname=host)
+            secure_sock.connect((host, port))
+            test_passed = expected_state == "positive"
+        except ssl.SSLError:
+            # Handshake failure means the remote libvirt doesn't allow the cipher
+            test_passed = expected_state == "negative"
+        finally:
+            if secure_sock:
+                secure_sock.close()
+            else:
+                sock.close()
+
+        self.assertTrue(test_passed)
 
     @parameterized.expand(
         [
@@ -123,91 +113,91 @@ class FipsFunctionalTestCase(base.BaseFunctionalTestCase):
             # The list of cipher suites for TLS 1.2 was obtained from the output
             # of the following command:
             # openssl ciphers -v 'ALL' | grep "TLSv1.2" | awk '{print $1}'
-            ("TLSv1.2", ["ECDHE-RSA-AES256-GCM-SHA384"], "positive"),
-            ("TLSv1.2", ["ECDHE-RSA-AES128-GCM-SHA256"], "positive"),
-            ("TLSv1.2", ["ECDHE-ECDSA-AES256-GCM-SHA384"], "negative"),
-            ("TLSv1.2", ["DHE-DSS-AES256-GCM-SHA384"], "negative"),
-            ("TLSv1.2", ["DHE-RSA-AES256-GCM-SHA384"], "negative"),
-            ("TLSv1.2", ["ECDHE-ECDSA-CHACHA20-POLY1305"], "negative"),
-            ("TLSv1.2", ["ECDHE-RSA-CHACHA20-POLY1305"], "negative"),
-            ("TLSv1.2", ["DHE-RSA-CHACHA20-POLY1305"], "negative"),
-            ("TLSv1.2", ["ECDHE-ECDSA-AES256-CCM8"], "negative"),
-            ("TLSv1.2", ["ECDHE-ECDSA-AES256-CCM"], "negative"),
-            ("TLSv1.2", ["DHE-RSA-AES256-CCM8"], "negative"),
-            ("TLSv1.2", ["DHE-RSA-AES256-CCM"], "negative"),
-            ("TLSv1.2", ["ECDHE-ECDSA-ARIA256-GCM-SHA384"], "negative"),
-            ("TLSv1.2", ["ECDHE-ARIA256-GCM-SHA384"], "negative"),
-            ("TLSv1.2", ["DHE-DSS-ARIA256-GCM-SHA384"], "negative"),
-            ("TLSv1.2", ["DHE-RSA-ARIA256-GCM-SHA384"], "negative"),
-            ("TLSv1.2", ["ADH-AES256-GCM-SHA384"], "negative"),
-            ("TLSv1.2", ["ECDHE-ECDSA-AES128-GCM-SHA256"], "negative"),
-            ("TLSv1.2", ["DHE-DSS-AES128-GCM-SHA256"], "negative"),
-            ("TLSv1.2", ["DHE-RSA-AES128-GCM-SHA256"], "negative"),
-            ("TLSv1.2", ["ECDHE-ECDSA-AES128-CCM8"], "negative"),
-            ("TLSv1.2", ["ECDHE-ECDSA-AES128-CCM"], "negative"),
-            ("TLSv1.2", ["DHE-RSA-AES128-CCM8"], "negative"),
-            ("TLSv1.2", ["DHE-RSA-AES128-CCM"], "negative"),
-            ("TLSv1.2", ["ECDHE-ECDSA-ARIA128-GCM-SHA256"], "negative"),
-            ("TLSv1.2", ["ECDHE-ARIA128-GCM-SHA256"], "negative"),
-            ("TLSv1.2", ["DHE-DSS-ARIA128-GCM-SHA256"], "negative"),
-            ("TLSv1.2", ["DHE-RSA-ARIA128-GCM-SHA256"], "negative"),
-            ("TLSv1.2", ["ADH-AES128-GCM-SHA256"], "negative"),
-            ("TLSv1.2", ["ECDHE-ECDSA-AES256-SHA384"], "negative"),
-            ("TLSv1.2", ["ECDHE-RSA-AES256-SHA384"], "negative"),
-            ("TLSv1.2", ["DHE-RSA-AES256-SHA256"], "negative"),
-            ("TLSv1.2", ["DHE-DSS-AES256-SHA256"], "negative"),
-            ("TLSv1.2", ["ECDHE-ECDSA-CAMELLIA256-SHA384"], "negative"),
-            ("TLSv1.2", ["ECDHE-RSA-CAMELLIA256-SHA384"], "negative"),
-            ("TLSv1.2", ["DHE-RSA-CAMELLIA256-SHA256"], "negative"),
-            ("TLSv1.2", ["DHE-DSS-CAMELLIA256-SHA256"], "negative"),
-            ("TLSv1.2", ["ADH-AES256-SHA256"], "negative"),
-            ("TLSv1.2", ["ADH-CAMELLIA256-SHA256"], "negative"),
-            ("TLSv1.2", ["ECDHE-ECDSA-AES128-SHA256"], "negative"),
-            ("TLSv1.2", ["ECDHE-RSA-AES128-SHA256"], "negative"),
-            ("TLSv1.2", ["DHE-RSA-AES128-SHA256"], "negative"),
-            ("TLSv1.2", ["DHE-DSS-AES128-SHA256"], "negative"),
-            ("TLSv1.2", ["ECDHE-ECDSA-CAMELLIA128-SHA256"], "negative"),
-            ("TLSv1.2", ["ECDHE-RSA-CAMELLIA128-SHA256"], "negative"),
-            ("TLSv1.2", ["DHE-RSA-CAMELLIA128-SHA256"], "negative"),
-            ("TLSv1.2", ["DHE-DSS-CAMELLIA128-SHA256"], "negative"),
-            ("TLSv1.2", ["ADH-AES128-SHA256"], "negative"),
-            ("TLSv1.2", ["ADH-CAMELLIA128-SHA256"], "negative"),
-            ("TLSv1.2", ["RSA-PSK-AES256-GCM-SHA384"], "negative"),
-            ("TLSv1.2", ["DHE-PSK-AES256-GCM-SHA384"], "negative"),
-            ("TLSv1.2", ["RSA-PSK-CHACHA20-POLY1305"], "negative"),
-            ("TLSv1.2", ["DHE-PSK-CHACHA20-POLY1305"], "negative"),
-            ("TLSv1.2", ["ECDHE-PSK-CHACHA20-POLY1305"], "negative"),
-            ("TLSv1.2", ["DHE-PSK-AES256-CCM8"], "negative"),
-            ("TLSv1.2", ["DHE-PSK-AES256-CCM"], "negative"),
-            ("TLSv1.2", ["RSA-PSK-ARIA256-GCM-SHA384"], "negative"),
-            ("TLSv1.2", ["DHE-PSK-ARIA256-GCM-SHA384"], "negative"),
-            ("TLSv1.2", ["AES256-GCM-SHA384"], "negative"),
-            ("TLSv1.2", ["AES256-CCM8"], "negative"),
-            ("TLSv1.2", ["AES256-CCM"], "negative"),
-            ("TLSv1.2", ["ARIA256-GCM-SHA384"], "negative"),
-            ("TLSv1.2", ["PSK-AES256-GCM-SHA384"], "negative"),
-            ("TLSv1.2", ["PSK-CHACHA20-POLY1305"], "negative"),
-            ("TLSv1.2", ["PSK-AES256-CCM8"], "negative"),
-            ("TLSv1.2", ["PSK-AES256-CCM"], "negative"),
-            ("TLSv1.2", ["PSK-ARIA256-GCM-SHA384"], "negative"),
-            ("TLSv1.2", ["RSA-PSK-AES128-GCM-SHA256"], "negative"),
-            ("TLSv1.2", ["DHE-PSK-AES128-GCM-SHA256"], "negative"),
-            ("TLSv1.2", ["DHE-PSK-AES128-CCM8"], "negative"),
-            ("TLSv1.2", ["DHE-PSK-AES128-CCM"], "negative"),
-            ("TLSv1.2", ["RSA-PSK-ARIA128-GCM-SHA256"], "negative"),
-            ("TLSv1.2", ["DHE-PSK-ARIA128-GCM-SHA256"], "negative"),
-            ("TLSv1.2", ["AES128-GCM-SHA256"], "negative"),
-            ("TLSv1.2", ["AES128-CCM8"], "negative"),
-            ("TLSv1.2", ["AES128-CCM"], "negative"),
-            ("TLSv1.2", ["ARIA128-GCM-SHA256"], "negative"),
-            ("TLSv1.2", ["PSK-AES128-GCM-SHA256"], "negative"),
-            ("TLSv1.2", ["PSK-AES128-CCM8"], "negative"),
-            ("TLSv1.2", ["PSK-AES128-CCM"], "negative"),
-            ("TLSv1.2", ["PSK-ARIA128-GCM-SHA256"], "negative"),
-            ("TLSv1.2", ["AES256-SHA256"], "negative"),
-            ("TLSv1.2", ["CAMELLIA256-SHA256"], "negative"),
-            ("TLSv1.2", ["AES128-SHA256"], "negative"),
-            ("TLSv1.2", ["CAMELLIA128-SHA256"], "negative"),
+            ("TLSv1.2", "ECDHE-RSA-AES256-GCM-SHA384", "positive"),
+            ("TLSv1.2", "ECDHE-RSA-AES128-GCM-SHA256", "positive"),
+            ("TLSv1.2", "ECDHE-ECDSA-AES256-GCM-SHA384", "negative"),
+            ("TLSv1.2", "DHE-DSS-AES256-GCM-SHA384", "negative"),
+            ("TLSv1.2", "DHE-RSA-AES256-GCM-SHA384", "negative"),
+            ("TLSv1.2", "ECDHE-ECDSA-CHACHA20-POLY1305", "negative"),
+            ("TLSv1.2", "ECDHE-RSA-CHACHA20-POLY1305", "negative"),
+            ("TLSv1.2", "DHE-RSA-CHACHA20-POLY1305", "negative"),
+            ("TLSv1.2", "ECDHE-ECDSA-AES256-CCM8", "negative"),
+            ("TLSv1.2", "ECDHE-ECDSA-AES256-CCM", "negative"),
+            ("TLSv1.2", "DHE-RSA-AES256-CCM8", "negative"),
+            ("TLSv1.2", "DHE-RSA-AES256-CCM", "negative"),
+            ("TLSv1.2", "ECDHE-ECDSA-ARIA256-GCM-SHA384", "negative"),
+            ("TLSv1.2", "ECDHE-ARIA256-GCM-SHA384", "negative"),
+            ("TLSv1.2", "DHE-DSS-ARIA256-GCM-SHA384", "negative"),
+            ("TLSv1.2", "DHE-RSA-ARIA256-GCM-SHA384", "negative"),
+            ("TLSv1.2", "ADH-AES256-GCM-SHA384", "negative"),
+            ("TLSv1.2", "ECDHE-ECDSA-AES128-GCM-SHA256", "negative"),
+            ("TLSv1.2", "DHE-DSS-AES128-GCM-SHA256", "negative"),
+            ("TLSv1.2", "DHE-RSA-AES128-GCM-SHA256", "negative"),
+            ("TLSv1.2", "ECDHE-ECDSA-AES128-CCM8", "negative"),
+            ("TLSv1.2", "ECDHE-ECDSA-AES128-CCM", "negative"),
+            ("TLSv1.2", "DHE-RSA-AES128-CCM8", "negative"),
+            ("TLSv1.2", "DHE-RSA-AES128-CCM", "negative"),
+            ("TLSv1.2", "ECDHE-ECDSA-ARIA128-GCM-SHA256", "negative"),
+            ("TLSv1.2", "ECDHE-ARIA128-GCM-SHA256", "negative"),
+            ("TLSv1.2", "DHE-DSS-ARIA128-GCM-SHA256", "negative"),
+            ("TLSv1.2", "DHE-RSA-ARIA128-GCM-SHA256", "negative"),
+            ("TLSv1.2", "ADH-AES128-GCM-SHA256", "negative"),
+            ("TLSv1.2", "ECDHE-ECDSA-AES256-SHA384", "negative"),
+            ("TLSv1.2", "ECDHE-RSA-AES256-SHA384", "negative"),
+            ("TLSv1.2", "DHE-RSA-AES256-SHA256", "negative"),
+            ("TLSv1.2", "DHE-DSS-AES256-SHA256", "negative"),
+            ("TLSv1.2", "ECDHE-ECDSA-CAMELLIA256-SHA384", "negative"),
+            ("TLSv1.2", "ECDHE-RSA-CAMELLIA256-SHA384", "negative"),
+            ("TLSv1.2", "DHE-RSA-CAMELLIA256-SHA256", "negative"),
+            ("TLSv1.2", "DHE-DSS-CAMELLIA256-SHA256", "negative"),
+            ("TLSv1.2", "ADH-AES256-SHA256", "negative"),
+            ("TLSv1.2", "ADH-CAMELLIA256-SHA256", "negative"),
+            ("TLSv1.2", "ECDHE-ECDSA-AES128-SHA256", "negative"),
+            ("TLSv1.2", "ECDHE-RSA-AES128-SHA256", "negative"),
+            ("TLSv1.2", "DHE-RSA-AES128-SHA256", "negative"),
+            ("TLSv1.2", "DHE-DSS-AES128-SHA256", "negative"),
+            ("TLSv1.2", "ECDHE-ECDSA-CAMELLIA128-SHA256", "negative"),
+            ("TLSv1.2", "ECDHE-RSA-CAMELLIA128-SHA256", "negative"),
+            ("TLSv1.2", "DHE-RSA-CAMELLIA128-SHA256", "negative"),
+            ("TLSv1.2", "DHE-DSS-CAMELLIA128-SHA256", "negative"),
+            ("TLSv1.2", "ADH-AES128-SHA256", "negative"),
+            ("TLSv1.2", "ADH-CAMELLIA128-SHA256", "negative"),
+            ("TLSv1.2", "RSA-PSK-AES256-GCM-SHA384", "negative"),
+            ("TLSv1.2", "DHE-PSK-AES256-GCM-SHA384", "negative"),
+            ("TLSv1.2", "RSA-PSK-CHACHA20-POLY1305", "negative"),
+            ("TLSv1.2", "DHE-PSK-CHACHA20-POLY1305", "negative"),
+            ("TLSv1.2", "ECDHE-PSK-CHACHA20-POLY1305", "negative"),
+            ("TLSv1.2", "DHE-PSK-AES256-CCM8", "negative"),
+            ("TLSv1.2", "DHE-PSK-AES256-CCM", "negative"),
+            ("TLSv1.2", "RSA-PSK-ARIA256-GCM-SHA384", "negative"),
+            ("TLSv1.2", "DHE-PSK-ARIA256-GCM-SHA384", "negative"),
+            ("TLSv1.2", "AES256-GCM-SHA384", "negative"),
+            ("TLSv1.2", "AES256-CCM8", "negative"),
+            ("TLSv1.2", "AES256-CCM", "negative"),
+            ("TLSv1.2", "ARIA256-GCM-SHA384", "negative"),
+            ("TLSv1.2", "PSK-AES256-GCM-SHA384", "negative"),
+            ("TLSv1.2", "PSK-CHACHA20-POLY1305", "negative"),
+            ("TLSv1.2", "PSK-AES256-CCM8", "negative"),
+            ("TLSv1.2", "PSK-AES256-CCM", "negative"),
+            ("TLSv1.2", "PSK-ARIA256-GCM-SHA384", "negative"),
+            ("TLSv1.2", "RSA-PSK-AES128-GCM-SHA256", "negative"),
+            ("TLSv1.2", "DHE-PSK-AES128-GCM-SHA256", "negative"),
+            ("TLSv1.2", "DHE-PSK-AES128-CCM8", "negative"),
+            ("TLSv1.2", "DHE-PSK-AES128-CCM", "negative"),
+            ("TLSv1.2", "RSA-PSK-ARIA128-GCM-SHA256", "negative"),
+            ("TLSv1.2", "DHE-PSK-ARIA128-GCM-SHA256", "negative"),
+            ("TLSv1.2", "AES128-GCM-SHA256", "negative"),
+            ("TLSv1.2", "AES128-CCM8", "negative"),
+            ("TLSv1.2", "AES128-CCM", "negative"),
+            ("TLSv1.2", "ARIA128-GCM-SHA256", "negative"),
+            ("TLSv1.2", "PSK-AES128-GCM-SHA256", "negative"),
+            ("TLSv1.2", "PSK-AES128-CCM8", "negative"),
+            ("TLSv1.2", "PSK-AES128-CCM", "negative"),
+            ("TLSv1.2", "PSK-ARIA128-GCM-SHA256", "negative"),
+            ("TLSv1.2", "AES256-SHA256", "negative"),
+            ("TLSv1.2", "CAMELLIA256-SHA256", "negative"),
+            ("TLSv1.2", "AES128-SHA256", "negative"),
+            ("TLSv1.2", "CAMELLIA128-SHA256", "negative"),
             # The TLS 1.3 has its own mechanic for ciphersite management but
             # it didn't implement in Python 3.12 so we can't set cipher for testing
             # There is a patch https://github.com/python/cpython/commit/bacb7771fb0390a1ae7f83b7bec97e5ce1d60d26
@@ -219,5 +209,5 @@ class FipsFunctionalTestCase(base.BaseFunctionalTestCase):
     )
     def test_ssl_connection(self, tls_version, cipher, expected_state):
         self._test_ciphersuite(
-            self.test_url, tls_version, cipher, expected_state
+            self.test_host, self.test_port, tls_version, cipher, expected_state
         )
