@@ -176,6 +176,7 @@ services:
               # - NumInstancesFilter
               - PciPassthroughFilter
             libvirt:
+              images_address_space_limit: 2
             {%- if OSVer[openstack_version] <= OSVer.ussuri %}
               live_migration_use_ip_to_scp_configdrive: true
             {%- else %}
