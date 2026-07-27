@@ -2,17 +2,8 @@ import os.path
 from parameterized import parameterized
 from rockoon import kube, settings
 from rockoon.tests.functional import base
-import socket
-import ssl
 import tempfile
 import time
-
-TLS_VERSION_MAP = {
-    "tlsv1.0": ssl.TLSVersion.TLSv1,
-    "tlsv1.1": ssl.TLSVersion.TLSv1_1,
-    "tlsv1.2": ssl.TLSVersion.TLSv1_2,
-    "tlsv1.3": ssl.TLSVersion.TLSv1_3,
-}
 
 
 def cipersuite_check_custom_name_func(testcase_func, param_num, param):
@@ -67,43 +58,6 @@ class FipsFunctionalTestCase(base.BaseFunctionalTestCase):
         assert (
             cls.restarts == current_restarts
         ), f"During the test, {current_restarts - cls.restarts} Ingress containers were restarted"
-
-    def _test_ciphersuite(
-        self, host, port, test_tls_version, test_cipher, expected_state
-    ):
-        # this sleep was added for reducing requests frequency during testing
-        time.sleep(0.5)
-        # Create a TLS context
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        tls_version = TLS_VERSION_MAP.get(test_tls_version.lower())
-        context.minimum_version = tls_version
-        context.maximum_version = tls_version
-        context.load_verify_locations(self.ca_bundle)
-        if test_cipher.lower() != "auto":
-            # Explicitly restrict the context to ONLY use the target cipher
-            context.set_ciphers(test_cipher)
-
-        # Create network socket
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(10.0)  # Avoid hanging indefinitely
-
-        test_passed = False
-        secure_sock = None
-        try:
-            # Wrap the socket with our strict TLS context
-            secure_sock = context.wrap_socket(sock, server_hostname=host)
-            secure_sock.connect((host, port))
-            test_passed = expected_state == "positive"
-        except ssl.SSLError:
-            # Handshake failure means the remote libvirt doesn't allow the cipher
-            test_passed = expected_state == "negative"
-        finally:
-            if secure_sock:
-                secure_sock.close()
-            else:
-                sock.close()
-
-        self.assertTrue(test_passed)
 
     @parameterized.expand(
         [
@@ -208,6 +162,13 @@ class FipsFunctionalTestCase(base.BaseFunctionalTestCase):
         name_func=cipersuite_check_custom_name_func,
     )
     def test_ssl_connection(self, tls_version, cipher, expected_state):
-        self._test_ciphersuite(
-            self.test_host, self.test_port, tls_version, cipher, expected_state
+        # this sleep was added for reducing requests frequency during testing
+        time.sleep(0.5)
+        self.check_ciphersuite(
+            self.test_host,
+            self.test_port,
+            tls_version,
+            cipher,
+            expected_state,
+            self.ca_bundle,
         )
