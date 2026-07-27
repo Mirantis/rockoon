@@ -87,6 +87,7 @@ images:
   horizon: horizon:latest
   horizon_clean_cache: horizon-clean-cache:latest
   horizon_db_sync: horizon-db-sync:latest
+  horizon_db_purge: horizon-db-purge:latest
   horizon_mirantis_theme_sha256summ: horizon-mirantis-theme-sha256summ
   horizon_mirantis_theme_url: https://horizon-mirantis-theme-url/latest
   image_repo_sync: image-repo-sync:latest

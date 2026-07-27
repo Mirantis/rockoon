@@ -37,6 +37,7 @@ heat_engine: '{{ images_base_url }}/openstack/heat:gazpacho-noble-20260713060034
 heat_engine_cleaner: '{{ images_base_url }}/openstack/heat:gazpacho-noble-20260713060034'
 horizon: '{{ images_base_url }}/openstack/horizon:gazpacho-noble-20260713060034'
 horizon_db_sync: '{{ images_base_url }}/openstack/horizon:gazpacho-noble-20260713060034'
+horizon_db_purge: '{{ images_base_url }}/openstack/horizon:gazpacho-noble-20260713060034'
 image_repo_sync: '{{ images_base_url }}/openstack/openstack-tools:gazpacho-noble-20260713060034'
 keystone_api: '{{ images_base_url }}/openstack/keystone:gazpacho-noble-20260713060034'
 keystone_credential_cleanup: '{{ images_base_url }}/openstack/heat:gazpacho-noble-20260713060034'

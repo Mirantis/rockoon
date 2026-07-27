@@ -20,6 +20,7 @@ images:
   tags:
     db_init: docker.io/openstackhelm/heat:stein-ubuntu_bionic
     horizon_db_sync: docker.io/openstackhelm/horizon:stein-ubuntu_bionic
+    horizon_db_purge: docker.io/openstackhelm/horizon:stein-ubuntu_bionic
     db_drop: docker.io/openstackhelm/heat:stein-ubuntu_bionic
     horizon: docker.io/openstackhelm/horizon:stein-ubuntu_bionic
     test: docker.io/openstackhelm/osh-selenium:latest-ubuntu_bionic
@@ -31,6 +32,18 @@ images:
     exclude:
       - dep_check
       - image_repo_sync
+
+jobs:
+  db_purge:
+    cron: "1 8 * * 1"
+    history:
+      success: 3
+      failed: 1
+    script:
+      template: |
+        #!/bin/bash
+        set -ex
+        python3 /tmp/manage.py clearsessions
 
 release_group: null
 
@@ -1111,6 +1124,12 @@ dependencies:
       services:
         - endpoint: internal
           service: oslo_db
+    db_purge:
+      jobs:
+        - horizon-db-sync
+      services:
+        - endpoint: internal
+          service: oslo_db
     db_sync:
       jobs:
         - horizon-db-init
@@ -1190,6 +1209,14 @@ pod:
         horizon_test:
           readOnlyRootFilesystem: true
           allowPrivilegeEscalation: false
+    db_purge:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        allowPrivilegeEscalation: false
+      container:
+        db_purge:
+          allowPrivilegeEscalation: false
   affinity:
     anti:
       type:
@@ -1260,6 +1287,13 @@ pod:
           memory: "1024Mi"
           cpu: "2000m"
       db_drop:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      db_purge:
         requests:
           memory: "128Mi"
           cpu: "100m"
@@ -1424,8 +1458,10 @@ manifests:
   secret_ca_bundle: false
   certificates: false
   configmap_bin: true
+  configmap_bin_aux: true
   configmap_etc: true
   configmap_oslo_policy: true
+  cron_job_db_purge: false
   deployment: true
   ingress_api: true
   http_route_api: true

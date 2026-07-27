@@ -468,6 +468,20 @@ properties:
                       Number of days to keep deleted entries. When set to 0 all entries from shadow tables
                       are deleted.
                       default: 30
+              horizon:
+                type: object
+                additionalProperties: false
+                properties:
+                  enabled:
+                    type: boolean
+                    description: |
+                      Enable periodic cleanup of expired Django sessions for Horizon.
+                      default: true
+                  schedule:
+                    type: string
+                    description: |
+                      Cron schedule for periodic cleanup.
+                      default: "1 8 * * 1"
           backup:
             type: object
             additionalProperties: false

@@ -10,6 +10,7 @@
 {%- set validate_true_line = "{% if auth_type in \"" + openid_providers.keys() | join(',') + "\" %}" %}
 {%- set validate_false_line = "{% if auth_type not in \"" + openid_providers.keys() | join(',') + "\" %}" %}
 {%- set horizon_features = spec.get('features', {}).get('horizon', {}) %}
+{%- set horizon_db_cleanup = spec.get('features', {}).get('database', {}).get('cleanup', {}).get('horizon', {'enabled': true}) %}
 {%- set neutron_backend = spec.features.neutron.get('backend', 'ml2') %}
 {%- set custom_policies = {} %}
 {%- set region_name = spec.get('region_name', 'RegionOne') %}
@@ -28,6 +29,7 @@ spec:
         tags:
 {%- for image in [
     "horizon_db_sync",
+    "horizon_db_purge",
     "db_init",
     "db_drop",
     "horizon",
@@ -48,6 +50,7 @@ spec:
 {% include 'base/network_policies/dashboard.yaml' %}
 {%- endif %}
       manifests:
+        cron_job_db_purge: true
         network_policy: {{ spec.features.network_policies.enabled }}
         secret_ca_bundle: true
       network:
@@ -119,6 +122,10 @@ spec:
 {{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
                 key: |
 {{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+      jobs:
+        db_purge:
+          enabled: {{ horizon_db_cleanup.enabled }}
+          cron: {{ horizon_db_cleanup.get("schedule", "1 8 * * 1") }}
       conf:
         policy.d: {{ custom_policies }}
         software:

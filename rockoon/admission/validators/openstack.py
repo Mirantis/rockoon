@@ -340,6 +340,7 @@ class OpenStackValidator(base.BaseValidator):
                 "heat",
                 "aodh",
                 "manila",
+                "horizon",
             ]:
                 schedule = cleaners.get(cleaner_cron, {}).get("schedule")
                 if schedule:

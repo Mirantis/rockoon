@@ -159,6 +159,10 @@ database:mariadb:StatefulSet:mariadb-server:
   - podSelector:
       matchLabels:
         application: horizon
+        component: db-purge
+  - podSelector:
+      matchLabels:
+        application: horizon
         component: server
   - podSelector:
       matchLabels:

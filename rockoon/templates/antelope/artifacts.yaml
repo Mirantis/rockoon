@@ -37,6 +37,7 @@ heat_engine: '{{ images_base_url }}/openstack/heat:antelope-jammy-20250716073925
 heat_engine_cleaner: '{{ images_base_url }}/openstack/heat:antelope-jammy-20250716073925'
 horizon: '{{ images_base_url }}/openstack/horizon:antelope-jammy-20250716073925'
 horizon_db_sync: '{{ images_base_url }}/openstack/horizon:antelope-jammy-20250716073925'
+horizon_db_purge: '{{ images_base_url }}/openstack/horizon:antelope-jammy-20250716073925'
 image_repo_sync: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20260703154828'
 keystone_api: '{{ images_base_url }}/openstack/keystone:antelope-jammy-20250716073925'
 keystone_credential_cleanup: '{{ images_base_url }}/openstack/heat:antelope-jammy-20250716073925'
