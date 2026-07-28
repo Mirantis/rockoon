@@ -6,13 +6,6 @@ import tempfile
 import time
 
 
-def cipersuite_check_custom_name_func(testcase_func, param_num, param):
-    return "%s_%s" % (
-        testcase_func.__name__,
-        parameterized.to_safe_name("_".join(str(x) for x in param.args)),
-    )
-
-
 class FipsFunctionalTestCase(base.BaseFunctionalTestCase):
     test_host = "keystone.it.just.works"
     test_port = 443
@@ -159,7 +152,7 @@ class FipsFunctionalTestCase(base.BaseFunctionalTestCase):
             # releases
             ("TLSv1.3", "auto", "positive"),
         ],
-        name_func=cipersuite_check_custom_name_func,
+        name_func=base.default_custom_name_func,
     )
     def test_ssl_connection(self, tls_version, cipher, expected_state):
         # this sleep was added for reducing requests frequency during testing

@@ -8,6 +8,7 @@ from kombu import Connection
 from unittest import TestCase
 from retry import retry
 from io import StringIO
+from parameterized import parameterized
 from paramiko.ssh_exception import NoValidConnectionsError, SSHException
 
 import openstack
@@ -80,6 +81,15 @@ def suppress404(func):
             pass
 
     return inner
+
+
+def default_custom_name_func(testcase_func, param_num, param):
+    return "%s_%s" % (
+        testcase_func.__name__,
+        parameterized.to_safe_name(
+            "_".join(str(x).lower() for x in param.args)
+        ),
+    )
 
 
 class BaseFunctionalTestCase(TestCase):
