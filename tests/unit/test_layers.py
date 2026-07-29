@@ -126,6 +126,33 @@ def test_apply_list_empty_rocky(osdpl_min_rocky):
     assert not td
 
 
+def test_apply_list_empty_gazpacho(osdpl_min_gazpacho):
+    compute_services = {
+        "app-gateway",
+        "block-storage",
+        "compute",
+        "dns",
+        "identity",
+        "dashboard",
+        "image",
+        "ingress",
+        "database",
+        "descheduler",
+        "memcached",
+        "networking",
+        "orchestration",
+        "messaging",
+        "load-balancer",
+        "coordination",
+        "key-manager",
+        "dynamic-resource-balancer",
+        "placement",
+    }
+    ta, td = layers.services(osdpl_min_gazpacho, mock.Mock())
+    assert ta == compute_services
+    assert td == {"redis"}
+
+
 def test_apply_list_not_empty(openstackdeployment_mspec):
     ta, td = layers.services(openstackdeployment_mspec, mock.Mock())
     assert "compute" in ta

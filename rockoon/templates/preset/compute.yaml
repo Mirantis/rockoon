@@ -64,7 +64,9 @@ features:
 {%- endif %}
     - coordination
     - key-manager
+{%- if OSVer[openstack_version] < OSVer.gazpacho %}
     - redis
+{%- endif %}
     - descheduler
     - dynamic-resource-balancer
   network_policies:

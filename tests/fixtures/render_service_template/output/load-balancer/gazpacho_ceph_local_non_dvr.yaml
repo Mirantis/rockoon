@@ -208,12 +208,6 @@ spec:
           statefulset:
             name: openstack-rabbitmq-rabbitmq
             replicas: 1
-        jobboard_redis:
-          namespace: openstack-redis
-          auth:
-            redis:
-              username: 'mymaster'
-              password: cfLDYSsNbuCywa6VmBvZ8h2sJXuZnvqW
       images:
         tags:
           bootstrap: bootstrap:latest

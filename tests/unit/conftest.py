@@ -115,6 +115,11 @@ def osdpl_min_rocky():
 
 
 @pytest.fixture
+def osdpl_min_gazpacho():
+    return _osdpl_mspec("gazpacho")
+
+
+@pytest.fixture
 def compute_helmbundle():
     yield yaml.safe_load(open("tests/fixtures/compute_helmbundle.yaml"))
 

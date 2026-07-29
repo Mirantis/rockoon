@@ -344,6 +344,7 @@ spec:
           scheme:
             default: http
             public: https
+{%- if OSVer[spec.openstack_version] < OSVer.gazpacho %}
 {%- if 'amphorav2' in provider_map.keys() %}
         jobboard_redis:
           namespace: {{ redis_namespace }}
@@ -351,6 +352,7 @@ spec:
             redis:
               username: 'mymaster'
               password: {{ redis_secret }}
+{%- endif %}
 {%- endif %}
       jobs:
         create_resources:

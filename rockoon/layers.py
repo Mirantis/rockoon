@@ -25,6 +25,7 @@ from rockoon import secrets
 from rockoon.utils import merger
 
 LOG = utils.get_logger(__name__)
+OSVer = constants.OpenStackVersion
 
 
 ENV = jinja2.Environment(
@@ -43,7 +44,7 @@ ENV.filters["b64encode"] = base64.b64encode
 ENV.filters["toyaml"] = yaml.dump
 ENV.filters["decode"] = lambda x: x.decode()
 ENV.filters["encode"] = lambda x: x.encode()
-ENV.globals["OSVer"] = constants.OpenStackVersion
+ENV.globals["OSVer"] = OSVer
 
 
 def kopf_exception(f):
@@ -107,6 +108,8 @@ def services(mspec, logger, **kwargs):
             to_delete = set(old or []) - set(new or [])
     if utils.get_in(mspec, ["migration", "ingress", "state"]) == "absent":
         to_delete.add("ingress")
+    if "redis" not in to_apply:
+        to_delete.add("redis")
     return to_apply, to_delete
 
 
@@ -153,7 +156,7 @@ def render_service_template(service, mspec, logger, **template_args):
     LOG.debug(f"Using template {tpl.filename}")
 
     # get supported openstack versions
-    openstack_versions = [v for v in constants.OpenStackVersion.__members__]
+    openstack_versions = [v for v in OSVer.__members__]
     # get supported SLURP releases
     slurp_releases = constants.SLURP_RELEASES
     service_policy = {}
