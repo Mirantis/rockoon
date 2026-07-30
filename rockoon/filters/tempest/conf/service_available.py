@@ -19,6 +19,7 @@ class ServiceAvailable(base_section.BaseSection):
         "nova",
         "panko",
         "sahara",
+        "sg_core",
         "swift",
         "horizon",
         "keystone",
@@ -103,3 +104,9 @@ class ServiceAvailable(base_section.BaseSection):
     @property
     def load_balancer(self):
         return self.is_service_enabled("octavia")
+
+    @property
+    def sg_core(self):
+        return self.get_values_item(
+            "ceilometer", "manifests.sidecar_sg_core", False
+        )
