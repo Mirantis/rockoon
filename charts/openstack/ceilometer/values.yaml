@@ -1726,62 +1726,88 @@ dependencies:
         services:
           - endpoint: internal
             service: mongodb
+    job_db_sync:
+      api:
+        jobs:
+          - ceilometer-db-sync
+        services:
+          - endpoint: internal
+            service: metric
+      central:
+        jobs:
+          - ceilometer-db-sync
+        services:
+          - endpoint: internal
+            service: metric
+      ipmi:
+        jobs:
+          - ceilometer-db-sync
+        services:
+          - endpoint: internal
+            service: metric
+      collector:
+        jobs:
+          - ceilometer-db-sync
+        services:
+          - endpoint: internal
+            service: metric
+      notification:
+        jobs:
+          - ceilometer-db-sync
+        services:
+          - endpoint: internal
+            service: metric
+      compute:
+        jobs:
+          - ceilometer-db-sync
+        services:
+          - endpoint: internal
+            service: metric
+      tests:
+        services:
+          - endpoint: internal
+            service: metric
   static:
     api:
       jobs:
-        - ceilometer-db-sync
         - ceilometer-ks-user
       services:
         - endpoint: internal
           service: identity
         - endpoint: internal
           service: oslo_db
-        - endpoint: internal
-          service: metric
     central:
       jobs:
-        - ceilometer-db-sync
         - ceilometer-ks-user
       services:
         - endpoint: internal
           service: identity
         - endpoint: internal
           service: oslo_db
-        - endpoint: internal
-          service: metric
     ipmi:
       jobs:
-        - ceilometer-db-sync
         - ceilometer-ks-user
       services:
         - endpoint: internal
           service: identity
         - endpoint: internal
           service: oslo_db
-        - endpoint: internal
-          service: metric
     collector:
       jobs:
-        - ceilometer-db-sync
         - ceilometer-ks-user
       services:
         - endpoint: internal
           service: identity
         - endpoint: internal
           service: oslo_db
-        - endpoint: internal
-          service: metric
     compute:
       jobs:
-        - ceilometer-db-sync
         - ceilometer-ks-user
       services:
         - endpoint: internal
           service: identity
         - endpoint: internal
           service: oslo_db
-        - endpoint: internal
-          service: metric
     db_init:
       services:
         - endpoint: internal
@@ -1816,23 +1842,18 @@ dependencies:
         endpoint: internal
     notification:
       jobs:
-        - ceilometer-db-sync
         - ceilometer-ks-user
       services:
         - endpoint: internal
           service: identity
         - endpoint: internal
           service: oslo_db
-        - endpoint: internal
-          service: metric
     tests:
       services:
         - endpoint: internal
           service: identity
         - endpoint: internal
           service: metering
-        - endpoint: internal
-          service: metric
     image_repo_sync:
       services:
         - endpoint: internal

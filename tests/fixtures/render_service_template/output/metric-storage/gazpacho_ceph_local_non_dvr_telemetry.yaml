@@ -1,0 +1,219 @@
+spec:
+  releases:
+  - name: openstack-aetos
+    chart: aetos
+    values:
+      images:
+        tags:
+          aetos_api: aetos-api:latest
+          dep_check: dep-check:latest
+          image_repo_sync: image-repo-sync:latest
+          ks_user: ks-user:latest
+          ks_service: ks-service:latest
+          ks_endpoints: ks-endpoints:latest
+      conf:
+        policy.d:
+          01-controller-default.yaml:
+            metric-storage_rule1: metric-storage_value1
+          02-custom.yaml: {}
+      endpoints:
+        cluster_domain_suffix: cluster.local
+        identity:
+          auth:
+            admin:
+              region_name: RegionOne
+              username: admin
+              password: ZUqTyP2XwsgEGKZ7qNhhecYyq9NLkGE6
+              project_name: admin
+              user_domain_name: default
+              project_domain_name: default
+              default_domain_id: default
+            aetos:
+              password: hdqBavi7cY1Qke6FahK87WrHm7JqD5iN
+              region_name: 'RegionOne'
+              username: aetosKcG4NgNFKb69Y19NHzgXuh4YCCg
+            test:
+              password: PbW0NaVxPI5ELrxBnMHIaMAkAtQ52xV7
+              region_name: 'RegionOne'
+              username: testw6RaGfq01mHQjzbmdFp1UGeldkpw
+        metric_storage:
+          host_fqdn_override:
+            public:
+              host: aetos.it.just.works
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          hosts:
+            admin:
+              host: aetos-api
+            default: aetos
+            internal: aetos-api
+            public:
+              host: aetos
+              tls:
+                ca: |
+                  TEST CA
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          port:
+            api:
+              admin: 8780
+              default: 80
+              internal: 8780
+              public: 443
+          scheme:
+            default: http
+            public: https
+        oslo_cache:
+          statefulset:
+            name: openstack-memcached-memcached
+            replicas: 3
+        prometheus:
+          hosts:
+            default: openstack-prometheus-server
+          port:
+            api:
+              default: 80
+      logging:
+        logging_aetos:
+          level: INFO
+      manifests:
+        network_policy: true
+      network_policy:
+        api:
+          spec:
+            ingress:
+            - from:
+              - default: selector
+            - from:
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: osh-system
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: stacklight
+              ports:
+              - port: 8780
+                protocol: TCP
+            podSelector:
+              matchLabels:
+                application: aetos
+                component: api
+            policyTypes:
+            - Ingress
+  - name: openstack-prometheus
+    chart: prometheus
+    values:
+      configmapReload:
+        image:
+          repository: configmap-reload
+          tag: latest
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - all
+      initChownData:
+        image:
+          repository: alpine-utils
+          tag: latest
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            add:
+            - CHOWN
+            drop:
+            - all
+          runAsNonRoot: false
+          runAsUser: 0
+      network_policy:
+        api:
+          spec:
+            ingress:
+            - from:
+              - default: selector
+            - from:
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: osh-system
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: stacklight
+              ports:
+              - port: 9090
+                protocol: TCP
+            podSelector:
+              matchLabels:
+                application: prometheus
+                component: server
+            policyTypes:
+            - Ingress
+      server:
+        extraArgs:
+          enable-feature: memory-snapshot-on-shutdown
+          query.max-concurrency: 20
+          storage.tsdb.path: /data
+          storage.tsdb.retention.size: 1GB
+          storage.tsdb.retention.time: 2h
+        global:
+          scrape_interval: 30s
+          scrape_timeout: 10s
+        image:
+          repository: prometheus
+          tag: latest
+        nodeSelector:
+          openstack-control-plane: enabled
+        persistentVolume:
+          enabled: true
+          mountPath: /data
+          size: 1Gi
+          storageClass: lvp-fake-root
+        podSecurityContext:
+          fsGroup: 65534
+          runAsGroup: 65534
+          runAsNonRoot: true
+          runAsUser: 65534
+        replicaCount: 1
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 8Gi
+          requests:
+            cpu: 500m
+            memory: 2Gi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - all
+        service:
+          type: ClusterIP
+      serverFiles:
+        prometheus.yml:
+          scrape_configs:
+            sg-core:
+              honor_timestamps: true
+              kubernetes_sd_configs:
+              - namespaces:
+                  names:
+                  - openstack
+                role: pod
+                selectors:
+                - label: application=ceilometer,component=notification
+                  role: pod
+              metric_relabel_configs:
+              - action: labeldrop
+                regex: (node|publisher|instance)
+              metrics_path: /metrics
+              relabel_configs:
+              - action: keep
+                regex: prometheus
+                source_labels:
+                - __meta_kubernetes_pod_container_port_name
+              scheme: http

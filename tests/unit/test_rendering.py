@@ -292,6 +292,21 @@ def get_child_object_templates():
             "gazpacho",
             "master",
         ],
+        "metric-storage": [
+            "queens",
+            "rocky",
+            "stein",
+            "train",
+            "ussuri",
+            "victoria",
+            "wallaby",
+            "xena",
+            "yoga",
+            "antelope",
+            "caracal",
+            "epoxy",
+            "master",
+        ],
     }
     res = []
     for service in all_services:

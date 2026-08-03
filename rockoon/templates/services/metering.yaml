@@ -37,6 +37,9 @@ spec:
           {{ image }}: {{ images[image] }}
         {%- endif %}
 {%- endfor %}
+{%- if OSVer.gazpacho <= OSVer[spec.openstack_version] < OSVer.master %}
+          sg_core: {{ images["sg_core"] }}
+{%- endif %}
       conf:
 {% include "base/telemetry/" + telemetry_mode + "/_event_pipeline.yaml" %}
 {% include "base/telemetry/" + telemetry_mode + "/_gnocchi_resources.yaml" %}
@@ -101,6 +104,10 @@ spec:
         job_ks_endpoints: false
         job_ks_service: false
         pdb_api: false
+      {%- if OSVer.gazpacho <= OSVer[spec.openstack_version] < OSVer.master %}
+        sidecar_sg_core: true
+        job_db_sync: false
+      {%- endif %}
       endpoints:
         cluster_domain_suffix: {{ spec.internal_domain_name }}
 {% include 'base/_admin_identity.yaml' %}

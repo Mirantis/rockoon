@@ -29,6 +29,7 @@ CHART_GROUP_MAPPING = {
         "ceilometer",
         "masakari",
         "manila",
+        "aetos",
     ],
     "infra": [
         "app-gateway",
@@ -48,6 +49,7 @@ CHART_GROUP_MAPPING = {
         "strongswan",
         "drb-controller",
         "redisoperator",
+        "prometheus",
     ],
 }
 
@@ -73,6 +75,7 @@ OS_SERVICES_MAP = {
     "instance-ha": "masakari",
     "shared-file-system": "manila",
     "stepler": "stepler",
+    "metric-storage": "aetos",
 }
 
 OS_POLICY_SERVICES = {
@@ -92,6 +95,7 @@ OS_POLICY_SERVICES = {
     "metric": "gnocchi",
     "instance-ha": "masakari",
     "shared-file-system": "manila",
+    "metric-storage": "aetos",
 }
 
 OPENSTACK_SERVICES_UPGRADE_ORDER = [

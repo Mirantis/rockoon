@@ -1,0 +1,72 @@
+{%- from 'macros/connections.j2' import to_child_object %}
+prometheus:
+  StatefulSet:
+    openstack-prometheus-server:
+      connections:
+        egress:
+          - {{ to_child_object("metering", "ceilometer", "Deployment", "ceilometer-notification", ["prometheus"]) | indent(12) }}
+      hash_fields: []
+      images:
+        - prometheus
+      manifest: statefulset
+      pod_labels:
+        application: prometheus
+        component: server
+      ports:
+        - port: 9090
+          name: prometheus
+          protocol: TCP
+aetos:
+  Deployment:
+    aetos-api:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12) }}
+          - {{ to_child_object("memcached", "memcached", "StatefulSet", "openstack-memcached-memcached", ["memcached"]) | indent(12) }}
+          - {{ to_child_object("metric-storage", "prometheus", "StatefulSet", "openstack-prometheus-server", ["prometheus"]) | indent(12) }}
+      hash_fields: []
+      images:
+        - aetos_api
+      manifest: deployment
+      pod_labels:
+        application: aetos
+        component: api
+      ports:
+        - port: 8780
+          name: ae-api
+          protocol: TCP
+  Job:
+    aetos-ks-endpoints:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+        - ks_endpoints
+      manifest: job_ks_endpoints
+      pod_labels:
+        application: aetos
+        component: ks-endpoints
+    aetos-ks-service:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields: []
+      images:
+        - ks_service
+      manifest: job_ks_service
+      pod_labels:
+        application: aetos
+        component: ks-service
+    aetos-ks-user:
+      connections:
+        egress:
+          - {{ to_child_object("identity", "keystone", "Deployment", "keystone-api", ["ks-pub"]) | indent(12)}}
+      hash_fields:
+        - endpoints.*
+      images:
+        - ks_user
+      manifest: job_ks_user
+      pod_labels:
+        application: aetos
+        component: ks-user
