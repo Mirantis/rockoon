@@ -498,6 +498,7 @@ conf:
       http-chunked-input: true
       http-raw-body: true
       chunked-input-limit: '4096000'
+      socket-timeout: 30
       stats: 0.0.0.0:1717
       stats-http: true
 
