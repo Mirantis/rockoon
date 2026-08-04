@@ -61,6 +61,10 @@ services:
               connection_recycle_time: 300
             oslo_messaging_rabbit:
               rabbit_qos_prefetch_count: 64
+          software:
+            apache2:
+              mpm_event:
+                MaxConnectionsPerChild: 0
   key-manager:
     barbican:
       values:

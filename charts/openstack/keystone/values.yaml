@@ -801,6 +801,7 @@ conf:
       mods_dir: /etc/apache2/mods-available
       a2enmod: null
       a2dismod: null
+      mpm_event: {}
   keystone:
     DEFAULT:
       admin_token: None
@@ -1115,14 +1116,15 @@ conf:
             failure_rate:
               max: 0
   mpm_event: |
+    {{- $mpm_event := .Values.conf.software.apache2.mpm_event }}
     <IfModule mpm_event_module>
-      ServerLimit         1024
-      StartServers        32
-      MinSpareThreads     32
-      MaxSpareThreads     256
-      ThreadsPerChild     25
-      MaxRequestsPerChild 128
-      ThreadLimit         720
+      ServerLimit            {{ dig "ServerLimit" 1024 $mpm_event }}
+      StartServers           {{ dig "StartServers" 32 $mpm_event }}
+      MinSpareThreads        {{ dig "MinSpareThreads" 32 $mpm_event }}
+      MaxSpareThreads        {{ dig "MaxSpareThreads" 256 $mpm_event }}
+      ThreadsPerChild        {{ dig "ThreadsPerChild" 25 $mpm_event }}
+      MaxConnectionsPerChild {{ dig "MaxConnectionsPerChild" 10000 $mpm_event }}
+      ThreadLimit            {{ dig "ThreadLimit" 720 $mpm_event }}
     </IfModule>
   wsgi_script: |
     import threading
