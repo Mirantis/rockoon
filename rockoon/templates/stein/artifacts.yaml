@@ -191,7 +191,7 @@ frr_info: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-202607
 cinder_service_cleaner: '{{ images_base_url }}/openstack/cinder:stein-bionic-20230227093206'
 strongswan: '{{ images_base_url }}/openstack/extra/strongswan:alpine-5.9.14-20260713100144'
 keystone_init_secrets: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20260730150252'
-rsyslog: '{{ images_base_url }}/openstack/extra/rsyslog:v8.2001.0-20260722080026'
+rsyslog: '{{ images_base_url }}/openstack/extra/rsyslog:v8.2001.0-20260731082307'
 glance_bootstrap: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20260730150252'
 glance_barbican_cert_init: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20260730150252'
 tempest_static_accounts: '{{ images_base_url }}/openstack/heat:stein-bionic-20230227093206'
