@@ -16,6 +16,13 @@ spec:
           01-controller-default.yaml:
             metric-storage_rule1: metric-storage_value1
           02-custom.yaml: {}
+        aetos:
+          keystone_authtoken:
+            memcache_security_strategy: ENCRYPT
+            memcache_secret_key: mAcisvqaTNUVKNeE
+        logging:
+          logging_aetos:
+            level: INFO
       endpoints:
         cluster_domain_suffix: cluster.local
         identity:
@@ -80,9 +87,6 @@ spec:
           port:
             api:
               default: 80
-      logging:
-        logging_aetos:
-          level: INFO
       manifests:
         network_policy: true
       network_policy:

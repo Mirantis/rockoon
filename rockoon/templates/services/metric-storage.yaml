@@ -25,9 +25,13 @@ spec:
         policy.d:
           01-controller-default.yaml: {{ service_policy }}
           02-custom.yaml: {{ spec.get("features", {}).get("policies", {}).get("aetos", {}) }}
-      logging:
-        logging_aetos:
-          level: {{ spec.get('features', {}).get('logging', {}).get('aetos', {}).get('level', 'INFO') }}
+        aetos:
+          keystone_authtoken:
+            memcache_security_strategy: ENCRYPT
+            memcache_secret_key: {{ credentials[0].memcached }}
+        logging:
+          logging_aetos:
+            level: {{ spec.get('features', {}).get('logging', {}).get('aetos', {}).get('level', 'INFO') }}
       manifests:
         network_policy: {{ spec.features.network_policies.enabled }}
 {%- if spec.features.network_policies.enabled %}
