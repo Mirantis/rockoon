@@ -62,6 +62,7 @@ class ComponentFilePermissionsFunctionalTestCase(base.BaseFunctionalTestCase):
     @parameterized.expand(
         [
             ("aodh"),
+            ("aetos"),
             ("barbican"),
             ("ceilometer"),
             ("cinder"),
