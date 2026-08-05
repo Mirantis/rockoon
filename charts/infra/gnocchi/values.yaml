@@ -409,6 +409,7 @@ conf:
     CustomLog /dev/stdout proxy env=forwarded
 
     <VirtualHost *:{{ tuple "metric" "internal" "api" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}>
+        KeepAliveTimeout 75
         WSGIDaemonProcess gnocchi processes=1 threads=2 user=gnocchi group=gnocchi display-name=%{GROUP}
         WSGIProcessGroup gnocchi
         WSGIScriptAlias / "/var/lib/kolla/venv/lib/python2.7/site-packages/gnocchi/rest/app.wsgi"

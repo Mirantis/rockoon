@@ -112,6 +112,7 @@ conf:
       CustomLog /dev/stdout proxy env=forwarded
 
       <VirtualHost *:{{ tuple "dashboard" "internal" "web" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}>
+          KeepAliveTimeout 75
           WSGIScriptReloading On
           WSGIDaemonProcess horizon-http processes={{ .Values.conf.software.apache2.processes }} threads={{ .Values.conf.software.apache2.threads }} user=horizon group=horizon display-name=%{GROUP} python-path=/var/lib/kolla/venv/lib/python2.7/site-packages
           WSGIProcessGroup horizon-http
