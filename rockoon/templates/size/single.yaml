@@ -52,6 +52,10 @@ services:
           replicas:
             api: 1
         conf:
+          software:
+            apache2:
+              mpm_event:
+                MaxConnectionsPerChild: 0
           keystone:
             database:
               max_pool_size: 10
