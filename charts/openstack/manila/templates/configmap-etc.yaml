@@ -202,7 +202,7 @@ data:
 {{- if .Values.conf.security }}
 {{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.security "key" "security.conf" "format" "Secret" ) | indent 2 }}
 {{- end }}
-{{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.wsgi_manila "key" "wsgi-manila.conf" "format" "Secret" ) | indent 2 }}
+{{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.apache_wsgi.template "key" "wsgi-manila.conf" "format" "Secret" ) | indent 2 }}
 {{- if .Values.conf.standalone_backends }}
 {{- $standalone_conf := "" }}
 {{- if hasKey .Values.conf.standalone_backends "statefulsets" }}
@@ -222,7 +222,7 @@ data:
   api-paste.ini: {{ include "helm-toolkit.utils.to_ini" .Values.conf.paste | b64enc }}
 {{- if .Values.manifests.certificates }}
 {{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.mpm_event "key" "mpm_event.conf" "format" "Secret" ) | indent 2 }}
-{{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.wsgi_manila "key" "wsgi-manila.conf" "format" "Secret" ) | indent 2 }}
+{{- include "helm-toolkit.snippets.values_template_renderer" (dict "envAll" $envAll "template" .Values.conf.apache_wsgi.template "key" "wsgi-manila.conf" "format" "Secret" ) | indent 2 }}
 {{- end }}
   ports.conf: ""
 {{- range $key, $value := $envAll.Values.conf.rootwrap_filters }}

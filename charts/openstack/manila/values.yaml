@@ -502,7 +502,6 @@ conf:
       mods_dir: /etc/apache2/mods-available
       a2enmod: null
       a2dismod: null
-      processes: 4
   wsgi_script: |
     """WSGI application entry-point for the Manila API."""
 
@@ -516,9 +515,19 @@ conf:
     with lock:
         if application is None:
             application = wsgi.initialize_application()
-  wsgi_manila: |
-    {{- $portInt := tuple "sharev2" "internal" "api" $ | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
-    {{ include "helm-toolkit.snippets.apache_wsgi" ( tuple "manila-wsgi" "manila" $portInt .Values.conf.software.apache2.processes ) }}
+  apache_wsgi:
+    config:
+      keepalive_timeout: 75
+      user_ident: manila
+      script_name: manila-wsgi
+      processes: 4
+      service_name: sharev2
+      endpoint:
+        type: sharev2
+        endpoint: internal
+        port: api
+    template: |
+      {{ include "helm-toolkit.snippets.apache_wsgi_config" ( tuple $ .Values.conf.apache_wsgi ) }}
   security: |
     {{ include "helm-toolkit.snippets.apache_security" ( tuple "Prod" "Off" "Off" ) }}
 
