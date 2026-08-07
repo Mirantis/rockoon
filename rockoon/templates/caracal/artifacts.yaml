@@ -22,7 +22,7 @@ designate_mdns: '{{ images_base_url }}/openstack/designate:caracal-jammy-2026080
 designate_producer: '{{ images_base_url }}/openstack/designate:caracal-jammy-20260803060037'
 designate_sink: '{{ images_base_url }}/openstack/designate:caracal-jammy-20260803060037'
 designate_worker: '{{ images_base_url }}/openstack/designate:caracal-jammy-20260803060037'
-drb_controller: '{{ images_base_url }}/openstack/extra/drb-controller:0.1.0-20260722075925'
+drb_controller: '{{ images_base_url }}/openstack/extra/drb-controller:0.1.0-20260804164823'
 glance_api: '{{ images_base_url }}/openstack/glance:caracal-jammy-20260803060037'
 glance_db_sync: '{{ images_base_url }}/openstack/glance:caracal-jammy-20260803060037'
 glance_db_expand: '{{ images_base_url }}/openstack/glance:caracal-jammy-20260803060037'

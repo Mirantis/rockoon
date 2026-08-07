@@ -22,7 +22,7 @@ designate_mdns: '{{ images_base_url }}/openstack/designate:epoxy-noble-202608030
 designate_producer: '{{ images_base_url }}/openstack/designate:epoxy-noble-20260803060030'
 designate_sink: '{{ images_base_url }}/openstack/designate:epoxy-noble-20260803060030'
 designate_worker: '{{ images_base_url }}/openstack/designate:epoxy-noble-20260803060030'
-drb_controller: '{{ images_base_url }}/openstack/extra/drb-controller:0.1.0-20260722075925'
+drb_controller: '{{ images_base_url }}/openstack/extra/drb-controller:0.1.0-20260804164823'
 glance_api: '{{ images_base_url }}/openstack/glance:epoxy-noble-20260803060030'
 glance_db_sync: '{{ images_base_url }}/openstack/glance:epoxy-noble-20260803060030'
 glance_db_expand: '{{ images_base_url }}/openstack/glance:epoxy-noble-20260803060030'
