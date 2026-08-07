@@ -57,6 +57,8 @@ envoy_proxies:
 policies:
   backend_traffic:
     default:
+      healthCheck:
+        panicThreshold: 0
       retry:
         numRetries: 3
         retryOn:
