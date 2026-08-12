@@ -26,7 +26,7 @@ def test_network_policy_ingress(
     service_policies = {
         k: v
         for k, v in network_policy["ingress"].items()
-        if k.startswith(service)
+        if k.startswith(f"{service}:")
     }
     with open(out_template, "r") as f:
         out = yaml.safe_load(f)
