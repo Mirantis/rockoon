@@ -793,11 +793,52 @@ class Gnocchi(OpenStackService):
         return t_args
 
 
-class MetricStorage(OpenStackService):
+class MetricStorage(OpenStackService, MaintenanceApiMixin):
 
     service = "metric-storage"
     available_releases = ["openstack-aetos", "openstack-prometheus"]
     openstack_chart = "aetos"
+
+    def remove_node_from_scheduling(self, node):
+        pass
+
+    def prepare_node_for_reboot(self, node):
+        pass
+
+    def prepare_node_after_reboot(self, node, scope=None):
+        pass
+
+    def add_node_to_scheduling(self, node):
+        pass
+
+    def can_handle_nmr(self, node, locks):
+        if self.is_node_locked(node.name):
+            LOG.error(f"The node {node.name} is hard locked by prometheus.")
+            return False
+        return True
+
+    def process_ndr(self, node, nwl):
+        node_name = nwl.obj["spec"]["nodeName"]
+        if self.is_node_locked(node_name):
+            msg = f"The node {node.name} is hard locked by prometheus."
+            raise kopf.TemporaryError(msg)
+
+    def cleanup_persistent_data(self, nwl):
+        node_name = nwl.obj["spec"]["nodeName"]
+        if self.is_node_locked(node_name):
+            msg = f"The node {node_name} is hard locked by prometheus."
+            nwl.set_error_message(msg)
+            raise kopf.TemporaryError(msg)
+        server_sts = self.get_child_object(
+            "StatefulSet", "openstack-prometheus-server"
+        )
+        server_sts.release_persistent_volume_claims(node_name)
+
+    def is_node_locked(self, node_name):
+        server_sts = self.get_child_object(
+            "StatefulSet", "openstack-prometheus-server"
+        )
+        return server_sts.is_node_locked(node_name)
 
 
 # OPENSTACK SERVICES
