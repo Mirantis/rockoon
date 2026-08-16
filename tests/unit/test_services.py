@@ -95,7 +95,7 @@ def mock_sts(mocker):
 
 
 def get_clustered_service_classes():
-    return [services.Coordination, services.MariaDB]
+    return [services.Coordination, services.MariaDB, services.MetricStorage]
 
 
 @mock.patch("rockoon.secrets.generate_name")
