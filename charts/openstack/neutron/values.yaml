@@ -2430,6 +2430,9 @@ conf:
       interface_driver: null
       rpc_ping_enabled: true
       bgp_drscheduler_driver: neutron_dynamic_routing.services.bgp.scheduler.bgp_dragent_scheduler.WeightScheduler
+    fwaas:
+      enabled: false
+      agent_version: v2
     oslo_concurrency:
       lock_path: /var/lib/neutron/tmp
     database:
@@ -2475,6 +2478,7 @@ conf:
         - neutron
         - neutron_taas
         - neutron_vpnaas
+        - neutron_fwaas
         - networking_baremetal
         - networking_generic_switch
         - oslo_notification_audit
@@ -2503,6 +2507,10 @@ conf:
       level: INFO
       handlers: ""
       qualname: neutron_vpnaas
+    logger_neutron_fwaas:
+      level: INFO
+      handlers: ""
+      qualname: neutron_fwaas
     logger_oslo_notification_audit:
       level: INFO
       handlers: ""

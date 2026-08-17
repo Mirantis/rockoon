@@ -36,6 +36,9 @@ class NeutronValidator(base.BaseValidator):
         vpnaas = neutron_features.get("extensions", {}).get(
             "vpnaas", {"enabled": False}
         )
+        fwaas = neutron_features.get("extensions", {}).get(
+            "fwaas", {"enabled": False}
+        )
         dynamic_routing = neutron_features.get("extensions", {}).get(
             "dynamic_routing", {"enabled": False}
         )
@@ -124,6 +127,22 @@ class NeutronValidator(base.BaseValidator):
             if tungstenfabric_enabled:
                 raise exception.OsDplValidationFailed(
                     "TungstenFabric and VPNaaS are mutually exclusive."
+                )
+        if fwaas["enabled"]:
+            if (
+                constants.OpenStackVersion[openstack_version].value
+                < constants.OpenStackVersion["epoxy"]
+            ):
+                raise exception.OsDplValidationFailed(
+                    "FWaaS is supported from Epoxy release."
+                )
+            if tungstenfabric_enabled:
+                raise exception.OsDplValidationFailed(
+                    "TungstenFabric and FWaaS are mutually exclusive."
+                )
+            if not ovn_enabled:
+                raise exception.OsDplValidationFailed(
+                    "FWaaS is supported only with OVN backend."
                 )
         if dynamic_routing["enabled"]:
             if (

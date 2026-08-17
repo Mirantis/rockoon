@@ -153,6 +153,8 @@ class NetworkFeatureEnabled(base_section.BaseSection):
         if self.get_spec_item("features.neutron.extensions.vpnaas.enabled"):
             api_extensions_default.extend(["vpnaas"])
             api_extensions_default.remove("filter-validation")
+        if self.get_spec_item("features.neutron.extensions.fwaas.enabled"):
+            api_extensions_default.extend(["fwaas_v2"])
         if self.get_spec_item(
             "features.neutron.extensions.dynamic_routing.enabled"
         ):
