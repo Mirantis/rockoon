@@ -375,6 +375,7 @@ conf:
       formatter: tests
     formatter_tests:
       class: oslo_log.formatters.ContextFormatter
+      datefmt: "%Y-%m-%d %H:%M:%S"
   policy:
     tungsten:
       list_api_access_lists: role:admin
