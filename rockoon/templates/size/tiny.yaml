@@ -108,7 +108,11 @@ services:
         conf:
           glance:
             DEFAULT:
-              workers: 2
+              # PRODX-64653 Increased for CI: starting with Gazpacho glance-api runs under
+              # uwsgi instead of eventlet, and uwsgi workers can't interleave
+              # requests the way eventlet greenthreads did, so healthcheck
+              # probes were failing under load with fewer workers.
+              workers: 3
             database:
               max_pool_size: 10
               max_retries: -1
