@@ -134,7 +134,7 @@ spec:
           enabled: true
           mountPath: /data
           size: 1Gi
-          storageClass: lvp-fake-root
+          storageClass: {{ spec.get('local_volume_storage_class', 'openstack-operator-bind-mounts') }}
         podSecurityContext:
           fsGroup: 65534
           runAsGroup: 65534
