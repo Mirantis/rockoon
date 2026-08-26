@@ -22,7 +22,7 @@ designate_mdns: '{{ images_base_url }}/openstack/designate:gazpacho-noble-202608
 designate_producer: '{{ images_base_url }}/openstack/designate:gazpacho-noble-20260824060024'
 designate_sink: '{{ images_base_url }}/openstack/designate:gazpacho-noble-20260824060024'
 designate_worker: '{{ images_base_url }}/openstack/designate:gazpacho-noble-20260824060024'
-drb_controller: '{{ images_base_url }}/openstack/extra/drb-controller:0.1.0-20260804164823'
+drb_controller: '{{ images_base_url }}/openstack/extra/drb-controller:0.1.0-20260824110215'
 glance_api: '{{ images_base_url }}/openstack/glance:gazpacho-noble-20260824060024'
 glance_db_sync: '{{ images_base_url }}/openstack/glance:gazpacho-noble-20260824060024'
 glance_db_expand: '{{ images_base_url }}/openstack/glance:gazpacho-noble-20260824060024'
@@ -103,7 +103,7 @@ prometheus_mysql_exporter_helm_tests: '{{ images_base_url }}/openstack/heat:gazp
 mariadb_backup: '{{ images_base_url }}/general/mariadb:11.4.12-noble-20260824061024'
 mariadb_scripted_test: '{{ images_base_url }}/general/mariadb:11.4.12-noble-20260824061024'
 rabbit_init: '{{ images_base_url }}/openstack/extra/rabbitmq-management:4.3.2-noble-20260730053733'
-powerdns: '{{ images_base_url }}/openstack/extra/powerdns:5.0.3-alpine-20260623113139'
+powerdns: '{{ images_base_url }}/openstack/extra/powerdns:5.0.3-alpine-20260824112807'
 rabbitmq_init: '{{ images_base_url }}/openstack/heat:gazpacho-noble-20260824060024'
 rabbitmq: '{{ images_base_url }}/openstack/extra/rabbitmq:4.3.2-noble-20260730053733'
 rabbitmq_scripted_test: '{{ images_base_url }}/openstack/extra/rabbitmq-management:4.3.2-noble-20260730053733'
@@ -121,7 +121,7 @@ ironic_api: '{{ images_base_url }}/openstack/ironic:gazpacho-noble-2026082406002
 ironic_conductor: '{{ images_base_url }}/openstack/ironic:gazpacho-noble-20260824060024'
 ironic_pxe: '{{ images_base_url }}/openstack/ironic:gazpacho-noble-20260824060024'
 ironic_pxe_init: '{{ images_base_url }}/openstack/ironic:gazpacho-noble-20260824060024'
-powerdns_db_sync: '{{ images_base_url }}/openstack/extra/powerdns:5.0.3-alpine-20260623113139'
+powerdns_db_sync: '{{ images_base_url }}/openstack/extra/powerdns:5.0.3-alpine-20260824112807'
 neutron_ironic_agent: '{{ images_base_url }}/openstack/neutron:gazpacho-noble-20260824060024'
 neutron_bagpipe_bgp: '{{ images_base_url }}/openstack/neutron:gazpacho-noble-20260824060024'
 neutron_l2gw: '{{ images_base_url }}/openstack/neutron:gazpacho-noble-20260824060024'
@@ -147,7 +147,7 @@ placement_db_sync: '{{ images_base_url }}/openstack/placement:gazpacho-noble-202
 keystone_db_sync_expand: '{{ images_base_url }}/openstack/keystone:gazpacho-noble-20260824060024'
 keystone_db_sync_migrate: '{{ images_base_url }}/openstack/keystone:gazpacho-noble-20260824060024'
 keystone_db_sync_contract: '{{ images_base_url }}/openstack/keystone:gazpacho-noble-20260824060024'
-octavia_amphora: '{{ binary_base_url }}/openstack/bin/octavia/amphora-x64-haproxy-gazpacho-20260824062651.qcow2'
+octavia_amphora: '{{ binary_base_url }}/openstack/bin/octavia/amphora-x64-haproxy-gazpacho-20260826062827.qcow2'
 etcd: '{{ images_base_url }}/openstack/extra/etcd:3.6.14-alpine-20260724060714'
 etcd_db_compact: '{{ images_base_url }}/openstack/extra/etcd:3.6.14-alpine-20260724060714'
 cinder_db_sync_online: '{{ images_base_url }}/openstack/cinder:gazpacho-noble-20260824060024'
@@ -178,10 +178,10 @@ octavia_db_sync_persistence: '{{ images_base_url }}/openstack/octavia:gazpacho-n
 mariadb_phy_backup: '{{ images_base_url }}/general/mariadb:11.4.12-noble-20260824061024'
 mariadb_phy_restore: '{{ images_base_url }}/general/mariadb:11.4.12-noble-20260824061024'
 mariadb_controller: '{{ images_base_url }}/general/mariadb:11.4.12-noble-20260824061024'
-horizon_mirantis_theme_sha256summ: 454ac01f39a7f6361e34e6059b73339d41e4bbe84af962868d743cb1e197f5d2
-horizon_mirantis_theme_url: '{{ binary_base_url }}/openstack/bin/horizon/mirantis-gazpacho-e619fea-20260423100007.tar.gz'
+horizon_mirantis_theme_sha256summ: f10151cbc2b2de385d796a11a9a134b8f323663d1c7cc8ba3135676dec2af022
+horizon_mirantis_theme_url: '{{ binary_base_url }}/openstack/bin/horizon/mirantis-gazpacho-04f648c-20260825132247.tar.gz'
 ceph_config_helper: '{{ images_base_url }}/openstack/openstack-tools:gazpacho-noble-20260824060024'
-octavia_amphora_checksum: da038ffeaf8df7ea08152c75dd2e32e9
+octavia_amphora_checksum: d2a7644bc84c70d627af696427ee4382
 masakari_db_sync: '{{ images_base_url }}/openstack/masakari:gazpacho-noble-20260824060024'
 masakari_api: '{{ images_base_url }}/openstack/masakari:gazpacho-noble-20260824060024'
 masakari_engine: '{{ images_base_url }}/openstack/masakari:gazpacho-noble-20260824060024'
@@ -252,7 +252,7 @@ ironic_esp_checksum: 87b10bbb52ed7ea57ff2a5cf6d93f32e
 os_image_ubuntu_2404: '{{ binary_base_url }}/openstack/bin/ubuntu/24.04/noble-server-cloudimg-amd64-20251026.img'
 os_image_ubuntu_2404_checksum: e2f0561da667e43e2019466fe916f937
 tempest_bootstrap: '{{ images_base_url }}/openstack/openstack-tools:gazpacho-noble-20260824060024'
-envoy: '{{ images_base_url }}/openstack/extra/envoy:1.38.3-noble-20260730135032'
+envoy: '{{ images_base_url }}/openstack/extra/envoy:1.38.3-noble-20260824173814'
 neutron_periodic_workers: '{{ images_base_url }}/openstack/neutron:gazpacho-noble-20260824060024'
 neutron_ovn_maintenance: '{{ images_base_url }}/openstack/neutron:gazpacho-noble-20260824060024'
 aetos_api: '{{ images_base_url }}/openstack/aetos:gazpacho-noble-20260824060024'
