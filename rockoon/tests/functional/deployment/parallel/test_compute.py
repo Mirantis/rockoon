@@ -4,6 +4,8 @@ import json
 import os
 import tempfile
 
+from configparser import ConfigParser
+
 from parameterized import parameterized
 from rockoon.tests.functional import base
 from rockoon import constants, kube, settings
@@ -98,6 +100,30 @@ class LibvirtFipsFunctionalTestCase(base.BaseFunctionalTestCase):
             "Failed to get Libvirt pods.",
         )
         self.libvirt_pod = pods[0]
+        self.libvirt_listen_address = self.get_listen_address()
+
+    def get_listen_address(self):
+        """Retrives address from libvirt config in libvirt pod"""
+        config_name = "/etc/libvirt/libvirtd.conf"
+
+        response = self.libvirt_pod.exec(
+            ["cat", config_name], container="libvirt"
+        )
+        libvirt_config = response.get("stdout")
+        assert libvirt_config, f"Can't get libvirt_config from {response=}"
+
+        parser = ConfigParser()
+        # TODO (harhipova) in Python 3.13 the allow_unnamed_section option
+        # is introduced so the "[config]\n" hack can be removed
+        parser.read_string("[config]\n" + response["stdout"])
+        libvirt_config = dict(parser["config"])
+
+        libvirt_listen_address = libvirt_config.get("listen_addr")
+        assert (
+            libvirt_listen_address
+        ), f"No listen_addr found in {libvirt_config=}"
+
+        return libvirt_listen_address.strip('"')
 
     @classmethod
     def tearDownClass(cls):
@@ -209,7 +235,7 @@ class LibvirtFipsFunctionalTestCase(base.BaseFunctionalTestCase):
     )
     def test_ssl_connection(self, tls_version, cipher, expected_state):
         self.check_ciphersuite(
-            self.libvirt_pod.obj["status"]["hostIP"],
+            self.libvirt_listen_address,
             16514,
             tls_version,
             cipher,
