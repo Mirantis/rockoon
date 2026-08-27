@@ -147,7 +147,7 @@ placement_db_sync: '{{ images_base_url }}/openstack/placement:gazpacho-noble-202
 keystone_db_sync_expand: '{{ images_base_url }}/openstack/keystone:gazpacho-noble-20260824060024'
 keystone_db_sync_migrate: '{{ images_base_url }}/openstack/keystone:gazpacho-noble-20260824060024'
 keystone_db_sync_contract: '{{ images_base_url }}/openstack/keystone:gazpacho-noble-20260824060024'
-octavia_amphora: '{{ binary_base_url }}/openstack/bin/octavia/amphora-x64-haproxy-gazpacho-20260826062827.qcow2'
+octavia_amphora: '{{ binary_base_url }}/openstack/bin/octavia/amphora-x64-haproxy-gazpacho-20260827062710.qcow2'
 etcd: '{{ images_base_url }}/openstack/extra/etcd:3.6.14-alpine-20260724060714'
 etcd_db_compact: '{{ images_base_url }}/openstack/extra/etcd:3.6.14-alpine-20260724060714'
 cinder_db_sync_online: '{{ images_base_url }}/openstack/cinder:gazpacho-noble-20260824060024'
@@ -181,7 +181,7 @@ mariadb_controller: '{{ images_base_url }}/general/mariadb:11.4.12-noble-2026082
 horizon_mirantis_theme_sha256summ: f10151cbc2b2de385d796a11a9a134b8f323663d1c7cc8ba3135676dec2af022
 horizon_mirantis_theme_url: '{{ binary_base_url }}/openstack/bin/horizon/mirantis-gazpacho-04f648c-20260825132247.tar.gz'
 ceph_config_helper: '{{ images_base_url }}/openstack/openstack-tools:gazpacho-noble-20260824060024'
-octavia_amphora_checksum: d2a7644bc84c70d627af696427ee4382
+octavia_amphora_checksum: f9996d132817cc8a5ee4d1eafd69c703
 masakari_db_sync: '{{ images_base_url }}/openstack/masakari:gazpacho-noble-20260824060024'
 masakari_api: '{{ images_base_url }}/openstack/masakari:gazpacho-noble-20260824060024'
 masakari_engine: '{{ images_base_url }}/openstack/masakari:gazpacho-noble-20260824060024'
