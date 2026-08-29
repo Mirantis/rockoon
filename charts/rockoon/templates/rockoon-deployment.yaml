@@ -74,6 +74,8 @@ spec:
 {{ tuple . | include "rockoon.common_env" | indent 12 }}
           image: {{ tuple . .Values.image | include "getImageUrl" }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.osdpl.pod.controller.remove_legacy_finalizer.security_context | nindent 12 }}
 {{ end }}
         - name: rename-octavia-certs-secret
           command:
@@ -82,6 +84,8 @@ spec:
 {{ tuple . | include "rockoon.common_env" | indent 12 }}
           image: {{ tuple . .Values.image | include "getImageUrl" }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.osdpl.pod.controller.rename_octavia_certs_secret.security_context | nindent 12 }}
       containers:
         - name: osdpl
           image: {{ tuple . .Values.image | include "getImageUrl" }}
