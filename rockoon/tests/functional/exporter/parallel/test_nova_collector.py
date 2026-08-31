@@ -103,16 +103,32 @@ class NovaCollectorFunctionalTestCase(base.BaseFunctionalExporterTestCase):
         """Hypervisor allocation_ratio for different resources."""
 
         metric = self.get_metric(metric_name)
-        self.hypervisors = list(self.ocm.oc.placement.resource_providers())
-        for hypervisor in self.hypervisors:
-            for sample in metric.samples:
-                if hypervisor.name.split(".")[0] == sample.labels.get("host"):
-                    value = self.get_allocation_ratio(hypervisor.id, resource)
-                    self.assertEqual(
-                        sample.value,
-                        value,
-                        f"The allocation ratio for {resource} in exporter's metrics is not correct",
-                    )
+        samples_by_host = {}
+        for sample in metric.samples:
+            samples_by_host.setdefault(sample.labels.get("host"), []).append(
+                sample
+            )
+        resource_providers = list(self.ocm.oc.placement.resource_providers())
+        for rp in resource_providers:
+            inventories = self.get_resource_provider_inventories(rp.id)
+            rp_host = rp.name.split(".")[0]
+            if resource not in inventories:
+                # NOTE(pas-ha): not every resource provider with a name starting
+                # with a "<host>." is a root compute node resource provider
+                # that has VCPU, DISK_GB and MEMORY_MB inventories.
+                # Since Gazpacho, for AMD CPUs, MEM_ENCRYPTION_CONTEXT resource
+                # is tracked in a separate child resource provider.
+                continue
+            self.assertTrue(
+                bool(samples_by_host[rp_host]),
+                f"No samples for {resource} found for resource provider {rp_host}",
+            )
+            for sample in samples_by_host[rp_host]:
+                self.assertEqual(
+                    sample.value,
+                    inventories[resource]["allocation_ratio"],
+                    f"The allocation ratio for {resource} in exporter's metrics is not correct",
+                )
 
 
 @pytest.mark.xdist_group("exporter-compute-network")
