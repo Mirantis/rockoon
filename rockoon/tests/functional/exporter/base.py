@@ -124,10 +124,6 @@ class BaseFunctionalExporterTestCase(
             f"/resource_providers/{hypervisor}/inventories"
         ).json()["inventories"]
 
-    def get_allocation_ratio(self, hypervisor, inventory):
-        inventories = self.get_resource_provider_inventories(hypervisor)
-        return inventories[inventory]["allocation_ratio"]
-
     def test_known_metrics_present_and_not_none(self):
         all_metrics = list(self.metric_families)
         for metric_name in self.known_metrics.keys():
