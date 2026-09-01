@@ -906,11 +906,22 @@ spec:
             {%- if OSVer[spec.openstack_version] >= OSVer.caracal %}
             ovn_l3_scheduler: "noop"
             {%- endif %}
+            {%- if OSVer[spec.openstack_version] >= OSVer.gazpacho %}
+            # Pre-create tap at plug time so LM wait-for-vif-plug event is valid.
+            # Option is deprecated; removal will make this the permanent default.
+            ovs_create_tap: true
+            {%- endif %}
             # PRODX-60994 even with mac_binding_age_threshold 300
             # packet losses are possible for silent vms
             mac_binding_age_threshold: 0
           ovn_nb_global:
             mac_binding_removal_limit: 100
+          {%- endif %}
+          {%- if spec.features.neutron.get('backend', 'ml2') == 'ml2' and OSVer[spec.openstack_version] >= OSVer.gazpacho %}
+          # Pre-create tap at plug time so LM wait-for-vif-plug event
+          # is valid for native OVS.
+          ovs_driver:
+            ovs_create_tap: true
           {%- endif %}
           cache:
             backend: oslo_cache.memcache_pool

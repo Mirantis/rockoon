@@ -317,6 +317,7 @@ spec:
             enable_distributed_floating_ip: false
             mac_binding_age_threshold: 0
             ovn_l3_scheduler: noop
+            ovs_create_tap: true
           ovn_nb_global:
             mac_binding_removal_limit: 100
           service_providers:
