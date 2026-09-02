@@ -1196,7 +1196,6 @@ pod:
       pod:
         fsGroup: 42424
         runAsUser: 42424
-        allowPrivilegeEscalation: false
       container:
         horizon_db_sync:
           readOnlyRootFilesystem: false
@@ -1214,7 +1213,6 @@ pod:
       pod:
         fsGroup: 42424
         runAsUser: 42424
-        allowPrivilegeEscalation: false
       container:
         db_purge:
           allowPrivilegeEscalation: false

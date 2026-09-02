@@ -118,7 +118,6 @@ pod:
           readOnlyRootFilesystem: false
           allowPrivilegeEscalation: false
           runAsUser: 65534
-          fsGroup: 65534
           capabilities:
             drop:
               - ALL

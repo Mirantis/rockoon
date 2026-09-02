@@ -99,11 +99,10 @@ pod:
       pod:
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
         fsGroup: 42424
       container:
-        allowPrivilegeEscalation: false
         bootstrap:
+          allowPrivilegeEscalation: false
           capabilities:
             drop:
               - ALL
@@ -111,7 +110,6 @@ pod:
       pod:
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
         fsGroup: 42424
       container:
         db_init:
@@ -123,7 +121,6 @@ pod:
       pod:
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
         fsGroup: 42424
       container:
         db_purge:
@@ -135,7 +132,6 @@ pod:
       pod:
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
         fsGroup: 42424
       container:
         db_sync:
@@ -155,7 +151,6 @@ pod:
       pod:
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
         fsGroup: 42424
       container:
         ks_user:
@@ -167,7 +162,6 @@ pod:
       pod:
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
         fsGroup: 42424
       container:
         ks_endpoints:
@@ -179,7 +173,6 @@ pod:
       pod:
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
         fsGroup: 42424
       container:
         ks_service:

@@ -78,7 +78,6 @@ pod:
         # etcd data directory is local volume, so need
         # to set permissions.
         fsGroup: 65534
-        allowPrivilegeEscalation: false
       container:
         etcd:
           allowPrivilegeEscalation: false
@@ -89,7 +88,6 @@ pod:
       pod:
         runAsUser: 65534
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         etcd_db_compact:
           allowPrivilegeEscalation: false

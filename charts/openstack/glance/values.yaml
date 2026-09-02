@@ -1045,7 +1045,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         bootstrap:
           allowPrivilegeEscalation: false
@@ -1069,7 +1068,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         barbican_cert_init:
           readOnlyRootFilesystem: true
@@ -1082,7 +1080,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         db_init:
           allowPrivilegeEscalation: false
@@ -1094,7 +1091,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         db_purge:
           allowPrivilegeEscalation: false
@@ -1106,7 +1102,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         db_sync:
           allowPrivilegeEscalation: false
@@ -1118,7 +1113,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         db_contract:
           allowPrivilegeEscalation: false
@@ -1130,7 +1124,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         db_expand:
           allowPrivilegeEscalation: false
@@ -1142,7 +1135,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         db_migrate:
           allowPrivilegeEscalation: false
@@ -1154,7 +1146,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         ks_user:
           allowPrivilegeEscalation: false
@@ -1166,7 +1157,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         ks_endpoints:
           allowPrivilegeEscalation: false
@@ -1178,7 +1168,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         ks_service:
           allowPrivilegeEscalation: false

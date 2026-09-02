@@ -260,7 +260,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         bootstrap:
           allowPrivilegeEscalation: false
@@ -272,7 +271,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         keystone_credential_setup:
           readOnlyRootFilesystem: true
@@ -285,7 +283,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         keystone_credential_rotate:
           readOnlyRootFilesystem: true
@@ -298,7 +295,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         keystone_fernet_setup:
           readOnlyRootFilesystem: true
@@ -311,7 +307,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         keystone_fernet_rotate:
           readOnlyRootFilesystem: true
@@ -324,7 +319,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         keystone_federations_create_init:
           allowPrivilegeEscalation: false
@@ -341,7 +335,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         keystone_domain_manage:
           readOnlyRootFilesystem: true
@@ -366,7 +359,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         db_init:
           allowPrivilegeEscalation: false
@@ -378,7 +370,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         db_purge:
           allowPrivilegeEscalation: false
@@ -390,7 +381,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         db_sync:
           allowPrivilegeEscalation: false
@@ -402,7 +392,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         db_sync_contract:
           allowPrivilegeEscalation: false
@@ -414,7 +403,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         db_sync_expand:
           allowPrivilegeEscalation: false
@@ -426,7 +414,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         db_sync_migrate:
           allowPrivilegeEscalation: false
@@ -438,7 +425,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         ks_user:
           allowPrivilegeEscalation: false

@@ -107,7 +107,6 @@ pod:
       pod:
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
         fsGroup: 42424
       container:
         ks_user:
@@ -119,7 +118,6 @@ pod:
       pod:
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
         fsGroup: 42424
       container:
         ks_endpoints:
@@ -131,7 +129,6 @@ pod:
       pod:
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
         fsGroup: 42424
       container:
         ks_service:

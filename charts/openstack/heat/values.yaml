@@ -1386,7 +1386,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         heat_trusts:
           readOnlyRootFilesystem: true
@@ -1399,7 +1398,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         bootstrap:
           allowPrivilegeEscalation: false
@@ -1411,7 +1409,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         db_init:
           allowPrivilegeEscalation: false
@@ -1423,7 +1420,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         db_purge:
           allowPrivilegeEscalation: false
@@ -1435,7 +1431,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         db_sync:
           allowPrivilegeEscalation: false
@@ -1447,7 +1442,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         heat_ks_domain_user:
           readOnlyRootFilesystem: true
@@ -1465,7 +1459,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         heat_engine_cleaner:
           readOnlyRootFilesystem: true
@@ -1478,7 +1471,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         ks_endpoints:
           allowPrivilegeEscalation: false
@@ -1490,7 +1482,6 @@ pod:
         fsGroup: 42424
         runAsUser: 42424
         runAsNonRoot: true
-        allowPrivilegeEscalation: false
       container:
         ks_service:
           allowPrivilegeEscalation: false
