@@ -36,7 +36,7 @@ variable "ssh" {
   type = map(string)
   default = {
     user_name        = "ubuntu"
-    public_key  = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCp0evjOaK8c8SKYK4r2+0BN7g+8YSvQ2n8nFgOURCyvkJqOHi1qPGZmuN0CclYVdVuZiXbWw3VxRbSW3EH736VzgY1U0JmoTiSamzLHaWsXvEIW8VCi7boli539QJP0ikJiBaNAgZILyCrVPN+A6mfqtacs1KXdZ0zlMq1BPtFciR1JTCRcVs5vP2Wwz5QtY2jMIh3aiwkePjMTQPcfmh1TkOlxYu5IbQyZ3G1ahA0mNKI9a0dtF282av/F6pwB/N1R1nEZ/9VtcN2I1mf1NW/tTHEEcTzXYo1R/8K9vlqAN8QvvGLZtZduGviNVNoNWvoxaXxDt8CPv2B2NCdQFZp"
+    public_key  = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDBOrW5VEu0ZadTxfTv0S6TnnMaeOgeSpdJA0pkXGegX0qVZqr4y6Ugfxji6XOv5mUqtAI6/jhuSSP3UkmfsIoqTOL5ZkBEirTL/az8z+xrSf262mZEAowQgBML+NipKQPhoejIYWSiNvTBZRZgV9a5wSbdbpDYuu4bC9KGmNf4A+TwObTFN70v64r2+3wzj27f4eok4Jec4I9r3evAgp03GpKQ6A8AyHIrwbres9OSmpZTxoar0Nv42gL/2Ncso6O6XXVjNqZN4xrgbBHXOGYVJierEuYQvMhGEiBSa2H5uB2B1JAm/DG7oQ2b74lYJI4mutdsZZo7D3a0rmWh6cDj"
     private_key_file = "/Users/vasylsaienko/.ssh/devcloud_rsa"
   }
 }
