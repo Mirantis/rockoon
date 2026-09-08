@@ -34,8 +34,6 @@ class DRBControllerTestCase(base.BaseFunctionalDRBControllerTestCase):
         """
         self.create_drb_config(self.load_threshold)
 
-        self.flavor = self.flavor_create(vcpus=2)
-
         self.server_with_load = self.server_create(
             flavorRef=self.flavor["id"],
             config_drive=True,
