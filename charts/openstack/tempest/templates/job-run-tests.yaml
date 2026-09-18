@@ -173,6 +173,12 @@ spec:
               subPath: test-whitelist
               readOnly: true
 {{- end }}
+{{ if not (empty .Values.conf.worker_layout) }}
+            - name: tempest-etc
+              mountPath: /etc/tempest/worker-layout
+              subPath: worker-layout
+              readOnly: true
+{{- end }}
             - name: tempest-policies
               mountPath: /etc/tempest/policies
               readOnly: true

@@ -73,4 +73,7 @@ data:
 {{ if not (empty .Values.conf.whitelist) }}
   test-whitelist: {{ include "tempest.utils.to_regex_file" .Values.conf.whitelist | b64enc }}
 {{ end }}
+{{ if not (empty .Values.conf.worker_layout) }}
+  worker-layout: {{ toYaml .Values.conf.worker_layout | b64enc }}
+{{ end }}
 {{- end }}

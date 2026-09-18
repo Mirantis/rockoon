@@ -246,6 +246,17 @@ conf:
   #   - (?:tempest\.scenario\.test_network_basic_ops\.TestNetworkBasicOps\.test_update_router_admin_state)
   #   - (?:tempest\.scenario\.test_network_basic_ops\.TestNetworkBasicOps\.test_router_rescheduling)
   #   - (?:tempest\.scenario\.test_network_basic_ops\.TestNetworkBasicOps\.test_update_instance_port_admin_state)
+  # The stestr worker layout, used to pin groups of tests to a fixed number of
+  # workers. If not empty, it is added to the tempest-etc secret and mounted to
+  # /etc/tempest/worker-layout of the tempest-run-tests pod, so that it may be
+  # passed to `tempest run --worker-file /etc/tempest/worker-layout`.
+  # worker_layout:
+  #   - worker:
+  #       - '^octavia_tempest_plugin\.'
+  #     concurrency: 2
+  #   - worker:
+  #       - '^(?!octavia_tempest_plugin\.).*'
+  #     concurrency: 4
   stestr:
     DEFAULT:
       # NOTE(vsaienko): Gabbi tests have to be groupped together to avoid races
