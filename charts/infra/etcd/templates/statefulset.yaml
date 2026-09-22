@@ -69,6 +69,8 @@ spec:
                   apiVersion: v1
                   fieldPath: metadata.name
           command:
+            - /sbin/tini
+            - --
             - /tmp/etcd.sh
           ports:
             - containerPort: {{ tuple "etcd" "internal" "client" . | include "helm-toolkit.endpoints.endpoint_port_lookup" }}
