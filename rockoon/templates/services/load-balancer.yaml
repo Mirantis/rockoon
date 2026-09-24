@@ -202,7 +202,7 @@ spec:
   {% set _default_provider_driver = 'octavia' %}
 {%- elif OSVer[spec.openstack_version] <= OSVer.ussuri %}
   {% set _default_provider_driver = 'amphora' %}
-{%- elif tungstenfabric_enabled %}
+{%- elif tungstenfabric_enabled and not amphora_enabled %}
   {% set _default_provider_driver = 'tungstenfabric' %}
 {%- endif %}
         {%- if ovn_enabled %}
