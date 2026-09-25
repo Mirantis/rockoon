@@ -288,7 +288,7 @@ spec:
             l3_ha_network_type: geneve
             max_l3_agents_per_router: 2
             router_processes_greentlet_max: 10
-            service_plugins: ovn-router,metering,qos,ovn-vpnaas,trunk
+            service_plugins: ovn-router,metering,qos,ovn-vpnaas,firewall_v2,trunk
             support_sync_ha_routers_info: false
             support_sync_ovs_info: false
             support_ovn_maintenance_check: true
@@ -321,6 +321,10 @@ spec:
               type: multistring
               values:
               - VPN:strongswan:neutron_vpnaas.services.vpn.service_drivers.ovn_ipsec.IPsecOvnVPNDriver:default
+              - FIREWALL_V2:fwaas_ovn:neutron_fwaas.services.firewall.service_drivers.ovn.firewall_l3_driver.OVNFwaasDriver:default
+          fwaas:
+            enabled: true
+            agent_version: v2
         paste:
           app:neutronversions:
             paste.app_factory: neutron.pecan_wsgi.app:versions_factory

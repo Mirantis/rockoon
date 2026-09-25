@@ -1317,6 +1317,15 @@ properties:
                     description: |
                         [Technology Preview] Enable VPNaaS plugin/service
                         default: false
+              fwaas:
+                type: object
+                additionalProperties: false
+                properties:
+                  enabled:
+                    type: boolean
+                    description: |
+                        [Technology Preview] Enable FWaaS v2 plugin/service
+                        default: false
               dynamic_routing:
                 type: object
                 additionalProperties: false

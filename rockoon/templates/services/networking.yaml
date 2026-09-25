@@ -17,6 +17,7 @@
 {%- set bgpvpn = spec.features.neutron.get('bgpvpn', {'enabled': False}) %}
 {%- set ipsec = spec.features.neutron.get('ipsec', {'enabled': False}) %}
 {%- set vpnaas = spec.features.neutron.get("extensions", {}).get("vpnaas", {"enabled": False}) %}
+{%- set fwaas = spec.features.neutron.get("extensions", {}).get("fwaas", {"enabled": False}) %}
 {%- set dynamic_routing = spec.features.neutron.get("extensions", {}).get("dynamic_routing", {"enabled": False}) %}
 {%- set trunk_default = not tungstenfabric_enabled and OSVer[spec.openstack_version] >= OSVer.antelope %}
 {%- set trunk = spec.features.neutron.get("extensions", {}).get("trunk", {"enabled": trunk_default}) %}
@@ -49,6 +50,10 @@
     {%- do service_plugins.append("vpnaas") %}
     {%- do l3_agent_extensions.append("vpnaas") %}
   {%- endif %}
+{%- endif %}
+{%- if fwaas.enabled %}
+  {%- do service_plugins.append("firewall_v2") %}
+  {%- do service_providers.append("FIREWALL_V2:fwaas_ovn:neutron_fwaas.services.firewall.service_drivers.ovn.firewall_l3_driver.OVNFwaasDriver:default") %}
 {%- endif %}
 {%- do service_plugins.append('bgp') if dynamic_routing.enabled %}
 {%- do service_plugins.append('portprober') if portprober_enabled %}
@@ -964,6 +969,11 @@ spec:
             service_provider:
               type: multistring
               values: {{ service_providers }}
+          {%- endif %}
+          {%- if fwaas.enabled %}
+          fwaas:
+            enabled: true
+            agent_version: v2
           {%- endif %}
           # TODO: option will be removed in Yoga, it will be default behavior.
           {%- if OSVer[spec.openstack_version] >= OSVer.victoria %}
