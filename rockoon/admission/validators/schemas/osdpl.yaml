@@ -48,6 +48,7 @@ properties:
       - compute
       - compute-tf
       - core
+      - condensed
   size:
     description: timeout and sizing parameters
     type: string
