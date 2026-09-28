@@ -1,4 +1,3 @@
-dacite
 pbr!=2.1.0,>=2.0.0 # Apache-2.0
 kopf==1.42.0
 Jinja2>2.10

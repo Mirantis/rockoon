@@ -753,22 +753,17 @@ class Ceilometer(OpenStackService):
             t_args["event_credentials"] = panko_creds
 
         if "object-storage" in self.mspec["features"].get("services", []):
-            kube.wait_for_secret(
-                settings.OSCTL_CEPH_SHARED_NAMESPACE,
-                ceph_api.OPENSTACK_KEYS_SECRET,
-            )
-            for rgw_key in [
-                "rgw_internal_cacert",
-                "rgw_metrics_user_secret_key",
-                "rgw_metrics_user_access_key",
-            ]:
-                rgw_value = secrets.get_secret_data(
-                    settings.OSCTL_CEPH_SHARED_NAMESPACE,
-                    ceph_api.OPENSTACK_KEYS_SECRET,
-                ).get(rgw_key)
-                if rgw_value:
-                    rgw_decoded = base64.b64decode(rgw_value).decode()
-                    t_args[rgw_key] = rgw_decoded
+            ceph_api.wait_for_ceph_secret(kube.wait_for_secret)
+            oscp = ceph_api.get_os_ceph_params(secrets.get_secret_data)
+            if oscp.rgw:
+                for rgw_key in [
+                    "internal_cacert",
+                    "metrics_user_secret_key",
+                    "metrics_user_access_key",
+                ]:
+                    rgw_value = getattr(oscp.rgw, rgw_key)
+                    if rgw_value:
+                        t_args[f"rgw_{rgw_key}"] = rgw_value
 
         return t_args
 
@@ -1174,19 +1169,10 @@ class Horizon(OpenStackService, FederationMixin):
         t_args = super().template_args()
 
         if "object-storage" in self.mspec["features"].get("services", []):
-            kube.wait_for_secret(
-                settings.OSCTL_CEPH_SHARED_NAMESPACE,
-                ceph_api.OPENSTACK_KEYS_SECRET,
-            )
-            rgw_internal_cacert = secrets.get_secret_data(
-                settings.OSCTL_CEPH_SHARED_NAMESPACE,
-                ceph_api.OPENSTACK_KEYS_SECRET,
-            ).get("rgw_internal_cacert")
-            if rgw_internal_cacert:
-                rgw_internal_cacert = base64.b64decode(
-                    rgw_internal_cacert
-                ).decode()
-                t_args["rgw_internal_cacert"] = rgw_internal_cacert
+            ceph_api.wait_for_ceph_secret(kube.wait_for_secret)
+            oscp = ceph_api.get_os_ceph_params(secrets.get_secret_data)
+            if oscp.rgw and oscp.rgw.internal_cacert:
+                t_args["rgw_internal_cacert"] = oscp.rgw.internal_cacert
         t_args["os_policy_services"] = constants.OS_POLICY_SERVICES.values()
         t_args.update(self.get_federation_args())
 
@@ -1239,19 +1225,10 @@ class Keystone(OpenStackService, FederationMixin):
     def _get_object_storage_args(self):
         args = {}
         # Get internal RGW secret
-        kube.wait_for_secret(
-            settings.OSCTL_CEPH_SHARED_NAMESPACE,
-            ceph_api.OPENSTACK_KEYS_SECRET,
-        )
-        rgw_internal_cacert = secrets.get_secret_data(
-            settings.OSCTL_CEPH_SHARED_NAMESPACE,
-            ceph_api.OPENSTACK_KEYS_SECRET,
-        ).get("rgw_internal_cacert")
-        if rgw_internal_cacert:
-            rgw_internal_cacert = base64.b64decode(
-                rgw_internal_cacert
-            ).decode()
-            args["rgw_internal_cacert"] = rgw_internal_cacert
+        ceph_api.wait_for_ceph_secret(kube.wait_for_secret)
+        oscp = ceph_api.get_os_ceph_params(secrets.get_secret_data)
+        if oscp.rgw and oscp.rgw.internal_cacert:
+            args["rgw_internal_cacert"] = oscp.rgw.internal_cacert
         return args
 
     def _get_keystone_args(self):
@@ -2404,19 +2381,13 @@ class RadosGateWay(OpenStackService):
             )
             LOG.info("Secret with RGW creds has been created successfully.")
 
-        kube.wait_for_secret(
-            settings.OSCTL_CEPH_SHARED_NAMESPACE,
-            ceph_api.OPENSTACK_KEYS_SECRET,
-        )
-
-        for rgw_key in ["rgw_internal", "rgw_external"]:
-            rgw_url = base64.b64decode(
-                secrets.get_secret_data(
-                    settings.OSCTL_CEPH_SHARED_NAMESPACE,
-                    ceph_api.OPENSTACK_KEYS_SECRET,
-                ).get(rgw_key)
-            ).decode()
-
+        ceph_api.wait_for_ceph_secret(kube.wait_for_secret)
+        oscp = ceph_api.get_os_ceph_params(secrets.get_secret_data)
+        for attr, rgw_key in [
+            ("internal_url", "rgw_internal"),
+            ("external_url", "rgw_external"),
+        ]:
+            rgw_url = getattr(oscp.rgw, attr)
             urlparsed = urlsplit(rgw_url)
             rgw_port = urlparsed.port
             if not rgw_port:
