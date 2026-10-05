@@ -94,6 +94,12 @@ def handle_neutron_secret(
     secret_data = {}
     for key in AUTH_KEYS:
         secret_data[key[3:].lower()] = body["data"][key]
+    # The TF operator takes the keystone domain from user_domain_name and
+    # falls back to default_domain on versions before v0.19.1. OS_DEFAULT_DOMAIN
+    # stays "default" even for a service user that lives in the service domain,
+    # so pin default_domain to the user's own domain and let both code paths
+    # arrive at the same value.
+    secret_data["default_domain"] = body["data"]["OS_USER_DOMAIN_NAME"]
 
     tfs = secrets.TungstenFabricSecret()
     tfs.save(secret_data)
