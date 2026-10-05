@@ -147,7 +147,7 @@ placement_db_sync: '{{ images_base_url }}/openstack/placement:epoxy-noble-202610
 keystone_db_sync_expand: '{{ images_base_url }}/openstack/keystone:epoxy-noble-20261004060028'
 keystone_db_sync_migrate: '{{ images_base_url }}/openstack/keystone:epoxy-noble-20261004060028'
 keystone_db_sync_contract: '{{ images_base_url }}/openstack/keystone:epoxy-noble-20261004060028'
-octavia_amphora: '{{ binary_base_url }}/openstack/bin/octavia/amphora-x64-haproxy-epoxy-20260928063749.qcow2'
+octavia_amphora: '{{ binary_base_url }}/openstack/bin/octavia/amphora-x64-haproxy-epoxy-20261004062827.qcow2'
 etcd: '{{ images_base_url }}/openstack/extra/etcd:3.6.15-alpine-20261001080358'
 etcd_db_compact: '{{ images_base_url }}/openstack/extra/etcd:3.6.15-alpine-20261001080358'
 cinder_db_sync_online: '{{ images_base_url }}/openstack/cinder:epoxy-noble-20261004060028'
@@ -181,7 +181,7 @@ mariadb_controller: '{{ images_base_url }}/general/mariadb:11.4.12-noble-2026093
 horizon_mirantis_theme_sha256summ: 70feba08a578e3eca94c8ebbddcbe0a234afdb772c16101fa26bdce892b6da60
 horizon_mirantis_theme_url: '{{ binary_base_url }}/openstack/bin/horizon/mirantis-epoxy-6c678c6-20260120114717.tar.gz'
 ceph_config_helper: '{{ images_base_url }}/openstack/openstack-tools:epoxy-noble-20261004060028'
-octavia_amphora_checksum: 0b2cce69ed0a5f3874553f923cd38ed0
+octavia_amphora_checksum: c40d99910dbb259f40dcaf90359a323e
 masakari_db_sync: '{{ images_base_url }}/openstack/masakari:epoxy-noble-20261004060028'
 masakari_api: '{{ images_base_url }}/openstack/masakari:epoxy-noble-20261004060028'
 masakari_engine: '{{ images_base_url }}/openstack/masakari:epoxy-noble-20261004060028'
