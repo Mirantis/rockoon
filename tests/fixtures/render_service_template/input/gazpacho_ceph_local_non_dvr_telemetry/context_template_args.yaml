@@ -17,6 +17,7 @@ block-storage:
           role: volumes
       secrets: cinder-rbd-keyring
       username: cinder
+      uuid: c9543a17-411c-45e1-8a25-3f03e0090dc2
     mon_host:
       - "10.10.10.1:6789"
       - "10.10.10.2:6789"
@@ -74,6 +75,7 @@ compute:
           role: vms
       secrets: nova-rbd-keyring
       username: nova
+      uuid: 457eb676-33da-42ec-9a8c-9293d545c337
     cinder:
       keyring: AQDLZLJfNPtTOxAAQm248Q9AyoirvELaSyPz5w==
       pools:
@@ -82,6 +84,7 @@ compute:
           role: volumes
       secrets: cinder-rbd-keyring
       username: cinder
+      uuid: c9543a17-411c-45e1-8a25-3f03e0090dc2
     mon_host:
       - "10.10.10.1:6789"
       - "10.10.10.2:6789"

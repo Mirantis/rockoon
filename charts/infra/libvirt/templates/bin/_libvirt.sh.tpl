@@ -117,7 +117,7 @@ if [ 0"$hp_count" -gt 0 ]; then
   fi
 fi
 
-if [[ "true" == "{{ .Values.conf.ceph.enabled }}" && -n "{{ .Values.conf.ceph.keyrings.cinder.secret_uuid }}" ]]; then
+if [[ "true" == "{{ .Values.conf.ceph.enabled }}" ]]; then
   #NOTE(portdirect): run libvirtd as a transient unit on the host with the osh-libvirt cgroups applied.
   cgexec -g ${CGROUPS%,}:/osh-libvirt systemd-run --scope --slice=system libvirtd --listen &
 
@@ -147,7 +147,7 @@ if [[ "true" == "{{ .Values.conf.ceph.enabled }}" && -n "{{ .Values.conf.ceph.ke
   done
 
     {{- range $keyring_name, $keyring_data := .Values.conf.ceph.keyrings }}
-  ensure_ceph_secret "{{ $keyring_name }}" "{{ $keyring_data.secret_uuid }}" "{{ $keyring_data.key }}"
+  ensure_ceph_secret "{{ $keyring_data.user }}" "{{ $keyring_data.secret_uuid }}" "{{ $keyring_data.key }}"
     {{- end }}
 
   function cleanup {
