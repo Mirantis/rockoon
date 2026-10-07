@@ -7,7 +7,6 @@ import hashlib
 import time
 
 import kopf
-import pykube
 
 from rockoon import ceph_api
 from rockoon import constants
@@ -727,10 +726,7 @@ class OpenStackServiceWithCeph(OpenStackService):
 
     def create_ceph_secrets(self):
         LOG.info("Waiting for ceph resources.")
-        kube.wait_for_secret(
-            settings.OSCTL_CEPH_SHARED_NAMESPACE,
-            ceph_api.OPENSTACK_KEYS_SECRET,
-        )
+        ceph_api.wait_for_ceph_secret(kube.wait_for_secret)
         oscp = ceph_api.get_os_ceph_params(secrets.get_secret_data)
         # TODO(vsaienko): the subset of secrets might be changed after
         # deployment. For example additional service is deployed,
@@ -739,28 +735,22 @@ class OpenStackServiceWithCeph(OpenStackService):
         LOG.info("Ceph resources were created successfully.")
 
     def save_ceph_secrets(self, params: ceph_api.OSCephParams):
-        kube_api = kube.kube_client()
         for service in params.services:
-            name = ceph_api.get_os_user_keyring_name(service.user)
+            name = ceph_api.get_os_service_user_keyring_name(service.service)
             secret = {
-                "metadata": {"name": name, "namespace": self.namespace},
-                "data": {
-                    "key": base64.b64encode(service.key.encode()).decode()
-                },
+                "key": base64.b64encode(
+                    service.ceph_user.key.encode()
+                ).decode(),
             }
-            try:
-                pykube.Secret(kube_api, secret).create()
-            except Exception:
-                # TODO check for resource exists exception.
-                pass
+            kube.save_secret_data(self.namespace, name, data=secret)
 
     @staticmethod
     def get_ceph_role_pools(oscp: ceph_api.OSServiceCreds):
         ret = {}
-        service_user = oscp.user.name
+        service_user = oscp.service.name
         for pool in oscp.pools:
             if pool.role.name in ceph_api.CEPH_POOL_ROLE_SERVICES_MAP.get(
-                service_user
+                service_user, []
             ):
                 ret.update(
                     {pool.name: {"name": pool.name, "role": pool.role.name}}
@@ -772,12 +762,12 @@ class OpenStackServiceWithCeph(OpenStackService):
         ceph_config = {}
         oscp = ceph_api.get_os_ceph_params(secrets.get_secret_data)
         for oscp_service in oscp.services:
-            srv_username = oscp_service.user.name
+            srv_username = oscp_service.service.name
             ceph_config[srv_username] = {
-                "username": srv_username,
-                "keyring": oscp_service.key,
-                "secrets": ceph_api.get_os_user_keyring_name(
-                    oscp_service.user
+                "username": oscp_service.ceph_user.client_id,
+                "keyring": oscp_service.ceph_user.key,
+                "secrets": ceph_api.get_os_service_user_keyring_name(
+                    oscp_service.service
                 ),
                 "pools": self.get_ceph_role_pools(oscp_service),
             }
