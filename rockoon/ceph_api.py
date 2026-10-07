@@ -92,14 +92,14 @@ class RGWParams:
 
 @dataclass
 class OSCephParams:
-    # NOTE: admin ceph auth is currently only used in:
-    # - parts of ceph-rgw chart that we do not ever deploy
-    # - some helm-toolkit functions related to S3 buckets - do we need them?
-    admin_key: str
     mon_endpoints: list[tuple[IPv4Address, int]]
     services: list[OSServiceCreds]
     rgw: RGWParams | None = None
-    admin_user: str = "client.admin"
+    # NOTE: admin ceph auth is currently only used in:
+    # - parts of ceph-rgw chart that we do not ever deploy
+    # - some helm-toolkit functions related to S3 buckets - do we need them?
+    admin_user: str | None = "client.admin"
+    admin_key: str | None = None  # base64 of base64 of binary key
 
 
 class CephStatus:
@@ -131,7 +131,7 @@ def get_os_service_user_keyring_name(service: OSService) -> str:
 
 def _os_ceph_params_from_secret(secret: dict[str, str]) -> OSCephParams:
     local_secret = secret.copy()
-    admin_key = local_secret.pop(OSCephParams.admin_user)
+    admin_key = local_secret.pop(OSCephParams.admin_user, None)
     mon_endpoints = list(
         _unpack_ips(from_base64(local_secret.pop("mon_endpoints")))
     )
@@ -183,10 +183,11 @@ def _os_ceph_params_from_secret(secret: dict[str, str]) -> OSCephParams:
         )
 
     return OSCephParams(
-        admin_key=admin_key,
         mon_endpoints=mon_endpoints,
         services=services,
         rgw=rgw,
+        admin_user=OSCephParams.admin_user if admin_key else None,
+        admin_key=admin_key,
     )
 
 
