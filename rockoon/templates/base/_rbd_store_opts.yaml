@@ -4,5 +4,5 @@
             rbd_store_chunk_size: 8
             rbd_store_replication: 3
             rbd_store_crush_rule: replicated_rule
-            rbd_store_user: glance
+            rbd_store_user: {{ ceph.glance.username }}
             rbd_store_ceph_conf: /etc/ceph/ceph.conf
