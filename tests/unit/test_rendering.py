@@ -4,7 +4,7 @@ import copy
 import os
 import yaml
 from jsonschema import validate
-from unittest import mock
+from unittest import mock, TestCase
 
 import pytest
 
@@ -350,10 +350,19 @@ def test_render_service_template(
     logger.info(f"Rendering service {service} for context {context}")
     spec, kwargs = get_render_kwargs(service, context, common_template_args)
     kwargs["service_childs"] = child_view.childs
-    data = render_helmbundle(service, spec, **kwargs)
+    rendered = render_helmbundle(service, spec, **kwargs)
     with open(f"{OUTPUT_DIR}/{service}/{context}.yaml") as f:
-        output = yaml.safe_load(f)
-        assert data == output, f"Mismatch when comparing to file {f.name}"
+        expected = yaml.safe_load(f)
+        t = TestCase()
+        t.maxDiff = None
+        t.assertEqual(
+            expected,
+            rendered,
+            (
+                f"Mismatch between render of {context}/{service} "
+                f"and expected output in file {f.name}"
+            ),
+        )
 
 
 @pytest.mark.parametrize("size", sorted(get_sizes()))
