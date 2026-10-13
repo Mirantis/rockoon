@@ -90,9 +90,11 @@ conf:
       cinder:
         key: null
         secret_uuid: c9543a17-411c-45e1-8a25-3f03e0090dc2
+        user: cinder
       nova:
         key: null
         secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
+        user: nova
     config:
       global:
         mon_host: []

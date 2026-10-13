@@ -8,6 +8,7 @@ from enum import Enum, auto
 from ipaddress import IPv4Address
 import json
 from typing import Any, Self
+import uuid
 
 from rockoon import settings
 from rockoon.utils import from_base64
@@ -24,6 +25,9 @@ CEPH_POOL_ROLE_SERVICES_MAP = {
     "glance": ["images"],
     "manila": [],
 }
+
+# NOTE(pas-ha): NEVER CHANGE THAT!
+LIBVIRT_UUID_NAMESPACE = uuid.UUID("5e3cacf5-b4fe-4df9-acf5-b617fd683ae8")
 
 
 class OSService(Enum):
@@ -72,6 +76,21 @@ class CephUser:
     client_id: str  # short name, like nova123, used in OpenStack configs
     client_name: str  # full name, like client.nova123, used in Ceph configs
     key: str  # base64-encoded auth key
+
+    @property
+    def uuid(self) -> uuid.UUID:
+        """1:1 map of client_id to a UUID
+
+        Will be used for libvirt secret UUID
+        """
+        # NOTE(pas-ha): these hard-code previous defaults
+        # hopefully there'll be no collisions o_O
+        if self.client_id == "nova":
+            return uuid.UUID("457eb676-33da-42ec-9a8c-9293d545c337")
+        elif self.client_id == "cinder":
+            return uuid.UUID("c9543a17-411c-45e1-8a25-3f03e0090dc2")
+        else:
+            return uuid.uuid5(LIBVIRT_UUID_NAMESPACE, self.client_id)
 
 
 @dataclass

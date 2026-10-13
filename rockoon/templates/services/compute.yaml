@@ -188,14 +188,14 @@ spec:
 {%- if is_ceph_enabled %}
           enabled: true
           keyrings:
-            {{ ceph.cinder.username }}:
+            cinder:
               key: {{ ceph.cinder.keyring }}
-              secret_uuid: c9543a17-411c-45e1-8a25-3f03e0090dc2
-            {{ ceph.nova.username }}:
+              secret_uuid: {{ ceph.cinder.uuid }}
+              user: {{ ceph.cinder.username }}
+            nova:
               key: {{ ceph.nova.keyring }}
-              secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
-          cinder:
-            user: {{ ceph.nova.username }}
+              secret_uuid: {{ ceph.nova.uuid }}
+              user: {{ ceph.nova.username }}
           config:
             global:
               mon_host: {{ ceph.mon_host }}

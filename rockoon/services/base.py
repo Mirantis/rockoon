@@ -765,6 +765,7 @@ class OpenStackServiceWithCeph(OpenStackService):
             srv_username = oscp_service.service.name
             ceph_config[srv_username] = {
                 "username": oscp_service.ceph_user.client_id,
+                "uuid": str(oscp_service.ceph_user.uuid),
                 "keyring": oscp_service.ceph_user.key,
                 "secrets": ceph_api.get_os_service_user_keyring_name(
                     oscp_service.service
