@@ -1,20 +1,5 @@
 block-storage:
   is_ceph_enabled: false
-  ceph:
-    cinder:
-      keyring: 'AQDLZLJfNPtTOxAAQm248Q9AyoirvELaSyPz5w==
-
-        '
-      pools:
-        backup-hdd:
-          name: backup-hdd
-          role: backup
-        volumes-hdd:
-          name: volumes-hdd
-          role: volumes
-      secrets: cinder-rbd-keyring
-      username: cinder
-      uuid: c9543a17-411c-45e1-8a25-3f03e0090dc2
   credentials: &credentials_block-storage
   - database:
       user:
@@ -43,18 +28,7 @@ cloudprober:
       password: QXH50EtBVsiCptehSf4l55Y1R3QdGFv8xc
       username: osctlQECh8
 compute:
-  ceph:
-    nova:
-      keyring: 'AQDNZLJf8S+fORAA6hg50Jo+vBq07kxtBXB9PQ==
-
-        '
-      pools:
-        vms-hdd:
-          name: vms-hdd
-          role: vms
-      secrets: nova-rbd-keyring
-      username: nova
-      uuid: 457eb676-33da-42ec-9a8c-9293d545c337
+  is_ceph_enabled: false
   credentials: &credentials_compute
   - database:
       user:
@@ -186,17 +160,7 @@ identity:
   credentials_secret_name: keystone-credential-data
   fernet_secret_name: keystone-fernet-data
 image:
-  ceph:
-    glance:
-      keyring: 'AQDKZLJfoTtgAhAA7f9e8GriyIpFbj8Ez88l2A==
-
-        '
-      pools:
-        images-hdd:
-          name: images-hdd
-          role: images
-      secrets: glance-rbd-keyring
-      username: glance
+  is_ceph_enabled: false
   credentials: &credentials_image
   - database:
       user:

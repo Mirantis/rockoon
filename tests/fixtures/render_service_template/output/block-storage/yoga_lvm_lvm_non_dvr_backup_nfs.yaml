@@ -77,8 +77,6 @@ spec:
           service_user:
             send_service_user_token: true
           backend_defaults:
-            rbd_exclusive_cinder_pool: true
-            rbd_secret_uuid: c9543a17-411c-45e1-8a25-3f03e0090dc2
             report_dynamic_total_capacity: false
           nova:
             interface: internal

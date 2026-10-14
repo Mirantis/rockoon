@@ -1,23 +1,5 @@
 block-storage:
   is_ceph_enabled: false
-  ceph:
-    cinder:
-      keyring: 'AQDLZLJfNPtTOxAAQm248Q9AyoirvELaSyPz5w==
-
-        '
-      pools:
-        backup-hdd:
-          name: backup-hdd
-          role: backup
-        volumes-hdd:
-          name: volumes-hdd
-          role: volumes
-      secrets: cinder-rbd-keyring
-      username: cinder
-    mon_host:
-      - "10.10.10.1:6789"
-      - "10.10.10.2:6789"
-      - "10.10.10.3:6789"
   credentials: &credentials_block-storage
   - database:
       user:
@@ -42,27 +24,6 @@ block-storage:
   keystone_creds: {}
 compute:
   is_ceph_enabled: false
-  ceph:
-    nova:
-      keyring: AQDNZLJf8S+fORAA6hg50Jo+vBq07kxtBXB9PQ==
-      pools:
-        vms-hdd:
-          name: vms-hdd
-          role: vms
-      secrets: nova-rbd-keyring
-      username: nova
-    cinder:
-      keyring: AQDLZLJfNPtTOxAAQm248Q9AyoirvELaSyPz5w==
-      pools:
-        volumes-hdd:
-          name: volumes-hdd
-          role: volumes
-      secrets: cinder-rbd-keyring
-      username: cinder
-    mon_host:
-      - "10.10.10.1:6789"
-      - "10.10.10.2:6789"
-      - "10.10.10.3:6789"
   credentials: &credentials_compute
   - database:
       user:
@@ -191,21 +152,6 @@ identity:
   keystone_creds: {}
 image:
   is_ceph_enabled: false
-  ceph:
-    glance:
-      keyring: 'AQDKZLJfoTtgAhAA7f9e8GriyIpFbj8Ez88l2A==
-
-        '
-      pools:
-        images-hdd:
-          name: images-hdd
-          role: images
-      secrets: glance-rbd-keyring
-      username: glance
-    mon_host:
-      - "10.10.10.1:6789"
-      - "10.10.10.2:6789"
-      - "10.10.10.3:6789"
   credentials: &credentials_image
   - database:
       user:

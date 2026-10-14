@@ -270,12 +270,14 @@ spec:
           service_user:
             send_service_user_token: true
           backend_defaults:
+{%- if is_ceph_enabled %}
             # NOTE(vsaienko): Use dedicated pool for cinder only, this will allow to improve
             # scale characteristics
             rbd_exclusive_cinder_pool: true
             # NOTE(vsaienko): always specify rbd_secret_uuid as since Antelope this is set
             # by default on cinder cide. Should be matched with values in nova/cinder keyrings
             rbd_secret_uuid: {{ ceph.cinder.uuid }}
+{%- endif %}
             report_dynamic_total_capacity: false
           # Needed for InstanceLocalityFilter
           nova:
