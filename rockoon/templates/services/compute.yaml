@@ -981,6 +981,7 @@ spec:
             virt_type: kvm
 {%- if is_ceph_enabled %}
             rbd_user: {{ ceph.nova.username }}
+            rbd_secret_uuid: {{ ceph.nova.uuid }}
 {%- endif %}
 {%- if swtpm_enabled %}
             swtpm_enabled: true

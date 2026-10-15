@@ -140,6 +140,7 @@ spec:
             images_type: qcow2
             live_migration_permit_auto_converge: true
             rbd_user: nova
+            rbd_secret_uuid: 457eb676-33da-42ec-9a8c-9293d545c337
             virt_type: kvm
           neutron:
             metadata_proxy_shared_secret: mN0aLDTcg1AVqyLWNDjCd2Jz6DA61cZJ
