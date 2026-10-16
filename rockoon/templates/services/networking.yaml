@@ -381,6 +381,10 @@ spec:
       overrides:
     {%- if ovn_enabled %}
         openvswitch_ovn-controller:
+        {%- if spec.preset == "condensed" %}
+          primary_labels:
+            - rockoon-openstack-compute-node::controller
+        {%- endif %}
           overrides_default: false
           labels:
             rockoon-openstack-gateway::controller:
@@ -388,6 +392,10 @@ spec:
                 conf:
                   external-ids:
                     ovn-cms-options: "enable-chassis-as-gw"
+        {%- if spec.preset == "condensed" %}
+                  ovn_controller:
+                    generate_ovn_chassis_mac_mappings: true
+        {%- endif %}
                   ovs_bridges:
       {%- for network in spec.features.neutron.external_networks %}
                     {{ network.bridge }}:

@@ -82,8 +82,6 @@ class NetworkFeatureEnabled(base_section.BaseSection):
                     "subnet-service-types",
                     "standard-attr-revisions",
                     "router_availability_zone",
-                    "dns-domain-ports",
-                    "dns-integration",
                     "default-subnetpools",
                     "ext-gw-mode",
                     "agent",
@@ -103,6 +101,10 @@ class NetworkFeatureEnabled(base_section.BaseSection):
                     "floatingip-pools",
                 ]
             )
+            if "dns" in self.get_spec_item("features.services"):
+                api_extensions_default.extend(
+                    ["dns-domain-ports", "dns-integration"]
+                )
 
             if self.os_version_compare("ussuri", "ge"):
                 api_extensions_default.extend(
