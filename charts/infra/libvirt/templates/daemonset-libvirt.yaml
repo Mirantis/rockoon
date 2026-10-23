@@ -260,6 +260,12 @@ spec:
               mountPath: /etc/ceph/ceph.conf
               subPath: ceph.conf
               readOnly: true
+            {{- range $keyring_name, $keyring_data := .Values.conf.ceph.keyrings }}
+            - name: ceph-etc
+              mountPath: /etc/ceph/{{ $keyring_data.user }}_ceph.key
+              subPath: {{ $keyring_data.user }}_ceph.key
+              readOnly: true
+            {{- end }}
             {{- end }}
             - name: libvirt-bin
               mountPath: /tmp/health-probe.sh
@@ -349,7 +355,7 @@ spec:
           configMap:
             name: {{ .Values.ceph_client.configmap }}
 {{- end }}
-            defaultMode: 292
+            defaultMode: 416
         {{ end }}
         - name: libmodules
           hostPath:
