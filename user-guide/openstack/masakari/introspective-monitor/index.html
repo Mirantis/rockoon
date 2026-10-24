@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -29,10 +29,10 @@
       
     
     
-      <link rel="stylesheet" href="../../../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -1578,8 +1578,8 @@ for more information.</p>
 <p><strong>3. Create RSA keys for the test instance</strong></p>
 <p>Generate an RSA key pair for the test instance you will create in the next step,
 and copy the public key to the <code>keystone-client</code> pod.</p>
-<div class="highlight"><pre><span></span><code>ssh-keygen<span class="w"> </span>-C<span class="w"> </span><span class="s1">&#39;&#39;</span><span class="w"> </span>-N<span class="w"> </span><span class="s1">&#39;&#39;</span><span class="w"> </span>-f<span class="w"> </span>test_key
-<span class="nv">keystone_pod</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>--namespace<span class="w"> </span>openstack<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span>-l<span class="w"> </span><span class="nv">application</span><span class="o">=</span>keystone,component<span class="o">=</span>client<span class="w"> </span>--output<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">&#39;{.items[0].metadata.name}&#39;</span><span class="k">)</span>
+<div class="highlight"><pre><span></span><code>ssh-keygen<span class="w"> </span>-C<span class="w"> </span><span class="s1">''</span><span class="w"> </span>-N<span class="w"> </span><span class="s1">''</span><span class="w"> </span>-f<span class="w"> </span>test_key
+<span class="nv">keystone_pod</span><span class="o">=</span><span class="k">$(</span>kubectl<span class="w"> </span>--namespace<span class="w"> </span>openstack<span class="w"> </span>get<span class="w"> </span>pod<span class="w"> </span>-l<span class="w"> </span><span class="nv">application</span><span class="o">=</span>keystone,component<span class="o">=</span>client<span class="w"> </span>--output<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.items[0].metadata.name}'</span><span class="k">)</span>
 kubectl<span class="w"> </span>cp<span class="w"> </span>test_key.pub<span class="w"> </span>openstack/<span class="si">${</span><span class="nv">keystone_pod</span><span class="si">}</span>:/tmp/
 </code></pre></div>
 <p><strong>4. Access the keystone-client pod</strong></p>
@@ -1589,7 +1589,7 @@ kubectl<span class="w"> </span>cp<span class="w"> </span>test_key.pub<span class
 <p><strong>5. Configure OpenStack for Masakari service</strong></p>
 <p>Inside the pod, run:</p>
 <p><div class="highlight"><pre><span></span><code><span class="nv">SEGMENT_UUID</span><span class="o">=</span><span class="k">$(</span>openstack<span class="w"> </span>segment<span class="w"> </span>create<span class="w"> </span>allcomputes<span class="w"> </span>auto<span class="w"> </span>compute<span class="w"> </span>-f<span class="w"> </span>value<span class="w"> </span>-c<span class="w"> </span>uuid<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="k">)</span>
-<span class="k">for</span><span class="w"> </span>host<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">$(</span>openstack<span class="w"> </span>hypervisor<span class="w"> </span>list<span class="w"> </span>-f<span class="w"> </span>value<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;Hypervisor Hostname&quot;</span><span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="se">\</span>
+<span class="k">for</span><span class="w"> </span>host<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">$(</span>openstack<span class="w"> </span>hypervisor<span class="w"> </span>list<span class="w"> </span>-f<span class="w"> </span>value<span class="w"> </span>-c<span class="w"> </span><span class="s2">"Hypervisor Hostname"</span><span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>openstack<span class="w"> </span>segment<span class="w"> </span>host<span class="w"> </span>create<span class="w"> </span><span class="si">${</span><span class="nv">host</span><span class="si">}</span><span class="w"> </span>compute<span class="w"> </span>SSH<span class="w"> </span><span class="si">${</span><span class="nv">SEGMENT_UUID</span><span class="si">}</span><span class="p">;</span><span class="w"> </span><span class="se">\</span>
 <span class="k">done</span>
 openstack<span class="w"> </span>image<span class="w"> </span><span class="nb">set</span><span class="w"> </span>--property<span class="w"> </span><span class="nv">hw_qemu_guest_agent</span><span class="o">=</span>yes<span class="w"> </span>Ubuntu-18.04
@@ -1718,10 +1718,10 @@ systemctl<span class="w"> </span>status<span class="w"> </span>qemu-guest-agent
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../../..", "features": ["toc.autohide", "search.suggest", "search.highlight", "navigation.tabs.sticky", "navigation.footer", "navigation.path", "content.code.copy"], "search": "../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../../..", "features": ["toc.autohide", "search.suggest", "search.highlight", "navigation.tabs.sticky", "navigation.footer", "navigation.path", "content.code.copy"], "search": "../../../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../../../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>

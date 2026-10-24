@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -29,10 +29,10 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -1772,7 +1772,7 @@ image. At present time they are available on the <code>us-east-2</code> region.<
 <p>You will use this key pair to connect to your EC2 instance via SSH.</p>
 <p><strong>Option A – Create a new key pair</strong></p>
 <div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>create-key-pair<span class="w"> </span>--key-type<span class="w"> </span>rsa<span class="w"> </span>--key-name<span class="w"> </span>&lt;your-key-name&gt;<span class="w"> </span><span class="se">\</span>
---query<span class="w"> </span><span class="s1">&#39;KeyMaterial&#39;</span><span class="w"> </span>--output<span class="w"> </span>text<span class="w"> </span>&gt;<span class="w"> </span>&lt;private-key-file&gt;.pem
+--query<span class="w"> </span><span class="s1">'KeyMaterial'</span><span class="w"> </span>--output<span class="w"> </span>text<span class="w"> </span>&gt;<span class="w"> </span>&lt;private-key-file&gt;.pem
 </code></pre></div>
 <p>Where:</p>
 <ul>
@@ -1781,7 +1781,7 @@ image. At present time they are available on the <code>us-east-2</code> region.<
 </ul>
 <p><strong>Example:</strong></p>
 <div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>create-key-pair<span class="w"> </span>--key-type<span class="w"> </span>rsa<span class="w"> </span>--key-name<span class="w"> </span>my-key-for-trymosk<span class="w"> </span><span class="se">\</span>
---query<span class="w"> </span><span class="s1">&#39;KeyMaterial&#39;</span><span class="w"> </span>--output<span class="w"> </span>text<span class="w"> </span>&gt;<span class="w"> </span>my_private_key.pem
+--query<span class="w"> </span><span class="s1">'KeyMaterial'</span><span class="w"> </span>--output<span class="w"> </span>text<span class="w"> </span>&gt;<span class="w"> </span>my_private_key.pem
 </code></pre></div>
 <p><strong>Option B – Import an existing public key</strong></p>
 <div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>import-key-pair<span class="w"> </span>--key-name<span class="w"> </span>&lt;your-key-name&gt;<span class="w"> </span><span class="se">\</span>
@@ -1800,15 +1800,15 @@ image. At present time they are available on the <code>us-east-2</code> region.<
 </code></pre></div>
 <p><strong>Step 4: Create a Security Group</strong></p>
 <p><strong>4.1. Find your default VPC ID</strong>
-<div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>describe-vpcs<span class="w"> </span>--query<span class="o">=</span><span class="s1">&#39;Vpcs[?IsDefault].VpcId&#39;</span><span class="w"> </span>--output<span class="w"> </span>text
+<div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>describe-vpcs<span class="w"> </span>--query<span class="o">=</span><span class="s1">'Vpcs[?IsDefault].VpcId'</span><span class="w"> </span>--output<span class="w"> </span>text
 </code></pre></div>
 Example of response:
 <div class="highlight"><pre><span></span><code>  vpc-4744c62c
 </code></pre></div></p>
 <p><strong>4.2. Create the security group</strong>
 <div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>create-security-group<span class="w"> </span>--group-name<span class="w"> </span>&lt;your<span class="w"> </span>sg<span class="w"> </span>name&gt;<span class="w"> </span><span class="se">\</span>
---description<span class="w"> </span><span class="s2">&quot;&lt;your sg description&gt;&quot;</span><span class="w"> </span>--vpc-id<span class="w"> </span>&lt;VPC<span class="w"> </span>Id&gt;<span class="w"> </span><span class="se">\</span>
---query<span class="o">=</span><span class="s1">&#39;GroupId&#39;</span><span class="w"> </span>--output<span class="w"> </span>text
+--description<span class="w"> </span><span class="s2">"&lt;your sg description&gt;"</span><span class="w"> </span>--vpc-id<span class="w"> </span>&lt;VPC<span class="w"> </span>Id&gt;<span class="w"> </span><span class="se">\</span>
+--query<span class="o">=</span><span class="s1">'GroupId'</span><span class="w"> </span>--output<span class="w"> </span>text
 </code></pre></div>
 Where:</p>
 <ul>
@@ -1818,8 +1818,8 @@ Where:</p>
 </ul>
 <p><strong>Example:</strong>
 <div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>create-security-group<span class="w"> </span>--group-name<span class="w"> </span>trymosk-security-group<span class="w"> </span><span class="se">\</span>
---description<span class="w"> </span><span class="s2">&quot;Test security group for TryMOSK&quot;</span><span class="w"> </span>--vpc-id<span class="w"> </span>vpc-4744c62c<span class="w"> </span><span class="se">\</span>
---query<span class="o">=</span><span class="s1">&#39;GroupId&#39;</span><span class="w"> </span>--output<span class="w"> </span>text
+--description<span class="w"> </span><span class="s2">"Test security group for TryMOSK"</span><span class="w"> </span>--vpc-id<span class="w"> </span>vpc-4744c62c<span class="w"> </span><span class="se">\</span>
+--query<span class="o">=</span><span class="s1">'GroupId'</span><span class="w"> </span>--output<span class="w"> </span>text
 </code></pre></div>
 Example of response:
 <div class="highlight"><pre><span></span><code>sg-0d72aa991587b5648
@@ -1831,8 +1831,8 @@ aws<span class="w"> </span>ec2<span class="w"> </span>authorize-security-group-i
 </code></pre></div>
 Where <code>&lt;sg-id&gt;</code> is from step 4.2.</p>
 <p><strong>Step 5: Find the TryMOSK AMI ID</strong></p>
-<div class="highlight"><pre><span></span><code>aws ec2 describe-images --filters Name=name,Values=&quot;trymosk*&quot; \
---query=&#39;Images[*].[ImageId,Name,CreationDate]&#39; --output table
+<div class="highlight"><pre><span></span><code>aws ec2 describe-images --filters Name=name,Values="trymosk*" \
+--query='Images[*].[ImageId,Name,CreationDate]' --output table
 </code></pre></div>
 <p>Example response:</p>
 <div class="highlight"><pre><span></span><code>--------------------------------------------------------------------------------------------------
@@ -1848,7 +1848,7 @@ Where <code>&lt;sg-id&gt;</code> is from step 4.2.</p>
 --security-group-ids<span class="w"> </span>&lt;sg<span class="w"> </span>id&gt;<span class="w"> </span><span class="se">\</span>
 --associate-public-ip-address<span class="w"> </span><span class="se">\</span>
 --block-device-mapping<span class="w"> </span><span class="nv">DeviceName</span><span class="o">=</span>/dev/sda1,Ebs<span class="o">={</span><span class="nv">VolumeSize</span><span class="o">=</span>&lt;root<span class="w"> </span>volume<span class="w"> </span>size&gt;<span class="o">}</span><span class="w"> </span><span class="se">\</span>
---query<span class="o">=</span><span class="s1">&#39;Instances[0].InstanceId&#39;</span><span class="w"> </span>--output<span class="w"> </span>text
+--query<span class="o">=</span><span class="s1">'Instances[0].InstanceId'</span><span class="w"> </span>--output<span class="w"> </span>text
 </code></pre></div>
 <p>Where:</p>
 <ul>
@@ -1864,31 +1864,31 @@ Where <code>&lt;sg-id&gt;</code> is from step 4.2.</p>
 --security-group-ids<span class="w"> </span>sg-0d72aa991587b5648<span class="w"> </span><span class="se">\</span>
 --associate-public-ip-address<span class="w"> </span><span class="se">\</span>
 --block-device-mapping<span class="w"> </span><span class="nv">DeviceName</span><span class="o">=</span>/dev/sda1,Ebs<span class="o">={</span><span class="nv">VolumeSize</span><span class="o">=</span><span class="m">40</span><span class="o">}</span><span class="w"> </span><span class="se">\</span>
---query<span class="o">=</span><span class="s1">&#39;Instances[0].InstanceId&#39;</span><span class="w"> </span>--output<span class="w"> </span>text
+--query<span class="o">=</span><span class="s1">'Instances[0].InstanceId'</span><span class="w"> </span>--output<span class="w"> </span>text
 </code></pre></div>
 <p>Example of response:</p>
 <div class="highlight"><pre><span></span><code>i-0c8a0969dfd64c909
 </code></pre></div>
 <p><strong>Step 7: Wait for the instance to start</strong></p>
 <div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>describe-instances<span class="w"> </span>--instance-ids<span class="w"> </span>&lt;your<span class="w"> </span>instance<span class="w"> </span>Id&gt;<span class="w"> </span><span class="se">\</span>
---query<span class="o">=</span><span class="s1">&#39;Reservations[0].Instances[0].State.Name&#39;</span><span class="w"> </span>--output<span class="w"> </span>text
+--query<span class="o">=</span><span class="s1">'Reservations[0].Instances[0].State.Name'</span><span class="w"> </span>--output<span class="w"> </span>text
 </code></pre></div>
 <p>Where  <code>&lt;your instance Id&gt;</code> is from step 6.
 <strong>Example:</strong></p>
 <div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>describe-instances<span class="w"> </span>--instance-ids<span class="w"> </span>i-0c8a0969dfd64c909<span class="w"> </span><span class="se">\</span>
---query<span class="o">=</span><span class="s1">&#39;Reservations[0].Instances[0].State.Name&#39;</span><span class="w"> </span>--output<span class="w"> </span>text
+--query<span class="o">=</span><span class="s1">'Reservations[0].Instances[0].State.Name'</span><span class="w"> </span>--output<span class="w"> </span>text
 </code></pre></div>
 <p>Example of response:</p>
 <div class="highlight"><pre><span></span><code>pending
 </code></pre></div>
 <p><strong>Step 8: Get the public IPv4 address</strong></p>
 <div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>describe-instances<span class="w"> </span>--instance-ids<span class="w"> </span>&lt;your<span class="w"> </span>instance<span class="w"> </span>Id&gt;<span class="w"> </span><span class="se">\</span>
---query<span class="o">=</span><span class="s1">&#39;Reservations[0].Instances[0].PublicIpAddress&#39;</span><span class="w"> </span>--output<span class="w"> </span>text
+--query<span class="o">=</span><span class="s1">'Reservations[0].Instances[0].PublicIpAddress'</span><span class="w"> </span>--output<span class="w"> </span>text
 </code></pre></div>
 <p>Where <code>&lt;your instance Id&gt;</code> is from step 6.
 <strong>Example:</strong></p>
 <div class="highlight"><pre><span></span><code>aws<span class="w"> </span>ec2<span class="w"> </span>describe-instances<span class="w"> </span>--instance-ids<span class="w"> </span>i-0c8a0969dfd64c909<span class="w"> </span><span class="se">\</span>
---query<span class="o">=</span><span class="s1">&#39;Reservations[0].Instances[0].PublicIpAddress&#39;</span><span class="w"> </span>--output<span class="w"> </span>text
+--query<span class="o">=</span><span class="s1">'Reservations[0].Instances[0].PublicIpAddress'</span><span class="w"> </span>--output<span class="w"> </span>text
 </code></pre></div>
 <p>Example of response:</p>
 <div class="highlight"><pre><span></span><code>18.218.29.107
@@ -2040,10 +2040,10 @@ ADMIN_PASSWORD:<span class="w"> </span>tLuQfuJVAxxxxxxxxxxxxx
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["toc.autohide", "search.suggest", "search.highlight", "navigation.tabs.sticky", "navigation.footer", "navigation.path", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["toc.autohide", "search.suggest", "search.highlight", "navigation.tabs.sticky", "navigation.footer", "navigation.path", "content.code.copy"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
       
     
   </body>
