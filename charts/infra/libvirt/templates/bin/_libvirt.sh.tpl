@@ -20,7 +20,6 @@ set -ex
 function ensure_ceph_secret {
   local secret_name=$1
   local secret_uuid=$2
-  local keyring_data=$3
 
   tmpsecret=$(mktemp --suffix ${secret_name}.xml)
   CLEANUP_FILES="$CLEANUP_FILES ${tmpsecret}"
@@ -34,7 +33,7 @@ function ensure_ceph_secret {
 </secret>
 EOF
   virsh secret-define --file ${tmpsecret}
-  virsh secret-set-value --secret "${secret_uuid}" --base64 "${keyring_data}"
+  virsh secret-set-value --secret "${secret_uuid}" --file "/etc/ceph/${secret_name}_ceph.key"
 }
 
 CLEANUP_FILES=""
@@ -147,7 +146,7 @@ if [[ "true" == "{{ .Values.conf.ceph.enabled }}" ]]; then
   done
 
     {{- range $keyring_name, $keyring_data := .Values.conf.ceph.keyrings }}
-  ensure_ceph_secret "{{ $keyring_data.user }}" "{{ $keyring_data.secret_uuid }}" "{{ $keyring_data.key }}"
+  ensure_ceph_secret "{{ $keyring_data.user }}" "{{ $keyring_data.secret_uuid }}"
     {{- end }}
 
   function cleanup {
