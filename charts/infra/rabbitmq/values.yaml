@@ -218,7 +218,8 @@ conf:
         1: null
     queue_master_locator: min-masters
     loopback_users.guest: "false"
-    management.load_definitions: "/var/lib/rabbitmq/definitions.json"
+    definitions.import_backend: local_filesystem
+    definitions.local.path: "/var/lib/rabbitmq/definitions.json"
     log.console: true
     log.file: false
     collect_statistics_interval: 60000
