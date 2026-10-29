@@ -284,13 +284,16 @@ def get_child_object_templates():
         "placement": ["queens", "rocky"],
         "instance-ha": ["queens", "rocky", "stein", "train", "ussuri"],
         "event": [
-            "xena",
-            "yoga",
-            "antelope",
-            "caracal",
-            "epoxy",
-            "gazpacho",
-            "master",
+            v
+            for v in all_openstack_versions
+            if constants.OpenStackVersion[v].value
+            >= constants.OpenStackVersion["xena"].value
+        ],
+        "metric": [
+            v
+            for v in all_openstack_versions
+            if constants.OpenStackVersion[v].value
+            > constants.OpenStackVersion["epoxy"].value
         ],
         "metric-storage": [
             "queens",
