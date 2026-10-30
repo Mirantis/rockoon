@@ -134,7 +134,7 @@ spec:
               value: {{ toJson $envAll.Values.conf.aux_conf | quote }}
 {{- end }}
             - name: RABBITMQ_DEFINITION_FILE
-              value: "{{ index $envAll.Values.conf.rabbitmq "management.load_definitions" }}"
+              value: "{{ index $envAll.Values.conf.rabbitmq "definitions.local.path" }}"
           volumeMounts:
             - name: pod-tmp
               mountPath: /tmp
