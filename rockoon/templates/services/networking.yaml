@@ -17,7 +17,8 @@
 {%- set bgpvpn = spec.features.neutron.get('bgpvpn', {'enabled': False}) %}
 {%- set ipsec = spec.features.neutron.get('ipsec', {'enabled': False}) %}
 {%- set vpnaas = spec.features.neutron.get("extensions", {}).get("vpnaas", {"enabled": False}) %}
-{%- set fwaas = spec.features.neutron.get("extensions", {}).get("fwaas", {"enabled": False}) %}
+{%- set fwaas_default = ovn_enabled and OSVer[spec.openstack_version] >= OSVer.epoxy %}
+{%- set fwaas = spec.features.neutron.get("extensions", {}).get("fwaas", {"enabled": fwaas_default}) %}
 {%- set dynamic_routing = spec.features.neutron.get("extensions", {}).get("dynamic_routing", {"enabled": False}) %}
 {%- set trunk_default = not tungstenfabric_enabled and OSVer[spec.openstack_version] >= OSVer.antelope %}
 {%- set trunk = spec.features.neutron.get("extensions", {}).get("trunk", {"enabled": trunk_default}) %}

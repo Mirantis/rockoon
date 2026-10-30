@@ -1326,7 +1326,8 @@ properties:
                     type: boolean
                     description: |
                         [Technology Preview] Enable FWaaS v2 plugin/service
-                        default: false
+                        default: true for Epoxy and newer OS releases with OVN
+                        backend, false otherwise
               dynamic_routing:
                 type: object
                 additionalProperties: false
