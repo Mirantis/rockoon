@@ -28,6 +28,10 @@ instance-ha:masakari:Deployment:masakari-api:
       matchLabels:
         application: heat
         component: engine
+  - podSelector:
+      matchLabels:
+        application: skyline
+        component: server
   ports:
   - port: 15868
     protocol: TCP

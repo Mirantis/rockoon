@@ -515,3 +515,20 @@ messaging:
     instance-ha: null
 descheduler:
   openstack_namespace: "openstack"
+skyline:
+  rgw_internal_cacert: "RGW CRT"
+  credentials: &credentials_skyline
+  - database:
+      user:
+        password: Ld1bLgJdtXYesiAwKQibcrMWyHxI4ShA
+        username: skylinefYS1vLVZQ
+    identity:
+      skyline:
+        password: Uhmz8zQAd5MM8HRmkvZdLSjySZVwAIDS
+        username: skylineTlEdBF8m
+      test:
+        password: PGmChaJyRD9gjLLFn5gA8G4LdGwiTx0L
+        username: testgbCwksde
+    secret_key: UwZJiPQP0YyLKbD4wsP15pdleeKUNWFe
+  keystone_creds: {}
+  federation: {}

@@ -107,6 +107,7 @@ spec:
                     stepler: *component_status
                     tempest: *component_status
                     dynamic-resource-balancer: *component_status
+                    skyline: *component_status
                 osdpl:
                     type: object
                     properties:

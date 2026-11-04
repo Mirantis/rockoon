@@ -524,6 +524,18 @@ database:mariadb:StatefulSet:mariadb-server:
       matchLabels:
         application: manila
         component: share
+  - podSelector:
+      matchLabels:
+        application: skyline
+        component: server
+  - podSelector:
+      matchLabels:
+        application: skyline
+        component: db-init
+  - podSelector:
+      matchLabels:
+        application: skyline
+        component: db-sync
   ports:
   - port: 3306
     protocol: TCP

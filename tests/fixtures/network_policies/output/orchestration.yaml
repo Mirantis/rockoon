@@ -18,6 +18,10 @@ orchestration:heat:Deployment:heat-api:
         component: server
   - podSelector:
       matchLabels:
+        application: skyline
+        component: server
+  - podSelector:
+      matchLabels:
         application: tempest
         component: static-accounts
   ports:

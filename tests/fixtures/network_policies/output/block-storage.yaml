@@ -82,6 +82,10 @@ block-storage:cinder:Deployment:cinder-api:
         component: share
   - podSelector:
       matchLabels:
+        application: skyline
+        component: server
+  - podSelector:
+      matchLabels:
         application: tempest
         component: run-tests
   - podSelector:

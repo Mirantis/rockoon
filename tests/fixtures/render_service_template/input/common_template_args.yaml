@@ -245,6 +245,9 @@ images:
   redis-operator: redis-operator:latest
   envoy: 'envoy:latest'
   sg_core: sg-core:latest
+  skyline: skyline:latest
+  skyline_nginx: skyline:latest
+  skyline_db_sync: skyline:latest
 proxy_vars:
   HTTP_PROXY: http://127.0.0.1:3128
   NO_PROXY: .svc.cluster.local
@@ -340,6 +343,9 @@ network_policies:
       - from:
         - default: selector
     dashboard:horizon:Deployment:horizon:
+      - from:
+        - default: selector
+    skyline:skyline:Deployment:skyline:
       - from:
         - default: selector
   egress: {}

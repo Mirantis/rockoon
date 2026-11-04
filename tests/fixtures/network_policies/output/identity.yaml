@@ -655,6 +655,14 @@ identity:keystone:Deployment:keystone-api:
         component: share
   - podSelector:
       matchLabels:
+        application: skyline
+        component: server
+  - podSelector:
+      matchLabels:
+        application: skyline
+        component: ks-user
+  - podSelector:
+      matchLabels:
         application: stepler
         component: run-tests
   - podSelector:

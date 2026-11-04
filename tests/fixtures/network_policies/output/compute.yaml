@@ -101,6 +101,10 @@ compute:nova:Deployment:nova-api-osapi:
         component: share
   - podSelector:
       matchLabels:
+        application: skyline
+        component: server
+  - podSelector:
+      matchLabels:
         application: tempest
         component: run-tests
   - podSelector:

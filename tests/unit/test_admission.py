@@ -20,6 +20,7 @@ from falcon import testing
 import pytest
 
 from rockoon.admission import controller
+from rockoon import constants
 
 api_key_encrypted = """
 -----BEGIN ENCRYPTED PRIVATE KEY-----
@@ -116,6 +117,10 @@ VALUE_FROM_DICT = {
         "secret_key_ref": {"name": "secret_name", "key": "secret_key"}
     }
 }
+
+ALL_OPENSTACK_VERSIONS = set(
+    [it.name for it in constants.OpenStackVersion]
+) - set(["zed", "bobcat", "dalmatian", "flamingo", "master"])
 
 
 @pytest.fixture
@@ -2988,3 +2993,40 @@ def test_ingress_state_fail(client):
     response = client.simulate_post("/validate", json=req)
     assert response.status == falcon.HTTP_OK
     assert response.json["response"]["allowed"] is False
+
+
+def test_skyline_install_ok(client):
+    allow_in = [
+        v
+        for v in ALL_OPENSTACK_VERSIONS
+        if constants.OpenStackVersion[v].value
+        >= constants.OpenStackVersion["gazpacho"].value
+    ]
+    req = copy.deepcopy(ADMISSION_REQ)
+    req["request"]["object"]["spec"]["features"]["services"].append("skyline")
+    for os_version in allow_in:
+        req["request"]["object"]["spec"]["openstack_version"] = os_version
+        response = client.simulate_post("/validate", json=req)
+        assert response.status == falcon.HTTP_OK
+        assert (
+            response.json["response"]["allowed"] is True
+        ), f"Skyline should be supported in {os_version} release."
+
+
+def test_skyline_install_fail(client):
+    deny_in = [
+        v
+        for v in ALL_OPENSTACK_VERSIONS
+        if constants.OpenStackVersion[v].value
+        < constants.OpenStackVersion["gazpacho"].value
+    ]
+    req = copy.deepcopy(ADMISSION_REQ)
+    req["request"]["object"]["spec"]["features"]["services"].append("skyline")
+    for os_version in deny_in:
+        req["request"]["object"]["spec"]["openstack_version"] = os_version
+        response = client.simulate_post("/validate", json=req)
+        assert response.status == falcon.HTTP_OK
+        assert (
+            response.json["response"]["allowed"] is False
+        ), f"Skyline should not be supported in {os_version} release."
+        assert response.json["response"]["status"]["code"] == 400

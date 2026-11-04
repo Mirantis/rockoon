@@ -36,6 +36,10 @@ load-balancer:octavia:Deployment:octavia-api:
       matchLabels:
         application: heat
         component: engine
+  - podSelector:
+      matchLabels:
+        application: skyline
+        component: server
   ports:
   - port: 9876
     protocol: TCP

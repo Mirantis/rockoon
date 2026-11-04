@@ -1,0 +1,10 @@
+{%- set skyline_pod = "skyline:skyline:Deployment:skyline" %}
+        skyline:
+          spec:
+            podSelector:
+              matchLabels:
+{{ service_childs[skyline_pod].get_pod_labels() | toyaml | indent(16, first=True) }}
+            policyTypes:
+            - Ingress
+            ingress:
+{{ network_policies["ingress"][skyline_pod] | toyaml | indent(14, first=True) }}

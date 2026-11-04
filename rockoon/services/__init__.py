@@ -2405,6 +2405,28 @@ class RadosGateWay(OpenStackService):
         return t_args
 
 
+class Skyline(OpenStackService, FederationMixin):
+    service = "skyline"
+    openstack_chart = "skyline"
+    available_releases = ["openstack-skyline"]
+    _secret_class = secrets.HorizonSecret
+
+    @property
+    def _child_generic_objects(self):
+        return {"skyline": {"job_db_init", "job_db_sync", "job_db_drop"}}
+
+    def template_args(self):
+        t_args = super().template_args()
+
+        if "object-storage" in self.mspec["features"].get("services", []):
+            ceph_api.wait_for_ceph_secret(kube.wait_for_secret)
+            oscp = ceph_api.get_os_ceph_params(secrets.get_secret_data)
+            if oscp.rgw and oscp.rgw.internal_cacert:
+                t_args["rgw_internal_cacert"] = oscp.rgw.internal_cacert
+
+        return t_args
+
+
 class Tempest(OpenStackService):
     service = "tempest"
     available_releases = ["openstack-tempest"]

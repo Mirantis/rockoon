@@ -94,6 +94,10 @@ image:glance:Deployment:glance-api:
         component: share
   - podSelector:
       matchLabels:
+        application: skyline
+        component: server
+  - podSelector:
+      matchLabels:
         application: tempest
         component: run-tests
   - podSelector:

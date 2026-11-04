@@ -54,6 +54,7 @@ class OpenStackValidator(base.BaseValidator):
         self._deny_strict_admin_policy(new_obj)
         self._check_schedules(new_obj)
         self._check_ingress_migration(new_obj)
+        self._check_skyline_allowed(new_obj)
 
     def validate_status(self, review_request):
         old_obj = review_request.get("oldObject", {})
@@ -426,4 +427,20 @@ class OpenStackValidator(base.BaseValidator):
             raise exception.OsDplValidationFailed(
                 f"Ingress state is set to {ingress_state}"
                 f"It should be set to one of {ingress_allowed} or unset"
+            )
+
+    def _check_skyline_allowed(self, new_obj):
+        openstack_services = (
+            new_obj.get("spec", {}).get("features", {}).get("services", [])
+        )
+        os_num_version = constants.OpenStackVersion[
+            new_obj["spec"]["openstack_version"]
+        ].value
+        if (
+            "skyline" in openstack_services
+            and os_num_version < constants.OpenStackVersion["gazpacho"].value
+        ):
+            raise exception.OsDplValidationFailed(
+                "Skyline is not supported in OpenStack version "
+                "before Gazpacho release."
             )

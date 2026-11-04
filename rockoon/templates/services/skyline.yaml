@@ -1,0 +1,105 @@
+#apiVersion: lcm.mirantis.com/v1alpha1
+#kind: HelmBundle
+{%- set region_name = spec.get('region_name', 'RegionOne') %}
+
+spec:
+  releases:
+  - name: openstack-skyline
+    chart: skyline
+    values:
+      images:
+        tags:
+{%- for image in [
+    "skyline",
+    "skyline_db_sync",
+    "skyline_nginx",
+    "db_init",
+    "image_repo_sync",
+    "ks_user",
+    "dep_check",] %}
+        {%- if image in images %}
+          {{ image }}: {{ images[image] }}
+        {%- endif %}
+{%- endfor %}
+      dependencies:
+        static:
+          db_init:
+            jobs:
+              - openstack-mariadb-cluster-wait
+{%- if spec.features.network_policies.enabled %}
+      network_policy:
+{% include 'base/network_policies/skyline.yaml' %}
+{%- endif %}
+      manifests:
+        network_policy: {{ spec.features.network_policies.enabled }}
+        secret_ca_bundle: true
+      network:
+        proxy:
+{% include 'base/_proxy_vars.yaml' %}
+      endpoints:
+        cluster_domain_suffix: {{ spec.internal_domain_name }}
+{% include 'base/_admin_identity.yaml' %}
+          host_fqdn_override:
+            public:
+              host: keystone.{{ spec.public_domain_name }}
+          hosts:
+            default: keystone
+            internal: keystone-api
+            public:
+              host: keystone
+          port:
+            api:
+              default: 80
+              internal: 5000
+              public: 443
+          scheme:
+            default: http
+            public: https
+{% include 'base/_cache.yaml' %}
+        oslo_db:
+          auth:
+            admin:
+              username: {{ admin_creds.database.username }}
+              password: {{ admin_creds.database.password }}
+            skyline:
+              username: {{ credentials[0].database.user.username }}
+              password: {{ credentials[0].database.user.password }}
+        skyline:
+          host_fqdn_override:
+            public:
+              host: skyline.{{ spec.public_domain_name }}
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+{%- if rgw_internal_cacert is defined %}
+{{ rgw_internal_cacert | indent( width=18, first=True) }}
+{%- endif %}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+          hosts:
+            default: skyline-api
+            public:
+              host: skyline
+              tls:
+                ca: |
+{{ spec.features.ssl.public_endpoints.ca_cert | indent( width=18, first=True) }}
+{%- if rgw_internal_cacert is defined %}
+{{ rgw_internal_cacert | indent( width=18, first=True) }}
+{%- endif %}
+                crt: |
+{{ spec.features.ssl.public_endpoints.api_cert | indent( width=18, first=True) }}
+                key: |
+{{ spec.features.ssl.public_endpoints.api_key | indent( width=18, first=True) }}
+      conf:
+        skyline:
+          default:
+            secret_key: {{ credentials[0].secret_key }}
+            session_name: session
+          openstack:
+            default_region: {{ region_name }}
+            base_domains:
+            - service
+            interface_type: internal
+            sso_enabled: false
