@@ -51,13 +51,13 @@ def test_hook_called():
 
     # failed to patch as function decorator probably due to asynio decorator
     # so let's patch with the context manager
-    with mock.patch("rockoon.kube.get_osdpl") as o, mock.patch(
-        "kopf.adopt"
-    ), mock.patch("rockoon.kube.resource"), mock.patch(
-        "rockoon.kube.find"
-    ) as find, mock.patch(
-        "rockoon.osdplstatus.OpenStackDeploymentStatus"
-    ) as osdplst:
+    with (
+        mock.patch("rockoon.kube.get_osdpl") as o,
+        mock.patch("kopf.adopt"),
+        mock.patch("rockoon.kube.resource"),
+        mock.patch("rockoon.kube.find") as find,
+        mock.patch("rockoon.osdplstatus.OpenStackDeploymentStatus") as osdplst,
+    ):
         find.return_value.obj = cronjob
         o.return_value.obj = osdpl
         osdplst.return_value.get_osdpl_health.return_value = osdplst_health
