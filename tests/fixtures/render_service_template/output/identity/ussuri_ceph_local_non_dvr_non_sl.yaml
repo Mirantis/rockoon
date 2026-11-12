@@ -220,6 +220,10 @@ spec:
               nginx.ingress.kubernetes.io/session-cookie-max-age: "1800"
               nginx.ingress.kubernetes.io/session-cookie-name: os-keycloak-sso
           http_route:
+            policies:
+              backend_traffic:
+                requestBuffer:
+                  limit: 114688
             rule:
               sessionPersistence:
                 absoluteTimeout: 1800s

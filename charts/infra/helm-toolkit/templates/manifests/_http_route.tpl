@@ -210,24 +210,32 @@ spec:
   rules:
 {{ $hostNameFullRules | include "helm-toolkit.manifests.http_route._host_rules" | indent 4 }}
 
+{{/* BTP Defaults start */}}
+{{- $defaultBTPOpts := dict -}}
+{{- $_ := set $defaultBTPOpts "enabled" true -}}
+{{- $_ := set $defaultBTPOpts "mergeType" "StrategicMerge" -}}
+{{- $_ := set $defaultBTPOpts "requestBuffer" dict -}}
+{{- $_ := set $defaultBTPOpts.requestBuffer "limit" "1Mi" -}}
+{{/* BTP Defaults end */}}
 {{- $backendPolicyOpts := dig "policies" "backend_traffic" dict $httpRouteConf -}}
-{{- if $backendPolicyOpts }}
-{{- if (dig "enabled" true $backendPolicyOpts) }}
-{{- if empty $backendPolicyOpts.mergeType }}
-{{- $_ := set $backendPolicyOpts "mergeType" "StrategicMerge" }}
-{{- end }}
-{{- $_ := unset $backendPolicyOpts "enabled" }}
+{{- $mergedPolicyOpts := merge $backendPolicyOpts $defaultBTPOpts -}}
+{{/* Limit is required value and Envoy Gateway does not support setting value which
+  disables request buffer, so use custom <None> value */}}
+{{- if eq (toString $mergedPolicyOpts.requestBuffer.limit) "<None>" -}}
+{{- $_ := unset $mergedPolicyOpts "requestBuffer" -}}
+{{- end -}}
+{{- if $mergedPolicyOpts.enabled -}}
+{{- $_ := unset $mergedPolicyOpts "enabled" -}}
 ---
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: BackendTrafficPolicy
 metadata:
   name: {{ $routeName }}
 spec:
-{{ $backendPolicyOpts | toYaml | indent 2 }}
+{{ $mergedPolicyOpts | toYaml | indent 2 }}
   targetRefs:
   - group: gateway.networking.k8s.io
     kind: HTTPRoute
     name: {{ $routeName }}
-{{- end }}
 {{- end }}
 {{- end }}

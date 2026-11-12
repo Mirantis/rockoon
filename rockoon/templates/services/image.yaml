@@ -413,6 +413,11 @@ spec:
         proxy:
 {% include 'base/_proxy_vars.yaml' %}
         api:
+          http_route:
+            policies:
+              backend_traffic:
+                requestBuffer:
+                  limit: <None>
           ingress:
             annotations:
               nginx.ingress.kubernetes.io/proxy-request-buffering: "off"

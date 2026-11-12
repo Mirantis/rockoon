@@ -70,6 +70,11 @@ spec:
             - openstack-mariadb-cluster-wait
       network:
         api:
+          http_route:
+            policies:
+              backend_traffic:
+                requestBuffer:
+                  limit: 114688
           ingress:
             annotations:
               nginx.ingress.kubernetes.io/proxy-body-size: "114688"

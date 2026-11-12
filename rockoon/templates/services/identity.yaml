@@ -54,6 +54,20 @@ spec:
               - openstack-mariadb-cluster-wait
       network:
         api:
+          http_route:
+            policies:
+              backend_traffic:
+                requestBuffer:
+                  limit: 114688
+{%- if federation.get("openid", {}).get("enabled") %}
+            rule:
+              sessionPersistence:
+                absoluteTimeout: 1800s
+                sessionName: os-keycloak-sso
+                type: Cookie
+                cookieConfig:
+                  lifetimeType: Permanent
+{%- endif %}
           ingress:
             annotations:
               nginx.ingress.kubernetes.io/proxy-body-size: "114688"
@@ -62,14 +76,6 @@ spec:
               nginx.ingress.kubernetes.io/session-cookie-expires: "1800"
               nginx.ingress.kubernetes.io/session-cookie-max-age: "1800"
               nginx.ingress.kubernetes.io/session-cookie-name: os-keycloak-sso
-          http_route:
-            rule:
-              sessionPersistence:
-                absoluteTimeout: 1800s
-                sessionName: os-keycloak-sso
-                type: Cookie
-                cookieConfig:
-                  lifetimeType: Permanent
 {%- endif %}
       objects:
         secret_credentials_keys:

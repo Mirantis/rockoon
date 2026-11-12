@@ -84,6 +84,11 @@ spec:
         user_secret_name: glance-rbd-keyring
       network:
         api:
+          http_route:
+            policies:
+              backend_traffic:
+                requestBuffer:
+                  limit: <None>
           ingress:
             annotations:
               nginx.ingress.kubernetes.io/proxy-request-buffering: "off"

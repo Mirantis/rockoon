@@ -1092,11 +1092,29 @@ spec:
         {%- endif %}
         sshd:
           enabled: true
+        # NOTE(mkarpin): Envoy does not support websocket combined with
+        # request buffering enabled
+        spiceproxy:
+          http_route:
+            policies:
+              backend_traffic:
+                requestBuffer:
+                  limit: <None>
+        serialproxy:
+          http_route:
+            policies:
+              backend_traffic:
+                requestBuffer:
+                  limit: <None>
         novncproxy:
           ingress:
             annotations:
               nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
           http_route:
+            policies:
+              backend_traffic:
+                requestBuffer:
+                  limit: <None>
             rule:
               timeouts:
                 request: "300s"
