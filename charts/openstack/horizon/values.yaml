@@ -43,7 +43,11 @@ jobs:
       template: |
         #!/bin/bash
         set -ex
-        python3 /tmp/manage.py clearsessions
+        if python3 /tmp/manage.py help clearsessions_sql 2>&1 > /dev/null; then
+          python3 /tmp/manage.py clearsessions_sql
+        else
+          python3 /tmp/manage.py clearsessions
+        fi
 
 release_group: null
 
