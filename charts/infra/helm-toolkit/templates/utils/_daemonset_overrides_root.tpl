@@ -41,6 +41,7 @@ This implementation is intended to handle those limitations:
           - label2::value2
         labels:
           label::value:
+            name_suffix: daemonset-name-suffix
             values:
               override_root_option: override_root_value
               conf:
@@ -90,6 +91,7 @@ This implementation is intended to handle those limitations:
 
               {{/* set daemonset name */}}
               {{- $_ := set $overrides.__current_label "name" $label_name }}
+              {{- $_ := set $overrides.__current_label "name_suffix" (index $ldata "name_suffix") }}
 
               {{/* set daemonset metadata annotation */}}
               {{- $_ := set $overrides.__current_label "daemonset_override" $lname  }}
@@ -204,6 +206,8 @@ This implementation is intended to handle those limitations:
     {{- $name_format := "" }}
     {{- if eq $current_dict.name "default" }}
        {{- $name_format = (printf "%s-%s" $daemonset_root_name "default") | replace "_" "-" }}
+    {{- else if $current_dict.name_suffix }}
+       {{- $name_format = (printf "%s-%s" $daemonset_root_name $current_dict.name_suffix) | replace "_" "-" }}
     {{- else }}
        {{- $name_format = (printf "%s-%s" $daemonset_root_name ($current_dict.matchExpressions | quote | sha256sum | trunc 16)) | replace "_" "-" }}
     {{- end }}

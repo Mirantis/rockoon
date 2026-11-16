@@ -389,6 +389,9 @@ spec:
           overrides_default: false
           labels:
             rockoon-openstack-gateway::controller:
+        {%- if spec.preset == "condensed" %}
+              name_suffix: condensed
+        {%- endif %}
               values:
                 conf:
                   external-ids:
@@ -404,6 +407,9 @@ spec:
                         - name: {{ network.interface }}
       {%- endfor %}
             rockoon-openstack-compute-node::controller:
+      {%- if spec.preset == "condensed" %}
+              name_suffix: compute
+      {%- endif %}
               values:
                 conf:
                   ovn_controller:
