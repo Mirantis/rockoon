@@ -33,7 +33,7 @@ rvl_osdpl_floating_network:
     gateway: 10.11.12.11
 rvl_network_floating_network_with_snat: false
 
-rvl_osdpl_openstack_version: epoxy
+rvl_osdpl_openstack_version: gazpacho
 rvl_dns_resolver_ip_address: "{{ ansible_default_ipv4.address|default(ansible_all_ipv4_addresses[0]) }}"
 rvl_dns_nameservers:
   - 8.8.8.8
@@ -66,7 +66,7 @@ rvl_images_loci_refspec: ""
 rvl_images_loci_branch: "c1b127eee319c26ad96d8ed50e9eba825cc36c59"
 rvl_images_loci_path: /src/loci
 rvl_images_loci_registry: "{{ rvl_registry_host }}"
-rvl_images_loci_build_profile: epoxy-core
+rvl_images_loci_build_profile: gazpacho-core
 rvl_images_loci_images_mapping:
   cinder:
     - cinder_api
