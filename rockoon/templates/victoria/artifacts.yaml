@@ -250,6 +250,6 @@ ironic_esp_checksum: 87b10bbb52ed7ea57ff2a5cf6d93f32e
 os_image_ubuntu_2404: '{{ binary_base_url }}/openstack/bin/ubuntu/24.04/noble-server-cloudimg-amd64-20251026.img'
 os_image_ubuntu_2404_checksum: e2f0561da667e43e2019466fe916f937
 tempest_bootstrap: '{{ images_base_url }}/openstack/openstack-tools:antelope-jammy-20260730150252'
-envoy: '{{ images_base_url }}/openstack/extra/envoy:1.38.3-noble-20261028125005'
+envoy: '{{ images_base_url }}/openstack/extra/envoy:1.40.2-noble-20261116160629'
 neutron_periodic_workers: '{{ images_base_url }}/openstack/neutron:victoria-focal-20240112082932'
 neutron_ovn_maintenance: '{{ images_base_url }}/openstack/neutron:victoria-focal-20240112082932'
