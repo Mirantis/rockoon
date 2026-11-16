@@ -163,6 +163,8 @@ class NetworkFeatureEnabled(base_section.BaseSection):
             "features.neutron.extensions.fwaas.enabled", fwaas_default
         ):
             api_extensions_default.extend(["fwaas_v2"])
+            if "filter-validation" in api_extensions_default:
+                api_extensions_default.remove("filter-validation")
         if self.get_spec_item(
             "features.neutron.extensions.dynamic_routing.enabled"
         ):
