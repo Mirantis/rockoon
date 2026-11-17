@@ -130,6 +130,7 @@ spec:
         openvswitch_ovn-controller:
           labels:
             rockoon-openstack-compute-node::controller:
+              name_suffix: compute
               values:
                 conf:
                   ovn_controller:
@@ -139,6 +140,7 @@ spec:
                       nics:
                       - name: veth-phy
             rockoon-openstack-gateway::controller:
+              name_suffix: condensed
               values:
                 conf:
                   external-ids:
