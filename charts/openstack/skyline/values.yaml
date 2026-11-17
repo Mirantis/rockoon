@@ -1,0 +1,394 @@
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+---
+release_group: null
+
+labels:
+  skyline:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+  job:
+    node_selector_key: openstack-control-plane
+    node_selector_value: enabled
+
+images:
+  pull_policy: IfNotPresent
+  tags:
+    skyline_db_sync: quay.io/airshipit/skyline:2026.1-ubuntu_noble
+    skyline: quay.io/airshipit/skyline:2026.1-ubuntu_noble
+    skyline_nginx: quay.io/airshipit/skyline:2026.1-ubuntu_noble
+    db_init: quay.io/airshipit/openstack-client:2026.1-ubuntu_noble
+    dep_check: quay.io/airshipit/kubernetes-entrypoint:latest-ubuntu_noble
+    ks_user: quay.io/airshipit/openstack-client:2026.1-ubuntu_noble
+  local_registry:
+    active: false
+    exclude:
+      - dep_check
+      - image_repo_sync
+
+secrets:
+  identity:
+    admin: skyline-keystone-admin
+    skyline: skyline-keystone-user
+  oslo_db:
+    admin: skyline-db-admin
+    skyline: skyline-db-user
+  tls:
+    skyline:
+      skyline:
+        public: skyline-tls-public
+        internal: skyline-tls-internal
+network:
+  skyline:
+    ingress:
+      public: true
+      classes:
+        namespace: "nginx"
+        cluster: "nginx-cluster"
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /
+    http_route:
+      rule:
+        timeouts: {}
+        retry: {}
+        sessionPersistence: {}
+        filters: {}
+  external_policy_local: false
+  node_port:
+    enabled: false
+    port: 30779
+endpoints:
+  cluster_domain_suffix: cluster.local
+  local_image_registry:
+    name: docker-registry
+    namespace: docker-registry
+    hosts:
+      default: localhost
+      internal: docker-registry
+      node: localhost
+    host_fqdn_override:
+      default: null
+    port:
+      registry:
+        node: 5000
+  app_gateway:
+    hosts:
+      default:
+        host: app-gateway
+    port:
+      https:
+        default: 10443
+        public: 443
+    host_fqdn_override:
+      public: null
+  oslo_db:
+    auth:
+      admin:
+        username: root
+        password: password
+        secret:
+          tls:
+            internal: mariadb-tls-direct
+      skyline:
+        username: skyline
+        password: password
+    hosts:
+      default: mariadb
+    host_fqdn_override:
+      default: null
+    path: /skyline
+    scheme: mysql+pymysql
+    port:
+      mysql:
+        default: 3306
+  identity:
+    name: keystone
+    auth:
+      admin:
+        region_name: RegionOne
+        username: admin
+        password: password
+        project_name: admin
+        user_domain_name: default
+        project_domain_name: default
+      skyline:
+        role: admin,service
+        region_name: RegionOne
+        username: skyline
+        password: password
+        project_name: service
+        user_domain_name: service
+        project_domain_name: service
+    hosts:
+      default: keystone
+      internal: keystone-api
+    host_fqdn_override:
+      default: null
+    path:
+      default: /v3
+    scheme:
+      default: http
+    port:
+      api:
+        default: 80
+        internal: 5000
+  skyline:
+    name: skyline
+    hosts:
+      default: skyline-api
+      public: skyline
+    host_fqdn_override:
+      default: null
+    scheme:
+      default: 'http'
+      service: 'http'
+    port:
+      api:
+        default: 9999
+        public: 80
+pod:
+  probes:
+    skyline:
+      nginx:
+        liveness:
+          enabled: True
+          params:
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 5
+        readiness:
+          enabled: True
+          params:
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+      skyline:
+        liveness:
+          enabled: True
+          params:
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 5
+        readiness:
+          enabled: True
+          params:
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+  replicas:
+    server: 1
+  lifecycle:
+    upgrades:
+      deployments:
+        revision_history: 3
+        pod_replacement_strategy: RollingUpdate
+        rolling_update:
+          max_unavailable: 1
+          max_surge: 1
+    disruption_budget:
+      skyline:
+        min_available: 0
+  security_context:
+    skyline:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+      container:
+        api-init:
+          runAsUser: 0
+          runAsNonRoot: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+            add:
+              - DAC_READ_SEARCH
+        nginx:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        skyline:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    db_sync:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+      container:
+        skyline_db_sync:
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+    db_init:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+      container:
+        db_init:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+    ks_user:
+      pod:
+        fsGroup: 42424
+        runAsUser: 42424
+        runAsNonRoot: true
+      container:
+        ks_user:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+  affinity:
+    anti:
+      type:
+        default: preferredDuringSchedulingIgnoredDuringExecution
+      topologyKey:
+        default: kubernetes.io/hostname
+      weight:
+        default: 10
+  mounts:
+    skyline:
+      init_container: null
+      skyline:
+        volumes:
+        volumeMounts:
+    skyline_db_init:
+      init_container: null
+      skyline_db_init:
+        volumeMounts:
+        volumes:
+    skyline_db_sync:
+      init_container: null
+      skyline_db_sync:
+        volumeMounts:
+        volumes:
+  resources:
+    enabled: false
+    server:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "1024Mi"
+        cpu: "2000m"
+    jobs:
+      db_init:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+      db_sync:
+        requests:
+          memory: "128Mi"
+          cpu: "100m"
+        limits:
+          memory: "1024Mi"
+          cpu: "2000m"
+dependencies:
+  dynamic:
+    common:
+      local_image_registry:
+        jobs:
+          - skyline-image-repo-sync
+        services:
+          - endpoint: node
+            service: local_image_registry
+  static:
+    skyline:
+      jobs:
+        - skyline-db-sync
+        - skyline-ks-user
+      services:
+        - endpoint: internal
+          service: oslo_db
+        - endpoint: internal
+          service: identity
+    db_init:
+      services:
+        - endpoint: internal
+          service: oslo_db
+    db_sync:
+      jobs:
+        - skyline-db-init
+      services:
+        - endpoint: internal
+          service: oslo_db
+    ks_user:
+      services:
+        - endpoint: internal
+          service: identity
+network_policy: {}
+conf:
+  nginx:
+    default_language: en
+  skyline:
+    default:
+      debug: true
+      log_dir: /var/log
+      log_file: /dev/stdout
+      # These two params are only available in the custom skyline image
+      access_log_file: /dev/stdout
+      error_log_file: /dev/stdout
+    openstack:
+      interface_type: internal
+      default_region: RegionOne
+  gunicorn:
+    config:
+      bind: "unix:/var/lib/skyline/skyline.sock"
+      workers: 8
+      worker_class: "uvicorn.workers.UvicornWorker"
+      timeout: 300
+      keepalive: 5
+      reuse_port: False
+      proc_name: "skyline"
+      log_level: "info"
+      disable_redirect_access_to_syslog: True
+      access_logfile: "-"
+      error_logfile: "-"
+    template: |
+      {{ include "helm-toolkit.utils.to_kv_py_list" .Values.conf.gunicorn.config }}
+
+manifests:
+  certificates: false
+  configmap_etc: true
+  configmap_bin: true
+  deployment: true
+  ingress_api: true
+  http_route_api: true
+  job_db_init: true
+  job_db_sync: true
+  job_db_drop: false
+  job_ks_user: true
+  network_policy: false
+  pdb: true
+  secret_db: true
+  secret_keystone: true
+  secret_ca_bundle: false
+  secret_registry: true
+  secret_ingress_tls: true
+  service: true
+  service_ingress: true
+...
