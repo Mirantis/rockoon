@@ -25,6 +25,9 @@ ingress:
           - {{ to_child_object("key-manager", "barbican", "Deployment", "barbican-api", ["b-api"]) | indent(12)}}
           - {{ to_child_object("load-balancer", "octavia", "Deployment", "octavia-api", ["o-api"]) | indent(12)}}
           - {{ to_child_object("dashboard", "horizon", "Deployment", "horizon", ["web"]) | indent(12)}}
+          {%- if OSVer.gazpacho >= OSVer[spec.openstack_version] %}
+          - {{ to_child_object("skyline", "skyline", "Deployment", "skyline", ["api"]) | indent(12)}}
+          {%- endif %}
       hash_fields: []
       images:
       - ingress

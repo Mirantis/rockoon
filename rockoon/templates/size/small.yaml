@@ -585,6 +585,22 @@ services:
             central: 3
             collector: 3
             notification: 3
+  skyline:
+    skyline:
+      values:
+        pod:
+          replicas:
+            server: 3
+          lifecycle:
+            disruption_budget:
+              skyline:
+                min_available: 1
+            upgrades:
+              deployments:
+                pod_replacement_strategy: RollingUpdate
+                rolling_update:
+                  max_unavailable: 10%
+                  max_surge: 10%
   tempest:
     tempest:
       values:

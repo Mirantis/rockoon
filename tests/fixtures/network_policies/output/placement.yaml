@@ -68,6 +68,10 @@ placement:placement:Deployment:placement-api:
       matchLabels:
         application: neutron
         component: ironic-agent
+  - podSelector:
+      matchLabels:
+        application: skyline
+        component: server
   ports:
   - port: 8778
     protocol: TCP

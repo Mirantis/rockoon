@@ -114,6 +114,7 @@ features:
   - instance-ha
   - shared-file-system
   - dynamic-resource-balancer
+  - skyline
   ssl:
     public_endpoints:
       api_cert: "TEST CRT"

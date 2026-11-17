@@ -38,6 +38,10 @@ dns:designate:StatefulSet:designate-api:
         component: engine
   - podSelector:
       matchLabels:
+        application: skyline
+        component: server
+  - podSelector:
+      matchLabels:
         application: tempest
         component: run-tests
   - podSelector:

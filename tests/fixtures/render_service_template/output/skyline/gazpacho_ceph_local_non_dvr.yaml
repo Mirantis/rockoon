@@ -1,0 +1,123 @@
+spec:
+  releases:
+  - chart: skyline
+    name: openstack-skyline
+    values:
+      conf:
+        skyline:
+          default:
+            secret_key: UwZJiPQP0YyLKbD4wsP15pdleeKUNWFe
+            session_name: session
+          openstack:
+            base_domains:
+            - service
+            default_region: RegionOne
+            interface_type: internal
+            sso_enabled: false
+      network:
+        proxy:
+          enabled: true
+          env_vars:
+            HTTP_PROXY: http://127.0.0.1:3128
+            NO_PROXY: .svc.cluster.local
+      dependencies:
+        static:
+          db_init:
+            jobs:
+            - openstack-mariadb-cluster-wait
+      endpoints:
+        cluster_domain_suffix: cluster.local
+        skyline:
+          host_fqdn_override:
+            public:
+              host: skyline.it.just.works
+              tls:
+                ca: |
+                  TEST CA
+                  RGW CRT
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+          hosts:
+            default: skyline-api
+            public:
+              host: skyline
+              tls:
+                ca: |
+                  TEST CA
+                  RGW CRT
+                crt: |
+                  TEST CRT
+                key: |
+                  TEST KEY
+        identity:
+          auth:
+            admin:
+              default_domain_id: default
+              password: ZUqTyP2XwsgEGKZ7qNhhecYyq9NLkGE6
+              project_domain_name: default
+              project_name: admin
+              region_name: RegionOne
+              user_domain_name: default
+              username: admin
+            skyline:
+              password: Uhmz8zQAd5MM8HRmkvZdLSjySZVwAIDS
+              username: skylineTlEdBF8m
+              region_name: 'RegionOne'
+            test:
+              password: PGmChaJyRD9gjLLFn5gA8G4LdGwiTx0L
+              username: testgbCwksde
+              region_name: 'RegionOne'
+          host_fqdn_override:
+            public:
+              host: keystone.it.just.works
+          hosts:
+            default: keystone
+            internal: keystone-api
+            public:
+              host: keystone
+          port:
+            api:
+              default: 80
+              internal: 5000
+              public: 443
+          scheme:
+            default: http
+            public: https
+        oslo_cache:
+          statefulset:
+            name: openstack-memcached-memcached
+            replicas: 3
+        oslo_db:
+          auth:
+            admin:
+              password: QACDSM6FBTH2LuXjTuRQ6DXhD8bSgPbn
+              username: root
+            skyline:
+              password: Ld1bLgJdtXYesiAwKQibcrMWyHxI4ShA
+              username: skylinefYS1vLVZQ
+      images:
+        tags:
+          db_init: db-init:latest
+          dep_check: dep-check:latest
+          skyline: skyline:latest
+          skyline_nginx: skyline:latest
+          skyline_db_sync: skyline:latest
+          image_repo_sync: image-repo-sync:latest
+          ks_user: ks-user:latest
+      network_policy:
+        skyline:
+          spec:
+            ingress:
+              - from:
+                  - default: selector
+            podSelector:
+              matchLabels:
+                application: skyline
+                component: server
+            policyTypes:
+              - Ingress
+      manifests:
+        network_policy: true
+        secret_ca_bundle: true

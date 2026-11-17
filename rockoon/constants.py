@@ -30,6 +30,7 @@ CHART_GROUP_MAPPING = {
         "masakari",
         "manila",
         "aetos",
+        "skyline",
     ],
     "infra": [
         "app-gateway",
@@ -76,6 +77,7 @@ OS_SERVICES_MAP = {
     "shared-file-system": "manila",
     "stepler": "stepler",
     "metric-storage": "aetos",
+    "skyline": "skyline",
 }
 
 OS_POLICY_SERVICES = {
@@ -110,6 +112,7 @@ OPENSTACK_SERVICES_UPGRADE_ORDER = [
     "key-manager",
     "orchestration",
     "dashboard",
+    "skyline",
     "object-storage",
     "instance-ha",
     "shared-file-system",

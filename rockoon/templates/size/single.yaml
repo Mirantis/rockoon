@@ -462,6 +462,12 @@ services:
         pod:
           replicas:
             server: 1
+  skyline:
+    skyline:
+      values:
+        pod:
+          replicas:
+            server: 1
   tempest:
     tempest:
       values:

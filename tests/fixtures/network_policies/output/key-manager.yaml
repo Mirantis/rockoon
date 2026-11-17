@@ -74,6 +74,10 @@ key-manager:barbican:Deployment:barbican-api:
         component: engine
   - podSelector:
       matchLabels:
+        application: skyline
+        component: server
+  - podSelector:
+      matchLabels:
         application: tempest
         component: static-accounts
   ports:

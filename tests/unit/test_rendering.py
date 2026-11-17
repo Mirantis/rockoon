@@ -310,6 +310,12 @@ def get_child_object_templates():
             "epoxy",
             "master",
         ],
+        "skyline": [
+            v
+            for v in all_openstack_versions
+            if constants.OpenStackVersion[v].value
+            < constants.OpenStackVersion["gazpacho"].value
+        ],
     }
     res = []
     for service in all_services:

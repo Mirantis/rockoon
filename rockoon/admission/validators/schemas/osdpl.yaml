@@ -751,6 +751,7 @@ properties:
             - instance-ha
             - shared-file-system
             - dynamic-resource-balancer
+            - skyline
       cloudprober:
         type: object
         additionalProperties: false

@@ -1,0 +1,13 @@
+skyline:skyline:Deployment:skyline:
+- from:
+  - podSelector:
+      matchLabels:
+        application: app_gateway
+        component: proxy
+  - podSelector:
+      matchLabels:
+        application: ingress
+        component: server
+  ports:
+  - port: 9999
+    protocol: TCP
