@@ -57,6 +57,11 @@ spec:
         proxy:
 {% include 'base/_proxy_vars.yaml' %}
         dashboard:
+          http_route:
+            policies:
+              backend_traffic:
+                requestBuffer:
+                  limit: <None>
           ingress:
             annotations:
               nginx.ingress.kubernetes.io/proxy-body-size: "0"

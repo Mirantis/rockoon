@@ -34,6 +34,12 @@ spec:
         network_policy: {{ spec.features.network_policies.enabled }}
         secret_ca_bundle: true
       network:
+        skyline:
+          http_route:
+            policies:
+              backend_traffic:
+                requestBuffer:
+                  limit: <None>
         proxy:
 {% include 'base/_proxy_vars.yaml' %}
       endpoints:

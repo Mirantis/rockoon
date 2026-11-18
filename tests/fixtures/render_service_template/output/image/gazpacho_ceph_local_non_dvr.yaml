@@ -89,6 +89,11 @@ spec:
               source_url: 'https://manila-service-image-url/manila-latest'
       network:
         api:
+          http_route:
+            policies:
+              backend_traffic:
+                requestBuffer:
+                  limit: <None>
           ingress:
             annotations:
               nginx.ingress.kubernetes.io/proxy-request-buffering: "off"

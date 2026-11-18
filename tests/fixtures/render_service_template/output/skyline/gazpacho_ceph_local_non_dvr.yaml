@@ -15,6 +15,12 @@ spec:
             interface_type: internal
             sso_enabled: false
       network:
+        skyline:
+          http_route:
+            policies:
+              backend_traffic:
+                requestBuffer:
+                  limit: <None>
         proxy:
           enabled: true
           env_vars:

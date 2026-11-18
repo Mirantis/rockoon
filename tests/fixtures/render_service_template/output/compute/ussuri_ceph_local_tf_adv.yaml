@@ -532,9 +532,25 @@ spec:
             annotations:
               nginx.ingress.kubernetes.io/proxy-read-timeout: '300'
           http_route:
+            policies:
+              backend_traffic:
+                requestBuffer:
+                  limit: <None>
             rule:
               timeouts:
                 request: 300s
+        serialproxy:
+          http_route:
+            policies:
+              backend_traffic:
+                requestBuffer:
+                  limit: <None>
+        spiceproxy:
+          http_route:
+            policies:
+              backend_traffic:
+                requestBuffer:
+                  limit: <None>
         sshd:
           enabled: true
       pod:
