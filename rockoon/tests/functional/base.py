@@ -31,6 +31,9 @@ LOGGING_CONFIG = {
         "context": {
             "format": "%(asctime)s %(levelname)s %(testMethodName)s %(name)s (%(filename)s:%(lineno)s) %(message)s",
             "datefmt": "%Y-%m-%d %H:%M:%S",
+            "defaults": {
+                "testMethodName": "",
+            },
         },
     },
     "handlers": {
