@@ -469,8 +469,8 @@ conf:
     # remote1:
     #   type: s3
     #   provider: Ceph
-    #   access_key_id: EQWLB53ZR10068X4DG1J
-    #   secret_access_key: 0GyHi6hPTDqEqZm2gvlchgx6wO9maBEKSR72dAZk
+    #   access_key_id: <access_key_id>
+    #   secret_access_key: <secret_access_key>
     #   endpoint: https://openstack-store.it.just.works/
     #   upload_cutoff: 0
 
