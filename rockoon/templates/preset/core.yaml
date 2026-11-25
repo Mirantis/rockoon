@@ -284,6 +284,9 @@ services:
             - (?:tempest.scenario.test_server_multinode.TestServerMultinode.test_schedule_to_all_nodes)
             # Skip ironic boot from volume
             - (?:ironic_tempest_plugin.tests.scenario.test_baremetal_boot_from_volume.BaremetalBFV.test_baremetal_boot_from_volume)
+            # Not supported on Ironic VMs
+            - (?:tempest.api.compute.servers.test_console.SpiceConsoleTestJSON.test_spice)
+            - (?:tempest.api.compute.servers.test_console.NoVNCConsoleTestJSON.test_novn)
           {%- endif %}
             # The test below is skipped while upstream bug (https://bugs.launchpad.net/tempest/+bug/1317133) is not fixed.
             - (?:tempest.api.object_storage.test_container_sync_middleware.ContainerSyncMiddlewareTest.test_container_synchronization)
