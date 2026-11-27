@@ -158,6 +158,10 @@ osdpl:
         security_context: *security_context
       convert_credentials:
         security_context: *security_context
+      remove_legacy_finalizer:
+        security_context: *security_context
+      rename_octavia_certs_secret:
+        security_context: *security_context
       check_osdplsecrets:
         security_context: *security_context
     ensure_resources:
